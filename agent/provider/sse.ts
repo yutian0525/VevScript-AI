@@ -4,10 +4,11 @@
 //
 // CRLF 边界说明：\r\n -> \n 替换每次 push 都作用于「整个累积 buffer」，
 // 因此某个 \r 落在 chunk 末尾、其后的 \n 落在下一 chunk 开头时，
-// 残留的 \r 会在下一次 push 的全量替换中被一并规范化（已用临时测试验证：
-// push('data: x\r') + push('\n\r\n') 正确产出事件）。
-// 唯一残余缺口：流以 flush() 收尾且此前使用 CRLF、最后一块含多行 data 时，
-// 中间行的 \r 会留在 data 里——实际流都在事件后带空行，不会走到这里。
+// 残留的 \r 会在下一次 push 的全量替换中被一并规范化。
+// flush() + CRLF 路径同样安全：残留块中间的 \r\n 已被之前的 push 替换掉，
+// 块尾若残留单独的 \r 则被 flush 的 trim() 去除。
+// 不受支持（有意不做）：单独 CR（\r 不带 \n）作为换行符——OpenAI 兼容
+// 流只用 \n 或 \r\n，超出该场景的输入不在支持范围内。
 
 export function createSseParser(onData: (data: string) => void) {
   let buffer = '';

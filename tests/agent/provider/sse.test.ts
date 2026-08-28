@@ -53,6 +53,22 @@ describe('SSE 解析器', () => {
     expect(events).toEqual(['{"a":1}']);
   });
 
+  it('多事件 CRLF 流经 push 规范化正确切分', () => {
+    const events: string[] = [];
+    const parser = createSseParser((data) => events.push(data));
+    parser.push('data: {"i":0}\r\n\r\ndata: {"i":1}\r\n\r\n');
+    parser.flush();
+    expect(events).toEqual(['{"i":0}', '{"i":1}']);
+  });
+
+  it('flush 处理无空行结尾的残留事件', () => {
+    const events: string[] = [];
+    const parser = createSseParser((data) => events.push(data));
+    parser.push('data: {"a":1}');
+    parser.flush();
+    expect(events).toEqual(['{"a":1}']);
+  });
+
   it('连续事件流不丢失不重复', () => {
     const events: string[] = [];
     const parser = createSseParser((data) => events.push(data));
