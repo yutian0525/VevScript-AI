@@ -2,13 +2,12 @@
 // 手写 SSE 流解析器（设计决策：不引入 SDK）。
 // 只处理 data: 行（[DONE] 除外），多行 data 按 SSE 规范用 \n 拼接。
 //
-// 已知边界：push 里每帧做 \r\n -> \n 替换。当某个 \r 恰好落在 chunk 末尾、
-// 其后的 \n 落在下一 chunk 开头时，替换在该帧已跑过、\r 单独残留在 buffer，
-// 下帧拼接后 buffer 为 "...\r\n..."，但替换只作用于新增部分——不命中，
-// 于是 \r\n 被切成 "\r" + "\n" 两行，多行 data 拼接会多出内容。
-// SSE chunk 边界恰好切在 \r\n 中间在实际网络栈（TCP/HTTP 解码）几乎不发生，
-// 且 OpenAI 兼容实现普遍用 \n。测试未覆盖此 case，按当前实现交付；
-// 若日后暴露，修法是把 \r\n 规范化挪到 processEventBlock 内对 block 做。
+// CRLF 边界说明：\r\n -> \n 替换每次 push 都作用于「整个累积 buffer」，
+// 因此某个 \r 落在 chunk 末尾、其后的 \n 落在下一 chunk 开头时，
+// 残留的 \r 会在下一次 push 的全量替换中被一并规范化（已用临时测试验证：
+// push('data: x\r') + push('\n\r\n') 正确产出事件）。
+// 唯一残余缺口：流以 flush() 收尾且此前使用 CRLF、最后一块含多行 data 时，
+// 中间行的 \r 会留在 data 里——实际流都在事件后带空行，不会走到这里。
 
 export function createSseParser(onData: (data: string) => void) {
   let buffer = '';
