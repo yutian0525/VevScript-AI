@@ -46,4 +46,15 @@ describe('settings storage', () => {
       agent: DEFAULT_SETTINGS.agent,
     });
   });
+
+  it('存量数据缺字段时 getSettings 用默认值补齐（前向兼容）', async () => {
+    // 模拟旧版本写入的数据（如未来新增 agent 字段后，旧存量缺该字段）
+    await storage.setItem('local:settings', {
+      provider: { baseUrl: 'https://old.com/v1' },
+      agent: { maxSteps: 10 },
+    });
+    const s = await getSettings();
+    expect(s.provider).toEqual({ baseUrl: 'https://old.com/v1', apiKey: '', model: '' });
+    expect(s.agent).toEqual({ maxSteps: 10, screenshotPolicy: 'on-demand', confirmGate: true });
+  });
 });
