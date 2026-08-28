@@ -1,0 +1,29 @@
+tests/shared/messages.test.ts
+  s_ebb62919eaca73::t_765e184ae0e6db 8
+  s_ebb62919eaca73::t_5d17cd8e7985fd 7
+  s_ebb62919eaca73::t_9d515e4a7abebe 31-32
+  s_ebb62919eaca73::t_f952253e3b2c7d 28
+  s_ebb62919eaca73::t_c602ce4ada99f4 21-25
+shared/types.ts
+  s_ebb62919eaca73::t_c3ac27bc073155 3-7
+shared/messages.ts
+  s_ebb62919eaca73::t_a50f7ee922473c 6,10-12
+  s_ebb62919eaca73::t_c1b39c0eca9211 29-32
+  s_ebb62919eaca73::t_02cfbdabe982d6 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "6d24c6bb5be82261d7be37920ada3d5a97268652",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "glm-5.3"
+      },
+      "human_author": null
+    }
+  }
+}
