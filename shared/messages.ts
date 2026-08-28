@@ -1,14 +1,15 @@
 // shared/messages.ts
 // 三环境（background / content script / sidepanel）共享的消息协议。
-// 设计决策：全部 request/response 模式 + correlation id（设计 §4.4）。
+// 设计决策：request/response 模式 + correlation id（设计 §4.4）；
+// 例外：cs→bg 的 fire-and-forget 通知（见 CsToBgNotification）。
 
-import type { ToolResult } from './types';
+import type { ToolResult, Uid } from './types';
 
 export interface BgToCsRequestMap {
   SNAPSHOT: { verbose?: boolean };
-  CLICK: { uid: number; dblClick?: boolean };
-  FILL: { uid: number; value: string };
-  HOVER: { uid: number };
+  CLICK: { uid: Uid; dblClick?: boolean };
+  FILL: { uid: Uid; value: string };
+  HOVER: { uid: Uid };
   SCROLL: { direction: 'up' | 'down' | 'left' | 'right'; amount?: number };
   PRESS_KEY: { key: string; modifiers?: string[] };
   EVALUATE: { function: string; args?: unknown[]; world?: 'main' | 'isolated'; timeoutMs?: number };
@@ -25,17 +26,11 @@ export type BgToCsRequest = {
   };
 }[keyof BgToCsRequestMap];
 
-export interface CsToBgRequestMap {
-  NETLOG_PUSH: { entries: unknown[] };
+/** cs→bg 的 fire-and-forget 通知（无 correlationId，无需 background 逐条应答）。 */
+export interface CsToBgNotification {
+  type: 'NETLOG_PUSH';
+  payload: { entries: unknown[] };
 }
-
-export type CsToBgRequest = {
-  [K in keyof CsToBgRequestMap]: {
-    type: K;
-    correlationId: string;
-    payload: CsToBgRequestMap[K];
-  };
-}[keyof CsToBgRequestMap];
 
 export interface CsResponse {
   correlationId: string;

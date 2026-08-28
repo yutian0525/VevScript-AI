@@ -1,11 +1,10 @@
 // shared/types.ts
 
-/** 通用工具结果：所有工具执行器的统一返回格式（设计 §4.3） */
-export interface ToolResult<T = unknown> {
-  ok: boolean;
-  data?: T;
-  error?: string;
-}
+/** 通用工具结果：所有工具执行器的统一返回格式（设计 §4.3）。
+ * 判别联合：成功时 ok=true 且可选 data；失败时 ok=false 且必有 error。 */
+export type ToolResult<T = unknown> =
+  | { ok: true; data?: T }
+  | { ok: false; error: string };
 
 /** 标签页概要信息 */
 export interface TabInfo {

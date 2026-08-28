@@ -4,7 +4,8 @@ import {
   createRequest,
   isResponseFor,
   type BgToCsRequest,
-  type CsToBgRequest,
+  type CsResponse,
+  type CsToBgNotification,
 } from '../../shared/messages';
 
 describe('消息协议', () => {
@@ -17,13 +18,18 @@ describe('消息协议', () => {
 
   it('isResponseFor 匹配 correlationId 与 type', () => {
     const req = createRequest('CLICK', { uid: 1 });
-    const resp = { correlationId: req.correlationId, type: 'CLICK' as const, result: { ok: true } };
+    const resp: CsResponse = {
+      correlationId: req.correlationId,
+      type: 'CLICK',
+      result: { ok: true },
+    };
     expect(isResponseFor(resp, req)).toBe(true);
     expect(isResponseFor({ ...resp, correlationId: '999' }, req)).toBe(false);
+    expect(isResponseFor({ ...resp, type: 'SNAPSHOT' as const }, req)).toBe(false);
   });
 
-  it('CsToBgRequest 类型可赋值（编译期契约）', () => {
-    const msg: CsToBgRequest = { type: 'NETLOG_PUSH', correlationId: 'x', payload: { entries: [] } };
+  it('CsToBgNotification 类型可赋值（编译期契约）', () => {
+    const msg: CsToBgNotification = { type: 'NETLOG_PUSH', payload: { entries: [] } };
     expect(msg.type).toBe('NETLOG_PUSH');
   });
 
