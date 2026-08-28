@@ -1,0 +1,24 @@
+vitest.config.ts
+  s_ebb62919eaca73::t_9a8ab5f4f3056b 1-8
+tests/storage/settings.test.ts
+  s_ebb62919eaca73::t_f6a4424039b85f 1-39
+storage/settings.ts
+  s_ebb62919eaca73::t_5b3b3dab79ad08 36-41,43
+  s_ebb62919eaca73::t_f51375c861833e 1-35,42,44-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "4dcf19198edd436e53cda6961f33d28c87b4d71e",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
