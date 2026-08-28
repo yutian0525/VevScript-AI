@@ -1,6 +1,7 @@
 // tests/storage/settings.test.ts
 import { describe, it, expect, beforeEach } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { storage } from 'wxt/utils/storage';
 import { getSettings, saveSettings, DEFAULT_SETTINGS } from '../../storage/settings';
 
 describe('settings storage', () => {
@@ -35,5 +36,14 @@ describe('settings storage', () => {
     expect(s.agent.maxSteps).toBe(50);
     expect(s.agent.confirmGate).toBe(true);
     expect(s.agent.screenshotPolicy).toBe('on-demand');
+  });
+
+  it('saveSettings 持久化到 local:settings（fakeBrowser storage 驱动）', async () => {
+    await saveSettings({ provider: { baseUrl: 'https://b.com/v1' } });
+    const raw = await storage.getItem('local:settings');
+    expect(raw).toEqual({
+      provider: { baseUrl: 'https://b.com/v1', apiKey: '', model: '' },
+      agent: DEFAULT_SETTINGS.agent,
+    });
   });
 });
