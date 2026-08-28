@@ -1,0 +1,41 @@
+wxt.config.ts
+  s_ebb62919eaca73::t_fa167520977f38 1-14
+.gitignore
+  s_ebb62919eaca73::t_4ed60c8583a6ec 1-6
+entrypoints/sidepanel/styles.css
+  s_ebb62919eaca73::t_204bce50922464 1-16
+entrypoints/background.ts
+  s_ebb62919eaca73::t_fb0c0706123ce5 1-4
+package.json
+  s_ebb62919eaca73::t_3bb9598b13243b 20-27,35
+  s_ebb62919eaca73::t_302f072f393239 10-16
+  s_ebb62919eaca73::t_02d28f399e3b95 28-34
+  s_ebb62919eaca73::t_ccdb0de90b1d2b 1-9,17-19,36
+entrypoints/sidepanel/index.html
+  s_ebb62919eaca73::t_06179c89a62af4 1-12
+entrypoints/sidepanel/main.tsx
+  s_ebb62919eaca73::t_6c63bf90b715aa 1-11
+tsconfig.json
+  s_ebb62919eaca73::t_741328b01d81ab 1-4,7-8
+  s_ebb62919eaca73::t_ff2f0430450c8b 5-6
+entrypoints/sidepanel/App.tsx
+  s_ebb62919eaca73::t_49fc45ad805f49 1-4
+package-lock.json
+  s_ebb62919eaca73::t_e9c55498dc51c0 1-3657
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7d3765fdc07034e334ab79e574bc08dbf9c55acf",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
