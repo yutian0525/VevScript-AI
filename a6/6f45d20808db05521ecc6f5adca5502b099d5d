@@ -1,0 +1,22 @@
+agent/provider/openai-compat.ts
+  s_ebb62919eaca73::t_3cb79a1e19c2d7 1-171
+tests/agent/provider/openai-compat.test.ts
+  s_ebb62919eaca73::t_cb1109eb637bc6 157,169-174
+  s_ebb62919eaca73::t_78b4d42dc8b958 1-156,158-168,175-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "a66f45d20808db05521ecc6f5adca5502b099d5d",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "glm-5.3"
+      },
+      "human_author": null
+    }
+  }
+}
