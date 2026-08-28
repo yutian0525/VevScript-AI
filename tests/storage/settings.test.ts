@@ -15,7 +15,7 @@ describe('settings storage', () => {
     expect(s.provider.baseUrl).toBe('');
   });
 
-  it('save 后可读回字段（整段替换）', async () => {
+  it('save 后可读回字段（全量段写入）', async () => {
     await saveSettings({ provider: { baseUrl: 'https://api.deepseek.com/v1', apiKey: 'sk-x', model: 'deepseek-chat' } });
     const s = await getSettings();
     expect(s.provider.baseUrl).toBe('https://api.deepseek.com/v1');
@@ -36,6 +36,13 @@ describe('settings storage', () => {
     expect(s.agent.maxSteps).toBe(50);
     expect(s.agent.confirmGate).toBe(true);
     expect(s.agent.screenshotPolicy).toBe('on-demand');
+  });
+
+  it('部分保存 agent 段不重置同段其他字段（段内 merge 回归）', async () => {
+    await saveSettings({ agent: { confirmGate: false, maxSteps: 10 } });
+    await saveSettings({ agent: { maxSteps: 20 } });
+    const s = await getSettings();
+    expect(s.agent).toEqual({ maxSteps: 20, screenshotPolicy: 'on-demand', confirmGate: false });
   });
 
   it('saveSettings 持久化到 local:settings（fakeBrowser storage 驱动）', async () => {
