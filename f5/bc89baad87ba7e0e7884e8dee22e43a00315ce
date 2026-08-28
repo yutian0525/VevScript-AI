@@ -1,0 +1,21 @@
+docs/superpowers/specs/2026-08-28-ai-browser-extension-design.md
+  s_ebb62919eaca73::t_024d51d16c579d 1-448
+docs/chrome-devtools-mcp-功能文档.md
+  s_ebb62919eaca73::t_c947aaadd370c9 1-394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "f5bc89baad87ba7e0e7884e8dee22e43a00315ce",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
