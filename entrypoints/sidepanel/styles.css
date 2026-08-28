@@ -1,0 +1,16 @@
+/* entrypoints/sidepanel/styles.css */
+:root {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --fg-muted: #666666;
+  --border: #e5e5e5;
+  --accent: #2563eb;
+}
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 14px;
+}
