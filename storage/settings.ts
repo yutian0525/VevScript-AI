@@ -1,0 +1,50 @@
+// storage/settings.ts
+import { storage } from 'wxt/utils/storage';
+
+export interface ProviderConfig {
+  baseUrl: string; // OpenAI 兼容，如 https://api.deepseek.com/v1
+  apiKey: string;
+  model: string;
+}
+
+export interface AgentConfig {
+  maxSteps: number; // agent loop 步数上限，默认 25
+  screenshotPolicy: 'never' | 'on-demand';
+  confirmGate: boolean; // 脚本池确认门控，默认 true
+}
+
+export interface Settings {
+  provider: ProviderConfig;
+  agent: AgentConfig;
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  provider: { baseUrl: '', apiKey: '', model: '' },
+  agent: { maxSteps: 25, screenshotPolicy: 'on-demand', confirmGate: true },
+};
+
+const KEY = 'local:settings';
+
+export async function getSettings(): Promise<Settings> {
+  const raw = await storage.getItem<Partial<Settings>>(KEY);
+  return {
+    provider: { ...DEFAULT_SETTINGS.provider, ...raw?.provider },
+    agent: { ...DEFAULT_SETTINGS.agent, ...raw?.agent },
+  };
+}
+
+/** saveSettings 的入参：顶层段（provider/agent）可选，段内字段可选 */
+export type SettingsPatch = {
+  provider?: Partial<ProviderConfig>;
+  agent?: Partial<AgentConfig>;
+};
+
+/** merge 语义：顶层段（provider/agent）内的字段 merge */
+export async function saveSettings(patch: SettingsPatch): Promise<void> {
+  const current = await getSettings();
+  const next: Settings = {
+    provider: { ...current.provider, ...patch.provider },
+    agent: { ...current.agent, ...patch.agent },
+  };
+  await storage.setItem(KEY, next);
+}
