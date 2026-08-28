@@ -1,0 +1,21 @@
+agent/provider/sse.ts
+  s_ebb62919eaca73::t_43d07d4ec5a0f0 1-48
+tests/agent/provider/sse.test.ts
+  s_ebb62919eaca73::t_5d6550dff29e15 1-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "fda1487cc291727cd38131bb40abbeff0ea64625",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
