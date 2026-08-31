@@ -1,0 +1,28 @@
+agent/provider/openai-compat.ts
+  s_ebb62919eaca73::t_a851a462d47818 8-9
+  s_ebb62919eaca73::t_ac3fe8a3d05daa 63-70
+  s_ebb62919eaca73::t_ceb0674d2a4936 169-175,181-188
+  s_ebb62919eaca73::t_94b843aeaba8d3 108-113
+tests/agent/provider/openai-compat.test.ts
+  s_ebb62919eaca73::t_627ff5f353eca2 32,49-51,55-72
+  s_ebb62919eaca73::t_c0fd0359e44ceb 73,201-203,213,215-217,219-220,223-226,228
+  s_ebb62919eaca73::t_3d5e5299d9852a 204-212,214,218,221-222,227
+  s_ebb62919eaca73::t_63d83483badb14 98-99
+  s_ebb62919eaca73::t_004de9d77b2107 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b2ab270b55c0009d0fb799adf0eb924dd7a1081d",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
