@@ -29,7 +29,7 @@ describe('OpenAICompatProvider', () => {
     vi.unstubAllGlobals();
   });
 
-  it('请求体格式正确（model/messages/tools/stream）', async () => {
+  it('请求体格式正确（model/messages/stream），空 tools 省略字段', async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValue(
       new Response(sseStream([{ choices: [{ delta: {} }] }, { choices: [{ delta: {}, finish_reason: 'stop' }] }]), { status: 200 }),
@@ -46,7 +46,30 @@ describe('OpenAICompatProvider', () => {
     expect(body.model).toBe('gpt-test');
     expect(body.stream).toBe(true);
     expect(body.messages[0].role).toBe('user');
+    // OpenAI 官方对 tools: [] 返回 400——无工具时整个字段必须省略
+    expect(body.tools).toBeUndefined();
+    expect(body.tool_choice).toBeUndefined();
     expect((init as RequestInit).headers).toMatchObject({ Authorization: 'Bearer sk-1' });
+  });
+
+  it('非空 tools 时请求体携带 tools 与 tool_choice=auto', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(
+      new Response(sseStream([{ choices: [{ delta: {}, finish_reason: 'stop' }] }]), { status: 200 }),
+    );
+    const p = new OpenAICompatProvider({ baseUrl: 'https://api.x.com/v1', apiKey: 'sk', model: 'gpt-test' });
+    const tool = {
+      type: 'function' as const,
+      function: { name: 'take_snapshot', description: '截图', parameters: { type: 'object', properties: {} } },
+    };
+    await new Promise<void>((resolve) => {
+      p.streamChat({ ...baseParams(), tools: [tool] }, (e) => {
+        if (e.type === 'message-done') resolve();
+      });
+    });
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.tools).toEqual([tool]);
+    expect(body.tool_choice).toBe('auto');
   });
 
   it('文本增量归一化为 text-delta，usage 在 message-done', async () => {
@@ -72,6 +95,8 @@ describe('OpenAICompatProvider', () => {
     });
     const texts = events.filter((e) => e.type === 'text-delta').map((e) => (e as { text: string }).text);
     expect(texts.join('')).toBe('你好世界');
+    // 契约锁定：message-done 恰好一次（消费者以其为终止信号）
+    expect(events.filter((e) => e.type === 'message-done')).toHaveLength(1);
     const done = events.find((e) => e.type === 'message-done') as Extract<StreamEvent, { type: 'message-done' }>;
     expect(done.usage?.completionTokens).toBe(2);
     expect(done.finishReason).toBe('stop');
@@ -172,5 +197,33 @@ describe('OpenAICompatProvider', () => {
     expect(fetchSignal).toBeDefined();
     ac.abort();
     expect(fetchSignal.aborted).toBe(true);
+  });
+
+  it('cancel() 中止挂起流并发出恰好一次 message-done（无 error）', async () => {
+    // 永不结束的流：enqueue 一个 chunk 后保持打开（不 close、不 enqueue 更多）
+    const hangingStream = () => {
+      const encoder = new TextEncoder();
+      return new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":"x"}}]}\n\n'));
+        },
+      });
+    };
+    vi.mocked(fetch).mockImplementation(async () => new Response(hangingStream(), { status: 200 }));
+    const p = new OpenAICompatProvider({ baseUrl: 'https://api.x.com/v1', apiKey: 'sk', model: 'm' });
+    // 保存 streamChat 的返回值，用 handle.cancel() 取消
+    const events: StreamEvent[] = [];
+    const done = new Promise<void>((resolve) => {
+      const handle = p.streamChat(baseParams(), (e) => {
+        events.push(e);
+        if (e.type === 'message-done') resolve();
+      });
+      // 等流开始被读（首个 chunk 已消费），再主动取消
+      setTimeout(() => handle.cancel(), 10);
+    });
+    await done;
+    expect(events.filter((e) => e.type === 'message-done')).toHaveLength(1);
+    expect(events.some((e) => e.type === 'error')).toBe(false);
+    expect(events.some((e) => e.type === 'text-delta')).toBe(true); // 首个 chunk 已消费
   });
 });

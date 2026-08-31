@@ -5,7 +5,8 @@
 // - message-done 只在流结束时发一次，携带聚合的 usage 与 finishReason——
 //   OpenAI 官方 stream_options.include_usage 的 usage 在 finish_reason 之后的
 //   单独 chunk 里（choices 为空数组），提前发 message-done 会丢 usage；
-// - error 分支（HTTP 非 200 / 网络 reject）后补发 message-done，让消费者循环能结束。
+// - 不变量：每次 streamChat 调用恰好终止于一个 message-done（可能前面有 error），
+//   取消（abort/cancel）也不例外——消费者可安全地「await 到 message-done 为止」。
 import { createSseParser } from './sse';
 import type {
   ChatMessage,
@@ -59,6 +60,14 @@ export class OpenAICompatProvider implements Provider {
     } else {
       params.signal?.addEventListener('abort', () => ac.abort(), { once: true });
     }
+    let onAbort: (() => void) | undefined;
+    ac.signal.addEventListener(
+      'abort',
+      () => {
+        onAbort?.();
+      },
+      { once: true },
+    );
 
     const url = `${this.config.baseUrl.replace(/\/$/, '')}/chat/completions`;
     const body: Record<string, unknown> = {
@@ -96,6 +105,12 @@ export class OpenAICompatProvider implements Provider {
         const decoder = new TextDecoder();
         let pendingUsage: { promptTokens?: number; completionTokens?: number } | undefined;
         let finishReason: string | undefined;
+        // abort 时不依赖 fetch/undici 对 signal 的传播（浏览器扩展场景里
+        // response.body 是普通流，signal 未必联动它）——cancel 时主动
+        // reader.cancel() 让读循环立即结束。
+        onAbort = () => {
+          reader.cancel().catch(() => { /* 流已结束/已取消时忽略 */ });
+        };
 
         const parser = createSseParser((data) => {
           let chunk: {
@@ -151,16 +166,26 @@ export class OpenAICompatProvider implements Provider {
           }
           parser.flush();
         } catch (err) {
-          // 取消是主动行为不是错误，AbortError 静默
-          if ((err as Error).name !== 'AbortError') {
-            onEvent({ type: 'error', error: `stream error: ${(err as Error).message}` });
+          // 取消是主动行为不是错误，AbortError 静默（但 message-done 仍在下方发出，
+          // 维持「恰好一次终止事件」不变量）。fetch 可能 reject 非 Error 值
+          // （中转站/polyfill），instanceof 防御避免二次抛出吞掉终止事件。
+          const errName = err instanceof Error ? err.name : undefined;
+          const errMsg = err instanceof Error ? err.message : String(err);
+          if (errName !== 'AbortError') {
+            onEvent({ type: 'error', error: `stream error: ${errMsg}` });
           }
         }
         onEvent({ type: 'message-done', usage: pendingUsage, finishReason });
       })
       .catch((err: unknown) => {
-        if ((err as Error).name === 'AbortError') return;
-        onEvent({ type: 'error', error: `network error: ${(err as Error).message}` });
+        // 响应头前 abort / 预先 aborted signal / 网络错误都走这里。
+        // 无论哪种情况都补发 message-done——否则消费者的
+        // 「await 到 message-done」Promise 永久挂起。
+        const errName = err instanceof Error ? err.name : undefined;
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (errName !== 'AbortError') {
+          onEvent({ type: 'error', error: `network error: ${errMsg}` });
+        }
         onEvent({ type: 'message-done' });
       });
 
