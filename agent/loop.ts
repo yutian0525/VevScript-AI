@@ -74,10 +74,14 @@ async function drive(tabId: number, deps: LoopDeps, guardState: GuardState): Pro
       continue;
     }
 
-    // 自然终止
+    // 自然终止（无工具调用）
     if (result.toolCalls.length === 0) {
-      await appendMessage(tabId, { role: 'assistant', content: result.text });
-      deps.emit({ type: 'done', finalText: result.text });
+      const truncated = result.finishReason === 'length';
+      const finalText = truncated
+        ? `${result.text}\n\n[注意：回复因达到长度上限被截断，可能不完整]`
+        : result.text;
+      await appendMessage(tabId, { role: 'assistant', content: finalText });
+      deps.emit({ type: 'done', finalText });
       await setStatus(tabId, 'idle');
       return;
     }

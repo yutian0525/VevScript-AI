@@ -38,6 +38,17 @@ describe('agent loop', () => {
     expect(session.status).toBe('idle');
   });
 
+  it('纯文本被 length 截断时回复带截断提示', async () => {
+    const provider = queuedProvider([[{ type: 'text-delta', text: '半截回复' }, { type: 'message-done', finishReason: 'length' }]]);
+    const exec = vi.fn<LoopDeps['executeTool']>();
+    await runAgentLoop({ tabId: 8, sessionId: 's', userMessage: 'x' }, deps(provider, exec));
+    const session = await getSession(8);
+    const last = session.messages[session.messages.length - 1]!;
+    expect(String(last.content)).toContain('半截回复');
+    expect(String(last.content)).toContain('截断');
+    expect(session.status).toBe('idle');
+  });
+
   it('一轮工具调用后再自然终止', async () => {
     const provider = queuedProvider([
       [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'take_snapshot', argsDelta: '{}' }, { type: 'message-done', finishReason: 'tool_calls' }],
