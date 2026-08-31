@@ -1,0 +1,21 @@
+tests/storage/sessions.test.ts
+  s_ebb62919eaca73::t_9cacdbda6c823c 1-53
+storage/sessions.ts
+  s_ebb62919eaca73::t_5b45f8e06526cf 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "641dcbb10caa84004350139b72514a8d500c4e38",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
