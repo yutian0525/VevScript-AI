@@ -7,8 +7,9 @@ import type { ToolResult, Uid } from './types';
 
 export interface BgToCsRequestMap {
   SNAPSHOT: { verbose?: boolean };
-  CLICK: { uid: Uid; dblClick?: boolean };
+  CLICK: { uid: Uid; dblClick?: boolean; includeSnapshot?: boolean };
   FILL: { uid: Uid; value: string };
+  FILL_FORM: { elements: Array<{ uid: Uid; value: string }> };
   HOVER: { uid: Uid };
   SCROLL: { direction: 'up' | 'down' | 'left' | 'right'; amount?: number };
   PRESS_KEY: { key: string; modifiers?: string[] };
@@ -55,3 +56,29 @@ export function createRequest<K extends keyof BgToCsRequestMap>(
 export function isResponseFor(resp: CsResponse, req: BgToCsRequest): boolean {
   return resp.correlationId === req.correlationId && resp.type === req.type;
 }
+
+// ---------- cs→bg fire-and-forget 通知（扩展 CsToBgNotification 的兄弟类型）----------
+
+/** content script 加载完成通知（navigate 后等待此信号）。 */
+export interface CsReadyNotification {
+  type: 'CS_READY';
+  payload: { url: string };
+}
+
+// ---------- sidepanel ↔ background Port 协议（独立于 cs 协议）----------
+// 约定：Port name 为 'agent'；消息用 'agent:' 前缀（→bg）或事件名（bg→）区分。
+
+export type PortMsgFromPanel =
+  | { type: 'agent:start'; tabId: number; userMessage: string }
+  | { type: 'agent:stop'; tabId: number }
+  | { type: 'agent:attach'; tabId: number }
+  | { type: 'agent:resume'; tabId: number };
+
+export type PortMsgToPanel =
+  | { type: 'text-delta'; text: string }
+  | { type: 'tool-start'; name: string; args: string; callId: string }
+  | { type: 'tool-end'; name: string; callId: string; ok: boolean; summary: string }
+  | { type: 'paused'; reason: string }
+  | { type: 'done'; finalText: string }
+  | { type: 'error'; message: string }
+  | { type: 'state'; status: 'idle' | 'running' | 'paused'; messageCount: number };
