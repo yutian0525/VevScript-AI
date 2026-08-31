@@ -67,7 +67,7 @@ components/chat/
 - Modify: `shared/messages.ts`
 - Test: `tests/shared/messages-phase2.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/shared/messages-phase2.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/shared/messages-phase2.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -104,12 +104,12 @@ describe('Phase 2 协议扩展', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/shared/messages-phase2.test.ts`
 Expected: FAIL — `CsReadyNotification`/`PortMsgFromPanel` 未导出。
 
-- [ ] **Step 3: 修改 `shared/messages.ts`**
+- [x] **Step 3: 修改 `shared/messages.ts`**
 
 在 `BgToCsRequestMap` 里为 `CLICK` 加可选字段、新增 `FILL_FORM`：
 
@@ -159,17 +159,17 @@ export type PortMsgToPanel =
   | { type: 'state'; status: 'idle' | 'running' | 'paused'; messageCount: number };
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/shared/messages-phase2.test.ts`
 Expected: 5 passed。
 
-- [ ] **Step 5: 全量编译**
+- [x] **Step 5: 全量编译**
 
 Run: `npm run compile`
 Expected: 退出码 0（确认扩展没破坏 Phase 1 类型）。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add shared/messages.ts tests/shared/messages-phase2.test.ts
@@ -184,7 +184,7 @@ git commit -m "feat: Phase 2 协议扩展（FILL_FORM/CLICK.includeSnapshot/CS_R
 - Create: `storage/sessions.ts`
 - Test: `tests/storage/sessions.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/storage/sessions.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/storage/sessions.test.ts`**
 
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -242,12 +242,12 @@ describe('sessions storage', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/storage/sessions.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `storage/sessions.ts`**
+- [x] **Step 3: 写 `storage/sessions.ts`**
 
 ```ts
 // storage/sessions.ts
@@ -290,12 +290,12 @@ export async function setStatus(tabId: number, status: SessionStatus): Promise<v
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/storage/sessions.test.ts`
 Expected: 6 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add storage/sessions.ts tests/storage/sessions.test.ts
@@ -312,7 +312,7 @@ git commit -m "feat: 会话存储层（每标签页历史，最近 200 条，mer
 - Create: `agent/run-turn.ts`
 - Test: `tests/agent/run-turn.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/agent/run-turn.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/agent/run-turn.test.ts`**
 
 ```ts
 import { describe, it, expect, vi } from 'vitest';
@@ -395,12 +395,12 @@ describe('runTurn', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/run-turn.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `agent/run-turn.ts`**
+- [x] **Step 3: 写 `agent/run-turn.ts`**
 
 ```ts
 // agent/run-turn.ts
@@ -469,12 +469,12 @@ export function runTurn(provider: Provider, params: ChatParams, hooks: RunTurnHo
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/run-turn.test.ts`
 Expected: 6 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agent/run-turn.ts tests/agent/run-turn.test.ts
@@ -491,7 +491,7 @@ git commit -m "feat: Provider 回调→Promise 单轮适配（tool_calls 聚合�
 - Create: `agent/loop-guards.ts`
 - Test: `tests/agent/loop-guards.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/agent/loop-guards.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/agent/loop-guards.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -550,12 +550,12 @@ describe('熔断阀', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/loop-guards.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `agent/loop-guards.ts`**
+- [x] **Step 3: 写 `agent/loop-guards.ts`**
 
 ```ts
 // agent/loop-guards.ts
@@ -627,12 +627,12 @@ export function checkGuards(state: GuardState, cfg: GuardConfig): GuardVerdict {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/loop-guards.test.ts`
 Expected: 7 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agent/loop-guards.ts tests/agent/loop-guards.test.ts
@@ -649,7 +649,7 @@ system prompt（工具指南 + 提示注入防线）+ 当前页 URL/title 注入
 - Create: `agent/context.ts`
 - Test: `tests/agent/context.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/agent/context.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/agent/context.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -693,12 +693,12 @@ describe('context 组装', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/context.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `agent/context.ts`**
+- [x] **Step 3: 写 `agent/context.ts`**
 
 ```ts
 // agent/context.ts
@@ -736,12 +736,12 @@ export function buildContext(history: ChatMessage[], page: PageInfo, keepRecent 
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/context.test.ts`
 Expected: 5 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agent/context.ts tests/agent/context.test.ts
@@ -756,7 +756,7 @@ git commit -m "feat: context 组装（system prompt + 页面注入 + 简单截�
 - Create: `content/snapshot/roles.ts`
 - Test: `tests/content/snapshot/roles.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/content/snapshot/roles.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/content/snapshot/roles.test.ts`**
 
 ```ts
 // @vitest-environment jsdom
@@ -820,12 +820,12 @@ describe('isInteractive', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/content/snapshot/roles.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `content/snapshot/roles.ts`**
+- [x] **Step 3: 写 `content/snapshot/roles.ts`**
 
 ```ts
 // content/snapshot/roles.ts
@@ -900,12 +900,12 @@ export function computeStates(el: Element): string[] {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/content/snapshot/roles.test.ts`
 Expected: 全部通过。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add content/snapshot/roles.ts tests/content/snapshot/roles.test.ts
@@ -920,7 +920,7 @@ git commit -m "feat: 快照 role/name/state 计算（ARIA 映射 + 可交互判�
 - Create: `content/snapshot/visibility.ts`
 - Test: `tests/content/snapshot/visibility.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/content/snapshot/visibility.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/content/snapshot/visibility.test.ts`**
 
 ```ts
 // @vitest-environment jsdom
@@ -945,12 +945,12 @@ describe('隐藏过滤', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/content/snapshot/visibility.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `content/snapshot/visibility.ts`**
+- [x] **Step 3: 写 `content/snapshot/visibility.ts`**
 
 ```ts
 // content/snapshot/visibility.ts
@@ -973,12 +973,12 @@ export function isHidden(el: Element): boolean {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/content/snapshot/visibility.test.ts`
 Expected: 6 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add content/snapshot/visibility.ts tests/content/snapshot/visibility.test.ts
@@ -995,7 +995,7 @@ git commit -m "feat: 快照隐藏过滤（display/visibility/aria-hidden/hidden/
 - Create: `content/snapshot/build.ts`
 - Test: `tests/content/snapshot/build.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/content/snapshot/build.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/content/snapshot/build.test.ts`**
 
 ```ts
 // @vitest-environment jsdom
@@ -1079,12 +1079,12 @@ function resolveUidByElement(el: Element): number {
 }
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/content/snapshot/build.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `content/snapshot/build.ts`**
+- [x] **Step 3: 写 `content/snapshot/build.ts`**
 
 ```ts
 // content/snapshot/build.ts
@@ -1186,12 +1186,12 @@ function shouldEmit(node: Node): boolean {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/content/snapshot/build.test.ts`
 Expected: 8 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add content/snapshot/build.ts tests/content/snapshot/build.test.ts
@@ -1208,7 +1208,7 @@ click/fill/fill_form/hover/scroll/press_key 的 DOM 执行，输入是 uid（经
 - Create: `content/interact.ts`
 - Test: `tests/content/interact.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/content/interact.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/content/interact.test.ts`**
 
 ```ts
 // @vitest-environment jsdom
@@ -1301,12 +1301,12 @@ describe('交互执行', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/content/interact.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `content/interact.ts`**
+- [x] **Step 3: 写 `content/interact.ts`**
 
 ```ts
 // content/interact.ts
@@ -1394,12 +1394,12 @@ export function doPressKey(p: BgToCsRequestMap['PRESS_KEY']): ToolResult {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/content/interact.test.ts`
 Expected: 8 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add content/interact.ts tests/content/interact.test.ts
@@ -1416,7 +1416,7 @@ git commit -m "feat: content 交互执行（click/fill/fill_form/hover/scroll/pr
 - Create: `content/wait.ts`
 - Test: `tests/content/wait.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/content/wait.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/content/wait.test.ts`**
 
 ```ts
 // @vitest-environment jsdom
@@ -1452,12 +1452,12 @@ describe('wait_for', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/content/wait.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `content/wait.ts`**
+- [x] **Step 3: 写 `content/wait.ts`**
 
 ```ts
 // content/wait.ts
@@ -1487,12 +1487,12 @@ export function waitForText(p: BgToCsRequestMap['WAIT_TEXT']): Promise<ToolResul
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/content/wait.test.ts`
 Expected: 4 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add content/wait.ts tests/content/wait.test.ts
@@ -1511,7 +1511,7 @@ WXT content script：注册 `browser.runtime.onMessage` 处理 BgToCsRequest（�
 
 > WXT 的 `defineContentScript` wrapper 不便单测——把消息处理逻辑抽成纯函数 `handleCsRequest(req)` 放同文件导出，测它。
 
-- [ ] **Step 1: 写失败测试 `tests/content/handler.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/content/handler.test.ts`**
 
 ```ts
 // @vitest-environment jsdom
@@ -1562,12 +1562,12 @@ describe('content 消息处理器', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/content/handler.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `entrypoints/content.ts`**
+- [x] **Step 3: 写 `entrypoints/content.ts`**
 
 ```ts
 // entrypoints/content.ts
@@ -1631,17 +1631,17 @@ export default defineContentScript({
 });
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/content/handler.test.ts`
 Expected: 5 passed。
 
-- [ ] **Step 5: 编译**
+- [x] **Step 5: 编译**
 
 Run: `npm run compile`
 Expected: 退出码 0。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add entrypoints/content.ts tests/content/handler.test.ts
@@ -1658,7 +1658,7 @@ git commit -m "feat: content entry（消息处理器分发 + includeSnapshot + C
 - Create: `agent/tools/schemas.ts`
 - Test: `tests/agent/tools/schemas.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/agent/tools/schemas.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/agent/tools/schemas.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -1693,12 +1693,12 @@ describe('工具 schema', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/tools/schemas.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `agent/tools/schemas.ts`**
+- [x] **Step 3: 写 `agent/tools/schemas.ts`**
 
 ```ts
 // agent/tools/schemas.ts
@@ -1810,12 +1810,12 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
 ];
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/tools/schemas.test.ts`
 Expected: 4 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agent/tools/schemas.ts tests/agent/tools/schemas.test.ts
@@ -1832,7 +1832,7 @@ git commit -m "feat: 9 个工具 schema（对齐 chrome-devtools-mcp 语义）"
 - Create: `agent/tools/registry.ts`
 - Test: `tests/agent/tools/registry.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/agent/tools/registry.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/agent/tools/registry.test.ts`**
 
 ```ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -1884,12 +1884,12 @@ describe('工具 registry', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/tools/registry.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `agent/tools/registry.ts`**
+- [x] **Step 3: 写 `agent/tools/registry.ts`**
 
 ```ts
 // agent/tools/registry.ts
@@ -1975,12 +1975,12 @@ async function navigate(ctx: ToolCtx, args: { type: string; url?: string }): Pro
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/tools/registry.test.ts`
 Expected: 5 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agent/tools/registry.ts tests/agent/tools/registry.test.ts
@@ -1997,7 +1997,7 @@ git commit -m "feat: 工具 registry（cs/chrome API 分发 + 受限页预检 + 
 - Create: `agent/loop.ts`
 - Test: `tests/agent/loop.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/agent/loop.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/agent/loop.test.ts`**
 
 ```ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -2103,12 +2103,12 @@ describe('agent loop', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/loop.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `agent/loop.ts`**
+- [x] **Step 3: 写 `agent/loop.ts`**
 
 ```ts
 // agent/loop.ts
@@ -2221,17 +2221,17 @@ function toToolContent(r: ToolResult): string {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/loop.test.ts`
 Expected: 6 passed。
 
-- [ ] **Step 5: 全量测试 + 编译**
+- [x] **Step 5: 全量测试 + 编译**
 
 Run: `npm test && npm run compile`
 Expected: 全绿 + 退出码 0。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add agent/loop.ts tests/agent/loop.test.ts
@@ -2248,7 +2248,7 @@ git commit -m "feat: agent 主循环（run-turn + 工具执行 + 熔断阀 + len
 - Create: `background/agent-port.ts`
 - Test: `tests/background/agent-port.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/background/agent-port.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/background/agent-port.test.ts`**
 
 ```ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -2283,12 +2283,12 @@ describe('agent-port 辅助', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/background/agent-port.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `background/agent-port.ts`**
+- [x] **Step 3: 写 `background/agent-port.ts`**
 
 ```ts
 // background/agent-port.ts
@@ -2372,12 +2372,12 @@ export function attachAgentPort(): void {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/background/agent-port.test.ts`
 Expected: 4 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add background/agent-port.ts tests/background/agent-port.test.ts
@@ -2393,7 +2393,7 @@ git commit -m "feat: Port 管理 + loop 挂载（provider 构造 + CS_READY 等�
 **Files:**
 - Modify: `entrypoints/background.ts`
 
-- [ ] **Step 1: 改写 `entrypoints/background.ts`**
+- [x] **Step 1: 改写 `entrypoints/background.ts`**
 
 ```ts
 // entrypoints/background.ts
@@ -2433,7 +2433,7 @@ export default defineBackground(() => {
 
 > `router.on` 的 handler 需要第二参 `sender`。若 Phase 1 的 `Handler` 类型只有一参，改 `background/router.ts` 的 `Handler` 为 `(msg, sender?) => unknown` 并在 `attach()` 里把 `_sender` 传入 `dispatch`。**下一步验证**。
 
-- [ ] **Step 2: 调整 `background/router.ts` 支持 sender**
+- [x] **Step 2: 调整 `background/router.ts` 支持 sender**
 
 把 `Handler` 类型与 `dispatch`/`attach` 改为透传 sender：
 
@@ -2459,17 +2459,17 @@ attach(): void {
 }
 ```
 
-- [ ] **Step 3: 运行 router 回归测试**
+- [x] **Step 3: 运行 router 回归测试**
 
 Run: `npx vitest run tests/background/router.test.ts`
 Expected: 仍全绿（sender 为可选参，旧测试不传也兼容）。
 
-- [ ] **Step 4: 全量测试 + 编译**
+- [x] **Step 4: 全量测试 + 编译**
 
 Run: `npm test && npm run compile`
 Expected: 全绿 + 退出码 0。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add entrypoints/background.ts background/router.ts
@@ -2487,7 +2487,7 @@ zustand store 消费 Port 事件；ChatView 渲染消息流 + 流式 + 工具卡
 - Test: `tests/stores/chat.test.ts`
 - Modify: `components/chat/ChatView.tsx`
 
-- [ ] **Step 1: 写失败测试 `tests/stores/chat.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/stores/chat.test.ts`**
 
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -2544,12 +2544,12 @@ describe('chat store', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/stores/chat.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `stores/chat.ts`**
+- [x] **Step 3: 写 `stores/chat.ts`**
 
 ```ts
 // stores/chat.ts
@@ -2609,12 +2609,12 @@ export const useChat = create<ChatState>((set) => ({
 }));
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/stores/chat.test.ts`
 Expected: 7 passed。
 
-- [ ] **Step 5: 改写 `components/chat/ChatView.tsx`**
+- [x] **Step 5: 改写 `components/chat/ChatView.tsx`**
 
 ```tsx
 // components/chat/ChatView.tsx
@@ -2716,19 +2716,19 @@ function MessageRow({ item }: { item: ReturnType<typeof useChat.getState>['messa
 }
 ```
 
-- [ ] **Step 6: 在 `entrypoints/sidepanel/styles.css` 末尾加 spin 动画**
+- [x] **Step 6: 在 `entrypoints/sidepanel/styles.css` 末尾加 spin 动画**
 
 ```css
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 0.9s linear infinite; }
 ```
 
-- [ ] **Step 7: 编译 + 构建**
+- [x] **Step 7: 编译 + 构建**
 
 Run: `npm run compile && npm run build`
 Expected: 均退出码 0；`.output/chrome-mv3/` 生成。
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add stores/chat.ts tests/stores/chat.test.ts components/chat/ChatView.tsx entrypoints/sidepanel/styles.css
@@ -2742,12 +2742,12 @@ git commit -m "feat: 会话页 UI（Port 事件流 + 流式渲染 + 工具卡片
 **Files:**
 - Modify: `docs/superpowers/plans/2026-08-31-ai-browser-extension-phase2.md`（勾选状态）
 
-- [ ] **Step 1: 全量编译 + 测试 + 构建**
+- [x] **Step 1: 全量编译 + 测试 + 构建**
 
 Run: `npm run compile && npm test && npm run build`
 Expected: 三项全部成功。
 
-- [ ] **Step 2: 手动冒烟（加载扩展）**
+- [x] **Step 2: 手动冒烟（加载扩展）**
 
 在 `chrome://extensions` 重新加载 `.output/chrome-mv3`，然后：
 
@@ -2761,11 +2761,11 @@ Expected: 三项全部成功。
 5. 触发熔断：让它反复滚动（如"一直往下滚，滚 10 次"）。
    - 预期：连续重复 scroll 后出现暂停横幅 + 继续按钮。
 
-- [ ] **Step 3: 记录已知问题（若有）**
+- [x] **Step 3: 记录已知问题（若有）**
 
 把冒烟中发现的问题记入本文件末尾"Phase 3 handoff"小节。常见候选：SPA 页面 uid 定位失败率、导航后 CS_READY 时序、多轮长会话 token 增长。
 
-- [ ] **Step 4: Commit（若有收尾改动）**
+- [x] **Step 4: Commit（若有收尾改动）**
 
 ```bash
 git add -A
@@ -2798,3 +2798,36 @@ git commit -m "chore: Phase 2 收尾验证"
 - `storage/sessions.ts`：`getSession`、`saveSession`、`appendMessage`、`setStatus`、`Session`。
 - `background/agent-port.ts`：`attachAgentPort`、`notifyCsReady`、`waitForCsReady`、`buildProviderFromSettings`。
 - `shared/messages.ts`：`PortMsgFromPanel`、`PortMsgToPanel`、`CsReadyNotification`、`BgToCsRequestMap`（+FILL_FORM/CLICK.includeSnapshot）。
+
+---
+
+## Phase 2 完成记录（2026-08-31）
+
+全部 18 个 task 已实现并逐 task 通过 spec + 代码质量两道审查。最终验证：`tsc --noEmit` EXIT 0；`vitest run` **161 passed（22 文件）**；`npm run build` EXIT 0，产出 `.output/chrome-mv3/`（background 23.75kB + content 10.67kB + sidepanel 212.86kB）。
+
+**执行中审查修正的要点（已并入各自提交）：**
+- Task 14：length 截断分支原先绕过全部熔断阀（真实死循环风险），已接入 `recordTurn`+`checkGuards`；token 计数改为 prompt+completion。
+- Task 9：`'error' in el` 会误判 `<video>/<audio>`（原型带 error 属性）为 stale，改 `resolve` 返回 `Element|null`；`doFill` 补 `<select>` 分支（原先拿 input setter call select 抛 TypeError）。
+- Task 13：cs 工具分发定向主帧 `{ frameId: 0 }`（避免 allFrames 广播抢答）；navigate_page 豁免当前页受限预检（可从 chrome://newtab 导航离开）；补新版 Web Store 域名 `chromewebstore.google.com`。
+- Task 15：Port 加 per-tab 单 loop 闸门（防并发 drive 竞态丢消息 + 双倍烧 token）；waitForCsReady 清 timer。
+- Task 5：`truncateMessages` 剥掉截断窗口头部孤立 tool 消息（避免 orphaned tool_call 回放 400）。
+- Task 8：地标/容器角色抑制 name-from-content（listitem 并入）；maxNodes 截断标记；name 转义引号。
+- Task 6：表单控件补 `<label for>`/包裹 label 关联；纯空格 role 回退。
+- 多处防护：wait_for 的 `document.body?` 兜底、无 body 帧快照防护、run-turn 的 onTextDelta try/catch。
+
+## Phase 3 handoff（待办与已知降级）
+
+**手动冒烟（需真实 Chrome，自动化已过、手测留待）：** 加载 `.output/chrome-mv3` → 设置页配好 provider → 普通页测「读取按钮/链接」（take_snapshot 流式回复）、「点击第一个链接」（click 跳转）、受限页返回「无法操作受限页面」、反复滚动触发熔断暂停横幅+继续。
+
+**归 Phase 3+ 的项：**
+- `evaluate_script`、`console 读取`、网络双通道、`http_request`、`take_screenshot`、tabs 管理 → Phase 3（content entry 里 EVALUATE/CONSOLE_READ 已占位返回「未实现」）。
+- 脚本池 → Phase 4。
+- `agent:stop`/`agent:attach`、SW 被杀完整恢复、keepalive → Phase 5（需把 loop 的 AbortController 从 drive 内部提升、按 tab 追踪；`state` 事件 store 已可消费，UI attach 重连待接）。
+
+**已知降级（MVP 接受）：**
+- 跨域 iframe 快照未做（只主文档 + same-doc open shadow DOM）；closed shadow DOM 跳过。
+- token 软预算依赖 provider 返回 usage，缺失时该阀失效、由步数阀（50）兜底。
+- 合成事件 `isTrusted:false`，个别强校验站点可能忽略；`view`/`clientX/Y` 未设。
+- `LoopArgs.sessionId`/`ToolCtx.sessionId` 目前是死参数（存储以 tabId 为唯一键），待清理或明确为预留。
+- a11y name 计算为简化版（aria-label 优先于 labelledby、labelledby 仅单 ID），非完整 accname 算法。
+- 简单截断（保留首条 + 最近 N）替代 LLM 摘要 compaction。
