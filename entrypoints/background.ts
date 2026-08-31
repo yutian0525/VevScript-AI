@@ -1,6 +1,7 @@
 // entrypoints/background.ts
 import { MessageRouter } from '../background/router';
-import type { CsToBgNotification } from '../shared/messages';
+import type { CsToBgNotification, CsReadyNotification } from '../shared/messages';
+import { attachAgentPort, notifyCsReady } from '../background/agent-port';
 
 export default defineBackground(() => {
   const router = new MessageRouter();
@@ -16,10 +17,19 @@ export default defineBackground(() => {
     return { ok: true };
   });
 
+  // content script 就绪通知：唤醒 navigate_page 的等待者
+  router.on('CS_READY', async (msg, sender) => {
+    void (msg as unknown as CsReadyNotification);
+    const tabId = sender?.tab?.id;
+    if (tabId != null) notifyCsReady(tabId);
+    return { ok: true };
+  });
+
   browser.runtime.onInstalled.addListener(() => {
     browser.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
   });
 
+  attachAgentPort();
   router.attach();
   console.log('[ai-browser-ext] background started');
 });
