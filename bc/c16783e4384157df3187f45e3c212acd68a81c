@@ -1,0 +1,21 @@
+background/router.ts
+  s_ebb62919eaca73::t_3320fd3e033ec0 2,5-9,18-21,27,35-36
+entrypoints/background.ts
+  s_ebb62919eaca73::t_931d732661bcc6 3-4,20-27,32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "bcc16783e4384157df3187f45e3c212acd68a81c",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
