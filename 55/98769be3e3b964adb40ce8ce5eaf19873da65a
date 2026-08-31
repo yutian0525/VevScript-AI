@@ -1,0 +1,27 @@
+entrypoints/content.ts
+  s_ebb62919eaca73::t_8b43bed39a57e8 18-21,24
+  s_ebb62919eaca73::t_a0334ffe3951e1 4
+  s_ebb62919eaca73::t_64da4e912ae5ae 1-3,5-17,22-23,25-65,68-69
+  s_ebb62919eaca73::t_4a889e796a392d 66-67
+tests/content/handler.test.ts
+  s_ebb62919eaca73::t_de098d1c4ee842 14-15
+  s_ebb62919eaca73::t_bfe92ffe80ea39 36
+  s_ebb62919eaca73::t_6e63b656ba6d29 1-13,16-20,22-35,37-44
+  s_ebb62919eaca73::t_1d9ac0eca3f1f4 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "5598769be3e3b964adb40ce8ce5eaf19873da65a",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
