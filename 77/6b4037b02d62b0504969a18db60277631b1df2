@@ -1,0 +1,25 @@
+docs/superpowers/plans/2026-08-31-ai-browser-extension-phase2.md
+  s_ebb62919eaca73::t_acc469b84d09e1 1651-2240
+  s_ebb62919eaca73::t_11e1d71917cf80 1-61
+  s_ebb62919eaca73::t_8e78f142ca048e 305-306,990-1200
+  s_ebb62919eaca73::t_bd127d03a7b600 307-989
+  s_ebb62919eaca73::t_4cd9e2a2ab07b2 1201-1650
+  s_ebb62919eaca73::t_9b80f9110a8594 62-304
+  s_ebb62919eaca73::t_5c2762f7e97a6d 2241-2800
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "776b4037b02d62b0504969a18db60277631b1df2",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
