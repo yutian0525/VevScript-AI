@@ -1,0 +1,23 @@
+tests/agent/run-turn.test.ts
+  s_ebb62919eaca73::t_3be756d90e986d 77-97
+  s_ebb62919eaca73::t_462acc45cbfea5 1-76,98
+agent/run-turn.ts
+  s_ebb62919eaca73::t_4dfe22be631e9a 1-35,38-65
+  s_ebb62919eaca73::t_1aa7ceac851b9a 36-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "893c8b00a9d6586dddd3f2c84e0904a3322217ed",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
