@@ -1,0 +1,29 @@
+tests/stores/chat.test.ts
+  s_ebb62919eaca73::t_e0c1cadca1bd64 34-38
+  s_ebb62919eaca73::t_7baf672be8bc40 1-33,39-57
+entrypoints/sidepanel/styles.css
+  s_ebb62919eaca73::t_3c346e6468a960 17-19
+components/chat/ChatView.tsx
+  s_ebb62919eaca73::t_e73a952f4254e0 32,34
+  s_ebb62919eaca73::t_4a0273f02b6b30 98-99
+  s_ebb62919eaca73::t_1f7920f402eb89 2-3,5-7,10-31,33,35-46,49-77,81-97
+stores/chat.ts
+  s_ebb62919eaca73::t_429f74d4f6be56 1-49,51-59
+  s_ebb62919eaca73::t_9bbcbd61aa0314 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "ce841ad4fbc94f494cd568831d51706714fa95ea",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "glm-5.3"
+      },
+      "human_author": null
+    }
+  }
+}
