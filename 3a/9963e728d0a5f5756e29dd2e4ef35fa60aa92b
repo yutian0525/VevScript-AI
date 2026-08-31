@@ -1,0 +1,27 @@
+agent/loop.ts
+  s_ebb62919eaca73::t_dce3eef7549fda 101
+  s_ebb62919eaca73::t_78abd3514f8a16 115-119
+  s_ebb62919eaca73::t_abacf39d08e93d 61,64-73
+  s_ebb62919eaca73::t_429efa6d4d4523 1-2,4-60,62-63,74-100,102-113,120-123
+  s_ebb62919eaca73::t_bfc5ebb920d26d 3
+  s_ebb62919eaca73::t_5c53b4df44c0f2 114
+tests/agent/loop.test.ts
+  s_ebb62919eaca73::t_65e059da2578a8 1-85,102-115
+  s_ebb62919eaca73::t_ec4d917633fa42 86-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "3a9963e728d0a5f5756e29dd2e4ef35fa60aa92b",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "glm-5.3"
+      },
+      "human_author": null
+    }
+  }
+}
