@@ -1,0 +1,23 @@
+tests/content/wait.test.ts
+  s_ebb62919eaca73::t_22ce16ec2557b1 1-20,22-31
+  s_ebb62919eaca73::t_c15c30c44f73cd 21
+content/wait.ts
+  s_ebb62919eaca73::t_1630e04b0a7ed9 10
+  s_ebb62919eaca73::t_4be3a3ae1f2451 1-9,11-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "e054b52b19c3ccbf059d7c72a74e47ac32783dbe",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
