@@ -22,6 +22,8 @@ describe('testConnection', () => {
     const r = await testConnection({ baseUrl: 'https://api.x.com/v1', apiKey: 'bad', model: 'm' });
     expect(r.ok).toBe(false);
     expect(r.error).toContain('401');
+    // 锁定 error.message 提取（否则变异「删掉 JSON 解析回退」不会被发现）
+    expect(r.error).toContain('invalid key');
   });
 
   it('网络错误返回错误', async () => {
@@ -38,7 +40,7 @@ describe('testConnection', () => {
     expect(r.error).toContain('502');
   });
 
-  it('请求体与 headers 正确（Bearer、model、非流式）', async () => {
+  it('请求体与 headers 正确（Bearer、model、非流式、带超时 signal）', async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ choices: [{ message: { content: 'pong' } }] }), { status: 200 }),
@@ -50,6 +52,17 @@ describe('testConnection', () => {
     expect(body.model).toBe('gpt-x');
     expect(body.stream).toBeUndefined(); // 非流式
     expect((init as RequestInit).headers).toMatchObject({ Authorization: 'Bearer sk-9' });
+    // 超时保护：必须传 AbortSignal（否则中转站挂起会让设置页永远卡在"测试中…"）
+    const signal = (init as RequestInit).signal;
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect((signal as AbortSignal).aborted).toBe(false);
+  });
+
+  it('200 但响应体非 JSON 时返回明确错误而非 network error', async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response('<html>ok-ish gateway</html>', { status: 200 }));
+    const r = await testConnection({ baseUrl: 'https://api.x.com/v1', apiKey: 'k', model: 'm' });
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('JSON');
   });
 
   it('fetch 以非 Error 拒绝时不崩溃', async () => {
