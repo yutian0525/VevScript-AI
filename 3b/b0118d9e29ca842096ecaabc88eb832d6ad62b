@@ -1,0 +1,22 @@
+tests/shared/messages-phase2.test.ts
+  s_ebb62919eaca73::t_e9c5c1cecd4937 1-32
+shared/messages.ts
+  s_ebb62919eaca73::t_0304a8ccc42b76 10,12
+  s_ebb62919eaca73::t_0c34dc2e5e3fa6 59-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "3bb0118d9e29ca842096ecaabc88eb832d6ad62b",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
