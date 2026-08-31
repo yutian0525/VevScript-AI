@@ -1,0 +1,21 @@
+tests/content/snapshot/visibility.test.ts
+  s_ebb62919eaca73::t_5c108e8761d4fe 1-20
+content/snapshot/visibility.ts
+  s_ebb62919eaca73::t_14a56da6a6e486 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "4fbe4932e431e116ac2497cb6bf3e4a3eccb392c",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
