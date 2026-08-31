@@ -1,0 +1,24 @@
+tests/content/snapshot/roles.test.ts
+  s_ebb62919eaca73::t_dab1b1f4ea33d2 39-54
+  s_ebb62919eaca73::t_f4b34b17786a14 1-38,55-75
+content/snapshot/roles.ts
+  s_ebb62919eaca73::t_37b4831c7e0a5f 1-10,13-50,58-77
+  s_ebb62919eaca73::t_263f194172c8f6 11-12
+  s_ebb62919eaca73::t_ef1d31c334a914 51-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "8841dbce30fa79a4edc6ba12964c051c7c6c6f0f",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
