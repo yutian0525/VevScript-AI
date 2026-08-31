@@ -30,11 +30,17 @@ describe('MessageRouter', () => {
   it('handler 以非 Error 抛出时不崩溃', async () => {
     const router = new MessageRouter();
     router.on('STR', () => {
-      throw 'plain string'; // eslint-disable-line no-throw-literal
+      throw 'plain string';
     });
     const r = (await router.dispatch({ type: 'STR' })) as { ok: boolean; error: string };
     expect(r.ok).toBe(false);
     expect(r.error).toBe('plain string');
+  });
+
+  it('msg 为 null/畸形时不 reject（返回结构化错误）', async () => {
+    const router = new MessageRouter();
+    const r = (await router.dispatch(null as unknown as { type: string })) as { ok: boolean };
+    expect(r.ok).toBe(false);
   });
 
   it('on 可覆盖同 type 的旧 handler', async () => {

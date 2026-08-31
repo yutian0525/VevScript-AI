@@ -13,11 +13,11 @@ export class MessageRouter {
   }
 
   async dispatch(msg: { type: string } & Record<string, unknown>): Promise<unknown> {
-    const handler = this.handlers.get(msg.type);
-    if (!handler) {
-      return { ok: false, error: `no handler for ${msg.type}` };
-    }
     try {
+      const handler = this.handlers.get(msg.type);
+      if (!handler) {
+        return { ok: false, error: `no handler for ${String(msg.type)}` };
+      }
       return await handler(msg);
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
@@ -27,7 +27,11 @@ export class MessageRouter {
   /** 挂载 browser.runtime.onMessage 监听（异步响应） */
   attach(): void {
     browser.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-      this.dispatch(msg as { type: string } & Record<string, unknown>).then(sendResponse);
+      this.dispatch(msg as { type: string } & Record<string, unknown>)
+        .then(sendResponse)
+        .catch(() => {
+          sendResponse({ ok: false, error: 'internal error' });
+        });
       return true; // 保持消息通道开放等异步响应
     });
   }
