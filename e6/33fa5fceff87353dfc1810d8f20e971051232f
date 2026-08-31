@@ -1,0 +1,25 @@
+tests/background/agent-port.test.ts
+  s_ebb62919eaca73::t_b425decb49acfa 1-30
+background/agent-port.ts
+  s_ebb62919eaca73::t_92b7bb8f4e5839 1-28,35-39
+  s_ebb62919eaca73::t_a2977cbac43776 29-34
+  s_ebb62919eaca73::t_f2873d8f8e0952 40-64,69-72,76-77,85,87-89,91-93,95-97,101-104
+  s_ebb62919eaca73::t_a17350f68c0210 66-68,73-75,78-84,86,90,94,98-100
+  s_ebb62919eaca73::t_22b54f1fc80cae 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "e633fa5fceff87353dfc1810d8f20e971051232f",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
