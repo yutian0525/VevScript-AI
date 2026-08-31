@@ -1,0 +1,33 @@
+components/ui/PageShell.tsx
+  s_ebb62919eaca73::t_5c451087cdacd0 1-31
+components/chat/ChatView.tsx
+  s_ebb62919eaca73::t_18ed31249821cb 1-10
+components/scripts/ScriptsView.tsx
+  s_ebb62919eaca73::t_a2f62805d00839 1-10
+components/ui/Button.tsx
+  s_ebb62919eaca73::t_c33b312173270f 1-25
+components/settings/SettingsView.tsx
+  s_ebb62919eaca73::t_cd70be45144b5f 1-115
+stores/ui.ts
+  s_ebb62919eaca73::t_07006bf1e666df 1-14
+components/ui/Input.tsx
+  s_ebb62919eaca73::t_6932787022e844 1-19
+entrypoints/sidepanel/App.tsx
+  s_ebb62919eaca73::t_8c17dd3a45c23e 2-13,15-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "fbccc3bdcf8caf404702c6b15fd18ffe18e233ab",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
