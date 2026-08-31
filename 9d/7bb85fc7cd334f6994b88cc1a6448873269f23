@@ -1,0 +1,23 @@
+agent/provider/connection-test.ts
+  s_ebb62919eaca73::t_bd3f6b47ff2502 26-27
+  s_ebb62919eaca73::t_9502a4a722ffa4 38-44,47-50
+tests/agent/provider/connection-test.test.ts
+  s_ebb62919eaca73::t_d3fa233945264e 25-26
+  s_ebb62919eaca73::t_ff29ed0729b4f3 43,55-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "9d7bb85fc7cd334f6994b88cc1a6448873269f23",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
