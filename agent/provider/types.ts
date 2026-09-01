@@ -16,6 +16,8 @@ export interface ChatMessage {
   /** tool 消息：对应的调用 id */
   toolCallId?: string;
   name?: string; // tool 消息的工具名
+  /** 推理模型的思考文本：仅存储 + 展示用，wire 转换绝不读取（不回填 LLM） */
+  reasoning?: string;
 }
 
 export interface ToolCall {

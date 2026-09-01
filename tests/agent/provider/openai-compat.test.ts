@@ -322,4 +322,29 @@ describe('OpenAICompatProvider', () => {
     expect(ri).toBeGreaterThanOrEqual(0);
     expect(ti).toBeGreaterThan(ri);
   });
+
+  it('toWireMessages 不含 reasoning（锁定：思考绝不回填 LLM）', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(
+      new Response(sseStream([{ choices: [{ delta: {}, finish_reason: 'stop' }] }]), { status: 200 }),
+    );
+    const p = new OpenAICompatProvider({ baseUrl: 'https://api.x.com/v1', apiKey: 'sk', model: 'm' });
+    await new Promise<void>((resolve) => {
+      p.streamChat(
+        {
+          messages: [
+            { role: 'user', content: '算一下' },
+            { role: 'assistant', content: '答案 42', reasoning: '内部推理不该外泄' },
+          ],
+          tools: [],
+        },
+        (e) => { if (e.type === 'message-done') resolve(); },
+      );
+    });
+    const body = (fetchMock.mock.calls[0]![1] as RequestInit).body as string;
+    expect(body).not.toContain('内部推理不该外泄');
+    const parsed = JSON.parse(body);
+    expect(parsed.messages[1].reasoning).toBeUndefined();
+    expect(parsed.messages[1].content).toBe('答案 42');
+  });
 });
