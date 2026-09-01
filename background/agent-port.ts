@@ -46,7 +46,6 @@ async function getPageInfo(tabId: number): Promise<{ url: string; title: string 
 function makeDeps(
   provider: Provider,
   port: Pick<Browser.runtime.Port, 'postMessage'>,
-  startTabId: number,
 ): LoopDeps {
   return {
     provider,
@@ -91,7 +90,7 @@ export function attachAgentPort(): void {
         safePost({ type: 'error', message: '请先在设置页配置 AI 服务（Base URL + 模型）' });
         return;
       }
-      const deps = makeDeps(provider, port, msg.tabId);
+      const deps = makeDeps(provider, port);
       activeTabs.add(msg.tabId);
       console.log('[agent-port] 启动 loop', msg.type, msg.tabId);
       try {

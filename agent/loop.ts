@@ -115,6 +115,8 @@ async function drive(startTabId: number, deps: LoopDeps, guardState: GuardState)
         deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: true, summary: '已截图', image: shot });
         await appendMessage(startTabId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: '截图已捕获，见下一条消息' });
         if (shot) {
+          // 图片走 user 消息：OpenAI 协议下 tool 消息 content 约定为 string，
+          // image_url 须在 user 消息里才被多数 OpenAI-compatible 网关处理（勿改回 tool 消息塞图）。
           const parts: ContentPart[] = [
             { type: 'text', text: '（take_screenshot 返回的页面截图）' },
             { type: 'image_url', imageUrl: shot },
