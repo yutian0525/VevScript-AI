@@ -1,0 +1,25 @@
+agent/provider/types.ts
+  s_6fe7ed92def0ff::t_6fbb4a84b37c3c 42,44
+agent/provider/openai-compat.ts
+  s_6fe7ed92def0ff::t_81a3630789ee8d 122-123
+  s_6fe7ed92def0ff::t_ac0bb928d8ee1e 140-141
+tests/agent/provider/openai-compat.test.ts
+  s_6fe7ed92def0ff::t_9340c7373820b1 300-324
+  s_6fe7ed92def0ff::t_1639c44d7f0e07 229-299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "f3263c94c066b3d671dc0ea6ce0b0770c51321df",
+  "prompts": {},
+  "sessions": {
+    "s_6fe7ed92def0ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5aec521b-da47-4488-b4f7-f815e77cf1dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
