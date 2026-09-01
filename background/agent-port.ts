@@ -75,26 +75,34 @@ export function attachAgentPort(): void {
     };
     port.onMessage.addListener(async (raw) => {
       const msg = raw as PortMsgFromPanel;
+      console.log('[agent-port] 收到消息', msg.type, 'tabId=', (msg as { tabId?: number }).tabId);
       // stop/attach 留 Phase 5（需 per-tab AbortController 追踪 + 状态回放）
       if (msg.type !== 'agent:start' && msg.type !== 'agent:resume') return;
       if (activeTabs.has(msg.tabId)) {
         safePost({ type: 'error', message: '该标签页已有任务在运行，请等待完成或停止后再试' });
         return;
       }
-      const provider = await buildProviderFromSettings().catch(() => null);
+      const provider = await buildProviderFromSettings().catch((e) => {
+        console.warn('[agent-port] buildProvider 失败', e);
+        return null;
+      });
       if (!provider) {
-        safePost({ type: 'error', message: '请先在设置页配置 AI 服务' });
+        console.warn('[agent-port] provider 为空（未配置 baseUrl/model）');
+        safePost({ type: 'error', message: '请先在设置页配置 AI 服务（Base URL + 模型）' });
         return;
       }
       const deps = makeDeps(provider, port, msg.tabId);
       activeTabs.add(msg.tabId);
+      console.log('[agent-port] 启动 loop', msg.type, msg.tabId);
       try {
         if (msg.type === 'agent:start') {
           await runAgentLoop({ tabId: msg.tabId, sessionId: 'main', userMessage: msg.userMessage }, deps);
         } else {
           await resumeAgentLoop(msg.tabId, deps);
         }
+        console.log('[agent-port] loop 结束', msg.tabId);
       } catch (err) {
+        console.error('[agent-port] loop 抛错', err);
         safePost({ type: 'error', message: err instanceof Error ? err.message : String(err) });
       } finally {
         activeTabs.delete(msg.tabId);

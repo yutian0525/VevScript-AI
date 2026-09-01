@@ -38,7 +38,9 @@ export function ChatView() {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   async function activeTabId(): Promise<number | undefined> {
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    // 侧边栏里 currentWindow 有时取不到；退化到 lastFocusedWindow 兜底。
+    let [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tab) [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true });
     return tab?.id;
   }
 
@@ -59,7 +61,13 @@ export function ChatView() {
     if (!text || status === 'running') return;
     useChat.getState().setStatus('running'); // 乐观置 running，关闭 await 期间的并发窗口
     const tabId = await activeTabId();
-    if (tabId == null) { useChat.getState().setStatus('idle'); return; } // 无 tab 回滚
+    if (tabId == null) {
+      // 拿不到标签页不再静默——给用户明确提示（而非"发了没反应"）
+      useChat.getState().setStatus('idle');
+      applyEvent({ type: 'error', message: '无法获取当前标签页，请先切到一个普通网页标签再试' });
+      return;
+    }
+    console.debug('[chat] send agent:start', { tabId, text });
     addUserMessage(text);
     setInput('');
     postToPort({ type: 'agent:start', tabId, userMessage: text });

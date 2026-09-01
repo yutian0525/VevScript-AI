@@ -80,6 +80,7 @@ export class OpenAICompatProvider implements Provider {
     };
     if (params.maxTokens != null) body.max_tokens = params.maxTokens;
 
+    console.log('[provider] fetch →', url, 'model=', this.config.model, 'msgs=', params.messages.length);
     fetch(url, {
       method: 'POST',
       headers: {
@@ -90,6 +91,7 @@ export class OpenAICompatProvider implements Provider {
       signal: ac.signal,
     })
       .then(async (resp) => {
+        console.log('[provider] 响应', resp.status, resp.ok);
         if (!resp.ok || !resp.body) {
           const text = await resp.text().catch(() => '');
           let detail = text;
