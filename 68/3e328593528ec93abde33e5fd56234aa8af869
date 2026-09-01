@@ -1,0 +1,24 @@
+tests/agent/tools/registry.test.ts
+  s_3900119a55d6ce::t_e1de56d083e80f 75-94,96-101,103-111
+  s_3900119a55d6ce::t_075c3ebc6b1572 95,102
+agent/tools/registry.ts
+  s_3900119a55d6ce::t_7527481d69440c 43-44,48-59,61,68-77
+  s_3900119a55d6ce::t_ed2f4598580077 7-10
+  s_3900119a55d6ce::t_5dd50ad83e42ed 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "683e328593528ec93abde33e5fd56234aa8af869",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
