@@ -4,6 +4,10 @@ import type { ToolResult } from '../../shared/types';
 import type { ToolSchema } from '../provider/types';
 import { createRequest, type BgToCsRequestMap } from '../../shared/messages';
 import { TOOL_SCHEMAS } from './schemas';
+import { doListPages, doNewPage, doClosePage, doSelectPage } from './tabs';
+import { doScreenshot } from './screenshot';
+import { doEvaluate } from './evaluate';
+import { doHttpRequest } from './http';
 
 export interface ToolCtx {
   tabId: number;
@@ -36,16 +40,40 @@ export async function executeTool(
   args: Record<string, unknown>,
   ctx: ToolCtx,
 ): Promise<ToolResult> {
-  // navigate_page 走 tabs API，可跨受限页工作（如从 chrome://newtab 导航到普通页），
-  // 故豁免当前页受限预检。
+  // ---- 豁免受限页预检的工具（不碰当前页内容 / background 独立发起）----
+  // navigate_page 走 tabs API，可跨受限页工作（如从 chrome://newtab 导航到普通页）。
   if (name === 'navigate_page') {
     return navigate(ctx, args as { type: string; url?: string });
   }
+  // http_request 由 background 独立 fetch，与当前页 URL 无关；透传 ctx.signal 以便 loop abort 中断挂起请求。
+  if (name === 'http_request') {
+    return doHttpRequest(
+      args as { url: string; method?: string; headers?: Record<string, string>; body?: string },
+      ctx.signal,
+    );
+  }
+  // tabs 管理类工具不操作页面内容，无需受限页预检。
+  if (name === 'list_pages') return doListPages(ctx.tabId);
+  if (name === 'new_page') return doNewPage(args as { url: string; background?: boolean }, ctx.waitForReady);
+  if (name === 'close_page') return doClosePage(args as { tabId: number });
+  if (name === 'select_page') return doSelectPage(args as { tabId: number });
 
+  // ---- 以下工具操作当前目标页，需受限页预检 ----
   const tab = await browser.tabs.get(ctx.tabId).catch(() => undefined);
   const url = tab?.url ?? '';
   if (RESTRICTED.test(url)) {
     return { ok: false, error: `无法操作受限页面（${url}）` };
+  }
+
+  // chrome API 类工具（操作当前页但不经 content script）。
+  if (name === 'take_screenshot') {
+    return doScreenshot(ctx.tabId, args as { format?: 'jpeg' | 'png'; quality?: number });
+  }
+  if (name === 'evaluate_script') {
+    return doEvaluate(
+      ctx.tabId,
+      args as { function: string; args?: unknown[]; world?: 'main' | 'isolated'; timeoutMs?: number },
+    );
   }
 
   const csType = CS_TOOL_MAP[name];

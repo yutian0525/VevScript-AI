@@ -72,4 +72,41 @@ describe('工具 registry', () => {
     expect(r.error).toContain('受限');
     expect(sendMessage).not.toHaveBeenCalled();
   });
+
+  it('list_pages 豁免受限页预检（chrome:// 也能列表）', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'chrome://extensions' }) as never;
+    fakeBrowser.tabs.query = vi.fn().mockResolvedValue([{ id: 1, url: 'chrome://x', title: 'x', active: true }]) as never;
+    const r = await executeTool('list_pages', {}, { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+    expect(r.ok).toBe(true);
+  });
+
+  it('http_request 豁免受限页预检', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'chrome://extensions' }) as never;
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 200, statusText: 'OK', headers: new Headers({ 'content-type': 'text/plain' }), text: () => Promise.resolve('ok') }));
+    const r = await executeTool('http_request', { url: 'https://api.x.com' }, { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+    expect(r.ok).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it('take_screenshot 受限页被阻断', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'chrome://extensions' }) as never;
+    const r = await executeTool('take_screenshot', {}, { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+    expect(r.ok).toBe(false);
+    expect((r as { error: string }).error).toContain('受限');
+  });
+
+  it('evaluate_script 受限页被阻断', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'chrome://extensions' }) as never;
+    const r = await executeTool('evaluate_script', { function: '() => 1' }, { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+    expect(r.ok).toBe(false);
+    expect((r as { error: string }).error).toContain('受限');
+  });
+
+  it('new_page 透传 waitForReady', async () => {
+    fakeBrowser.tabs.create = vi.fn().mockResolvedValue({ id: 88, url: 'https://x.com' }) as never;
+    const waitForReady = vi.fn().mockResolvedValue(undefined);
+    const r = await executeTool('new_page', { url: 'https://x.com' }, { tabId: 1, sessionId: 's', signal: new AbortController().signal, waitForReady });
+    expect(r.ok).toBe(true);
+    expect(waitForReady).toHaveBeenCalledWith(88);
+  });
 });
