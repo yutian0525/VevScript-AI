@@ -372,6 +372,7 @@ body {
   cursor: pointer;
   font: inherit;
 }
+.toolcard--btn:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
 .toolcard__chev { margin-left: auto; flex-shrink: 0; color: var(--ink-3); transition: transform var(--t-fast) var(--ease); }
 .toolcard__chev--open { transform: rotate(90deg); }
 .toolcard__detail { margin: 4px 0 0; padding-left: 12px; }
