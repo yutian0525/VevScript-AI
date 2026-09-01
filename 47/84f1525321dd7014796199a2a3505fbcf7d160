@@ -1,0 +1,24 @@
+tests/agent/run-turn.test.ts
+  s_6fe7ed92def0ff::t_4caf0e68ac98a3 119-141
+agent/run-turn.ts
+  s_6fe7ed92def0ff::t_f4d8b74bbdd741 27
+  s_6fe7ed92def0ff::t_db67333bd9736a 37-41
+  s_6fe7ed92def0ff::t_ba270f88431984 8,17
+  s_6fe7ed92def0ff::t_dc95f6479a6dd8 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "4784f1525321dd7014796199a2a3505fbcf7d160",
+  "prompts": {},
+  "sessions": {
+    "s_6fe7ed92def0ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5aec521b-da47-4488-b4f7-f815e77cf1dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
