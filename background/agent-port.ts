@@ -62,8 +62,14 @@ function makeDeps(
   };
 }
 
-// 同 tab 单 loop 闸门：防止并发 drive 导致 appendMessage 竞态丢消息 + 双倍烧 token
-const activeTabs = new Set<number>();
+// 同 tab 单 loop 闸门 + 中断句柄：每个运行中的 tab 挂一个 AbortController。
+// 既作"是否在运行"的判据（防并发 drive 竞态），又作 agent:stop 的中断句柄。
+const runningTabs = new Map<number, AbortController>();
+
+/** 中断指定 tab 的运行中 loop（agent:stop）。loop 在下个检查点干净退出。 */
+export function stopTab(tabId: number): void {
+  runningTabs.get(tabId)?.abort();
+}
 
 /** 挂载 Port 监听（在 background 入口调用）。 */
 export function attachAgentPort(): void {
@@ -75,9 +81,15 @@ export function attachAgentPort(): void {
     port.onMessage.addListener(async (raw) => {
       const msg = raw as PortMsgFromPanel;
       console.log('[agent-port] 收到消息', msg.type, 'tabId=', (msg as { tabId?: number }).tabId);
-      // stop/attach 留 Phase 5（需 per-tab AbortController 追踪 + 状态回放）
+
+      // 中断：优先处理，无论该 tab 是否在运行都幂等（未运行则 no-op）。
+      if (msg.type === 'agent:stop') {
+        stopTab(msg.tabId);
+        return;
+      }
+      // attach 留 Phase 5（重连拉状态回放）
       if (msg.type !== 'agent:start' && msg.type !== 'agent:resume') return;
-      if (activeTabs.has(msg.tabId)) {
+      if (runningTabs.has(msg.tabId)) {
         safePost({ type: 'error', message: '该标签页已有任务在运行，请等待完成或停止后再试' });
         return;
       }
@@ -91,20 +103,21 @@ export function attachAgentPort(): void {
         return;
       }
       const deps = makeDeps(provider, port);
-      activeTabs.add(msg.tabId);
+      const ac = new AbortController();
+      runningTabs.set(msg.tabId, ac);
       console.log('[agent-port] 启动 loop', msg.type, msg.tabId);
       try {
         if (msg.type === 'agent:start') {
-          await runAgentLoop({ tabId: msg.tabId, sessionId: 'main', userMessage: msg.userMessage }, deps);
+          await runAgentLoop({ tabId: msg.tabId, sessionId: 'main', userMessage: msg.userMessage }, deps, ac.signal);
         } else {
-          await resumeAgentLoop(msg.tabId, deps);
+          await resumeAgentLoop(msg.tabId, deps, ac.signal);
         }
         console.log('[agent-port] loop 结束', msg.tabId);
       } catch (err) {
         console.error('[agent-port] loop 抛错', err);
         safePost({ type: 'error', message: err instanceof Error ? err.message : String(err) });
       } finally {
-        activeTabs.delete(msg.tabId);
+        runningTabs.delete(msg.tabId);
       }
     });
   });

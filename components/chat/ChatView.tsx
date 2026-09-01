@@ -1,6 +1,6 @@
 // components/chat/ChatView.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Send, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, Brain } from 'lucide-react';
+import { Send, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, Brain, Square } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Gauge } from '../ui/Gauge';
@@ -108,6 +108,14 @@ export function ChatView() {
     postToPort({ type: 'agent:resume', tabId });
   };
 
+  const stop = async () => {
+    const tabId = await activeTabId();
+    if (tabId == null) return;
+    // 乐观回到 idle 给即时反馈；后台 loop 收到 abort 后在下个检查点干净退出
+    useChat.getState().setStatus('idle');
+    postToPort({ type: 'agent:stop', tabId });
+  };
+
   const lastIdx = messages.length - 1;
 
   return (
@@ -144,9 +152,15 @@ export function ChatView() {
             disabled={status === 'running'}
             rows={2}
           />
-          <Button variant="signal" className="dock__send" onClick={send} disabled={status === 'running'} aria-label="发送">
-            {status === 'running' ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
-          </Button>
+          {status === 'running' ? (
+            <Button variant="signal" className="dock__send" onClick={stop} aria-label="停止">
+              <Square size={15} fill="currentColor" />
+            </Button>
+          ) : (
+            <Button variant="signal" className="dock__send" onClick={send} aria-label="发送">
+              <Send size={16} />
+            </Button>
+          )}
         </div>
       </div>
     </PageShell>

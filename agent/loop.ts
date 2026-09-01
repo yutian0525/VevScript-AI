@@ -22,34 +22,43 @@ export interface LoopArgs {
   userMessage: string;
 }
 
-export async function runAgentLoop(args: LoopArgs, deps: LoopDeps): Promise<void> {
+export async function runAgentLoop(args: LoopArgs, deps: LoopDeps, signal?: AbortSignal): Promise<void> {
   await appendMessage(args.tabId, { role: 'user', content: args.userMessage });
   await setStatus(args.tabId, 'running');
-  await drive(args.tabId, deps, initGuardState());
+  await drive(args.tabId, deps, initGuardState(), signal ?? new AbortController().signal);
 }
 
 /** 从暂停状态恢复（不追加新 user 消息）。 */
-export async function resumeAgentLoop(tabId: number, deps: LoopDeps): Promise<void> {
+export async function resumeAgentLoop(tabId: number, deps: LoopDeps, signal?: AbortSignal): Promise<void> {
   await setStatus(tabId, 'running');
-  await drive(tabId, deps, initGuardState());
+  await drive(tabId, deps, initGuardState(), signal ?? new AbortController().signal);
 }
 
-async function drive(startTabId: number, deps: LoopDeps, guardState: GuardState): Promise<void> {
-  const ac = new AbortController();
+async function drive(startTabId: number, deps: LoopDeps, guardState: GuardState, signal: AbortSignal): Promise<void> {
   let guard = guardState;
   let targetTab = startTabId;
 
   for (;;) {
-    if (ac.signal.aborted) { await setStatus(startTabId, 'idle'); return; }
+    if (signal.aborted) return void (await finishAborted(startTabId, deps));
 
     const session = await getSession(startTabId);
     const page = await deps.getPageInfo(targetTab).catch(() => ({ url: '', title: '' }));
     const messages = buildContext(session.messages, page);
 
-    const result = await runTurn(deps.provider, { messages, tools: getToolSchemas(), signal: ac.signal }, {
+    const result = await runTurn(deps.provider, { messages, tools: getToolSchemas(), signal }, {
       onTextDelta: (t) => deps.emit({ type: 'text-delta', text: t }),
       onReasoningDelta: (t) => deps.emit({ type: 'reasoning-delta', text: t }),
     });
+
+    // 用户中断：runTurn 因 abort 提前返回（provider fetch 被取消）。保留已流式输出的
+    // 助手文本再干净退出，不进入工具执行/续推。
+    if (signal.aborted) {
+      if (result.text || result.reasoning) {
+        await appendMessage(startTabId, { role: 'assistant', content: result.text, reasoning: result.reasoning });
+      }
+      await finishAborted(startTabId, deps);
+      return;
+    }
 
     if (result.error) {
       deps.emit({ type: 'error', message: result.error });
@@ -92,11 +101,11 @@ async function drive(startTabId: number, deps: LoopDeps, guardState: GuardState)
     await appendMessage(startTabId, assistantMsg(result.text, result.toolCalls, result.reasoning));
     const results: ToolResult[] = [];
     for (const tc of result.toolCalls) {
-      if (ac.signal.aborted) { await setStatus(startTabId, 'idle'); return; }
+      if (signal.aborted) { await finishAborted(startTabId, deps); return; }
       let toolArgs: Record<string, unknown> = {};
       try { toolArgs = tc.arguments ? JSON.parse(tc.arguments) : {}; } catch { /* 保持空对象 */ }
       deps.emit({ type: 'tool-start', name: tc.name, args: tc.arguments, callId: tc.id });
-      const r = await deps.executeTool(tc.name, toolArgs, targetTab, ac.signal);
+      const r = await deps.executeTool(tc.name, toolArgs, targetTab, signal);
       results.push(r);
 
       // targetTab 更新（设计 §4）
@@ -145,6 +154,12 @@ async function drive(startTabId: number, deps: LoopDeps, guardState: GuardState)
 
 function assistantMsg(text: string, toolCalls: ToolCall[], reasoning?: string): ChatMessage {
   return { role: 'assistant', content: text, toolCalls, reasoning };
+}
+
+/** 用户中断的收尾：置 idle + 通知面板结束（复用 done 事件，UI 回到可输入态）。 */
+async function finishAborted(tabId: number, deps: LoopDeps): Promise<void> {
+  await setStatus(tabId, 'idle');
+  deps.emit({ type: 'done', finalText: '已停止' });
 }
 
 function toToolContent(r: ToolResult): string {

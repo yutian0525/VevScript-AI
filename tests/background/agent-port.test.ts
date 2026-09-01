@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { buildProviderFromSettings, notifyCsReady, waitForCsReady } from '../../background/agent-port';
+import { buildProviderFromSettings, notifyCsReady, waitForCsReady, stopTab } from '../../background/agent-port';
 import { saveSettings } from '../../storage/settings';
 
 describe('agent-port 辅助', () => {
@@ -26,5 +26,10 @@ describe('agent-port 辅助', () => {
 
   it('waitForCsReady 超时也 resolve（不阻塞 loop）', async () => {
     await expect(waitForCsReady(99, 50)).resolves.toBeUndefined();
+  });
+
+  it('stopTab 对未运行的 tab 是幂等 no-op（不抛）', () => {
+    // 运行中 loop 的真正中断由 loop.ts 的 abort 测试覆盖；此处只验导出契约 + 未运行时安全
+    expect(() => stopTab(12345)).not.toThrow();
   });
 });

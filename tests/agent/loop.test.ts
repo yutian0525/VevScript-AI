@@ -38,6 +38,45 @@ describe('agent loop', () => {
     expect(session.status).toBe('idle');
   });
 
+  it('外部 signal 已 abort → 不调 provider，立即 idle + emit done', async () => {
+    const stream = vi.fn();
+    const provider: Provider = { streamChat: stream };
+    const exec = vi.fn<LoopDeps['executeTool']>();
+    const d = deps(provider, exec);
+    const ac = new AbortController();
+    ac.abort();
+    await runAgentLoop({ tabId: 40, sessionId: 's', userMessage: 'x' }, d, ac.signal);
+    expect(stream).not.toHaveBeenCalled(); // 首个检查点即退出
+    expect((await getSession(40)).status).toBe('idle');
+    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+  });
+
+  it('运行中 abort（流式输出后）→ 保留已输出助手文本，不进工具执行，emit done', async () => {
+    // provider 第一轮流式输出一段文本 + 请求工具；但期间 signal 被 abort
+    const ac = new AbortController();
+    const provider: Provider = {
+      streamChat(_p, onEvent) {
+        queueMicrotask(() => {
+          onEvent({ type: 'text-delta', text: '我正在处理' });
+          ac.abort(); // 模拟用户在流式途中按停止
+          onEvent({ type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":1}' });
+          onEvent({ type: 'message-done', finishReason: 'tool_calls' });
+        });
+        return { cancel: vi.fn() };
+      },
+    };
+    const exec = vi.fn<LoopDeps['executeTool']>();
+    const d = deps(provider, exec);
+    await runAgentLoop({ tabId: 41, sessionId: 's', userMessage: 'x' }, d, ac.signal);
+    const session = await getSession(41);
+    expect(exec).not.toHaveBeenCalled(); // abort 后不执行工具
+    // 已流式输出的助手文本被保留
+    const asst = session.messages.find((m) => m.role === 'assistant');
+    expect(asst?.content).toBe('我正在处理');
+    expect(session.status).toBe('idle');
+    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+  });
+
   it('纯文本被 length 截断时回复带截断提示', async () => {
     const provider = queuedProvider([[{ type: 'text-delta', text: '半截回复' }, { type: 'message-done', finishReason: 'length' }]]);
     const exec = vi.fn<LoopDeps['executeTool']>();
