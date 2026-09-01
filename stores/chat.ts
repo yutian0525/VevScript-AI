@@ -34,6 +34,14 @@ function contentText(content: ChatMessage['content']): string {
   return content.filter((p) => p.type === 'text').map((p) => (p as { text: string }).text).join('');
 }
 
+/** 收起仍在"思考中"的尾部助手项：进入工具调用或轮次结束时，思考阶段已结束。 */
+function collapseTrailingThinking(messages: ChatItem[]): void {
+  const last = messages[messages.length - 1];
+  if (last?.role === 'assistant' && last.status == null && last.thinking) {
+    messages[messages.length - 1] = { ...last, thinking: false };
+  }
+}
+
 export const useChat = create<ChatState>((set) => ({
   messages: [],
   status: 'idle',
@@ -101,6 +109,7 @@ export const useChat = create<ChatState>((set) => ({
         return { messages };
       }
       case 'tool-start': {
+        collapseTrailingThinking(messages);
         // 按 callId 幂等：重复的 tool-start（同 callId）不再新推卡片，避免"一张 done 一张永远 running"
         if (e.callId && messages.some((m) => m.role === 'tool' && m.callId === e.callId)) {
           return { messages };
@@ -114,9 +123,14 @@ export const useChat = create<ChatState>((set) => ({
         return { messages };
       }
       case 'state': return { status: e.status };
-      case 'paused': return { status: 'paused', pauseReason: e.reason };
-      case 'done': return { status: 'idle' };
+      case 'paused':
+        collapseTrailingThinking(messages);
+        return { messages, status: 'paused', pauseReason: e.reason };
+      case 'done':
+        collapseTrailingThinking(messages);
+        return { messages, status: 'idle' };
       case 'error':
+        collapseTrailingThinking(messages);
         messages.push({ role: 'error', text: e.message });
         return { messages, status: 'idle' };
       default: return {};

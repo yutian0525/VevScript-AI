@@ -147,4 +147,22 @@ describe('chat store', () => {
     const toolItem = useChat.getState().messages.find((m) => m.callId === 'c9')!;
     expect(toolItem.ok).toBe(false);
   });
+
+  it('思考后直接调用工具（无正文）时思考块收起，不残留"思考中"', () => {
+    useChat.getState().applyEvent({ type: 'reasoning-delta', text: '要看页面' });
+    useChat.getState().applyEvent({ type: 'tool-start', name: 'take_snapshot', args: '{}', callId: 'c1' });
+    useChat.getState().applyEvent({ type: 'tool-end', name: 'take_snapshot', callId: 'c1', ok: true, summary: '成功', output: '[1] btn' });
+    useChat.getState().applyEvent({ type: 'text-delta', text: '看到了' });
+    useChat.getState().applyEvent({ type: 'done', finalText: '看到了' });
+    const msgs = useChat.getState().messages;
+    const reasoningItem = msgs.find((m) => m.reasoning === '要看页面')!;
+    expect(reasoningItem.thinking).toBe(false);
+    expect(msgs.at(-1)).toMatchObject({ role: 'assistant', text: '看到了' });
+  });
+
+  it('done 收起仍在思考中的尾部助手项（思考后无正文直接结束）', () => {
+    useChat.getState().applyEvent({ type: 'reasoning-delta', text: '想' });
+    useChat.getState().applyEvent({ type: 'done', finalText: '' });
+    expect(useChat.getState().messages.at(-1)).toMatchObject({ role: 'assistant', reasoning: '想', thinking: false });
+  });
 });
