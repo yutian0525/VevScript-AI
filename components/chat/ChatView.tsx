@@ -1,10 +1,11 @@
 // components/chat/ChatView.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Send, Wrench, CircleAlert, Loader2, Check, X } from 'lucide-react';
+import { Send, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, Brain } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Gauge } from '../ui/Gauge';
 import { useChat, type ChatItem } from '../../stores/chat';
+import { getSession } from '../../storage/sessions';
 import type { PortMsgFromPanel, PortMsgToPanel } from '../../shared/messages';
 
 export function ChatView() {
@@ -37,6 +38,22 @@ export function ChatView() {
   }, [ensurePort]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  // 挂载恢复：store 为空时，从当前 tab 的 storage 读历史渲染（含思考折叠、工具卡片）。
+  // 只读 storage 渲染，不接管运行中 loop 的事件流（重连归 Phase 5）。
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (useChat.getState().messages.length > 0) return;
+      const tabId = await activeTabId();
+      if (tabId == null || cancelled) return;
+      const session = await getSession(tabId);
+      if (cancelled || useChat.getState().messages.length > 0) return;
+      if (session.messages.length > 0) useChat.getState().loadFromStorage(session.messages);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function activeTabId(): Promise<number | undefined> {
     // 侧边栏里 currentWindow 有时取不到；退化到 lastFocusedWindow 兜底。
@@ -95,7 +112,7 @@ export function ChatView() {
             </div>
           )}
           {messages.map((m, i) => (
-            <MessageRow key={i} item={m} streaming={status === 'running' && i === lastIdx} />
+            <MessageRow key={i} index={i} item={m} streaming={status === 'running' && i === lastIdx} />
           ))}
           {status === 'paused' && (
             <div className="pausebar rise">
@@ -126,12 +143,11 @@ export function ChatView() {
   );
 }
 
-function MessageRow({ item, streaming }: { item: ChatItem; streaming: boolean }) {
+function MessageRow({ item, index, streaming }: { item: ChatItem; index: number; streaming: boolean }) {
+  const toggleExpand = useChat((s) => s.toggleExpand);
+
   if (item.role === 'user') {
     return <div className="msg-user rise">{item.text}</div>;
-  }
-  if (item.role === 'assistant') {
-    return <div className={`msg-assistant rise${streaming ? ' caret' : ''}`}>{item.text}</div>;
   }
   if (item.role === 'error') {
     return (
@@ -141,23 +157,90 @@ function MessageRow({ item, streaming }: { item: ChatItem; streaming: boolean })
       </div>
     );
   }
-  const state = item.status === 'running' ? 'running' : item.ok ? 'ok' : 'err';
-  return (
-    <div className={`toolcard toolcard--${state} rise`} title={item.args}>
-      <span className="toolcard__icon">
-        {item.status === 'running' ? (
-          <Loader2 size={13} className="spin" />
-        ) : item.ok ? (
-          <Check size={13} color="var(--ok)" />
-        ) : (
-          <X size={13} color="var(--err)" />
+  if (item.role === 'assistant') {
+    return (
+      <div className="rise">
+        {item.reasoning != null && (
+          <ReasoningBlock item={item} onToggle={() => toggleExpand(index)} />
         )}
-      </span>
-      <span className="toolcard__name">{item.name}</span>
-      {item.status === 'done' && item.summary && (
-        <span className={`toolcard__summary${item.ok ? '' : ' toolcard__summary--err'}`}>· {item.summary}</span>
+        {item.text != null && (
+          <div className={`msg-assistant${streaming && !item.thinking ? ' caret' : ''}`}>{item.text}</div>
+        )}
+      </div>
+    );
+  }
+  // tool
+  const state = item.status === 'running' ? 'running' : item.ok ? 'ok' : 'err';
+  const canExpand = item.status === 'done';
+  const open = !!item.expanded;
+  return (
+    <div className="rise">
+      <button
+        className={`toolcard toolcard--btn toolcard--${state}`}
+        aria-expanded={canExpand ? open : undefined}
+        onClick={() => canExpand && toggleExpand(index)}
+        title={item.args}
+      >
+        <span className="toolcard__icon">
+          {item.status === 'running' ? (
+            <Loader2 size={13} className="spin" />
+          ) : item.ok ? (
+            <Check size={13} color="var(--ok)" />
+          ) : (
+            <X size={13} color="var(--err)" />
+          )}
+        </span>
+        <span className="toolcard__name">{item.name}</span>
+        {item.status === 'done' && item.summary && (
+          <span className={`toolcard__summary${item.ok ? '' : ' toolcard__summary--err'}`}>· {item.summary}</span>
+        )}
+        {item.status === 'running' ? (
+          <Wrench size={11} color="var(--ink-3)" style={{ marginLeft: 'auto' }} />
+        ) : (
+          <ChevronRight size={13} className={`toolcard__chev${open ? ' toolcard__chev--open' : ''}`} />
+        )}
+      </button>
+      {open && canExpand && (
+        <div className="toolcard__detail rise">
+          {item.args && (
+            <>
+              <span className="token">ARGS</span>
+              <div className="well" style={{ maxHeight: 160 }}>{formatArgs(item.args)}</div>
+            </>
+          )}
+          {item.output && (
+            <>
+              <span className="token">OUTPUT</span>
+              <div className="well" style={{ maxHeight: 260 }}>{item.output}</div>
+            </>
+          )}
+        </div>
       )}
-      {item.status === 'running' && <Wrench size={11} color="var(--ink-3)" style={{ marginLeft: 'auto' }} />}
     </div>
   );
+}
+
+function ReasoningBlock({ item, onToggle }: { item: ChatItem; onToggle: () => void }) {
+  // 思考中默认展开；出正文后（thinking=false）默认收起。用户手动 expanded 优先。
+  const live = !!item.thinking;
+  const open = item.expanded ?? live;
+  return (
+    <div className={`think${live ? ' think--live' : ''}`}>
+      <button className="think__toggle" aria-expanded={open} onClick={onToggle}>
+        {live ? <Loader2 size={12} className="spin" /> : <Brain size={12} />}
+        <ChevronRight size={12} className={`think__chev${open ? ' think__chev--open' : ''}`} />
+        <span>{live ? '思考中…' : '已思考'}</span>
+      </button>
+      {open && item.reasoning && <div className="think__body">{item.reasoning}</div>}
+    </div>
+  );
+}
+
+/** 工具参数：尽量格式化为多行 JSON，非法 JSON 原样返回。 */
+function formatArgs(args: string): string {
+  try {
+    return JSON.stringify(JSON.parse(args), null, 2);
+  } catch {
+    return args;
+  }
 }
