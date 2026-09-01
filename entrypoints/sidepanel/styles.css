@@ -330,6 +330,53 @@ body {
 .toolcard__summary { color: var(--ink-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .toolcard__summary--err { color: var(--err); }
 
+/* 思考折叠块 */
+.think {
+  border-left: 2px solid var(--line-strong);
+  padding-left: 10px;
+  margin-bottom: 4px;
+}
+.think__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 2px 0;
+  cursor: pointer;
+  color: var(--ink-3);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.think__toggle:hover { color: var(--ink-2); }
+.think__toggle:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.think--live .think__toggle { color: var(--signal-ink); }
+.think__chev { transition: transform var(--t-fast) var(--ease); }
+.think__chev--open { transform: rotate(90deg); }
+.think__body {
+  margin-top: 6px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 可展开工具卡 */
+.toolcard--btn {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.toolcard__chev { margin-left: auto; flex-shrink: 0; color: var(--ink-3); transition: transform var(--t-fast) var(--ease); }
+.toolcard__chev--open { transform: rotate(90deg); }
+.toolcard__detail { margin: 4px 0 0; padding-left: 12px; }
+.toolcard__detail .token { display: block; margin: 8px 0 4px; }
+
 /* 暂停条 */
 .pausebar {
   border: 1px solid #e4c169;
