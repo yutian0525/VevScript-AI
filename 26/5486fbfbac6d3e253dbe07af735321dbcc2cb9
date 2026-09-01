@@ -1,0 +1,27 @@
+shared/messages.ts
+  s_3900119a55d6ce::t_1735dbdb21f5ae 99
+background/agent-port.ts
+  s_3900119a55d6ce::t_ececa7d606e488 49,53
+agent/loop.ts
+  s_3900119a55d6ce::t_c208d221f85b42 14
+  s_3900119a55d6ce::t_16829277000ed8 37,40,43,45-46,56,62,65,72,85,87,92,95,99,101-126,130,137
+  s_3900119a55d6ce::t_bc6db717371008 3
+tests/agent/loop.test.ts
+  s_3900119a55d6ce::t_5e734b32261ae7 157-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "265486fbfbac6d3e253dbe07af735321dbcc2cb9",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
