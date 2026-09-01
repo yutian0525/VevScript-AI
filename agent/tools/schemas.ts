@@ -1,5 +1,5 @@
 // agent/tools/schemas.ts
-// 16 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）。描述对齐 chrome-devtools-mcp。
+// 22 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 4 的 6 个（脚本池）。描述对齐 chrome-devtools-mcp。
 import type { ToolSchema } from '../provider/types';
 
 // 显式声明返回 Record<string, unknown>，避免 type:'object' 字面量收窄导致的赋值报错。
@@ -219,6 +219,101 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
           body: { type: 'string', description: '请求体（可选，字符串）' },
         },
         ['url'],
+      ),
+    },
+  },
+  // ---- Phase 4：脚本池（19→22 见 schemas.test 注释；与 UI 共用 background/scripts 编排层）----
+  {
+    type: 'function',
+    function: {
+      name: 'list_scripts',
+      description:
+        '列出脚本库中的用户脚本摘要（不含代码体）。enabled 按启用状态过滤；urlContains 按匹配模式子串过滤（大小写不敏感）。需要完整代码时用 get_script。',
+      parameters: obj({
+        enabled: { type: 'boolean', description: '按启用状态过滤' },
+        urlContains: { type: 'string', description: '匹配模式包含该子串（大小写不敏感）' },
+      }),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_script',
+      description: '读取单个用户脚本的完整定义（含代码体）。id 来自 list_scripts。',
+      parameters: obj({ id: { type: 'string', description: '脚本 id' } }, ['id']),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_script',
+      description:
+        '创建用户脚本：以浏览器用户脚本权限在 matches 匹配的页面上自动运行。创建前先向用户说明脚本用途与作用范围。代码以页面脚本方式原样执行，无 GM_* API。matches 必填（match pattern，如 https://example.com/*），明确作用域。',
+      parameters: obj(
+        {
+          name: { type: 'string', description: '脚本名' },
+          code: { type: 'string', description: '完整 JS 代码体（无 ==UserScript== 元数据头）' },
+          matches: { type: 'array', items: { type: 'string' }, description: 'match pattern 列表' },
+          runAt: {
+            type: 'string',
+            enum: ['document_start', 'document_end', 'document_idle'],
+            description: '运行时机，默认 document_idle',
+          },
+          world: {
+            type: 'string',
+            enum: ['USER_SCRIPT', 'MAIN'],
+            description: '执行世界：USER_SCRIPT 隔离世界（默认）；MAIN 可访问页面变量',
+          },
+          enabled: { type: 'boolean', description: '创建后是否立即启用，默认 true' },
+        },
+        ['name', 'code', 'matches'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_script',
+      description: '更新用户脚本的部分字段。代码/规则更新在下次页面导航后生效。',
+      parameters: obj(
+        {
+          id: { type: 'string', description: '脚本 id' },
+          patch: {
+            type: 'object',
+            description: '要更新的字段（至少一项）',
+            properties: {
+              name: { type: 'string' },
+              code: { type: 'string' },
+              matches: { type: 'array', items: { type: 'string' } },
+              runAt: { type: 'string', enum: ['document_start', 'document_end', 'document_idle'] },
+              world: { type: 'string', enum: ['USER_SCRIPT', 'MAIN'] },
+              enabled: { type: 'boolean' },
+            },
+          },
+        },
+        ['id', 'patch'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_script',
+      description: '删除用户脚本（不可恢复）。',
+      parameters: obj({ id: { type: 'string', description: '脚本 id' } }, ['id']),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'toggle_script',
+      description: '启用或禁用用户脚本。禁用后匹配页面不再注入，刷新页面生效。',
+      parameters: obj(
+        {
+          id: { type: 'string', description: '脚本 id' },
+          enabled: { type: 'boolean', description: 'true 启用 / false 禁用' },
+        },
+        ['id', 'enabled'],
       ),
     },
   },

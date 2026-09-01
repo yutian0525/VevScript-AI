@@ -2,13 +2,29 @@ import { describe, it, expect } from 'vitest';
 import { TOOL_SCHEMAS } from '../../../agent/tools/schemas';
 
 describe('工具 schema', () => {
-  it('恰好 16 个工具（Phase 2 的 9 + Phase 3a 的 7）', () => {
+  it('恰好 22 个工具（Phase 2 的 9 + Phase 3a 的 7 + Phase 4 的 6）', () => {
     const names = TOOL_SCHEMAS.map((s) => s.function.name).sort();
     expect(names).toEqual([
-      'click', 'close_page', 'evaluate_script', 'fill', 'fill_form', 'hover',
-      'http_request', 'list_pages', 'navigate_page', 'new_page', 'press_key',
-      'scroll', 'select_page', 'take_screenshot', 'take_snapshot', 'wait_for',
+      'click', 'close_page', 'create_script', 'delete_script', 'evaluate_script', 'fill',
+      'fill_form', 'get_script', 'hover', 'http_request', 'list_pages', 'list_scripts',
+      'navigate_page', 'new_page', 'press_key', 'scroll', 'select_page',
+      'take_screenshot', 'take_snapshot', 'toggle_script', 'update_script', 'wait_for',
     ]);
+    // Phase 3b 落地后此处 +3（list_console_messages / list_network_requests / get_network_request → 25）
+  });
+
+  it('create_script：name/code/matches 必填，runAt/world 枚举', () => {
+    const t = TOOL_SCHEMAS.find((s) => s.function.name === 'create_script')!;
+    const p = t.function.parameters as { properties: Record<string, { enum?: string[] }>; required: string[] };
+    expect(p.required).toEqual(expect.arrayContaining(['name', 'code', 'matches']));
+    expect(p.properties.runAt!.enum).toEqual(['document_start', 'document_end', 'document_idle']);
+    expect(p.properties.world!.enum).toEqual(['USER_SCRIPT', 'MAIN']);
+  });
+
+  it('toggle_script：id/enabled 必填', () => {
+    const t = TOOL_SCHEMAS.find((s) => s.function.name === 'toggle_script')!;
+    const p = t.function.parameters as { required: string[] };
+    expect(p.required).toEqual(['id', 'enabled']);
   });
 
   it('全部是 function 类型且有描述', () => {
