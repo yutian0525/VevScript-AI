@@ -41,7 +41,13 @@ export function ChatView() {
   // 否则点开工具详情会因 toggleExpand 新建 messages 引用而被拽到底部。
   const last = messages[messages.length - 1];
   const scrollKey = `${messages.length}:${last?.text?.length ?? 0}:${last?.reasoning?.length ?? 0}:${last?.status ?? ''}`;
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [scrollKey]);
+  // 首次滚动（挂载/切回会话 tab 时列表已满）用 auto 瞬时到底，避免从顶部平滑滚一段；
+  // 之后的流式增量才用 smooth 平滑跟随。
+  const firstScroll = useRef(true);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: firstScroll.current ? 'auto' : 'smooth' });
+    firstScroll.current = false;
+  }, [scrollKey]);
 
   // 挂载恢复：store 为空时，从当前 tab 的 storage 读历史渲染（含思考折叠、工具卡片）。
   // 只读 storage 渲染，不接管运行中 loop 的事件流（重连归 Phase 5）。
