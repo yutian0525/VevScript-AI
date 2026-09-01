@@ -1,0 +1,25 @@
+agent/run-turn.ts
+  s_ebb62919eaca73::t_5c3c7267bef59a 51-62
+stores/chat.ts
+  s_ebb62919eaca73::t_968381770e0e58 42-46,49
+tests/agent/run-turn.test.ts
+  s_ebb62919eaca73::t_6a6c7ddb9c1207 98-118
+tests/stores/chat.test.ts
+  s_ebb62919eaca73::t_eb69494eeb7235 57-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "25d204ea7ebd4a107cbf17c22da010ec6c409bf2",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
