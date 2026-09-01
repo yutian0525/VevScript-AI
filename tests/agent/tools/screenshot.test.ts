@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import * as screenshot from '../../../agent/tools/screenshot';
+import { bytesToBase64 } from '../../../agent/tools/screenshot';
 import { saveSettings } from '../../../storage/settings';
 
 describe('截图工具', () => {
@@ -56,5 +57,20 @@ describe('截图工具', () => {
     expect(capture.mock.calls[0]![1].format).toBe('png');
     const compressArgs = (screenshot.compressDataUrl as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]!;
     expect((compressArgs[1] as { format?: string }).format).toBe('png');
+  });
+});
+
+describe('bytesToBase64', () => {
+  it('小 buffer 正确编码', () => {
+    const buf = new Uint8Array([104, 105]).buffer; // "hi"
+    expect(bytesToBase64(buf)).toBe(btoa('hi'));
+  });
+
+  it('大 buffer（500KB）不栈溢出', () => {
+    // 旧 spread 实现会把每个字节作为实参压栈，V8 上限约 6.5 万–13 万实参，
+    // 500KB 必崩 RangeError: Maximum call stack size exceeded。
+    const big = new Uint8Array(500_000).fill(65).buffer;
+    expect(() => bytesToBase64(big)).not.toThrow();
+    expect(bytesToBase64(big).length).toBeGreaterThan(0);
   });
 });

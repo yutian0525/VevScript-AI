@@ -34,8 +34,19 @@ export async function compressDataUrl(
     format === 'png' ? { type: 'image/png' } : { type: 'image/jpeg', quality },
   );
   const buf = await out.arrayBuffer();
-  const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const b64 = bytesToBase64(buf);
   return { dataUrl: `data:${mime};base64,${b64}`, width, height };
+}
+
+/** ArrayBuffer → base64，分块避免 String.fromCharCode 的 spread 实参上限（大截图必崩）。 */
+export function bytesToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  const CHUNK = 0x8000; // 32KB/块，远低于 V8 实参上限
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(bin);
 }
 
 export async function doScreenshot(
