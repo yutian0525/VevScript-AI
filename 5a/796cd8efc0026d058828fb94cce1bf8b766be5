@@ -1,0 +1,25 @@
+stores/chat.ts
+  s_6fe7ed92def0ff::t_585be211f26104 42-79
+  s_6fe7ed92def0ff::t_300fbb51e2b6fc 84-92,96-97,113
+  s_6fe7ed92def0ff::t_e6f804330392c9 4,11-13,16,26-27,31-34
+  s_6fe7ed92def0ff::t_7544e7f9c1b044 35-36
+tests/stores/chat.test.ts
+  s_6fe7ed92def0ff::t_b51e9c7cb05950 3
+  s_6fe7ed92def0ff::t_2f1ee41c577b6f 74-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "5a796cd8efc0026d058828fb94cce1bf8b766be5",
+  "prompts": {},
+  "sessions": {
+    "s_6fe7ed92def0ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5aec521b-da47-4488-b4f7-f815e77cf1dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
