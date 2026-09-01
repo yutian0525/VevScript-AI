@@ -1,0 +1,29 @@
+storage/settings.ts
+  s_3900119a55d6ce::t_2cbf9b560c1e03 17-18
+  s_3900119a55d6ce::t_77cdd198082e41 28
+agent/tools/schemas.ts
+  s_3900119a55d6ce::t_400f72dd786c6b 225-258
+  s_3900119a55d6ce::t_f9e5bf6993e924 2
+tests/agent/tools/schemas.test.ts
+  s_3900119a55d6ce::t_dce6a11128586e 5,8-11,15-25
+  s_3900119a55d6ce::t_16d6e75bf8f4f2 26
+tests/storage/settings.test.ts
+  s_3900119a55d6ce::t_8a9f54ce4f9114 71-81
+  s_3900119a55d6ce::t_7ec89c8c443e2c 44,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "29c2e47d32e5680eb092283ca74a71758f1bfb9d",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
