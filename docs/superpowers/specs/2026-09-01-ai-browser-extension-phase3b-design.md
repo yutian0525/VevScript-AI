@@ -65,7 +65,9 @@ hook.content.ts             content.ts(现有,改)      background/observe-store
 
 ### 4.3 headers 来源取舍
 
-headers 只从 **hook** 取（便宜、只覆盖 JS 请求、天然不含浏览器自动头）；**不给 webRequest 加 `extraHeaders`**——避免全程常驻下每请求的 `extraHeaders` 监听开销。代价：文档/img/script 等非 JS 请求只有元数据、无 headers。脱敏 + 头值长度截断在 SW 入缓冲时统一做。
+headers 只从 **hook** 取（便宜、只覆盖 JS 请求、天然不含浏览器自动头）；**不给 webRequest 加 `extraHeaders`**——避免全程常驻下每请求的 `extraHeaders` 监听开销。代价：文档/img/script 等非 JS 请求只有元数据、无 headers。
+
+**脱敏时机**：入缓冲时只做**头值长度截断 + 条数上限**（防内存膨胀，存原文）；**脱敏放到读取时**（`get_network_request` 执行器读 `settings.agent.networkCaptureHeaders` 决定 `redacted`/`full`）。理由：若入缓冲即脱敏，则「全量原样」档永远拿不回原文；读取时脱敏才可逆、才尊重用户当前设置。
 
 ### 4.4 读路径
 
@@ -77,11 +79,12 @@ headers 只从 **hook** 取（便宜、只覆盖 JS 请求、天然不含浏览�
 
 | 文件 | 职责 | 可单测 |
 |---|---|---|
-| `entrypoints/hook.content.ts` | MAIN world CS（`document_start`）：包装 fetch/XHR/console + backlog + flush | 逻辑抽到 observe/* 后单测，注入行为手测 |
+| `shared/hook-bridge.ts` | window 桥协议常量（`HOOK_MSG`/`RELAY_READY`）+ 共享数据形状（`ConsoleEntry`/`HookNetEntry`/`HookWindowMsg`） | 类型回归 |
+| `entrypoints/hook.content.ts` | MAIN world CS（`world:'MAIN'`, `document_start`）：包装 fetch/XHR/console + backlog + flush | 逻辑抽到 observe/* 后单测，注入行为手测 |
 | `observe/serialize.ts` | 纯函数：console 参数安全序列化（循环/DOM/函数/大对象截断） | ✅ |
-| `observe/redact.ts` | 纯函数：headers 脱敏 + 头值/条数截断（脱敏开关由调用方 observe-store 读 settings 后传入，保持纯函数） | ✅ |
-| `background/observe-store.ts` | SW 环形缓冲（console/network per-tab）+ webRequest 接线 + hook body 关联 | ✅ |
-| `agent/tools/observe.ts` | `doListConsoleMessages` / `doListNetworkRequests` / `doGetNetworkRequest` | ✅ |
+| `observe/redact.ts` | 纯函数：headers 脱敏（敏感头→`[REDACTED]`）+ 头值/条数截断；脱敏开关由调用方（observe.ts 工具执行器）传入，保持纯函数 | ✅ |
+| `background/observe-store.ts` | SW 环形缓冲（console/network per-tab）+ webRequest 接线 + hook body 关联；入缓冲只截断不脱敏 | ✅ |
+| `agent/tools/observe.ts` | `doListConsoleMessages` / `doListNetworkRequests` / `doGetNetworkRequest`（get 读 settings + 调 redact 脱敏） | ✅ |
 
 ### 修改
 
@@ -117,10 +120,12 @@ list_network_requests
 get_network_request
   requestId: string                              来自 list_network_requests
   → data: { requestId, method, url, status, type, ts, durationMs,
-            requestHeaders?, responseHeaders?,    // 脱敏后（若该请求有 hook 数据）
+            requestHeaders?, responseHeaders?,    // 读取时按 settings 脱敏（若该请求有 hook 数据）
             requestBody?, responseBody?,          // 截断 64KB（若文本类且 hook 捕获到）
             truncated?, source: 'webRequest'|'hook'|'merged' }
 ```
+
+> `get_network_request` 执行器读 `settings.agent.networkCaptureHeaders`：`'redacted'`（默认）→ 敏感头替换 `[REDACTED]`；`'full'` → 原文返回。脱敏在**读取时**做（store 存原文，仅长度截断）。
 
 设计取舍：
 
@@ -128,26 +133,43 @@ get_network_request
 - `requestId` 用 webRequest 原生 id 作稳定句柄；纯 hook 独立条目用 `hook:<loadNonce>:<seq>` 前缀 id（含 loadNonce 防跨加载 seq 重置串号）。
 - 三工具**读 SW 缓冲、零 CS 往返**，受限页返回空列表而非报错（读的是缓冲不是活页面）。此点**修正** Phase 3a handoff 中「console 属操作页面类需预检」的假设。
 
-## 7. 协议扩展（`shared/messages.ts`）
+## 7. 协议扩展
+
+分两层，勿混：
+
+### 7.1 window 桥协议（MAIN hook ↔ ISOLATED content.ts，同页 `window.postMessage`）—— `shared/hook-bridge.ts`（新建）
 
 ```ts
-// cs→bg fire-and-forget（扩展现有 CsToBgNotification 家族，无 correlationId）
-interface HookConsoleNotification { type: 'HOOK_CONSOLE'; payload: { entries: ConsoleEntry[] } }
+export const HOOK_MSG = '__ai_ext_hook__';    // MAIN→ISOLATED：一条 console/network 观测
+export const RELAY_READY = '__ai_ext_relay_ready__'; // ISOLATED→MAIN：中继就绪，请 flush backlog
+
+// 数据形状（hook / store / 工具共享）
+export interface ConsoleEntry { id: string; level: string; text: string; ts: number; url?: string }
+export interface HookNetEntry {
+  loadNonce: string; seq: number;  // (loadNonce+seq) 唯一键：SW 去重 + 生成独立条目 id
+  method: string; url: string; ts: number; endTs?: number;
+  status?: number; requestHeaders?: Record<string,string>; responseHeaders?: Record<string,string>;
+  requestBody?: string; responseBody?: string; truncated?: boolean;
+}
+// 带 tag 的 window 消息信封
+export type HookWindowMsg =
+  | { source: typeof HOOK_MSG; kind: 'console'; entry: ConsoleEntry }
+  | { source: typeof HOOK_MSG; kind: 'network'; entry: HookNetEntry };
+```
+
+> `RELAY_READY` 是 ISOLATED→MAIN 的 **window 消息**（触发 hook flush backlog），**不是** cs→bg 的 runtime 通知——勿放进 `CsToBgNotification`。
+
+### 7.2 cs→bg runtime 通知（ISOLATED content.ts → SW，`runtime.sendMessage`）—— `shared/messages.ts`（改）
+
+```ts
+// fire-and-forget（扩展现有 CsToBgNotification 家族，无 correlationId）
+interface HookConsoleNotification { type: 'HOOK_CONSOLE'; payload: { tabId?: number; entries: ConsoleEntry[] } }
 interface HookNetworkNotification { type: 'HOOK_NETWORK'; payload: { entries: HookNetEntry[] } }
-interface RelayReadyNotification  { type: 'RELAY_READY';  payload: Record<string, never> }
+// tabId 由 background 从 sender.tab.id 取，payload 内 tabId 仅冗余占位（实际以 sender 为准）
 
 // 删除：BgToCsRequestMap.CONSOLE_READ（console 改读 SW 缓冲，不再走 CS 请求）
 //       → content.ts 对应 case 一并删，exhaustive never 检查须仍成立
 // 处理：旧 NETLOG_PUSH stub 语义并入 HOOK_NETWORK，删 background.ts 旧 stub handler
-
-// 数据形状（供 hook / store / 工具共享）
-interface ConsoleEntry { id: string; level: string; text: string; ts: number; url?: string }
-interface HookNetEntry {
-  seq: number; method: string; url: string; ts: number; endTs?: number;
-  status?: number; requestHeaders?: Record<string,string>; responseHeaders?: Record<string,string>;
-  requestBody?: string; responseBody?: string; truncated?: boolean;
-}
-```
 
 ## 8. 边界与错误处理
 
