@@ -39,8 +39,9 @@ export interface Usage {
   completionTokens?: number;
 }
 
-/** 流式事件（provider 把 wire 增量归一化为这四种） */
+/** 流式事件（provider 把 wire 增量归一化为这几种） */
 export type StreamEvent =
+  | { type: 'reasoning-delta'; text: string }
   | { type: 'text-delta'; text: string }
   | { type: 'tool-call-delta'; index: number; id?: string; name?: string; argsDelta?: string }
   | { type: 'message-done'; usage?: Usage; finishReason?: string }

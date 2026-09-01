@@ -119,6 +119,8 @@ export class OpenAICompatProvider implements Provider {
             choices?: Array<{
               delta?: {
                 content?: string | null;
+                reasoning_content?: string | null;
+                reasoning?: string | null;
                 tool_calls?: Array<{
                   index?: number;
                   id?: string;
@@ -135,6 +137,8 @@ export class OpenAICompatProvider implements Provider {
             return; // 跳过无法解析的行（某些中转站夹带非标准行）
           }
           const choice = chunk.choices?.[0];
+          const reasoning = choice?.delta?.reasoning_content ?? choice?.delta?.reasoning;
+          if (reasoning) onEvent({ type: 'reasoning-delta', text: reasoning });
           if (choice?.delta?.content) {
             onEvent({ type: 'text-delta', text: choice.delta.content });
           }

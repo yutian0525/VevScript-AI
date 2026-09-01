@@ -226,4 +226,100 @@ describe('OpenAICompatProvider', () => {
     expect(events.some((e) => e.type === 'error')).toBe(false);
     expect(events.some((e) => e.type === 'text-delta')).toBe(true); // 首个 chunk 已消费
   });
+
+  it('reasoning_content 归一化为 reasoning-delta，先于 text-delta', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(
+      new Response(
+        sseStream([
+          { choices: [{ delta: { reasoning_content: '让我' } }] },
+          { choices: [{ delta: { reasoning_content: '想想' } }] },
+          { choices: [{ delta: { content: '答案是 42' } }] },
+          { choices: [{ delta: {}, finish_reason: 'stop' }] },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const p = new OpenAICompatProvider({ baseUrl: 'https://api.x.com/v1', apiKey: 'sk', model: 'r1' });
+    const events: StreamEvent[] = [];
+    await new Promise<void>((resolve) => {
+      p.streamChat(baseParams(), (e) => {
+        events.push(e);
+        if (e.type === 'message-done') resolve();
+      });
+    });
+    const reasoning = events.filter((e) => e.type === 'reasoning-delta').map((e) => (e as { text: string }).text);
+    expect(reasoning.join('')).toBe('让我想想');
+    const texts = events.filter((e) => e.type === 'text-delta').map((e) => (e as { text: string }).text);
+    expect(texts.join('')).toBe('答案是 42');
+  });
+
+  it('reasoning 别名（无 _content 后缀）同样命中', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(
+      new Response(
+        sseStream([
+          { choices: [{ delta: { reasoning: '思考中' } }] },
+          { choices: [{ delta: {}, finish_reason: 'stop' }] },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const p = new OpenAICompatProvider({ baseUrl: 'https://api.x.com/v1', apiKey: 'sk', model: 'o1' });
+    const events: StreamEvent[] = [];
+    await new Promise<void>((resolve) => {
+      p.streamChat(baseParams(), (e) => {
+        events.push(e);
+        if (e.type === 'message-done') resolve();
+      });
+    });
+    expect(events.some((e) => e.type === 'reasoning-delta' && (e as { text: string }).text === '思考中')).toBe(true);
+  });
+
+  it('非推理模型 chunk 不发 reasoning-delta', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(
+      new Response(
+        sseStream([
+          { choices: [{ delta: { content: '直接回答' } }] },
+          { choices: [{ delta: {}, finish_reason: 'stop' }] },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const p = new OpenAICompatProvider({ baseUrl: 'https://api.x.com/v1', apiKey: 'sk', model: 'gpt' });
+    const events: StreamEvent[] = [];
+    await new Promise<void>((resolve) => {
+      p.streamChat(baseParams(), (e) => {
+        events.push(e);
+        if (e.type === 'message-done') resolve();
+      });
+    });
+    expect(events.some((e) => e.type === 'reasoning-delta')).toBe(false);
+  });
+
+  it('同一 chunk 内 reasoning-delta 先于 text-delta 发出', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(
+      new Response(
+        sseStream([
+          { choices: [{ delta: { reasoning_content: '想', content: '答' } }] },
+          { choices: [{ delta: {}, finish_reason: 'stop' }] },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const p = new OpenAICompatProvider({ baseUrl: 'https://api.x.com/v1', apiKey: 'sk', model: 'r1' });
+    const events: StreamEvent[] = [];
+    await new Promise<void>((resolve) => {
+      p.streamChat(baseParams(), (e) => {
+        events.push(e);
+        if (e.type === 'message-done') resolve();
+      });
+    });
+    const ri = events.findIndex((e) => e.type === 'reasoning-delta');
+    const ti = events.findIndex((e) => e.type === 'text-delta');
+    expect(ri).toBeGreaterThanOrEqual(0);
+    expect(ti).toBeGreaterThan(ri);
+  });
 });
