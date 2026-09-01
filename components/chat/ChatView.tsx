@@ -1,5 +1,5 @@
 // components/chat/ChatView.tsx
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Send, Wrench, CircleAlert, Loader2 } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
@@ -12,12 +12,28 @@ export function ChatView() {
   const portRef = useRef<ReturnType<typeof browser.runtime.connect> | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  // 惰性建立/复用 Port：MV3 service worker 空闲会被杀导致 port 断开，
+  // 这里在每次使用前确保有活 port，断开后自动重连（下次 connect 会唤醒 SW）。
+  const ensurePort = useCallback(() => {
+    if (portRef.current) return portRef.current;
     const port = browser.runtime.connect({ name: 'agent' });
     port.onMessage.addListener((m) => applyEvent(m as PortMsgToPanel));
+    port.onDisconnect.addListener(() => {
+      // 读掉 lastError 抑制 "Unchecked runtime.lastError" 噪声；置空以便下次重连
+      void browser.runtime.lastError;
+      portRef.current = null;
+    });
     portRef.current = port;
-    return () => port.disconnect();
+    return port;
   }, [applyEvent]);
+
+  useEffect(() => {
+    ensurePort();
+    return () => {
+      portRef.current?.disconnect();
+      portRef.current = null;
+    };
+  }, [ensurePort]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -25,6 +41,18 @@ export function ChatView() {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     return tab?.id;
   }
+
+  // 经活 port 发送；port 已死（SW 被杀）时同步抛错，捕获后重置 port + 回退状态并提示。
+  const postToPort = (msg: PortMsgFromPanel): boolean => {
+    try {
+      ensurePort().postMessage(msg);
+      return true;
+    } catch {
+      portRef.current = null;
+      applyEvent({ type: 'error', message: '与后台的连接已断开，请重试（若持续，请重新加载扩展）' });
+      return false;
+    }
+  };
 
   const send = async () => {
     const text = input.trim();
@@ -34,14 +62,14 @@ export function ChatView() {
     if (tabId == null) { useChat.getState().setStatus('idle'); return; } // 无 tab 回滚
     addUserMessage(text);
     setInput('');
-    portRef.current?.postMessage({ type: 'agent:start', tabId, userMessage: text } satisfies PortMsgFromPanel);
+    postToPort({ type: 'agent:start', tabId, userMessage: text });
   };
 
   const resume = async () => {
     const tabId = await activeTabId();
     if (tabId == null) return;
     useChat.getState().setStatus('running');
-    portRef.current?.postMessage({ type: 'agent:resume', tabId } satisfies PortMsgFromPanel);
+    postToPort({ type: 'agent:resume', tabId });
   };
 
   return (
