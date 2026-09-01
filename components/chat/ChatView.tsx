@@ -224,6 +224,12 @@ function MessageRow({ item, index, streaming }: { item: ChatItem; index: number;
               <div className="well" style={{ maxHeight: 260 }}>{item.output}</div>
             </>
           )}
+          {item.image && (
+            <>
+              <span className="token">SCREENSHOT</span>
+              <img className="toolcard__shot" src={item.image} alt="页面截图" />
+            </>
+          )}
         </div>
       )}
     </div>

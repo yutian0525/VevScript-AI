@@ -14,6 +14,7 @@ export interface ChatItem {
   name?: string; args?: string; callId?: string;
   status?: 'running' | 'done'; ok?: boolean; summary?: string;
   output?: string;           // 工具完整输出（供展开）
+  image?: string;            // 截图缩略图 dataURL（take_screenshot）
 }
 
 interface ChatState {
@@ -119,7 +120,7 @@ export const useChat = create<ChatState>((set) => ({
       }
       case 'tool-end': {
         const idx = messages.findIndex((m) => m.role === 'tool' && m.callId === e.callId);
-        if (idx >= 0) messages[idx] = { ...messages[idx]!, status: 'done', ok: e.ok, summary: e.summary, output: e.output };
+        if (idx >= 0) messages[idx] = { ...messages[idx]!, status: 'done', ok: e.ok, summary: e.summary, output: e.output, image: e.image };
         return { messages };
       }
       case 'state': return { status: e.status };

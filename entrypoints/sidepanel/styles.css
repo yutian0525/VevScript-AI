@@ -471,3 +471,11 @@ body {
 .result-verdict--err { color: var(--err); }
 .result-ms { font-family: var(--mono); font-size: 10px; color: var(--ink-3); margin-left: auto; }
 .divider { height: 1px; background: var(--line); border: none; margin: 12px 0; }
+
+.toolcard__shot {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin-top: 4px;
+}

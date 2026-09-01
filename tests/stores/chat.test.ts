@@ -113,6 +113,13 @@ describe('chat store', () => {
     expect(tool).toMatchObject({ status: 'done', ok: true, output: '[1] button 全文' });
   });
 
+  it('tool-end 带 image 时存进卡片', () => {
+    useChat.getState().applyEvent({ type: 'tool-start', name: 'take_screenshot', args: '{}', callId: 'c1' });
+    useChat.getState().applyEvent({ type: 'tool-end', name: 'take_screenshot', callId: 'c1', ok: true, summary: '已截图', image: 'data:image/jpeg;base64,ZZZ' });
+    const card = useChat.getState().messages.find((m) => m.role === 'tool' && m.callId === 'c1');
+    expect(card).toMatchObject({ status: 'done', image: 'data:image/jpeg;base64,ZZZ' });
+  });
+
   it('toggleExpand 切换指定项 expanded', () => {
     useChat.getState().applyEvent({ type: 'tool-start', name: 'click', args: '{}', callId: 'c1' });
     useChat.getState().toggleExpand(0);
