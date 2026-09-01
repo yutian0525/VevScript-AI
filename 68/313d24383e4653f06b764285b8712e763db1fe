@@ -1,0 +1,25 @@
+tests/agent/tools/screenshot.test.ts
+  s_3900119a55d6ce::t_32bdd77514c893 62-75
+  s_3900119a55d6ce::t_0b32a82c2e8455 4
+  s_3900119a55d6ce::t_78d7d99454b6e9 76
+agent/tools/screenshot.ts
+  s_3900119a55d6ce::t_5a98ad88db6883 41,43-49
+  s_3900119a55d6ce::t_229f93398d5d8b 37,42
+  s_3900119a55d6ce::t_a434454a4dac3b 50-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "68313d24383e4653f06b764285b8712e763db1fe",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
