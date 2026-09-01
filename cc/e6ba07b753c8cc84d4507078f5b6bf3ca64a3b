@@ -1,0 +1,31 @@
+storage/settings.ts
+  s_6fe7ed92def0ff::t_baff4a12fe0c88 8-10
+agent/provider/openai-compat.ts
+  s_6fe7ed92def0ff::t_493d46c5d41637 75-76
+tests/agent/provider/openai-compat.test.ts
+  s_6fe7ed92def0ff::t_6af77c96b4af6b 326-346
+agent/provider/types.ts
+  s_6fe7ed92def0ff::t_c91f2a3a5f7023 72-74
+tests/storage/settings.test.ts
+  s_6fe7ed92def0ff::t_a2b746fccf2b1e 56-61
+components/settings/SettingsView.tsx
+  s_6fe7ed92def0ff::t_bbf5a587715ec7 111-126
+  s_6fe7ed92def0ff::t_f2a304178c64fc 9-24,29-30,33-36
+  s_6fe7ed92def0ff::t_f0863c67b8f448 50-61,63-66,71-73,76-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "cce6ba07b753c8cc84d4507078f5b6bf3ca64a3b",
+  "prompts": {},
+  "sessions": {
+    "s_6fe7ed92def0ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5aec521b-da47-4488-b4f7-f815e77cf1dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
