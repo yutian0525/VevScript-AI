@@ -1,6 +1,6 @@
 // agent/loop.ts
 // Agent 主循环状态机（设计 §2）：无硬上限 + 熔断阀 + 每轮持久化。
-import type { Provider, ChatMessage, ToolCall, Usage, ContentPart } from './provider/types';
+import type { Provider, ChatMessage, ToolCall, ContentPart } from './provider/types';
 import type { ToolResult } from '../shared/types';
 import type { PortMsgToPanel } from '../shared/messages';
 import { runTurn } from './run-turn';
@@ -65,8 +65,8 @@ async function drive(startTabId: number, deps: LoopDeps, guardState: GuardState)
         await appendMessage(startTabId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: '错误：模型输出被截断，该工具调用参数不完整，请重新发起' });
         truncFailed.push({ ok: false, error: '模型输出被截断' });
       }
-      // 计入熔断阀：连续截断会累加步数/连续错误，触及阀值则暂停，避免无限截断循环烧钱
-      guard = recordTurn(guard, result.toolCalls, truncFailed, turnTokens(result.usage));
+      // 计入熔断阀：连续截断累加连续错误，触及阀值则暂停，避免无限截断循环烧钱
+      guard = recordTurn(guard, result.toolCalls, truncFailed);
       const verdict = checkGuards(guard, DEFAULT_GUARD_CONFIG);
       if (verdict.stop) {
         await setStatus(startTabId, 'paused');
@@ -133,7 +133,7 @@ async function drive(startTabId: number, deps: LoopDeps, guardState: GuardState)
     }
 
     // 熔断阀
-    guard = recordTurn(guard, result.toolCalls, results, turnTokens(result.usage));
+    guard = recordTurn(guard, result.toolCalls, results);
     const verdict = checkGuards(guard, DEFAULT_GUARD_CONFIG);
     if (verdict.stop) {
       await setStatus(startTabId, 'paused');
@@ -145,11 +145,6 @@ async function drive(startTabId: number, deps: LoopDeps, guardState: GuardState)
 
 function assistantMsg(text: string, toolCalls: ToolCall[], reasoning?: string): ChatMessage {
   return { role: 'assistant', content: text, toolCalls, reasoning };
-}
-
-/** 本轮消耗 token = prompt + completion（prompt 通常占大头，只算 completion 会严重低估 token 阀）。 */
-function turnTokens(usage: Usage | undefined): number {
-  return (usage?.promptTokens ?? 0) + (usage?.completionTokens ?? 0);
 }
 
 function toToolContent(r: ToolResult): string {

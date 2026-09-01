@@ -47,9 +47,10 @@ describe('熔断阀', () => {
     expect(checkGuards(s, DEFAULT_GUARD_CONFIG).stop).toBe(false);
   });
 
-  it('累计 token 超预算 → 暂停', () => {
+  it('无 token 预算：长任务（大量不同成功调用）不因累计 token 被暂停', () => {
     let s = initGuardState();
-    s = recordTurn(s, [tc('scroll', '{}')], [ok], 200_000);
-    expect(checkGuards(s, DEFAULT_GUARD_CONFIG)).toMatchObject({ stop: true, reason: expect.stringContaining('token') });
+    // 曾有 150k token 软预算，现已移除——只要不打转/不连错，长任务不应被熔断
+    for (let i = 0; i < 500; i++) s = recordTurn(s, [tc('scroll', `{"amount":${i}}`)], [ok]);
+    expect(checkGuards(s, DEFAULT_GUARD_CONFIG).stop).toBe(false);
   });
 });
