@@ -1,6 +1,37 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { waitForText } from '../../content/wait';
+import { waitForText, waitForSettle } from '../../content/wait';
+
+describe('waitForSettle', () => {
+  beforeEach(() => { document.body.innerHTML = ''; });
+
+  it('无变更时约在静默窗口后返回', async () => {
+    const start = Date.now();
+    await waitForSettle(40, 500);
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeGreaterThanOrEqual(30);
+    expect(elapsed).toBeLessThan(300);
+  });
+
+  it('DOM 持续变更时延后返回（每次变更重置静默计时）', async () => {
+    const start = Date.now();
+    const iv = setInterval(() => { document.body.appendChild(document.createElement('div')); }, 20);
+    setTimeout(() => clearInterval(iv), 120);
+    await waitForSettle(40, 2000);
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeGreaterThanOrEqual(120);
+  });
+
+  it('持续变更触及 maxMs 硬顶也会返回', async () => {
+    const iv = setInterval(() => { document.body.appendChild(document.createElement('div')); }, 15);
+    const start = Date.now();
+    await waitForSettle(100, 200);
+    const elapsed = Date.now() - start;
+    clearInterval(iv);
+    expect(elapsed).toBeLessThan(500);
+    expect(elapsed).toBeGreaterThanOrEqual(150);
+  });
+});
 
 describe('wait_for', () => {
   beforeEach(() => { document.body.innerHTML = ''; });
