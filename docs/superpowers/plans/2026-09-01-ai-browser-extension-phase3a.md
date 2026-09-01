@@ -57,7 +57,7 @@ components/chat/
 - Modify: `agent/tools/schemas.ts`
 - Test: `tests/agent/tools/schemas.test.ts`
 
-- [ ] **Step 1: 改失败测试 `tests/agent/tools/schemas.test.ts`**
+- [x] **Step 1: 改失败测试 `tests/agent/tools/schemas.test.ts`**
 
 把「恰好 9 个」的断言改为 16，并补新工具断言：
 
@@ -94,12 +94,12 @@ components/chat/
 
 （保留原有「全部是 function 类型且有描述」「click uid 必填」「navigate_page type 枚举」等回归断言。）
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/tools/schemas.test.ts`
 Expected: FAIL —— 数量 9≠16。
 
-- [ ] **Step 3: 在 `agent/tools/schemas.ts` 的 `TOOL_SCHEMAS` 数组末尾追加 7 个 schema**
+- [x] **Step 3: 在 `agent/tools/schemas.ts` 的 `TOOL_SCHEMAS` 数组末尾追加 7 个 schema**
 
 ```ts
   {
@@ -176,12 +176,12 @@ Expected: FAIL —— 数量 9≠16。
   },
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/tools/schemas.test.ts`
 Expected: 全部 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agent/tools/schemas.ts tests/agent/tools/schemas.test.ts
@@ -198,7 +198,7 @@ list/new/close/select 四个执行器。执行器只做 chrome.tabs 调用 + 组
 - Create: `agent/tools/tabs.ts`
 - Test: `tests/agent/tools/tabs.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/agent/tools/tabs.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/agent/tools/tabs.test.ts`**
 
 ```ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -263,12 +263,12 @@ describe('标签页工具', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/tools/tabs.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `agent/tools/tabs.ts`**
+- [x] **Step 3: 写 `agent/tools/tabs.ts`**
 
 ```ts
 // agent/tools/tabs.ts
@@ -330,12 +330,12 @@ export async function doSelectPage(args: { tabId: number }): Promise<ToolResult>
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/tools/tabs.test.ts`
 Expected: 6 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agent/tools/tabs.ts tests/agent/tools/tabs.test.ts
@@ -352,7 +352,7 @@ capture 前先激活目标标签（captureVisibleTab 只截当前窗口可见标
 - Create: `agent/tools/screenshot.ts`
 - Test: `tests/agent/tools/screenshot.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/agent/tools/screenshot.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/agent/tools/screenshot.test.ts`**
 
 ```ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -401,12 +401,12 @@ describe('截图工具', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/tools/screenshot.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `agent/tools/screenshot.ts`**
+- [x] **Step 3: 写 `agent/tools/screenshot.ts`**
 
 ```ts
 // agent/tools/screenshot.ts
@@ -461,12 +461,12 @@ export async function doScreenshot(
 
 > 注：测试用 `vi.spyOn(screenshot, 'compressDataUrl')`，故 `doScreenshot` 内必须通过模块内引用调用（同模块内直接调用 `compressDataUrl` 在 vitest 下 spy 生效，因 ESM 命名空间引用）。若 spy 不生效，改为 `import * as self from './screenshot'; self.compressDataUrl(...)`。
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/tools/screenshot.test.ts`
 Expected: 4 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agent/tools/screenshot.ts tests/agent/tools/screenshot.test.ts
@@ -483,7 +483,7 @@ background `fetch(credentials:'include')`；响应头只回白名单子集；bod
 - Create: `agent/tools/http.ts`
 - Test: `tests/agent/tools/http.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/agent/tools/http.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/agent/tools/http.test.ts`**
 
 ```ts
 import { describe, it, expect, vi, afterEach } from 'vitest';
@@ -551,12 +551,12 @@ describe('http_request', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/tools/http.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `agent/tools/http.ts`**
+- [x] **Step 3: 写 `agent/tools/http.ts`**
 
 ```ts
 // agent/tools/http.ts
@@ -599,12 +599,12 @@ export async function doHttpRequest(args: {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/tools/http.test.ts`
 Expected: 6 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agent/tools/http.ts tests/agent/tools/http.test.ts
@@ -621,7 +621,7 @@ git commit -m "feat: http_request 工具（带凭证 fetch + 响应头白名单 
 - Create: `agent/tools/evaluate.ts`
 - Test: `tests/agent/tools/evaluate.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/agent/tools/evaluate.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/agent/tools/evaluate.test.ts`**
 
 ```ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -686,12 +686,12 @@ describe('evaluate_script', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/tools/evaluate.test.ts`
 Expected: FAIL — module not found。
 
-- [ ] **Step 3: 写 `agent/tools/evaluate.ts`**
+- [x] **Step 3: 写 `agent/tools/evaluate.ts`**
 
 ```ts
 // agent/tools/evaluate.ts
@@ -749,12 +749,12 @@ export async function doEvaluate(
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/tools/evaluate.test.ts`
 Expected: 6 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agent/tools/evaluate.ts tests/agent/tools/evaluate.test.ts
@@ -771,7 +771,7 @@ git commit -m "feat: evaluate_script 工具（executeScript 包裹器 + 超时 +
 - Modify: `agent/tools/registry.ts`
 - Test: `tests/agent/tools/registry.test.ts`
 
-- [ ] **Step 1: 追加失败测试到 `tests/agent/tools/registry.test.ts`**
+- [x] **Step 1: 追加失败测试到 `tests/agent/tools/registry.test.ts`**
 
 ```ts
   it('list_pages 豁免受限页预检（chrome:// 也能列表）', async () => {
@@ -812,12 +812,12 @@ git commit -m "feat: evaluate_script 工具（executeScript 包裹器 + 超时 +
   });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/tools/registry.test.ts`
 Expected: FAIL — executeTool 尚未分发新工具。
 
-- [ ] **Step 3: 修改 `agent/tools/registry.ts`**
+- [x] **Step 3: 修改 `agent/tools/registry.ts`**
 
 顶部新增 import：
 
@@ -862,17 +862,17 @@ export async function executeTool(
 
 > `navigate`、`injectContentScript`、`CS_TOOL_MAP`、`RESTRICTED` 保持不变。只重排了预检位置并插入新分发分支。
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/tools/registry.test.ts`
 Expected: 全部 passed（含 Phase 2 原有用例）。
 
-- [ ] **Step 5: 编译**
+- [x] **Step 5: 编译**
 
 Run: `npm run compile`
 Expected: 退出码 0。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add agent/tools/registry.ts tests/agent/tools/registry.test.ts
@@ -889,7 +889,7 @@ git commit -m "feat: registry 分发 7 个 chrome-API 工具 + 受限页预检�
 - Modify: `agent/loop.ts`
 - Test: `tests/agent/loop.test.ts`
 
-- [ ] **Step 1: 追加失败测试到 `tests/agent/loop.test.ts`**
+- [x] **Step 1: 追加失败测试到 `tests/agent/loop.test.ts`**
 
 先把测试文件里的 `deps` 工厂的 `executeTool` mock 类型自动跟随（`vi.fn<LoopDeps['executeTool']>()` 无需手改）。新增用例：
 
@@ -946,12 +946,12 @@ git commit -m "feat: registry 分发 7 个 chrome-API 工具 + 受限页预检�
   });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/loop.test.ts`
 Expected: FAIL — targetTab/注入未实现。
 
-- [ ] **Step 3: 修改 `agent/loop.ts` —— 接口签名**
+- [x] **Step 3: 修改 `agent/loop.ts` —— 接口签名**
 
 `LoopDeps.executeTool` 加 `tabId`：
 
@@ -970,7 +970,7 @@ export interface LoopDeps {
 import type { Provider, ChatMessage, ToolCall, Usage, ContentPart } from './provider/types';
 ```
 
-- [ ] **Step 4: 修改 `agent/loop.ts` —— drive 持有 targetTab**
+- [x] **Step 4: 修改 `agent/loop.ts` —— drive 持有 targetTab**
 
 `drive` 的首参改名 `startTabId`，内部初始化 `targetTab`；`getPageInfo`、`executeTool`、`appendMessage`（会话仍 keyed startTabId）分别用对应 tab：
 
@@ -991,7 +991,7 @@ async function drive(startTabId: number, deps: LoopDeps, guardState: GuardState)
 
 > 把原函数体内所有 `tabId`（存储/状态）替换为 `startTabId`；`runAgentLoop`/`resumeAgentLoop` 调用 `drive(args.tabId, ...)` / `drive(tabId, ...)` 不变（形参名变了而已）。
 
-- [ ] **Step 5: 修改 `agent/loop.ts` —— 工具执行循环（targetTab 透传 + 更新 + 截图注入）**
+- [x] **Step 5: 修改 `agent/loop.ts` —— 工具执行循环（targetTab 透传 + 更新 + 截图注入）**
 
 把执行工具的 for 循环体替换为：
 
@@ -1040,12 +1040,12 @@ async function drive(startTabId: number, deps: LoopDeps, guardState: GuardState)
 
 > length 守卫分支、熔断阀分支里的 `tabId` 同样改 `startTabId`。截图分支 `continue` 前不 append 常规 tool output（占位已写）。
 
-- [ ] **Step 6: 运行确认通过**
+- [x] **Step 6: 运行确认通过**
 
 Run: `npx vitest run tests/agent/loop.test.ts`
 Expected: 全部 passed（含 Phase 2 原有用例）。
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add agent/loop.ts tests/agent/loop.test.ts
@@ -1062,7 +1062,7 @@ git commit -m "feat: loop targetTab 状态机（new/select/close 更新）+ 截�
 - Modify: `agent/context.ts`
 - Test: `tests/agent/context.test.ts`
 
-- [ ] **Step 1: 追加失败测试到 `tests/agent/context.test.ts`**
+- [x] **Step 1: 追加失败测试到 `tests/agent/context.test.ts`**
 
 ```ts
 import type { ContentPart } from '../../agent/provider/types';
@@ -1095,12 +1095,12 @@ describe('历史图片裁剪', () => {
   });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/context.test.ts`
 Expected: FAIL — 图片未被裁剪。
 
-- [ ] **Step 3: 修改 `agent/context.ts`**
+- [x] **Step 3: 修改 `agent/context.ts`**
 
 新增 `ContentPart` import 与 `trimImageParts`，在 `buildContext` 里应用：
 
@@ -1139,12 +1139,12 @@ export function buildContext(history: ChatMessage[], page: PageInfo, keepRecent 
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/context.test.ts`
 Expected: 全部 passed（含 Phase 2 原有用例）。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agent/context.ts tests/agent/context.test.ts
@@ -1162,7 +1162,7 @@ git commit -m "feat: context 历史图片裁剪（保留最近 2 条，更早替
 - Modify: `background/agent-port.ts`
 - Test: `tests/shared/messages-phase3a.test.ts`（新建，类型可赋值回归）
 
-- [ ] **Step 1: 写失败测试 `tests/shared/messages-phase3a.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/shared/messages-phase3a.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -1182,12 +1182,12 @@ describe('Phase 3a 协议扩展', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/shared/messages-phase3a.test.ts`
 Expected: FAIL — `image` 不在类型上（TS 编译错误）。
 
-- [ ] **Step 3: 修改 `shared/messages.ts`**
+- [x] **Step 3: 修改 `shared/messages.ts`**
 
 `PortMsgToPanel` 里 `tool-end` 分支加 `image?`：
 
@@ -1195,7 +1195,7 @@ Expected: FAIL — `image` 不在类型上（TS 编译错误）。
   | { type: 'tool-end'; name: string; callId: string; ok: boolean; summary: string; output?: string; image?: string }
 ```
 
-- [ ] **Step 4: 修改 `background/agent-port.ts` 的 `makeDeps`**
+- [x] **Step 4: 修改 `background/agent-port.ts` 的 `makeDeps`**
 
 `executeTool` 从 3 参改 4 参，透传 loop 传入的 tabId 到 `ctx.tabId`：
 
@@ -1223,12 +1223,12 @@ function makeDeps(
 
 > `makeDeps` 第三参改名 `startTabId`（仅语义命名，调用处 `makeDeps(provider, port, msg.tabId)` 不变）；`executeTool` 不再闭包固定 tabId，改用 loop 每轮传入的 `tabId`（=targetTab）。`getPageInfo` 保持接收 tabId 参数不变（loop 会传 targetTab）。
 
-- [ ] **Step 5: 运行确认通过 + 编译**
+- [x] **Step 5: 运行确认通过 + 编译**
 
 Run: `npx vitest run tests/shared/messages-phase3a.test.ts && npm run compile`
 Expected: passed + 退出码 0（编译确认 loop/agent-port/debug-exec 签名全链路一致）。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add shared/messages.ts background/agent-port.ts tests/shared/messages-phase3a.test.ts
@@ -1247,7 +1247,7 @@ git commit -m "feat: 协议 tool-end +image? + agent-port executeTool 4 参签�
 - Modify: `entrypoints/sidepanel/styles.css`
 - Test: `tests/stores/chat.test.ts`
 
-- [ ] **Step 1: 追加失败测试到 `tests/stores/chat.test.ts`**
+- [x] **Step 1: 追加失败测试到 `tests/stores/chat.test.ts`**
 
 ```ts
   it('tool-end 带 image 时存进卡片', () => {
@@ -1258,12 +1258,12 @@ git commit -m "feat: 协议 tool-end +image? + agent-port executeTool 4 参签�
   });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/stores/chat.test.ts`
 Expected: FAIL — `image` 不在 ChatItem。
 
-- [ ] **Step 3: 修改 `stores/chat.ts`**
+- [x] **Step 3: 修改 `stores/chat.ts`**
 
 `ChatItem` 接口加字段：
 
@@ -1282,7 +1282,7 @@ Expected: FAIL — `image` 不在 ChatItem。
       }
 ```
 
-- [ ] **Step 4: 修改 `components/chat/ChatView.tsx` 的工具卡片展开区**
+- [x] **Step 4: 修改 `components/chat/ChatView.tsx` 的工具卡片展开区**
 
 在 `toolcard__detail` 里、OUTPUT 之后加截图渲染：
 
@@ -1295,7 +1295,7 @@ Expected: FAIL — `image` 不在 ChatItem。
           )}
 ```
 
-- [ ] **Step 5: 在 `entrypoints/sidepanel/styles.css` 末尾加样式**
+- [x] **Step 5: 在 `entrypoints/sidepanel/styles.css` 末尾加样式**
 
 ```css
 .toolcard__shot {
@@ -1307,12 +1307,12 @@ Expected: FAIL — `image` 不在 ChatItem。
 }
 ```
 
-- [ ] **Step 6: 运行确认通过 + 编译 + 构建**
+- [x] **Step 6: 运行确认通过 + 编译 + 构建**
 
 Run: `npx vitest run tests/stores/chat.test.ts && npm run compile && npm run build`
 Expected: passed + 两个退出码 0；`.output/chrome-mv3/` 生成。
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add stores/chat.ts components/chat/ChatView.tsx entrypoints/sidepanel/styles.css tests/stores/chat.test.ts
@@ -1327,12 +1327,12 @@ git commit -m "feat: 工具卡片渲染截图缩略图（tool-end.image → Chat
 - Modify: `docs/superpowers/plans/2026-09-01-ai-browser-extension-phase3a.md`（勾选状态）
 - Modify: `CLAUDE.md`（更新当前阶段描述）
 
-- [ ] **Step 1: 全量编译 + 测试 + 构建**
+- [x] **Step 1: 全量编译 + 测试 + 构建**
 
 Run: `npm run compile && npm test && npm run build`
 Expected: 三项全部成功（tsc EXIT 0；vitest 全绿；build 产出 `.output/chrome-mv3/`）。
 
-- [ ] **Step 2: 手动冒烟（加载扩展，需真实 Chrome + vision 模型）**
+- [x] **Step 2: 手动冒烟（加载扩展，需真实 Chrome + vision 模型）**
 
 在 `chrome://extensions` 重新加载 `.output/chrome-mv3`，然后：
 
@@ -1343,15 +1343,15 @@ Expected: 三项全部成功（tsc EXIT 0；vitest 全绿；build 产出 `.outpu
 5. 输入「用 http_request 请求 https://httpbin.org/get」→ 预期返回 status 200 + body 片段。
 6. 在 `chrome://extensions` 输入「截图」→ 预期返回「无法操作受限页面」。
 
-- [ ] **Step 3: 记录已知问题到本文件末尾「Phase 3b handoff」小节（若有）**
+- [x] **Step 3: 记录已知问题到本文件末尾「Phase 3b handoff」小节（若有）**
 
 常见候选：某些站点 CSP 阻断 evaluate MAIN world、captureVisibleTab 在标签切换时序、大截图 token 消耗。
 
-- [ ] **Step 4: 更新 `CLAUDE.md` 的「当前阶段」段**
+- [x] **Step 4: 更新 `CLAUDE.md` 的「当前阶段」段**
 
 把 Phase 3a 完成的能力（tabs/screenshot/evaluate/http_request）记入，标注 3b（console + 网络双通道）待做。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -1376,7 +1376,11 @@ git commit -m "chore: Phase 3a 收尾验证 + 文档更新"
 
 ## Phase 3b handoff（待办，实现完成后填写）
 
-- （手测发现的问题记这里）
+- **手动冒烟待做**（需真实 Chrome + vision 模型）：加载 .output/chrome-mv3 → 设置页配 vision 模型 → 测「截图看页面」（take_screenshot 卡片带缩略图 + AI 描述视觉）、「新开标签打开 example.com 读标题」（targetTab 切换 + evaluate/snapshot 作用新标签）、「evaluate_script 取链接数」、「http_request 打 httpbin」、受限页 screenshot/evaluate 被阻断。
+- **已知清理项**：`entrypoints/content.ts` 的 `EVALUATE` case 已成死代码（evaluate 改走 background scripting.executeScript，不再走 CS 消息），可在 Phase 3b 顺手删除（连同 shared/messages.ts BgToCsRequestMap 的 EVALUATE 项按需保留/清理）；该文件 Phase 3a 期间被其他会话频繁改动，故本轮未动以避免冲突。
+- **已知风险（转 Phase 3b/后续）**：http_request 带 same-origin cookie 且无确认门控（设计 §7），被注入可冒用登录态，待补门控闭合。
+- **已知降级**：截图只截可视区域（无 fullPage 拼接）；evaluate 超时不能真正取消已注入脚本；targetTab 不持久化（SW 重启回落启动标签）；模型 vision 能力不检测（由用户配置负责）。
+- **测试基线**：全套 `npm test` 绿的最终再验证被并发会话对 `content/snapshot` 的未提交 WIP 阻塞——需待该会话 `content/snapshot` 改动落定后重跑确认；Phase 3a 自身 11 测试文件 93 tests 已全绿。
 
 
 
