@@ -1,0 +1,24 @@
+background/agent-port.ts
+  s_ebb62919eaca73::t_eaebf9b223d902 78,85-88,90-91,96,103,105
+agent/provider/openai-compat.ts
+  s_ebb62919eaca73::t_087eb768c4e023 83,94
+components/chat/ChatView.tsx
+  s_ebb62919eaca73::t_ff8ac712992f81 41-43
+  s_ebb62919eaca73::t_e34ad2d5afeff2 64-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "5b8df2c8889407194c7f9bd0e343316ced03d35e",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
