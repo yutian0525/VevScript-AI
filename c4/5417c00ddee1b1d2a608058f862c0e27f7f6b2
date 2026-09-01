@@ -1,0 +1,19 @@
+entrypoints/hook.content.ts
+  s_3900119a55d6ce::t_cb91be9d36a7f0 1-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "c45417c00ddee1b1d2a608058f862c0e27f7f6b2",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
