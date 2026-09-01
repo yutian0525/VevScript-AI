@@ -1,0 +1,63 @@
+entrypoints/background.ts
+  s_a82d412179adb6::t_b2ece2fc927d92 21-22
+  s_a82d412179adb6::t_fc449a65f5114d 3,5
+  s_a82d412179adb6::t_5f2641228e4f0e 23
+stores/ui.ts
+  s_a82d412179adb6::t_dd742109f10814 4
+components/ui/Gauge.tsx
+  s_a82d412179adb6::t_5c5ad0a48db5d7 1-19
+entrypoints/sidepanel/styles.css
+  s_a82d412179adb6::t_9ea1a40d326f07 7-8,10-14,16-21
+  s_a82d412179adb6::t_ee24cacd2e5b93 186-234,236-238,242-265
+  s_a82d412179adb6::t_2761c7aec255f8 266-410,412-425
+  s_a82d412179adb6::t_0b68a613bfdad4 239-241
+  s_a82d412179adb6::t_3ebae157c9d824 411
+  s_a82d412179adb6::t_247341e6319fe2 62-185
+  s_a82d412179adb6::t_492e9e7af88a69 1-5,9,15,22-40,42,46-48,50-51,54-60
+  s_a82d412179adb6::t_8becc60639573c 61
+components/debug/DebugView.tsx
+  s_a82d412179adb6::t_6f8a2b0836ceee 49-103
+  s_a82d412179adb6::t_9423abea92b394 1-48
+  s_a82d412179adb6::t_98370631e017b7 104-208
+  s_a82d412179adb6::t_937d932d3392b3 209-253
+shared/messages.ts
+  s_a82d412179adb6::t_82d39191f66427 68-85
+entrypoints/sidepanel/App.tsx
+  s_a82d412179adb6::t_a943c9e57263f2 2,6,12,16-17,20,24-29,33,36,46
+components/ui/Input.tsx
+  s_a82d412179adb6::t_2825d95d303129 4-5
+components/ui/Button.tsx
+  s_a82d412179adb6::t_a2e174b4894098 2,5,8-13,16-17
+tests/background/debug-exec.test.ts
+  s_a82d412179adb6::t_a4dc41418b3549 1-41,44-49
+  s_a82d412179adb6::t_541e0d4007050d 42-43
+components/scripts/ScriptsView.tsx
+  s_a82d412179adb6::t_2a9f8e1a50d5db 6-7
+background/debug-exec.ts
+  s_a82d412179adb6::t_475deb2a25decf 1-23
+components/ui/PageShell.tsx
+  s_a82d412179adb6::t_25c8d814f36aff 6-7,12-16,21-30,32
+components/settings/SettingsView.tsx
+  s_a82d412179adb6::t_b1e3b6b0805202 44-48,55-56,64-65,74,82
+  s_a82d412179adb6::t_ac54dc47777ff6 20-21
+  s_a82d412179adb6::t_f27da9fe583271 2
+components/chat/ChatView.tsx
+  s_a82d412179adb6::t_2e7f3717c3920e 84-85,87-89,91-95,97-99,101-105,110,112,120,129,131,134,137-142,144,146-160
+  s_a82d412179adb6::t_1b24d57b3534ab 3,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "00835ea7ce1ce4e27f17a7fb16085f91212ab32f",
+  "prompts": {},
+  "sessions": {
+    "s_a82d412179adb6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "caeffecf-1979-4bc7-9558-bda472c91766",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
