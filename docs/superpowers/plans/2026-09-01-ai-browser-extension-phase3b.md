@@ -62,7 +62,7 @@ entrypoints/
 - Test: `tests/storage/settings.test.ts`（追加）
 - Test: `tests/agent/tools/schemas.test.ts`（改计数 + 追加断言）
 
-- [ ] **Step 1: 改失败测试 `tests/agent/tools/schemas.test.ts`**
+- [x] **Step 1: 改失败测试 `tests/agent/tools/schemas.test.ts`**
 
 把「恰好 16 个」断言改为 19 并补新工具断言（保留其余原有回归断言不动）：
 
@@ -90,12 +90,12 @@ entrypoints/
   });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/tools/schemas.test.ts`
 Expected: FAIL —— 数量 16≠19。
 
-- [ ] **Step 3: 在 `agent/tools/schemas.ts` 的 `TOOL_SCHEMAS` 数组末尾（`http_request` 之后、`];` 之前）追加 3 个 schema**
+- [x] **Step 3: 在 `agent/tools/schemas.ts` 的 `TOOL_SCHEMAS` 数组末尾（`http_request` 之后、`];` 之前）追加 3 个 schema**
 
 ```ts
   {
@@ -134,12 +134,12 @@ Expected: FAIL —— 数量 16≠19。
   },
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/tools/schemas.test.ts`
 Expected: 全部 passed。
 
-- [ ] **Step 5: 改失败测试 `tests/storage/settings.test.ts`（追加）**
+- [x] **Step 5: 改失败测试 `tests/storage/settings.test.ts`（追加）**
 
 ```ts
   it('AgentConfig 默认 networkCaptureHeaders=redacted', async () => {
@@ -162,12 +162,12 @@ Expected: 全部 passed。
 > describe('settings', () => { beforeEach(() => fakeBrowser.reset()); /* 上面两个 it */ });
 > ```
 
-- [ ] **Step 6: 运行确认失败**
+- [x] **Step 6: 运行确认失败**
 
 Run: `npx vitest run tests/storage/settings.test.ts`
 Expected: FAIL —— `networkCaptureHeaders` 不存在。
 
-- [ ] **Step 7: 修改 `storage/settings.ts`**
+- [x] **Step 7: 修改 `storage/settings.ts`**
 
 `AgentConfig` 加字段：
 
@@ -187,12 +187,12 @@ export interface AgentConfig {
   agent: { screenshotPolicy: 'on-demand', confirmGate: true, networkCaptureHeaders: 'redacted' },
 ```
 
-- [ ] **Step 8: 运行确认通过**
+- [x] **Step 8: 运行确认通过**
 
 Run: `npx vitest run tests/storage/settings.test.ts tests/agent/tools/schemas.test.ts`
 Expected: 全部 passed。
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add storage/settings.ts agent/tools/schemas.ts tests/storage/settings.test.ts tests/agent/tools/schemas.test.ts
@@ -210,7 +210,7 @@ MAIN hook 与 ISOLATED content.ts 之间的 window 消息协议常量 + 三方�
 - Create: `shared/hook-bridge.ts`
 - Test: `tests/shared/hook-bridge.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/shared/hook-bridge.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/shared/hook-bridge.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -239,12 +239,12 @@ describe('hook-bridge 协议', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/shared/hook-bridge.test.ts`
 Expected: FAIL —— module not found。
 
-- [ ] **Step 3: 写 `shared/hook-bridge.ts`**
+- [x] **Step 3: 写 `shared/hook-bridge.ts`**
 
 ```ts
 // shared/hook-bridge.ts
@@ -287,12 +287,12 @@ export type HookWindowMsg =
   | { source: typeof HOOK_MSG; kind: 'network'; entry: HookNetEntry };
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/shared/hook-bridge.test.ts`
 Expected: 3 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add shared/hook-bridge.ts tests/shared/hook-bridge.test.ts
@@ -310,7 +310,7 @@ git commit -m "feat: hook-bridge window 桥协议常量 + 共享数据形状（C
 - Create: `observe/serialize.ts`
 - Test: `tests/observe/serialize.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/observe/serialize.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/observe/serialize.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -352,12 +352,12 @@ describe('serializeConsoleArgs', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/observe/serialize.test.ts`
 Expected: FAIL —— module not found。
 
-- [ ] **Step 3: 写 `observe/serialize.ts`**
+- [x] **Step 3: 写 `observe/serialize.ts`**
 
 ```ts
 // observe/serialize.ts
@@ -397,12 +397,12 @@ export function serializeConsoleArgs(args: unknown[]): string {
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/observe/serialize.test.ts`
 Expected: 7 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add observe/serialize.ts tests/observe/serialize.test.ts
@@ -420,7 +420,7 @@ git commit -m "feat: console 参数安全序列化（循环/DOM/函数/Error/截
 - Create: `observe/redact.ts`
 - Test: `tests/observe/redact.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/observe/redact.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/observe/redact.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -469,12 +469,12 @@ describe('redactHeaders', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/observe/redact.test.ts`
 Expected: FAIL —— module not found。
 
-- [ ] **Step 3: 写 `observe/redact.ts`**
+- [x] **Step 3: 写 `observe/redact.ts`**
 
 ```ts
 // observe/redact.ts
@@ -520,12 +520,12 @@ export function redactHeaders(
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/observe/redact.test.ts`
 Expected: 7 passed。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add observe/redact.ts tests/observe/redact.test.ts
@@ -543,7 +543,7 @@ SW 侧核心：per-tab console/network 环形缓冲；`ingestConsole`/`ingestHoo
 - Create: `background/observe-store.ts`
 - Test: `tests/background/observe-store.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/background/observe-store.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/background/observe-store.test.ts`**
 
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -660,12 +660,12 @@ describe('清理', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/background/observe-store.test.ts`
 Expected: FAIL —— module not found。
 
-- [ ] **Step 3: 写 `background/observe-store.ts`（数据逻辑部分）**
+- [x] **Step 3: 写 `background/observe-store.ts`（数据逻辑部分）**
 
 ```ts
 // background/observe-store.ts
@@ -718,7 +718,7 @@ function ring<T>(arr: T[]): void {
 export function resetStore(): void { tabs.clear(); }
 ```
 
-- [ ] **Step 4: 追加 console 读写 + 网络写入/关联/读 到 `background/observe-store.ts`**
+- [x] **Step 4: 追加 console 读写 + 网络写入/关联/读 到 `background/observe-store.ts`**
 
 ```ts
 // ---------- console ----------
@@ -844,17 +844,17 @@ export function clearTabNetwork(tabId: number): void {
 }
 ```
 
-- [ ] **Step 5: 运行确认通过**
+- [x] **Step 5: 运行确认通过**
 
 Run: `npx vitest run tests/background/observe-store.test.ts`
 Expected: 全部 passed。
 
-- [ ] **Step 6: 编译**
+- [x] **Step 6: 编译**
 
 Run: `npm run compile`
 Expected: 退出码 0。
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add background/observe-store.ts tests/background/observe-store.test.ts
@@ -873,7 +873,7 @@ git commit -m "feat: SW 观测环形缓冲（console 去重/network webRequest �
 - Modify: `entrypoints/background.ts`
 - Test: `tests/shared/messages-phase3b.test.ts`（新建）
 
-- [ ] **Step 1: 写失败测试 `tests/shared/messages-phase3b.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/shared/messages-phase3b.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -894,12 +894,12 @@ describe('Phase 3b 通知协议', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/shared/messages-phase3b.test.ts`
 Expected: FAIL —— 类型不存在（TS 编译错误）。
 
-- [ ] **Step 3: 修改 `shared/messages.ts`**
+- [x] **Step 3: 修改 `shared/messages.ts`**
 
 顶部 import 加 hook-bridge 数据形状：
 
@@ -926,7 +926,7 @@ export interface HookNetworkNotification {
 
 > 若代码库别处（除 background.ts 外）import 了 `CsToBgNotification`，用 `grep -rn "CsToBgNotification" --include=*.ts` 确认；本计划已知仅 background.ts 引用，Step 4 处理。
 
-- [ ] **Step 4: 修改 `entrypoints/background.ts`**
+- [x] **Step 4: 修改 `entrypoints/background.ts`**
 
 import 去掉 `CsToBgNotification`：
 
@@ -936,7 +936,7 @@ import type { CsReadyNotification, DebugExecRequest } from '../shared/messages';
 
 删掉 `NETLOG_PUSH` 的 stub handler 整块（`router.on('NETLOG_PUSH', ...)` 那段，Task 11 会加真实 HOOK_* handler）。
 
-- [ ] **Step 5: 同步现有 `tests/shared/messages.test.ts`**
+- [x] **Step 5: 同步现有 `tests/shared/messages.test.ts`**
 
 该文件 import 了将被删的 `CsToBgNotification` 并断言 `NETLOG_PUSH`。改 import（去掉 `type CsToBgNotification,`，加 `type HookNetworkNotification,`），并把「CsToBgNotification 类型可赋值」那条 `it` 整体替换为：
 
@@ -947,12 +947,12 @@ import type { CsReadyNotification, DebugExecRequest } from '../shared/messages';
   });
 ```
 
-- [ ] **Step 6: 运行确认通过 + 编译**
+- [x] **Step 6: 运行确认通过 + 编译**
 
 Run: `npx vitest run tests/shared/messages-phase3b.test.ts tests/shared/messages.test.ts && npm run compile`
 Expected: passed + 退出码 0。
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add shared/messages.ts entrypoints/background.ts tests/shared/messages.test.ts tests/shared/messages-phase3b.test.ts
@@ -970,7 +970,7 @@ git commit -m "feat: cs→bg 通知加 HOOK_CONSOLE/HOOK_NETWORK，删 NETLOG_PU
 - Create: `agent/tools/observe.ts`
 - Test: `tests/agent/tools/observe.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/agent/tools/observe.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/agent/tools/observe.test.ts`**
 
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -1036,12 +1036,12 @@ describe('观测三工具', () => {
 });
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/tools/observe.test.ts`
 Expected: FAIL —— module not found。
 
-- [ ] **Step 3: 写 `agent/tools/observe.ts`**
+- [x] **Step 3: 写 `agent/tools/observe.ts`**
 
 ```ts
 // agent/tools/observe.ts
@@ -1098,17 +1098,17 @@ export async function doGetNetworkRequest(
 }
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/tools/observe.test.ts`
 Expected: 7 passed。
 
-- [ ] **Step 5: 编译**
+- [x] **Step 5: 编译**
 
 Run: `npm run compile`
 Expected: 退出码 0。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add agent/tools/observe.ts tests/agent/tools/observe.test.ts
@@ -1126,7 +1126,7 @@ git commit -m "feat: 观测三工具执行器（读 SW 缓冲，get 读取时按
 - Modify: `agent/tools/registry.ts`
 - Test: `tests/agent/tools/registry.test.ts`（追加）
 
-- [ ] **Step 1: 追加失败测试到 `tests/agent/tools/registry.test.ts`**
+- [x] **Step 1: 追加失败测试到 `tests/agent/tools/registry.test.ts`**
 
 ```ts
   it('list_console_messages 豁免受限页预检（chrome:// 也返回）', async () => {
@@ -1151,12 +1151,12 @@ git commit -m "feat: 观测三工具执行器（读 SW 缓冲，get 读取时按
 
 > `registry.test.ts` 顶部若无 `import { fakeBrowser } from 'wxt/testing/fake-browser'` 与 `vi`，按现有文件已有的 import 复用（Phase 3a 已引入）。
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 Run: `npx vitest run tests/agent/tools/registry.test.ts`
 Expected: FAIL —— executeTool 未分发这三个工具（走到 `未知工具`）。
 
-- [ ] **Step 3: 修改 `agent/tools/registry.ts`**
+- [x] **Step 3: 修改 `agent/tools/registry.ts`**
 
 顶部 import 加：
 
@@ -1173,17 +1173,17 @@ import { doListConsoleMessages, doListNetworkRequests, doGetNetworkRequest } fro
   if (name === 'get_network_request') return doGetNetworkRequest(ctx.tabId, args as { requestId: string });
 ```
 
-- [ ] **Step 4: 运行确认通过**
+- [x] **Step 4: 运行确认通过**
 
 Run: `npx vitest run tests/agent/tools/registry.test.ts`
 Expected: 全部 passed（含 Phase 2/3a 原有用例）。
 
-- [ ] **Step 5: 编译**
+- [x] **Step 5: 编译**
 
 Run: `npm run compile`
 Expected: 退出码 0。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add agent/tools/registry.ts tests/agent/tools/registry.test.ts
@@ -1200,7 +1200,7 @@ manifest 注册的第二个 content script，`world:'MAIN'` + `document_start`�
 **Files:**
 - Create: `entrypoints/hook.content.ts`
 
-- [ ] **Step 1: 写 `entrypoints/hook.content.ts`（第一段：骨架 + post/backlog + console 包装）**
+- [x] **Step 1: 写 `entrypoints/hook.content.ts`（第一段：骨架 + post/backlog + console 包装）**
 
 ```ts
 // entrypoints/hook.content.ts
@@ -1274,7 +1274,7 @@ export default defineContentScript({
 });
 ```
 
-- [ ] **Step 2: 把 `// <PLACEHOLDER_NET_HOOK>` 替换为 fetch/XHR 包装（第二段）**
+- [x] **Step 2: 把 `// <PLACEHOLDER_NET_HOOK>` 替换为 fetch/XHR 包装（第二段）**
 
 ```ts
     // ---- 公共小工具 ----
@@ -1362,17 +1362,17 @@ export default defineContentScript({
     } as typeof XHR.send);
 ```
 
-- [ ] **Step 3: 编译**
+- [x] **Step 3: 编译**
 
 Run: `npm run compile`
 Expected: 退出码 0。
 
-- [ ] **Step 4: 构建确认第二个 content script 产出**
+- [x] **Step 4: 构建确认第二个 content script 产出**
 
 Run: `npm run build`
 Expected: 退出码 0；`.output/chrome-mv3/manifest.json` 的 `content_scripts` 出现 `world:"MAIN"` + `run_at:"document_start"` 的一项（WXT 由 `hook.content.ts` 的 `defineContentScript` 自动生成，无需改 wxt.config.ts）。可 `cat .output/chrome-mv3/manifest.json` 目视确认。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add entrypoints/hook.content.ts
@@ -1394,7 +1394,7 @@ ISOLATED content.ts 监听 MAIN hook 的 window 消息 → `runtime.sendMessage`
 
 > 无 content.ts 专属单测（本仓 content.ts 逻辑由 registry/shared 测试间接覆盖）；本 task 验证靠 `npm run compile`（exhaustive `never` 检查兜底）+ 既有测试全绿。
 
-- [ ] **Step 1: 从 `shared/messages.ts` 的 `BgToCsRequestMap` 删除两行**
+- [x] **Step 1: 从 `shared/messages.ts` 的 `BgToCsRequestMap` 删除两行**
 
 删掉这两项（其余保留）：
 
@@ -1403,7 +1403,7 @@ ISOLATED content.ts 监听 MAIN hook 的 window 消息 → `runtime.sendMessage`
   CONSOLE_READ: { types?: string[]; limit?: number };
 ```
 
-- [ ] **Step 2: 修改 `entrypoints/content.ts` 的 `route()`：删两个死 case**
+- [x] **Step 2: 修改 `entrypoints/content.ts` 的 `route()`：删两个死 case**
 
 删掉：
 
@@ -1414,7 +1414,7 @@ ISOLATED content.ts 监听 MAIN hook 的 window 消息 → `runtime.sendMessage`
 
 （`default` 的 `_exhaustive: never` 分支保留——删掉 map 项后它仍成立。）
 
-- [ ] **Step 3: 修改 `entrypoints/content.ts`：顶部 import + main() 内加 hook 中继**
+- [x] **Step 3: 修改 `entrypoints/content.ts`：顶部 import + main() 内加 hook 中继**
 
 顶部 import 追加：
 
@@ -1439,17 +1439,17 @@ import { HOOK_MSG, RELAY_READY, type HookWindowMsg } from '../shared/hook-bridge
     window.postMessage({ source: RELAY_READY }, '*');
 ```
 
-- [ ] **Step 4: 编译**
+- [x] **Step 4: 编译**
 
 Run: `npm run compile`
 Expected: 退出码 0（确认 BgToCsRequestMap 删项后 content.ts switch、registry、createRequest 全链路仍一致）。
 
-- [ ] **Step 5: 跑受影响测试**
+- [x] **Step 5: 跑受影响测试**
 
 Run: `npx vitest run tests/shared tests/agent/tools/registry.test.ts`
 Expected: 全部 passed。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add entrypoints/content.ts shared/messages.ts
@@ -1466,7 +1466,7 @@ git commit -m "feat: content.ts 中继 HOOK_* 到 SW + 发 RELAY_READY；删 EVA
 **Files:**
 - Modify: `entrypoints/background.ts`
 
-- [ ] **Step 1: 修改 `entrypoints/background.ts` —— import**
+- [x] **Step 1: 修改 `entrypoints/background.ts` —— import**
 
 顶部追加：
 
@@ -1479,7 +1479,7 @@ import {
 import type { ConsoleEntry, HookNetEntry } from '../shared/hook-bridge';
 ```
 
-- [ ] **Step 2: 在 `defineBackground(() => {...})` 内，`CS_READY` handler 之后加 HOOK_* handler**
+- [x] **Step 2: 在 `defineBackground(() => {...})` 内，`CS_READY` handler 之后加 HOOK_* handler**
 
 ```ts
   // MAIN hook 经 content.ts 中继来的观测：tabId 以 sender.tab.id 为准（payload 内不带）。
@@ -1497,7 +1497,7 @@ import type { ConsoleEntry, HookNetEntry } from '../shared/hook-bridge';
   });
 ```
 
-- [ ] **Step 3: 在 `defineBackground` 内加 `attachObservers()` 定义与调用**
+- [x] **Step 3: 在 `defineBackground` 内加 `attachObservers()` 定义与调用**
 
 在 `attachAgentPort(); router.attach();` 附近加调用 `attachObservers();`，并在文件内定义：
 
@@ -1521,17 +1521,17 @@ import type { ConsoleEntry, HookNetEntry } from '../shared/hook-bridge';
   }
 ```
 
-- [ ] **Step 4: 编译 + 构建**
+- [x] **Step 4: 编译 + 构建**
 
 Run: `npm run compile && npm run build`
 Expected: 两个退出码 0；`.output/chrome-mv3/manifest.json` 含 `webRequest` 权限（wxt.config.ts 已声明）。
 
-- [ ] **Step 5: 全量测试（确认接线未破坏既有）**
+- [x] **Step 5: 全量测试（确认接线未破坏既有）**
 
 Run: `npm test`
 Expected: 全绿（新增 observe-store/serialize/redact/observe/hook-bridge/messages-phase3b 各测试文件 + 原有全部）。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add entrypoints/background.ts
@@ -1547,12 +1547,12 @@ git commit -m "feat: background 接 HOOK_* 中继写缓冲 + webRequest 监听�
 - Modify: `docs/superpowers/plans/2026-09-01-ai-browser-extension-phase3b.md`（勾选状态）
 - Modify: `CLAUDE.md`（当前阶段：Phase 3b 完成）
 
-- [ ] **Step 1: 全量编译 + 测试 + 构建**
+- [x] **Step 1: 全量编译 + 测试 + 构建**
 
 Run: `npm run compile && npm test && npm run build`
 Expected: 三项全成功（tsc EXIT 0；vitest 全绿；build 产出 `.output/chrome-mv3/`，含 MAIN world `hook.content.js` + `content.js` 两个 content script）。
 
-- [ ] **Step 2: 手动冒烟（需真实 Chrome）**
+- [x] **Step 2: 手动冒烟（需真实 Chrome）**
 
 在 `chrome://extensions` 重新加载 `.output/chrome-mv3`，然后：
 
@@ -1564,13 +1564,13 @@ Expected: 三项全成功（tsc EXIT 0；vitest 全绿；build 产出 `.output/c
 6. 点一个 `target="_blank"` 链接后再「看新页面的网络请求」→ 验证 targetTab 已跟随（Phase 3a bug 修复的联动）+ 新页面观测正常。
 7. 在 `chrome://extensions` 输入「列出 console」→ 预期返回空列表（豁免受限页、不报错）。
 
-- [ ] **Step 3: 勾选本计划所有 checkbox；在文件末尾「Phase 3c handoff」小节记已知项**
+- [x] **Step 3: 勾选本计划所有 checkbox；在文件末尾「Phase 3c handoff」小节记已知项**
 
-- [ ] **Step 4: 更新 `CLAUDE.md` 的「当前阶段」段**
+- [x] **Step 4: 更新 `CLAUDE.md` 的「当前阶段」段**
 
 把 Phase 3b 完成的能力（MAIN world hook 基础设施 + list_console_messages + 网络双通道 list/get_network_requests，16→19）记入，`webRequest` 通道 + hook 通道说明。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/superpowers/plans/2026-09-01-ai-browser-extension-phase3b.md CLAUDE.md
@@ -1589,14 +1589,21 @@ git commit -m "chore: Phase 3b 收尾验证 + 文档更新（观测三工具落�
 
 ## 给 Phase 3c 的接口契约 + handoff（实现后填写）
 
-- **手动冒烟待做**（需真实 Chrome）：见 Task 12 Step 2 七项。
-- **已知降级**（转后续）：
+> **实现完成**：12 task 全绿（compile exit 0 / vitest 334 passed / build 产出 content.js + MAIN world hook.js）。以下为实施 + 两阶段评审中确认接受的降级与后续项。
+
+- **手动冒烟待做**（需真实 Chrome，尚未执行）：加载 `.output/chrome-mv3` → ①「看这个页面 console 有没有报错」得 list_console_messages 卡片含 error；②「列出这个页面发了哪些网络请求」得 list_network_requests 摘要；③对某 hasBody 条目「看那条 /api 的响应体」得 get_network_request，默认敏感头 `[REDACTED]`；④设置 `networkCaptureHeaders=full`（手改 storage）后再取，Authorization 原文；⑤点 target=_blank 链接后「看新页面网络请求」验 targetTab 跟随 + 新页观测；⑥在 `chrome://extensions`「列出 console」得空列表（豁免受限页、不报错）。
+- **已知降级 / 安全权衡**（评审确认接受，转后续）：
+  - **postMessage `'*'` 同源页内可被监听**（评审 I1）：hook 经 `window.postMessage(msg,'*')` 桥接，同页任意第三方脚本可 `addEventListener('message')` 读到 body/headers。这是 MAIN↔ISOLATED 双 world 桥的固有面（DOM CustomEvent/属性同样可被拦），非本实现疏漏；改 `location.origin` 对 null-origin 沙箱帧有破坏风险且挡不住同源页内监听，故未改。后续如需闭合需换页面脚本无法监听的通道（不存在于双 world 模型）。
+  - **console.toString 反爬指纹**（评审 I3）：monkeypatch 后 `console.log.toString()` 非 `[native code]`，可能被 Cloudflare/DataDome 类反爬脚本判为异常。绕过（Proxy / 改 Function.prototype.toString）自身脆弱，未做，显式接受。
+  - **hookKeys 长命 SPA 无界增长**（评审 Task 5 Important）：`consoleIds` 有淘汰后重建、`hookKeys` 无（merged 条目不留 hook key，无法从环形数组重建）。按 tab 生命期有界、导航即清；如需封死，后续可在 NetEntry 存 hookKey 后重建，或给 hookKeys 加上限。
+  - **翻页迟到 flush 陈旧条目**（评审 Task 11 前瞻）：main_frame `clearTabNetwork` 后，旧页 hook 的在途 flush 可能把旧 loadNonce/时间戳条目落进新页网络缓冲。flush-before-clear 不可实现（SW 无法感知垂死页在途 flush），接受为 best-effort。
   - headers 只覆盖 JS 发起请求（webRequest 无 `extraHeaders`）；文档/img/script 等只有元数据。
+  - 请求 body 仅抓 string 型（Blob/FormData/URLSearchParams/ReadableStream 及 `fetch(new Request(...))` 的 body 不抓）。
   - body 关联 best-effort（同 url+method 短时多次请求可能错配，±2s 窗口兜底）。
-  - SW 重启丢缓冲（不持久化）。
-  - 大流量页环形缓冲 200 条上限会淘汰早期条目。
-  - `rel="noopener"` 打开的新标签无 `openerTabId` → Phase 3a 的 targetTab 跟随探测不到（本计划不处理，记入此处；如需覆盖，后续加「交互前后 tab 差集」兜底）。
+  - SW 重启丢缓冲（不持久化）；大流量页环形缓冲 200 条上限淘汰早期条目。
+  - `rel="noopener"` 打开的新标签无 `openerTabId` → Phase 3a 的 targetTab 跟随探测不到（如需覆盖，后续加「交互前后 tab 差集」兜底）。
   - `networkCaptureHeaders` 全量开关暂无设置页 UI（走 storage，留 UI 后续）。
+  - 敏感头脱敏集（`observe/redact.ts` SENSITIVE_HEADERS）可补 `x-amz-security-token`/`x-goog-api-key` 等云厂商凭证头（评审 Task 4 建议）。
 - **深度诊断模式**（方案 B / debugger+CDP）留作后续可选增强：observe-store 的 per-tab 缓冲 + 关联逻辑已模块化，可作为第二数据源并入同一缓冲。
 
 
