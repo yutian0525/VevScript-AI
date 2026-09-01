@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildContext, truncateMessages } from '../../agent/context';
-import type { ChatMessage } from '../../agent/provider/types';
+import type { ChatMessage, ContentPart } from '../../agent/provider/types';
 
 const u = (c: string): ChatMessage => ({ role: 'user', content: c });
 
@@ -49,5 +49,32 @@ describe('context 组装', () => {
     expect(kept[0]!.role).toBe('user'); // 保留的首条
     expect(kept.slice(1).some((m) => m.role === 'tool')).toBe(false);
     expect(kept[kept.length - 1]!.content).toBe('继续');
+  });
+});
+
+const img = (tag: string): ChatMessage => ({
+  role: 'user',
+  content: [{ type: 'text', text: tag }, { type: 'image_url', imageUrl: `data:img,${tag}` }] as ContentPart[],
+});
+
+describe('历史图片裁剪', () => {
+  it('保留最近 2 条图片，更早的图片替换为文本占位', () => {
+    const history = [img('a'), img('b'), img('c'), img('d')];
+    const msgs = buildContext(history, { url: '', title: '' });
+    const body = msgs.slice(1); // 去掉 system
+    const hasImage = (m: ChatMessage) => Array.isArray(m.content) && m.content.some((p) => p.type === 'image_url');
+    const imgCount = body.filter(hasImage).length;
+    expect(imgCount).toBe(2); // 只剩 c、d 带图
+    const a = body[0]!;
+    const aParts = a.content as ContentPart[];
+    expect(aParts.some((p) => p.type === 'image_url')).toBe(false);
+    expect(aParts.some((p) => p.type === 'text' && p.text.includes('历史截图'))).toBe(true);
+  });
+
+  it('图片数 <= 2 时不动', () => {
+    const history = [img('a'), img('b')];
+    const msgs = buildContext(history, { url: '', title: '' });
+    const withImg = msgs.filter((m) => Array.isArray(m.content) && m.content.some((p) => p.type === 'image_url'));
+    expect(withImg).toHaveLength(2);
   });
 });

@@ -1,6 +1,6 @@
 // agent/context.ts
 // 上下文组装（设计 §2、§8）：system prompt + 页面信息 + 简单截断。
-import type { ChatMessage } from './provider/types';
+import type { ChatMessage, ContentPart } from './provider/types';
 
 export const SYSTEM_PROMPT = `你是一个能操控浏览器的 AI 助手。你可以调用工具查看和操作当前网页。
 
@@ -32,10 +32,29 @@ export function truncateMessages(history: ChatMessage[], keepRecent: number): Ch
   return [first, ...recent];
 }
 
+const KEEP_IMAGES = 2;
+
+/** 只保留最近 keep 条含图片消息的图片 part，更早的原地替换为文本占位（防 base64 撑爆上下文）。 */
+export function trimImageParts(messages: ChatMessage[], keep = KEEP_IMAGES): ChatMessage[] {
+  const imageMsgIdx = messages
+    .map((m, i) => (Array.isArray(m.content) && m.content.some((p) => p.type === 'image_url') ? i : -1))
+    .filter((i) => i >= 0);
+  if (imageMsgIdx.length <= keep) return messages;
+  const stripBefore = new Set(imageMsgIdx.slice(0, imageMsgIdx.length - keep));
+  return messages.map((m, i) => {
+    if (!stripBefore.has(i) || !Array.isArray(m.content)) return m;
+    const parts: ContentPart[] = m.content.map((p) =>
+      p.type === 'image_url' ? { type: 'text', text: '[历史截图已省略]' } : p,
+    );
+    return { ...m, content: parts };
+  });
+}
+
 export function buildContext(history: ChatMessage[], page: PageInfo, keepRecent = 60): ChatMessage[] {
   const pageBlock = page.url
     ? `\n\n当前页面：\n- URL: ${page.url}\n- 标题: ${page.title}`
     : '';
   const system: ChatMessage = { role: 'system', content: SYSTEM_PROMPT + pageBlock };
-  return [system, ...truncateMessages(history, keepRecent)];
+  const trimmed = trimImageParts(truncateMessages(history, keepRecent));
+  return [system, ...trimmed];
 }
