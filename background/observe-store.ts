@@ -22,7 +22,6 @@ export interface NetEntry {
   responseBody?: string;
   truncated?: boolean;
   source: 'webRequest' | 'hook' | 'merged';
-  _hookMerged?: boolean;        // 内部：已被某条 hook 富化（防重复关联）
 }
 
 interface TabBuf {
@@ -105,12 +104,11 @@ export function ingestHookNet(tabId: number, entries: HookNetEntry[]): void {
     if (b.hookKeys.has(key)) continue; // 双投递（backlog flush + live）去重
     b.hookKeys.add(key);
     const match = b.network.find(
-      (n) => n.source !== 'hook' && !n._hookMerged &&
+      (n) => n.source === 'webRequest' &&
         n.method === h.method && n.url === h.url &&
         Math.abs(n.ts - h.ts) <= MATCH_WINDOW_MS,
     );
     if (match) {
-      match._hookMerged = true;
       match.source = 'merged';
       if (h.status != null && match.status == null) match.status = h.status;
       if (h.endTs != null && match.endTs == null) match.endTs = h.endTs;
