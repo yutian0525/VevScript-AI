@@ -533,3 +533,17 @@ body {
 .scripts-badge--signal { color: var(--signal-ink); border-color: var(--signal); background: var(--signal-wash); }
 .scripts-warnline { font-size: 11px; color: var(--warn); margin: 2px 0 8px; }
 .scripts-footer { display: flex; gap: 6px; margin-top: 10px; }
+.script-editor {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--sunken);
+  width: 100%;
+  min-height: 240px;
+  max-height: 40vh;
+  overflow: auto;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px;
+  color: var(--ink);
+}
