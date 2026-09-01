@@ -2,9 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { TOOL_SCHEMAS } from '../../../agent/tools/schemas';
 
 describe('工具 schema', () => {
-  it('恰好 9 个 Phase 2 工具', () => {
+  it('恰好 16 个工具（Phase 2 的 9 + Phase 3a 的 7）', () => {
     const names = TOOL_SCHEMAS.map((s) => s.function.name).sort();
-    expect(names).toEqual(['click', 'fill', 'fill_form', 'hover', 'navigate_page', 'press_key', 'scroll', 'take_snapshot', 'wait_for']);
+    expect(names).toEqual([
+      'click', 'close_page', 'evaluate_script', 'fill', 'fill_form', 'hover',
+      'http_request', 'list_pages', 'navigate_page', 'new_page', 'press_key',
+      'scroll', 'select_page', 'take_screenshot', 'take_snapshot', 'wait_for',
+    ]);
   });
 
   it('全部是 function 类型且有描述', () => {
@@ -26,5 +30,25 @@ describe('工具 schema', () => {
     const nav = TOOL_SCHEMAS.find((s) => s.function.name === 'navigate_page')!;
     const params = nav.function.parameters as { properties: Record<string, { enum?: string[] }> };
     expect(params.properties.type!.enum).toEqual(['url', 'back', 'forward', 'reload']);
+  });
+
+  it('http_request 的 url 必填、method 枚举', () => {
+    const t = TOOL_SCHEMAS.find((s) => s.function.name === 'http_request')!;
+    const p = t.function.parameters as { properties: Record<string, { enum?: string[] }>; required: string[] };
+    expect(p.required).toContain('url');
+    expect(p.properties.method!.enum).toEqual(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD']);
+  });
+
+  it('evaluate_script 的 function 必填、world 枚举', () => {
+    const t = TOOL_SCHEMAS.find((s) => s.function.name === 'evaluate_script')!;
+    const p = t.function.parameters as { properties: Record<string, { enum?: string[] }>; required: string[] };
+    expect(p.required).toContain('function');
+    expect(p.properties.world!.enum).toEqual(['main', 'isolated']);
+  });
+
+  it('new_page 的 url 必填', () => {
+    const t = TOOL_SCHEMAS.find((s) => s.function.name === 'new_page')!;
+    const p = t.function.parameters as { required: string[] };
+    expect(p.required).toContain('url');
   });
 });
