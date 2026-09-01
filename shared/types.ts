@@ -16,3 +16,48 @@ export interface TabInfo {
 
 /** 快照里的元素 uid（content script 分配，见设计 §3） */
 export type Uid = number;
+
+// ---- Phase 4：脚本池（spec §4）----
+
+export type ScriptRunAt = 'document_start' | 'document_end' | 'document_idle';
+export type ScriptWorld = 'USER_SCRIPT' | 'MAIN';
+export type ScriptSource = 'user' | 'agent' | 'import';
+
+/** TM 导入保留的展示性元数据（不参与注入） */
+export interface UserScriptMeta {
+  namespace?: string;
+  version?: string;
+  author?: string;
+  description?: string;
+  /** @grant 记录；仅用于「需要 GM_*（本扩展不支持）」警告徽标 */
+  grants?: string[];
+  noframes?: boolean;
+}
+
+export interface UserScript {
+  id: string;
+  name: string;
+  enabled: boolean;
+  matches: string[];
+  code: string;
+  runAt: ScriptRunAt;
+  world: ScriptWorld;
+  source: ScriptSource;
+  meta?: UserScriptMeta;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** 列表/摘要形状（无 code） */
+export interface ScriptSummary {
+  id: string;
+  name: string;
+  matches: string[];
+  enabled: boolean;
+  source: ScriptSource;
+  runAt: ScriptRunAt;
+  world: ScriptWorld;
+  updatedAt: number;
+  description?: string;
+  hasGrants: boolean;
+}
