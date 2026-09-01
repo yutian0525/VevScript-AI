@@ -5,6 +5,7 @@ import type { Provider, ChatParams, StreamEvent, ToolCall, Usage } from './provi
 
 export interface TurnResult {
   text: string;
+  reasoning?: string;
   toolCalls: ToolCall[];
   finishReason?: string;
   usage?: Usage;
@@ -13,6 +14,7 @@ export interface TurnResult {
 
 export interface RunTurnHooks {
   onTextDelta?: (text: string) => void;
+  onReasoningDelta?: (text: string) => void;
 }
 
 export interface RunTurnHandle extends Promise<TurnResult> {
@@ -22,6 +24,7 @@ export interface RunTurnHandle extends Promise<TurnResult> {
 export function runTurn(provider: Provider, params: ChatParams, hooks: RunTurnHooks): RunTurnHandle {
   let cancel = () => {};
   let text = '';
+  let reasoning = '';
   let error: string | undefined;
   const agg = new Map<number, { id?: string; name?: string; args: string }>();
 
@@ -31,6 +34,11 @@ export function runTurn(provider: Provider, params: ChatParams, hooks: RunTurnHo
 
     const handle = provider.streamChat(params, (e: StreamEvent) => {
       switch (e.type) {
+        case 'reasoning-delta':
+          reasoning += e.text;
+          // 消费者回调异常不应打断流处理（否则会被上游误标为流错误并丢后续增量）
+          try { hooks.onReasoningDelta?.(e.text); } catch { /* 忽略消费者回调异常 */ }
+          break;
         case 'text-delta':
           text += e.text;
           // 消费者回调异常不应打断流处理（否则会被上游误标为流错误并丢后续增量）
@@ -60,7 +68,7 @@ export function runTurn(provider: Provider, params: ChatParams, hooks: RunTurnHo
             if (call.id) seen.add(call.id);
             toolCalls.push(call);
           }
-          settle({ text, toolCalls, finishReason: e.finishReason, usage: e.usage, error });
+          settle({ text, reasoning: reasoning || undefined, toolCalls, finishReason: e.finishReason, usage: e.usage, error });
           break;
         }
       }

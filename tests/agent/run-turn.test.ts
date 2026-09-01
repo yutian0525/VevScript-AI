@@ -116,4 +116,27 @@ describe('runTurn', () => {
     const r = await runTurn(p, params(), {});
     expect(r.toolCalls.map((t) => t.id)).toEqual(['c0', 'c1']);
   });
+
+  it('聚合 reasoning-delta 为 TurnResult.reasoning，onReasoningDelta 实时回调', async () => {
+    const p = scriptedProvider([
+      { type: 'reasoning-delta', text: '第一步' },
+      { type: 'reasoning-delta', text: '第二步' },
+      { type: 'text-delta', text: '结论' },
+      { type: 'message-done', finishReason: 'stop' },
+    ]);
+    const deltas: string[] = [];
+    const r = await runTurn(p, params(), { onReasoningDelta: (t) => deltas.push(t) });
+    expect(deltas).toEqual(['第一步', '第二步']);
+    expect(r.reasoning).toBe('第一步第二步');
+    expect(r.text).toBe('结论');
+  });
+
+  it('无 reasoning 时 TurnResult.reasoning 为 undefined', async () => {
+    const p = scriptedProvider([
+      { type: 'text-delta', text: 'x' },
+      { type: 'message-done', finishReason: 'stop' },
+    ]);
+    const r = await runTurn(p, params(), {});
+    expect(r.reasoning).toBeUndefined();
+  });
 });
