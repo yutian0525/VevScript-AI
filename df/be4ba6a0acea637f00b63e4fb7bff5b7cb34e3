@@ -1,0 +1,27 @@
+agent/loop-guards.ts
+  s_ebb62919eaca73::t_aa3256e493b79e 6-9,11-13
+tests/storage/settings.test.ts
+  s_ebb62919eaca73::t_fbb5efd2af545b 60,64
+  s_ebb62919eaca73::t_70f00836335eb2 27,30,34,36,41-42,44
+storage/settings.ts
+  s_ebb62919eaca73::t_dfd52571096cfb 11
+  s_ebb62919eaca73::t_08506710cc4895 23
+tests/agent/loop-guards.test.ts
+  s_ebb62919eaca73::t_dae36140f15b35 43,45-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "dfbe4ba6a0acea637f00b63e4fb7bff5b7cb34e3",
+  "prompts": {},
+  "sessions": {
+    "s_ebb62919eaca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768c773-7396-499c-8912-b6810d153c56",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
