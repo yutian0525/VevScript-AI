@@ -1,0 +1,31 @@
+docs/superpowers/plans/2026-09-01-reasoning-and-tool-cards.md
+  s_6fe7ed92def0ff::t_14abd9fd80891e 829-921,1046
+  s_6fe7ed92def0ff::t_17a5c0308857c2 714-782,1048
+  s_6fe7ed92def0ff::t_e7afc593e52af9 1-38
+  s_6fe7ed92def0ff::t_9f94e8f815f549 569-656,1050
+  s_6fe7ed92def0ff::t_84aa8d9c8cd20c 474-568,1051
+  s_6fe7ed92def0ff::t_403cfd9d97dedf 180-275,1054
+  s_6fe7ed92def0ff::t_b4a4835480db9e 922-964,1045
+  s_6fe7ed92def0ff::t_280ca4dee406cf 657-713,1049
+  s_6fe7ed92def0ff::t_bdea2bd1672223 276-352,1053
+  s_6fe7ed92def0ff::t_5ff55e93b7e7b9 39-179,1055
+  s_6fe7ed92def0ff::t_9488ae96274982 965-1044
+  s_6fe7ed92def0ff::t_3c342280ad4c1e 353-473,1052
+  s_6fe7ed92def0ff::t_f843f02b935bd6 783-828,1047
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "049bcd76791473e124b1a23290ebe8c8e17950dd",
+  "prompts": {},
+  "sessions": {
+    "s_6fe7ed92def0ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5aec521b-da47-4488-b4f7-f815e77cf1dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
