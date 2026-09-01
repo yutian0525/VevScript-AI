@@ -1,0 +1,24 @@
+docs/superpowers/plans/2026-09-01-snapshot-full-content-tree.md
+  s_6fe7ed92def0ff::t_6b946cca1ef5cf 1-25
+  s_6fe7ed92def0ff::t_307feff1f9250d 114-230
+  s_6fe7ed92def0ff::t_2f119bba40ae37 231-332
+  s_6fe7ed92def0ff::t_712da01febf7c3 333-598
+  s_6fe7ed92def0ff::t_5c2b0526cf02ff 26-113
+  s_6fe7ed92def0ff::t_bdd85bb9979238 599-662
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "62679ab1d69663726c687a79f99b1051be7295c7",
+  "prompts": {},
+  "sessions": {
+    "s_6fe7ed92def0ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5aec521b-da47-4488-b4f7-f815e77cf1dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
