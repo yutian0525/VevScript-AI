@@ -3,6 +3,7 @@ import { MessageRouter } from '../background/router';
 import type { CsToBgNotification, CsReadyNotification, DebugExecRequest } from '../shared/messages';
 import { attachAgentPort, notifyCsReady } from '../background/agent-port';
 import { handleDebugExec } from '../background/debug-exec';
+import { initScriptsModule } from '../background/scripts';
 
 export default defineBackground(() => {
   const router = new MessageRouter();
@@ -34,6 +35,7 @@ export default defineBackground(() => {
   });
 
   attachAgentPort();
+  initScriptsModule(router);
   router.attach();
   console.log('[ai-browser-ext] background started');
 });

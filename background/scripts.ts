@@ -3,10 +3,12 @@
 // UI（sidepanel）与 AI 工具（agent/tools/script-pool.ts）都走本模块导出的 handler——单一数据源。
 // confirmGate 拦截位：下阶段确认门控在本文件各写 handler 入口处统一拦截（pendingOps + 批准卡）。
 
-import type { ScriptsRuntimeEntry } from '../shared/messages';
-import type { UserScript } from '../shared/types';
-import { listScripts } from '../storage/scripts';
-import { matchUrl } from '../shared/match-pattern';
+import type { MessageRouter } from './router';
+import type { ScriptInput, ScriptPatch, ScriptsRuntimeEntry } from '../shared/messages';
+import type { ScriptRunAt, ScriptWorld, UserScript } from '../shared/types';
+import { deleteScript, getScript, listScripts, saveScript, toSummary, MAX_CODE_LENGTH } from '../storage/scripts';
+import { isValidMatchPattern, matchUrl } from '../shared/match-pattern';
+import { parseUserScript } from '../shared/userscript-meta';
 
 export const ENGINE_UNAVAILABLE_MSG = '脚本注入引擎不可用：请在 chrome://extensions 开启开发者模式或升级 Chrome 120+';
 
@@ -54,4 +56,271 @@ export function dropTab(tabId: number): void {
 
 export function getRuntimeSnapshot(): ScriptsRuntimeEntry[] {
   return [...runtimeMap.values()];
+}
+
+// ---------- userScripts API 薄封装（Chrome 120+；Firefox 形状不同，本阶段 Chrome-only）----------
+
+interface RegisterUserScript {
+  id: string;
+  matches: string[];
+  js: Array<{ code: string }>;
+  runAt: ScriptRunAt;
+  world: ScriptWorld;
+  persistAcrossSessions?: boolean;
+}
+
+interface UserScriptsApi {
+  register(scripts: RegisterUserScript[]): Promise<void>;
+  update(scripts: RegisterUserScript[]): Promise<void>;
+  unregister(ids?: string[]): Promise<void>;
+  getScripts(): Promise<RegisterUserScript[]>;
+}
+
+function userScripts(): UserScriptsApi | undefined {
+  return (browser as unknown as { userScripts?: UserScriptsApi }).userScripts;
+}
+
+export function engineAvailable(): boolean {
+  return userScripts() != null;
+}
+
+async function requireEngine(): Promise<UserScriptsApi> {
+  const api = userScripts();
+  if (!api) throw new Error(ENGINE_UNAVAILABLE_MSG);
+  return api;
+}
+
+// ---------- 校验（spec §6.1：非法 pattern 拒绝并列出条目；编排层允许空 matches）----------
+
+const RUN_ATS: ScriptRunAt[] = ['document_start', 'document_end', 'document_idle'];
+const WORLDS: ScriptWorld[] = ['USER_SCRIPT', 'MAIN'];
+
+export function validateScriptFields(fields: {
+  name?: string; code?: string; matches?: string[]; runAt?: unknown; world?: unknown;
+}): string[] {
+  const errors: string[] = [];
+  if (fields.name !== undefined && !fields.name.trim()) errors.push('name 不能为空');
+  if (fields.code !== undefined) {
+    if (!fields.code.trim()) errors.push('code 不能为空');
+    else if (fields.code.length > MAX_CODE_LENGTH) errors.push(`code 超过上限（${MAX_CODE_LENGTH} 字符）`);
+  }
+  if (fields.matches !== undefined) {
+    const bad = fields.matches.filter((p) => !isValidMatchPattern(p));
+    if (bad.length > 0) errors.push(`非法 match pattern：${bad.join('、')}`);
+  }
+  if (fields.runAt !== undefined && !RUN_ATS.includes(fields.runAt as ScriptRunAt)) {
+    errors.push(`非法 runAt：${String(fields.runAt)}`);
+  }
+  if (fields.world !== undefined && !WORLDS.includes(fields.world as ScriptWorld)) {
+    errors.push(`非法 world：${String(fields.world)}`);
+  }
+  return errors;
+}
+
+// ---------- 注册同步（spec §6.1：期望注册集 vs getScripts diff）----------
+
+function toRegisterDetails(s: UserScript): RegisterUserScript {
+  return {
+    id: s.id,
+    matches: s.matches,
+    js: [{ code: s.code }],
+    runAt: s.runAt,
+    world: s.world,
+    persistAcrossSessions: true,
+  };
+}
+
+function sameRegistration(r: RegisterUserScript, s: UserScript): boolean {
+  return r.runAt === s.runAt && r.world === s.world
+    && JSON.stringify(r.matches) === JSON.stringify(s.matches)
+    && r.js?.[0]?.code === s.code;
+}
+
+export async function syncRegistrations(): Promise<void> {
+  const api = await requireEngine();
+  const all = await listScripts();
+  // 空 matches 的脚本永不注册（无匹配规则 = 不运行，spec §5.1）
+  const desired = all.filter((s) => s.enabled && s.matches.length > 0);
+  const desiredIds = new Set(desired.map((s) => s.id));
+
+  let registered: RegisterUserScript[] = [];
+  try {
+    registered = await api.getScripts();
+  } catch {
+    registered = []; // getScripts 漂移异常时按空处理 → 全量重注册自愈
+  }
+  const registeredMap = new Map(registered.map((r) => [r.id, r]));
+
+  const missing = desired.filter((s) => !registeredMap.has(s.id));
+  if (missing.length > 0) await api.register(missing.map(toRegisterDetails));
+
+  const stale = registered.filter((r) => !desiredIds.has(r.id)).map((r) => r.id);
+  if (stale.length > 0) await api.unregister(stale);
+
+  const drifted = desired.filter((s) => {
+    const r = registeredMap.get(s.id);
+    return r != null && !sameRegistration(r, s);
+  });
+  for (const s of drifted) {
+    try {
+      await api.update([toRegisterDetails(s)]);
+    } catch {
+      // update 打在未注册 id 上（极端漂移）→ 降级为先注销再注册
+      await api.unregister([s.id]);
+      await api.register([toRegisterDetails(s)]);
+    }
+  }
+}
+
+/** 写库后的注册同步：引擎可用 → sync；不可用/失败 → 不抛错，返回给调用方展示的 warnings。 */
+async function syncBestEffort(): Promise<string[]> {
+  if (!engineAvailable()) return [`${ENGINE_UNAVAILABLE_MSG}（脚本已保存，但未注册运行）`];
+  try {
+    await syncRegistrations();
+    return [];
+  } catch (e) {
+    return [`已保存但注册失败：${e instanceof Error ? e.message : String(e)}`];
+  }
+}
+
+function newId(): string {
+  return typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+// ---------- CRUD 编排（UI 与 AI 工具共用；confirmGate 拦截位见文件头注释）----------
+
+export async function handleCreate(input: ScriptInput): Promise<{ script: UserScript; warnings: string[] }> {
+  const errors = validateScriptFields(input);
+  if (errors.length > 0) throw new Error(errors.join('；'));
+  const ts = Date.now();
+  const script: UserScript = {
+    id: newId(),
+    name: input.name.trim(),
+    enabled: input.enabled ?? true,
+    matches: input.matches,
+    code: input.code,
+    runAt: input.runAt ?? 'document_idle',
+    world: input.world ?? 'USER_SCRIPT',
+    source: input.source ?? 'user',
+    createdAt: ts,
+    updatedAt: ts,
+  };
+  await saveScript(script);
+  const warnings = await syncBestEffort();
+  await recomputeAllTabs().catch(() => {});
+  return { script, warnings };
+}
+
+export async function handleUpdate(id: string, patch: ScriptPatch): Promise<UserScript> {
+  await requireEngine(); // spec §6.1：改注册类操作引擎不可用直接报固定文案
+  const existing = await getScript(id);
+  if (!existing) throw new Error(`脚本不存在：${id}`);
+  const errors = validateScriptFields(patch);
+  if (errors.length > 0) throw new Error(errors.join('；'));
+  const next: UserScript = { ...existing, ...patch, updatedAt: Date.now() };
+  await saveScript(next);
+  await syncRegistrations();
+  await recomputeAllTabs().catch(() => {});
+  return next;
+}
+
+export async function handleDelete(id: string): Promise<void> {
+  await requireEngine();
+  await deleteScript(id);
+  await syncRegistrations();
+  await recomputeAllTabs().catch(() => {});
+}
+
+export async function handleSetEnabled(id: string, enabled: boolean): Promise<UserScript> {
+  await requireEngine();
+  const existing = await getScript(id);
+  if (!existing) throw new Error(`脚本不存在：${id}`);
+  const next: UserScript = { ...existing, enabled, updatedAt: Date.now() };
+  await saveScript(next);
+  await syncRegistrations();
+  await recomputeAllTabs().catch(() => {});
+  return next;
+}
+
+export async function handleImport(source: string, filename?: string): Promise<{ script: UserScript; warnings: string[] }> {
+  const parsed = parseUserScript(source, filename);
+  const errors = validateScriptFields({ name: parsed.fields.name, code: parsed.fields.code, matches: parsed.fields.matches });
+  if (errors.length > 0) throw new Error(errors.join('；'));
+  const ts = Date.now();
+  const script: UserScript = {
+    id: newId(),
+    name: parsed.fields.name,
+    enabled: true,
+    matches: parsed.fields.matches,
+    code: parsed.fields.code,
+    runAt: parsed.fields.runAt,
+    world: 'USER_SCRIPT',
+    source: 'import',
+    meta: Object.keys(parsed.fields.meta).length > 0 ? parsed.fields.meta : undefined,
+    createdAt: ts,
+    updatedAt: ts,
+  };
+  await saveScript(script);
+  const warnings = [...parsed.warnings, ...(await syncBestEffort())];
+  await recomputeAllTabs().catch(() => {});
+  return { script, warnings };
+}
+
+// ---------- 消息接线（spec §7）：8 个 handler + tabs 监听 + 启动自愈 ----------
+
+export function initScriptsModule(router: MessageRouter): void {
+  router.on('SCRIPTS_LIST', async () => ({
+    ok: true,
+    data: { scripts: (await listScripts()).map(toSummary), engineAvailable: engineAvailable() },
+  }));
+
+  router.on('SCRIPTS_GET', async (msg) => {
+    const id = (msg as unknown as { id: string }).id;
+    const script = await getScript(id);
+    if (!script) return { ok: false, error: `脚本不存在：${id}` };
+    return { ok: true, data: { script } };
+  });
+
+  router.on('SCRIPTS_CREATE', async (msg) => {
+    const { script, warnings } = await handleCreate((msg as unknown as { input: ScriptInput }).input);
+    return { ok: true, data: { script, warnings } };
+  });
+
+  router.on('SCRIPTS_UPDATE', async (msg) => {
+    const { id, patch } = msg as unknown as { id: string; patch: ScriptPatch };
+    return { ok: true, data: { script: await handleUpdate(id, patch) } };
+  });
+
+  router.on('SCRIPTS_DELETE', async (msg) => {
+    await handleDelete((msg as unknown as { id: string }).id);
+    return { ok: true };
+  });
+
+  router.on('SCRIPTS_SET_ENABLED', async (msg) => {
+    const { id, enabled } = msg as unknown as { id: string; enabled: boolean };
+    return { ok: true, data: { script: await handleSetEnabled(id, enabled) } };
+  });
+
+  router.on('SCRIPTS_IMPORT', async (msg) => {
+    const { source, filename } = msg as unknown as { source: string; filename?: string };
+    const { script, warnings } = await handleImport(source, filename);
+    return { ok: true, data: { script, warnings } };
+  });
+
+  router.on('SCRIPTS_GET_RUNTIME', async () => ({ ok: true, data: { entries: getRuntimeSnapshot() } }));
+
+  // 运行态跟踪：url 变化或加载完成时重算该 tab；关闭时清理
+  browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.url || changeInfo.status === 'complete') {
+      void recomputeTab(tabId, tab.url ?? '');
+    }
+  });
+  browser.tabs.onRemoved.addListener((tabId) => dropTab(tabId));
+
+  // 启动自愈：persistAcrossSessions 理论自持久，扩展更新/注册漂移时对齐；
+  // 引擎不可用时静默（UI 靠 SCRIPTS_LIST.engineAvailable 显示警示条）。
+  void syncRegistrations().catch(() => {});
+  void recomputeAllTabs().catch(() => {});
 }
