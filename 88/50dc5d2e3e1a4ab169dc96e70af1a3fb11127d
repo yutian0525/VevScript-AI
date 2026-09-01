@@ -1,0 +1,34 @@
+tests/background/agent-port.test.ts
+  s_3900119a55d6ce::t_7823595cd035dd 30-34
+  s_3900119a55d6ce::t_cd3a2c0d7088b0 3
+tests/agent/loop.test.ts
+  s_3900119a55d6ce::t_90de0228dc4e8e 41-79
+components/chat/ChatView.tsx
+  s_3900119a55d6ce::t_00414d6a063212 111-118
+  s_3900119a55d6ce::t_5dc0c744211079 155-163
+  s_3900119a55d6ce::t_aaa0e6932b58d6 3
+agent/loop.ts
+  s_3900119a55d6ce::t_18f1237014e9e8 108
+  s_3900119a55d6ce::t_ff5a437064ace2 25,28,32,34,37,42,48,53-61
+  s_3900119a55d6ce::t_1d789127788c8c 104
+  s_3900119a55d6ce::t_baa3b88fc5e2d4 159-164
+  s_3900119a55d6ce::t_aa8380e0ffad19 62
+background/agent-port.ts
+  s_3900119a55d6ce::t_34bc3129744d61 65-72,84-90,92,106-107,111,113,120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "8850dc5d2e3e1a4ab169dc96e70af1a3fb11127d",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
