@@ -14,7 +14,14 @@ export interface LoopDeps {
   executeTool: (name: string, args: Record<string, unknown>, tabId: number, signal: AbortSignal) => Promise<ToolResult>;
   getPageInfo: (tabId: number) => Promise<PageInfo>;
   emit: (msg: PortMsgToPanel) => void;
+  /** 交互类工具（click/press_key）执行后，探测是否新开了以 openerTabId 为父的标签页。
+   *  命中则激活它、等其 content script 就绪，返回新 tabId 供 loop 切换 targetTab；否则 undefined。
+   *  可选（不注入时不追踪，便于测试）。 */
+  resolveOpenedTab?: (toolName: string, openerTabId: number, signal: AbortSignal) => Promise<number | undefined>;
 }
+
+/** 可能触发浏览器打开新标签（target=_blank / window.open）的交互类工具。 */
+const TAB_OPENING_TOOLS = new Set(['click', 'press_key']);
 
 export interface LoopArgs {
   tabId: number;
@@ -116,6 +123,13 @@ async function drive(startTabId: number, deps: LoopDeps, guardState: GuardState,
       if (r.ok && tc.name === 'close_page') {
         const d = r.data as { closed?: number } | undefined;
         if (d?.closed === targetTab) targetTab = startTabId;
+      }
+      // 交互类工具（click/press_key）可能通过 target=_blank / window.open 打开并聚焦新标签，
+      // 而工具自身返回 {ok:true} 不带 targetTab。此处探测：若新开了以当前目标为父的标签，
+      // 就把 targetTab 切过去（否则后续 snapshot/evaluate 仍打在旧标签上——本次修复的 bug）。
+      if (r.ok && deps.resolveOpenedTab && TAB_OPENING_TOOLS.has(tc.name)) {
+        const opened = await deps.resolveOpenedTab(tc.name, targetTab, signal);
+        if (typeof opened === 'number') targetTab = opened;
       }
 
       // 截图注入（设计 §5.2）：tool 消息占位 + 追加 user 图片消息

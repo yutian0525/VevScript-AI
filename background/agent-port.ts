@@ -43,6 +43,24 @@ async function getPageInfo(tabId: number): Promise<{ url: string; title: string 
   return { url: tab?.url ?? '', title: tab?.title ?? '' };
 }
 
+/** 交互后探测新开标签：找以 openerTabId 为父、当前激活的标签
+ *  （target=_blank / window.open 默认前台打开并聚焦，openerTabId 指向发起点击的标签）。
+ *  命中则等其 content script 就绪、返回其 id 供 loop 切换 targetTab；否则 undefined。
+ *  多候选（该标签历史开过多个子标签）取最新（tab id 最大，Chrome 单调递增）。
+ *  查全量再 JS 过滤，不依赖 query 的 openerTabId 过滤保真度。 */
+export async function resolveOpenedTab(
+  openerTabId: number,
+  waitReady: (tabId: number) => Promise<void>,
+): Promise<number | undefined> {
+  const tabs = await browser.tabs.query({}).catch(() => [] as Browser.tabs.Tab[]);
+  const candidates = tabs.filter((t) => t.id != null && t.openerTabId === openerTabId && t.active);
+  if (candidates.length === 0) return undefined;
+  const newest = candidates.reduce((a, b) => ((b.id ?? 0) > (a.id ?? 0) ? b : a));
+  const id = newest.id!;
+  await waitReady(id).catch(() => {});
+  return id;
+}
+
 function makeDeps(
   provider: Provider,
   port: Pick<Browser.runtime.Port, 'postMessage'>,
@@ -52,6 +70,7 @@ function makeDeps(
     executeTool: (name, args, tabId, signal) =>
       executeTool(name, args, { tabId, sessionId: 'main', signal, waitForReady: (t) => waitForCsReady(t) }),
     getPageInfo,
+    resolveOpenedTab: (_name, openerTabId) => resolveOpenedTab(openerTabId, (t) => waitForCsReady(t)),
     emit: (m: PortMsgToPanel) => {
       try {
         port.postMessage(m);

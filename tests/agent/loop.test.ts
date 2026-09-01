@@ -16,11 +16,12 @@ function queuedProvider(scripts: StreamEvent[][]): Provider {
   };
 }
 
-const deps = (provider: Provider, exec: LoopDeps['executeTool']): LoopDeps => ({
+const deps = (provider: Provider, exec: LoopDeps['executeTool'], extra?: Partial<LoopDeps>): LoopDeps => ({
   provider,
   executeTool: exec,
   getPageInfo: async () => ({ url: 'https://x.com', title: 'X' }),
   emit: vi.fn(),
+  ...extra,
 });
 
 describe('agent loop', () => {
@@ -227,6 +228,54 @@ describe('agent loop', () => {
     });
     await runAgentLoop({ tabId: 20, sessionId: 's', userMessage: 'x' }, deps(provider, exec));
     expect(calls[2]).toBe(20);
+  });
+
+  it('click 打开新标签（target=_blank）后 targetTab 跟随，后续工具作用于新标签', async () => {
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":3}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'tool-call-delta', index: 0, id: 'c2', name: 'take_snapshot', argsDelta: '{}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: '完成' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const calls: number[] = [];
+    const exec = vi.fn<LoopDeps['executeTool']>().mockImplementation(async (_name, _args, tabId) => {
+      calls.push(tabId);
+      return { ok: true, data: { text: 'snap' } };
+    });
+    // 交互后探测：click 打开了以 targetTab(50) 为 opener 的新标签 888
+    const resolveOpenedTab = vi.fn<NonNullable<LoopDeps['resolveOpenedTab']>>()
+      .mockImplementation(async (name) => (name === 'click' ? 888 : undefined));
+    await runAgentLoop({ tabId: 50, sessionId: 's', userMessage: 'x' }, deps(provider, exec, { resolveOpenedTab }));
+    expect(calls[0]).toBe(50);  // click 作用于启动标签
+    expect(calls[1]).toBe(888); // take_snapshot 跟随到新标签
+    expect(resolveOpenedTab).toHaveBeenCalledWith('click', 50, expect.any(AbortSignal));
+  });
+
+  it('click 未开新标签（resolveOpenedTab 返回 undefined）时 targetTab 不变', async () => {
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":3}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'tool-call-delta', index: 0, id: 'c2', name: 'take_snapshot', argsDelta: '{}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: '完成' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const calls: number[] = [];
+    const exec = vi.fn<LoopDeps['executeTool']>().mockImplementation(async (_name, _args, tabId) => {
+      calls.push(tabId);
+      return { ok: true, data: { text: 'snap' } };
+    });
+    const resolveOpenedTab = vi.fn<NonNullable<LoopDeps['resolveOpenedTab']>>().mockResolvedValue(undefined);
+    await runAgentLoop({ tabId: 60, sessionId: 's', userMessage: 'x' }, deps(provider, exec, { resolveOpenedTab }));
+    expect(calls[0]).toBe(60);
+    expect(calls[1]).toBe(60); // 无新标签，仍在启动标签
+  });
+
+  it('click 失败时不探测新标签（resolveOpenedTab 不被调用）', async () => {
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":3}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: '换个方法' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: false, error: 'stale' });
+    const resolveOpenedTab = vi.fn<NonNullable<LoopDeps['resolveOpenedTab']>>().mockResolvedValue(undefined);
+    await runAgentLoop({ tabId: 70, sessionId: 's', userMessage: 'x' }, deps(provider, exec, { resolveOpenedTab }));
+    expect(resolveOpenedTab).not.toHaveBeenCalled();
   });
 
   it('take_screenshot 成功后注入 user 图片消息 + emit 带缩略图', async () => {
