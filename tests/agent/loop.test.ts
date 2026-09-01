@@ -154,4 +154,55 @@ describe('agent loop', () => {
     expect(asst.reasoning).toBe('需要看页面');
     expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', callId: 'c1', ok: true, output: '[1] button 完整快照文本' }));
   });
+
+  it('new_page 后 targetTab 更新，后续工具作用于新标签', async () => {
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'new_page', argsDelta: '{"url":"https://n.com"}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'tool-call-delta', index: 0, id: 'c2', name: 'take_snapshot', argsDelta: '{}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: '完成' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const calls: number[] = [];
+    const exec = vi.fn<LoopDeps['executeTool']>().mockImplementation(async (name, _args, tabId) => {
+      calls.push(tabId);
+      if (name === 'new_page') return { ok: true, data: { targetTab: 555, url: 'https://n.com' } };
+      return { ok: true, data: { text: 'snap' } };
+    });
+    await runAgentLoop({ tabId: 10, sessionId: 's', userMessage: 'x' }, deps(provider, exec));
+    expect(calls[0]).toBe(10);
+    expect(calls[1]).toBe(555);
+  });
+
+  it('close_page 关掉 targetTab 后回落启动标签', async () => {
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'select_page', argsDelta: '{"tabId":777}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'tool-call-delta', index: 0, id: 'c2', name: 'close_page', argsDelta: '{"tabId":777}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'tool-call-delta', index: 0, id: 'c3', name: 'take_snapshot', argsDelta: '{}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: 'ok' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const calls: number[] = [];
+    const exec = vi.fn<LoopDeps['executeTool']>().mockImplementation(async (name, _args, tabId) => {
+      calls.push(tabId);
+      if (name === 'select_page') return { ok: true, data: { targetTab: 777, url: 'https://s.com' } };
+      if (name === 'close_page') return { ok: true, data: { closed: 777 } };
+      return { ok: true, data: { text: 'snap' } };
+    });
+    await runAgentLoop({ tabId: 20, sessionId: 's', userMessage: 'x' }, deps(provider, exec));
+    expect(calls[2]).toBe(20);
+  });
+
+  it('take_screenshot 成功后注入 user 图片消息 + emit 带缩略图', async () => {
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'take_screenshot', argsDelta: '{}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: '看到了' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true, data: { screenshot: 'data:image/jpeg;base64,ZZZ' } });
+    const d = deps(provider, exec);
+    await runAgentLoop({ tabId: 30, sessionId: 's', userMessage: 'x' }, d);
+    const session = await getSession(30);
+    const userImg = session.messages.find((m) => m.role === 'user' && Array.isArray(m.content));
+    expect(userImg).toBeDefined();
+    const parts = userImg!.content as Array<{ type: string; imageUrl?: string }>;
+    expect(parts.some((p) => p.type === 'image_url' && p.imageUrl === 'data:image/jpeg;base64,ZZZ')).toBe(true);
+    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', image: 'data:image/jpeg;base64,ZZZ' }));
+  });
 });

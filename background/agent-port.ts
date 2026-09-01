@@ -46,11 +46,11 @@ async function getPageInfo(tabId: number): Promise<{ url: string; title: string 
 function makeDeps(
   provider: Provider,
   port: Pick<Browser.runtime.Port, 'postMessage'>,
-  tabId: number,
+  startTabId: number,
 ): LoopDeps {
   return {
     provider,
-    executeTool: (name, args, signal) =>
+    executeTool: (name, args, tabId, signal) =>
       executeTool(name, args, { tabId, sessionId: 'main', signal, waitForReady: (t) => waitForCsReady(t) }),
     getPageInfo,
     emit: (m: PortMsgToPanel) => {
