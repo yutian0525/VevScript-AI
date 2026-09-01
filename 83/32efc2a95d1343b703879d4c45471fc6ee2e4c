@@ -1,0 +1,21 @@
+tests/shared/hook-bridge.test.ts
+  s_3900119a55d6ce::t_9d5e65bfe74535 1-24
+shared/hook-bridge.ts
+  s_3900119a55d6ce::t_b6e6a84d988e45 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "8332efc2a95d1343b703879d4c45471fc6ee2e4c",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
