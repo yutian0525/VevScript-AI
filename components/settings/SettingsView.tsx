@@ -78,25 +78,6 @@ export function SettingsView() {
         </div>
       </section>
 
-      <section style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 14, fontWeight: 600, margin: '0 0 12px' }}>Agent</h2>
-        <div style={fieldStyle}>
-          <label>最大步数（工具调用循环上限）</label>
-          <Input
-            type="number"
-            value={settings.agent.maxSteps}
-            min={1}
-            max={100}
-            onChange={(e) =>
-              setSettings({
-                ...settings,
-                agent: { ...settings.agent, maxSteps: Number(e.target.value) || 25 },
-              })
-            }
-          />
-        </div>
-      </section>
-
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <Button variant="primary" onClick={handleSave}>
           保存

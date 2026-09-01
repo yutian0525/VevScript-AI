@@ -8,7 +8,7 @@ export interface ProviderConfig {
 }
 
 export interface AgentConfig {
-  maxSteps: number; // agent loop 步数上限，默认 25
+  // 注：不设"最大步数上限"——agent loop 靠自然终止 + 熔断阀（见 agent/loop-guards.ts），不数步数。
   screenshotPolicy: 'never' | 'on-demand';
   confirmGate: boolean; // 脚本池确认门控，默认 true
 }
@@ -20,7 +20,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   provider: { baseUrl: '', apiKey: '', model: '' },
-  agent: { maxSteps: 25, screenshotPolicy: 'on-demand', confirmGate: true },
+  agent: { screenshotPolicy: 'on-demand', confirmGate: true },
 };
 
 const KEY = 'local:settings';

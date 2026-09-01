@@ -40,10 +40,11 @@ describe('熔断阀', () => {
     expect(checkGuards(s, DEFAULT_GUARD_CONFIG).stop).toBe(false);
   });
 
-  it('步数超软预算 → 暂停', () => {
+  it('无步数上限：大量不同的成功调用不触发暂停', () => {
     let s = initGuardState();
-    for (let i = 0; i < 50; i++) s = recordTurn(s, [tc('scroll', `{"amount":${i}}`)], [ok]);
-    expect(checkGuards(s, DEFAULT_GUARD_CONFIG)).toMatchObject({ stop: true, reason: expect.stringContaining('步') });
+    // 100 轮各不相同、均成功的调用——不打转、不报错，就不应因"步数"被暂停
+    for (let i = 0; i < 100; i++) s = recordTurn(s, [tc('scroll', `{"amount":${i}}`)], [ok]);
+    expect(checkGuards(s, DEFAULT_GUARD_CONFIG).stop).toBe(false);
   });
 
   it('累计 token 超预算 → 暂停', () => {

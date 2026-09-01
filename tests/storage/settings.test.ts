@@ -24,25 +24,24 @@ describe('settings storage', () => {
 
   it('段内 merge：未提供的字段保留旧值', async () => {
     await saveSettings({ provider: { baseUrl: 'https://a.com/v1', apiKey: 'k', model: 'm' } });
-    await saveSettings({ agent: { maxSteps: 50 } });
+    await saveSettings({ agent: { confirmGate: false } });
     const s = await getSettings();
     expect(s.provider.baseUrl).toBe('https://a.com/v1');
-    expect(s.agent.maxSteps).toBe(50);
+    expect(s.agent.confirmGate).toBe(false);
   });
 
   it('agent 段 merge：未提供字段保留默认值', async () => {
-    await saveSettings({ agent: { maxSteps: 50 } });
+    await saveSettings({ agent: { confirmGate: false } });
     const s = await getSettings();
-    expect(s.agent.maxSteps).toBe(50);
-    expect(s.agent.confirmGate).toBe(true);
+    expect(s.agent.confirmGate).toBe(false);
     expect(s.agent.screenshotPolicy).toBe('on-demand');
   });
 
   it('部分保存 agent 段不重置同段其他字段（段内 merge 回归）', async () => {
-    await saveSettings({ agent: { confirmGate: false, maxSteps: 10 } });
-    await saveSettings({ agent: { maxSteps: 20 } });
+    await saveSettings({ agent: { confirmGate: false, screenshotPolicy: 'never' } });
+    await saveSettings({ agent: { screenshotPolicy: 'on-demand' } });
     const s = await getSettings();
-    expect(s.agent).toEqual({ maxSteps: 20, screenshotPolicy: 'on-demand', confirmGate: false });
+    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false });
   });
 
   it('saveSettings 持久化到 local:settings（fakeBrowser storage 驱动）', async () => {
@@ -58,10 +57,10 @@ describe('settings storage', () => {
     // 模拟旧版本写入的数据（如未来新增 agent 字段后，旧存量缺该字段）
     await storage.setItem('local:settings', {
       provider: { baseUrl: 'https://old.com/v1' },
-      agent: { maxSteps: 10 },
+      agent: { confirmGate: false },
     });
     const s = await getSettings();
     expect(s.provider).toEqual({ baseUrl: 'https://old.com/v1', apiKey: '', model: '' });
-    expect(s.agent).toEqual({ maxSteps: 10, screenshotPolicy: 'on-demand', confirmGate: true });
+    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false });
   });
 });
