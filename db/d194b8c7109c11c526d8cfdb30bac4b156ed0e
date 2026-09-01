@@ -1,0 +1,22 @@
+tests/agent/tools/observe.test.ts
+  s_3900119a55d6ce::t_dce9c6ae6df53d 1-53,55-62
+  s_3900119a55d6ce::t_60c060285fdda3 54
+agent/tools/observe.ts
+  s_3900119a55d6ce::t_0caa783538f0f4 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "dbd194b8c7109c11c526d8cfdb30bac4b156ed0e",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
