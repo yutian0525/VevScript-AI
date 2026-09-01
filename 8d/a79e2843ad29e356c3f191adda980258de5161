@@ -1,0 +1,22 @@
+components/chat/ChatView.tsx
+  s_6fe7ed92def0ff::t_f0f5f2fe0e5d66 146-148,160-172,174-175,177-196,198,200,202-217,222-246
+  s_6fe7ed92def0ff::t_d28f8f2fcd6cc8 3,8
+  s_6fe7ed92def0ff::t_ac94e84b4bf053 115
+  s_6fe7ed92def0ff::t_92e960f1762ba8 42-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "8da79e2843ad29e356c3f191adda980258de5161",
+  "prompts": {},
+  "sessions": {
+    "s_6fe7ed92def0ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5aec521b-da47-4488-b4f7-f815e77cf1dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
