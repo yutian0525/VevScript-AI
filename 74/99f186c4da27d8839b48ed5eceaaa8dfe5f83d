@@ -1,0 +1,22 @@
+agent/tools/evaluate.ts
+  s_3900119a55d6ce::t_845f32bf75a96c 6-11,15-19,21-22,26-55,62
+  s_3900119a55d6ce::t_8966b06eb31160 20,23-25
+tests/agent/tools/evaluate.test.ts
+  s_3900119a55d6ce::t_7543dbbdda9dc3 3-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7499f186c4da27d8839b48ed5eceaaa8dfe5f83d",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
