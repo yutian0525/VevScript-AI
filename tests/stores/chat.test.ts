@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useChat } from '../../stores/chat';
+import type { ChatMessage } from '../../agent/provider/types';
 
 describe('chat store', () => {
   beforeEach(() => useChat.getState().reset());
@@ -69,5 +70,81 @@ describe('chat store', () => {
     const tools = useChat.getState().messages.filter((m) => m.role === 'tool' && m.callId === 'c1');
     expect(tools).toHaveLength(1);
     expect(tools[0]!.status).toBe('done');
+  });
+
+  it('reasoning-delta 累积到 assistant 项并标记 thinking', () => {
+    useChat.getState().applyEvent({ type: 'reasoning-delta', text: '想' });
+    useChat.getState().applyEvent({ type: 'reasoning-delta', text: '一下' });
+    const last = useChat.getState().messages.at(-1)!;
+    expect(last).toMatchObject({ role: 'assistant', reasoning: '想一下', thinking: true });
+    expect(last.text).toBeUndefined();
+  });
+
+  it('首个 text-delta 自动收起思考块（thinking→false）并累积正文', () => {
+    useChat.getState().applyEvent({ type: 'reasoning-delta', text: '推理' });
+    useChat.getState().applyEvent({ type: 'text-delta', text: '正' });
+    useChat.getState().applyEvent({ type: 'text-delta', text: '文' });
+    const last = useChat.getState().messages.at(-1)!;
+    expect(last).toMatchObject({ role: 'assistant', reasoning: '推理', thinking: false, text: '正文' });
+    expect(useChat.getState().messages).toHaveLength(1);
+  });
+
+  it('出正文后再来 reasoning-delta 另起新思考项（不回灌已收起的项）', () => {
+    useChat.getState().applyEvent({ type: 'reasoning-delta', text: '先想' });
+    useChat.getState().applyEvent({ type: 'text-delta', text: '答案' });
+    // 正文已出、思考块已收起（thinking=false）；此时又来 reasoning-delta
+    useChat.getState().applyEvent({ type: 'reasoning-delta', text: '再想' });
+    const msgs = useChat.getState().messages;
+    expect(msgs).toHaveLength(2);
+    expect(msgs[0]).toMatchObject({ role: 'assistant', reasoning: '先想', text: '答案', thinking: false });
+    expect(msgs[1]).toMatchObject({ role: 'assistant', reasoning: '再想', thinking: true });
+  });
+
+  it('无 reasoning 时 text-delta 仍新建 assistant 项（回归保护）', () => {
+    useChat.getState().applyEvent({ type: 'text-delta', text: '直接答' });
+    const last = useChat.getState().messages.at(-1)!;
+    expect(last).toMatchObject({ role: 'assistant', text: '直接答' });
+  });
+
+  it('tool-end 带 output 存进对应卡片', () => {
+    useChat.getState().applyEvent({ type: 'tool-start', name: 'take_snapshot', args: '{}', callId: 'c1' });
+    useChat.getState().applyEvent({ type: 'tool-end', name: 'take_snapshot', callId: 'c1', ok: true, summary: '成功', output: '[1] button 全文' });
+    const tool = useChat.getState().messages.find((m) => m.callId === 'c1')!;
+    expect(tool).toMatchObject({ status: 'done', ok: true, output: '[1] button 全文' });
+  });
+
+  it('toggleExpand 切换指定项 expanded', () => {
+    useChat.getState().applyEvent({ type: 'tool-start', name: 'click', args: '{}', callId: 'c1' });
+    useChat.getState().toggleExpand(0);
+    expect(useChat.getState().messages[0]!.expanded).toBe(true);
+    useChat.getState().toggleExpand(0);
+    expect(useChat.getState().messages[0]!.expanded).toBe(false);
+  });
+
+  it('loadFromStorage 映射历史（含 reasoning + 工具卡片）', () => {
+    const history: ChatMessage[] = [
+      { role: 'user', content: '看页面' },
+      { role: 'assistant', content: '', reasoning: '要先截图', toolCalls: [{ id: 'c1', name: 'take_snapshot', arguments: '{}' }] },
+      { role: 'tool', toolCallId: 'c1', name: 'take_snapshot', content: '[1] button' },
+      { role: 'assistant', content: '看到了一个按钮', reasoning: '分析完毕' },
+    ];
+    useChat.getState().loadFromStorage(history);
+    const items = useChat.getState().messages;
+    expect(items[0]).toMatchObject({ role: 'user', text: '看页面' });
+    expect(items.find((m) => m.reasoning === '要先截图')).toBeTruthy();
+    const toolItem = items.find((m) => m.callId === 'c1')!;
+    expect(toolItem).toMatchObject({ role: 'tool', name: 'take_snapshot', status: 'done', ok: true, output: '[1] button' });
+    const finalAsst = items.at(-1)!;
+    expect(finalAsst).toMatchObject({ role: 'assistant', text: '看到了一个按钮', reasoning: '分析完毕', thinking: false });
+  });
+
+  it('loadFromStorage 里失败的 tool 消息标记 ok=false', () => {
+    const history: ChatMessage[] = [
+      { role: 'assistant', content: '', toolCalls: [{ id: 'c9', name: 'click', arguments: '{"uid":9}' }] },
+      { role: 'tool', toolCallId: 'c9', name: 'click', content: '错误：stale uid' },
+    ];
+    useChat.getState().loadFromStorage(history);
+    const toolItem = useChat.getState().messages.find((m) => m.callId === 'c9')!;
+    expect(toolItem.ok).toBe(false);
   });
 });
