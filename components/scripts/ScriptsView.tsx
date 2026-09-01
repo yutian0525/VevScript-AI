@@ -1,10 +1,35 @@
 // components/scripts/ScriptsView.tsx
-import { PageShell } from '../ui/PageShell';
+// 脚本池路由壳：ui.scriptId 非空 = 详情页；挂载时拉数据 + 订阅运行态广播（spec §7）。
+import { useEffect } from 'react';
+import { ScriptsListView } from './ScriptsListView';
+import { ScriptDetailView } from './ScriptDetailView';
+import { useScripts } from '../../stores/scripts';
+import { useUi } from '../../stores/ui';
+import type { ScriptsRuntimeEvent } from '../../shared/messages';
 
 export function ScriptsView() {
-  return (
-    <PageShell title="脚本池" eyebrow="LIBRARY">
-      <div className="chat__empty">脚本池将在 Phase 4 实现。</div>
-    </PageShell>
-  );
+  const scriptId = useUi((s) => s.scriptId);
+
+  useEffect(() => {
+    void useScripts.getState().refresh();
+    const onMessage = (msg: unknown) => {
+      const m = msg as { type?: string };
+      if (m?.type === 'SCRIPTS_RUNTIME') {
+        useScripts.getState().applyRuntimeEvent(msg as ScriptsRuntimeEvent);
+      }
+    };
+    browser.runtime.onMessage.addListener(onMessage);
+    // 切换浏览器标签页 → 更新 activeTabId；该 tab 无运行态条目（SW 重启丢失）时重拉兜底
+    const onActivated = ({ tabId }: { tabId: number }) => {
+      useScripts.getState().setActiveTab(tabId);
+      if (useScripts.getState().runtimeEntries[tabId] == null) void useScripts.getState().refresh();
+    };
+    browser.tabs.onActivated.addListener(onActivated);
+    return () => {
+      browser.runtime.onMessage.removeListener(onMessage);
+      browser.tabs.onActivated.removeListener(onActivated);
+    };
+  }, []);
+
+  return scriptId ? <ScriptDetailView id={scriptId} /> : <ScriptsListView />;
 }
