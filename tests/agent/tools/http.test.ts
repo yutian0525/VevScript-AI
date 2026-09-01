@@ -38,7 +38,7 @@ describe('http_request', () => {
     vi.stubGlobal('fetch', mockFetch(200, { 'content-type': 'text/plain' }, big));
     const r = await doHttpRequest({ url: 'https://x.com' });
     const d = (r as { data: { body: string; truncated?: boolean } }).data;
-    expect(d.body.length).toBeLessThanOrEqual(65_536 + 50);
+    expect(d.body.length).toBe(65_536);
     expect(d.truncated).toBe(true);
   });
 
@@ -59,5 +59,18 @@ describe('http_request', () => {
     const r = await doHttpRequest({ url: 'https://x.com' });
     expect(r.ok).toBe(false);
     expect((r as { error: string }).error).toContain('ECONNREFUSED');
+  });
+
+  it('外部 signal 已 abort 时中止', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((_u, opts) => {
+      return new Promise((_res, rej) => {
+        (opts.signal as AbortSignal).addEventListener('abort', () => rej(new Error('aborted')));
+      });
+    }));
+    const ctrl = new AbortController();
+    ctrl.abort();
+    const r = await doHttpRequest({ url: 'https://x.com' }, ctrl.signal);
+    expect(r.ok).toBe(false);
+    expect((r as { error: string }).error).toContain('中止');
   });
 });
