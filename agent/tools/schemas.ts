@@ -27,12 +27,11 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     type: 'function',
     function: {
       name: 'click',
-      description: '点击快照中 uid 指定的元素。可选双击、可选点击后自动附带新快照。',
+      description: '点击快照中 uid 指定的元素。可选双击。点击后如需查看页面变化，请另行调用 take_snapshot。',
       parameters: obj(
         {
           uid: { type: 'number', description: '来自最近一次 take_snapshot 的元素 uid' },
           dblClick: { type: 'boolean', description: '是否双击' },
-          includeSnapshot: { type: 'boolean', description: '点击后是否返回新快照（默认 false）' },
         },
         ['uid'],
       ),

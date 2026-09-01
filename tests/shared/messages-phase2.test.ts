@@ -8,9 +8,11 @@ describe('Phase 2 协议扩展', () => {
     expect(req.payload.elements[0]!.value).toBe('a');
   });
 
-  it('CLICK 带 includeSnapshot 可选字段', () => {
-    const req = createRequest('CLICK', { uid: 2, includeSnapshot: true });
-    expect(req.payload.includeSnapshot).toBe(true);
+  it('CLICK 请求可构造（uid + 可选 dblClick）', () => {
+    const req = createRequest('CLICK', { uid: 2, dblClick: true });
+    expect(req.type).toBe('CLICK');
+    expect(req.payload.uid).toBe(2);
+    expect(req.payload.dblClick).toBe(true);
   });
 
   it('CS_READY 通知类型可赋值', () => {

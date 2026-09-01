@@ -7,7 +7,7 @@ import type { ToolResult, Uid } from './types';
 
 export interface BgToCsRequestMap {
   SNAPSHOT: { verbose?: boolean };
-  CLICK: { uid: Uid; dblClick?: boolean; includeSnapshot?: boolean };
+  CLICK: { uid: Uid; dblClick?: boolean };
   FILL: { uid: Uid; value: string };
   FILL_FORM: { elements: Array<{ uid: Uid; value: string }> };
   HOVER: { uid: Uid };

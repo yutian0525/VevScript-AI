@@ -5,7 +5,7 @@ import type { BgToCsRequest, CsResponse, CsReadyNotification } from '../shared/m
 import type { ToolResult } from '../shared/types';
 import { buildSnapshot } from '../content/snapshot/build';
 import { doClick, doFill, doFillForm, doHover, doScroll, doPressKey } from '../content/interact';
-import { waitForText, waitForSettle } from '../content/wait';
+import { waitForText } from '../content/wait';
 
 /** 纯处理逻辑（可单测）：一条 BgToCsRequest → CsResponse。 */
 export async function handleCsRequest(req: BgToCsRequest): Promise<CsResponse> {
@@ -19,14 +19,7 @@ async function route(req: BgToCsRequest): Promise<ToolResult> {
       if (!document.body) return { ok: false, error: '当前帧无 document.body（可能是非 HTML 文档），无法快照' };
       return { ok: true, data: buildSnapshot(document.body) };
     }
-    case 'CLICK': {
-      const r = doClick(req.payload);
-      if (r.ok && req.payload.includeSnapshot && document.body) {
-        await waitForSettle(); // 等点击引发的 DOM 反应稳定，再快照（否则拿到点击前的旧树）
-        return { ok: true, data: { snapshot: buildSnapshot(document.body).text } };
-      }
-      return r;
-    }
+    case 'CLICK': return doClick(req.payload);
     case 'FILL': return doFill(req.payload);
     case 'FILL_FORM': return doFillForm(req.payload);
     case 'HOVER': return doHover(req.payload);

@@ -27,13 +27,14 @@ describe('content 消息处理器', () => {
     expect(resp.result.ok).toBe(false);
   });
 
-  it('CLICK includeSnapshot=true 时 data 附带新快照', async () => {
+  it('CLICK 命中 uid 时成功（不再附带快照）', async () => {
     await handleCsRequest(createRequest('SNAPSHOT', {}));
     let uid = 0;
     for (let i = 1; i < 100; i++) if (resolveUid(i)?.textContent === '登录') { uid = i; break; }
-    const resp = await handleCsRequest(createRequest('CLICK', { uid, includeSnapshot: true }));
+    const resp = await handleCsRequest(createRequest('CLICK', { uid }));
     expect(resp.result.ok).toBe(true);
-    expect((resp.result as { ok: true; data: { snapshot?: string } }).data.snapshot).toBeDefined();
+    // 点击不再返回快照——查看页面变化需另行 take_snapshot
+    expect((resp.result as { ok: true; data?: { snapshot?: string } }).data?.snapshot).toBeUndefined();
   });
 
   it('correlationId 透传', async () => {
