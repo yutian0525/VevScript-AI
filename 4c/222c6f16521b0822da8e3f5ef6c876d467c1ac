@@ -1,0 +1,30 @@
+docs/superpowers/plans/2026-09-01-ai-browser-extension-phase3a.md
+  s_3900119a55d6ce::t_eddc8db31a725e 1057-1155,1383
+  s_3900119a55d6ce::t_482e8e5b5b4bde 54-192,1390
+  s_3900119a55d6ce::t_87e24bfe9609f9 616-765,1386
+  s_3900119a55d6ce::t_bba56355507330 1324-1380
+  s_3900119a55d6ce::t_649d6c45cd2596 478-615,1387
+  s_3900119a55d6ce::t_5d734c1f18d7fa 1156-1239,1382
+  s_3900119a55d6ce::t_79f38632404ea8 193-346,1389
+  s_3900119a55d6ce::t_ad4eec44c71c1c 766-883,1385
+  s_3900119a55d6ce::t_a246bea4888cb3 884-1056,1384
+  s_3900119a55d6ce::t_d469b7d83647f5 347-477,1388
+  s_3900119a55d6ce::t_e1ab025b5f8b9d 1240-1323,1381
+  s_3900119a55d6ce::t_b8f1443afaf26d 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "4c222c6f16521b0822da8e3f5ef6c876d467c1ac",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
