@@ -3,7 +3,7 @@
 // 设计决策：request/response 模式 + correlation id（设计 §4.4）；
 // 例外：cs→bg 的 fire-and-forget 通知（见 CsToBgNotification）。
 
-import type { ToolResult, Uid } from './types';
+import type { ScriptRunAt, ScriptSource, ScriptSummary, ScriptWorld, ToolResult, Uid } from './types';
 
 export interface BgToCsRequestMap {
   SNAPSHOT: { verbose?: boolean };
@@ -101,3 +101,54 @@ export type PortMsgToPanel =
   | { type: 'done'; finalText: string }
   | { type: 'error'; message: string }
   | { type: 'state'; status: 'idle' | 'running' | 'paused'; messageCount: number };
+
+// ---------- Phase 4：脚本池（sidepanel → bg request/response，走 MessageRouter；spec §7）----------
+
+export interface ScriptInput {
+  name: string;
+  code: string;
+  matches: string[];
+  runAt?: ScriptRunAt;
+  world?: ScriptWorld;
+  enabled?: boolean;
+  /** 创建来源：UI 默认 user；AI 工具传 agent；导入走 SCRIPTS_IMPORT（固定 import） */
+  source?: ScriptSource;
+}
+
+export interface ScriptPatch {
+  name?: string;
+  code?: string;
+  matches?: string[];
+  runAt?: ScriptRunAt;
+  world?: ScriptWorld;
+  enabled?: boolean;
+}
+
+export interface ScriptsRuntimeEntry {
+  tabId: number;
+  url: string;
+  scriptIds: string[];
+}
+
+export type ScriptsRequest =
+  | { type: 'SCRIPTS_LIST' }
+  | { type: 'SCRIPTS_GET'; id: string }
+  | { type: 'SCRIPTS_CREATE'; input: ScriptInput }
+  | { type: 'SCRIPTS_UPDATE'; id: string; patch: ScriptPatch }
+  | { type: 'SCRIPTS_DELETE'; id: string }
+  | { type: 'SCRIPTS_SET_ENABLED'; id: string; enabled: boolean }
+  | { type: 'SCRIPTS_IMPORT'; source: string; filename?: string }
+  | { type: 'SCRIPTS_GET_RUNTIME' };
+
+/** bg → 扩展页面广播（fire-and-forget）：某 tab 运行集变化（spec §6.2「预期注入」语义） */
+export interface ScriptsRuntimeEvent {
+  type: 'SCRIPTS_RUNTIME';
+  payload: ScriptsRuntimeEntry;
+}
+
+/** SCRIPTS_LIST 响应 data 形状 */
+export interface ScriptsListData {
+  scripts: ScriptSummary[];
+  /** chrome.userScripts 可用性（false → UI 顶部警示条） */
+  engineAvailable: boolean;
+}
