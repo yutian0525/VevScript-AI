@@ -1,0 +1,30 @@
+agent/provider/think-splitter.ts
+  s_6fe7ed92def0ff::t_6680dc9483c4fb 1-67
+tests/agent/provider/openai-compat.test.ts
+  s_6fe7ed92def0ff::t_db251f537bd529 326-352
+components/chat/ChatView.tsx
+  s_6fe7ed92def0ff::t_ba831808e47fa8 40-44
+agent/provider/openai-compat.ts
+  s_6fe7ed92def0ff::t_84a81c784cbc4a 11
+  s_6fe7ed92def0ff::t_d15240f9645890 118-124
+  s_6fe7ed92def0ff::t_54760a5dcbba5b 182
+  s_6fe7ed92def0ff::t_5127ecda39510d 151
+tests/agent/provider/think-splitter.test.ts
+  s_6fe7ed92def0ff::t_a46a78ea587f59 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "af01c4109ba0a115c54c207997e2166fccc1eb43",
+  "prompts": {},
+  "sessions": {
+    "s_6fe7ed92def0ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5aec521b-da47-4488-b4f7-f815e77cf1dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
