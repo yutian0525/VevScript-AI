@@ -3,6 +3,7 @@
 // 静态注册 <all_urls> + allFrames + document_idle → 导航后浏览器自动重注入。
 import type { BgToCsRequest, CsResponse, CsReadyNotification } from '../shared/messages';
 import type { ToolResult } from '../shared/types';
+import { HOOK_MSG, RELAY_READY, type HookWindowMsg } from '../shared/hook-bridge';
 import { buildSnapshot } from '../content/snapshot/build';
 import { doClick, doFill, doFillForm, doHover, doScroll, doPressKey } from '../content/interact';
 import { waitForText } from '../content/wait';
@@ -28,8 +29,6 @@ async function route(req: BgToCsRequest): Promise<ToolResult> {
     case 'WAIT_TEXT': return waitForText(req.payload);
     case 'PAGE_META':
       return { ok: true, data: { url: location.href, title: document.title, readyState: document.readyState } };
-    case 'EVALUATE': return { ok: false, error: 'evaluate_script 未在 Phase 2 实现' };
-    case 'CONSOLE_READ': return { ok: false, error: 'console 读取未在 Phase 2 实现' };
     default: {
       const _exhaustive: never = req;
       return { ok: false, error: `未知请求：${String((_exhaustive as { type?: string }).type)}` };
@@ -56,6 +55,18 @@ export default defineContentScript({
         });
       return true; // 异步响应
     });
+    // MAIN world hook（hook.content.ts）经 window.postMessage 送来的 console/network 观测：
+    // ISOLATED 侧在此中继到 background（runtime.sendMessage），SW 写入 observe-store。
+    window.addEventListener('message', (ev) => {
+      if (ev.source !== window) return;
+      const d = ev.data as HookWindowMsg | undefined;
+      if (!d || d.source !== HOOK_MSG) return;
+      const type = d.kind === 'console' ? 'HOOK_CONSOLE' : 'HOOK_NETWORK';
+      browser.runtime.sendMessage({ type, payload: { entries: [d.entry] } }).catch(() => {});
+    });
+    // 告诉 hook「中继已就绪」→ hook flush 掉 document_idle 之前缓冲的早期观测。
+    // 先加上面的 listener 再发，保证 flush 出来的消息被接住。
+    window.postMessage({ source: RELAY_READY }, '*');
     // 加载完成通知（navigate 后 background 等待此信号）
     const ready: CsReadyNotification = { type: 'CS_READY', payload: { url: location.href } };
     browser.runtime.sendMessage(ready).catch(() => {});

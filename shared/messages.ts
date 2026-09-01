@@ -14,9 +14,7 @@ export interface BgToCsRequestMap {
   HOVER: { uid: Uid };
   SCROLL: { direction: 'up' | 'down' | 'left' | 'right'; amount?: number };
   PRESS_KEY: { key: string; modifiers?: string[] };
-  EVALUATE: { function: string; args?: unknown[]; world?: 'main' | 'isolated'; timeoutMs?: number };
   WAIT_TEXT: { texts: string[]; timeoutMs?: number };
-  CONSOLE_READ: { types?: string[]; limit?: number };
   PAGE_META: Record<string, never>;
 }
 
