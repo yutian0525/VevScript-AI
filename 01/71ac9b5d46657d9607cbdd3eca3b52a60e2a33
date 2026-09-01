@@ -1,0 +1,20 @@
+entrypoints/background.ts
+  s_3900119a55d6ce::t_d7487a6418e2c8 6-15
+  s_3900119a55d6ce::t_b41f5a05642dc3 34-47,52-76,78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "0171ac9b5d46657d9607cbdd3eca3b52a60e2a33",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
