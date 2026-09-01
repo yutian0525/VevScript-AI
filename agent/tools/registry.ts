@@ -8,6 +8,7 @@ import { doListPages, doNewPage, doClosePage, doSelectPage } from './tabs';
 import { doScreenshot } from './screenshot';
 import { doEvaluate } from './evaluate';
 import { doHttpRequest } from './http';
+import { doListConsoleMessages, doListNetworkRequests, doGetNetworkRequest } from './observe';
 
 export interface ToolCtx {
   tabId: number;
@@ -57,6 +58,11 @@ export async function executeTool(
   if (name === 'new_page') return doNewPage(args as { url: string; background?: boolean }, ctx.waitForReady);
   if (name === 'close_page') return doClosePage(args as { tabId: number });
   if (name === 'select_page') return doSelectPage(args as { tabId: number });
+
+  // 观测类工具读 SW 缓冲、不碰活页面，与 list_pages 同属豁免（受限页返回空比报错更有用）。
+  if (name === 'list_console_messages') return doListConsoleMessages(ctx.tabId, args as { level?: string; limit?: number });
+  if (name === 'list_network_requests') return doListNetworkRequests(ctx.tabId, args as { method?: string; urlContains?: string; status?: number; limit?: number });
+  if (name === 'get_network_request') return doGetNetworkRequest(ctx.tabId, args as { requestId: string });
 
   // ---- 以下工具操作当前目标页，需受限页预检 ----
   const tab = await browser.tabs.get(ctx.tabId).catch(() => undefined);

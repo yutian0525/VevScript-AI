@@ -109,4 +109,24 @@ describe('工具 registry', () => {
     expect(r.ok).toBe(true);
     expect(waitForReady).toHaveBeenCalledWith(88);
   });
+
+  it('list_console_messages 豁免受限页预检（chrome:// 也返回）', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'chrome://extensions' }) as never;
+    const r = await executeTool('list_console_messages', {}, { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+    expect(r.ok).toBe(true);
+  });
+
+  it('list_network_requests 豁免受限页预检', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'chrome://extensions' }) as never;
+    const r = await executeTool('list_network_requests', {}, { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+    expect(r.ok).toBe(true);
+  });
+
+  it('get_network_request 豁免受限页预检（未知 id 走工具自身错误而非受限页错误）', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'chrome://extensions' }) as never;
+    const r = await executeTool('get_network_request', { requestId: 'x' }, { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error('预期失败结果'); // strict 收窄
+    expect(r.error).toContain('未找到'); // 不是"受限"
+  });
 });
