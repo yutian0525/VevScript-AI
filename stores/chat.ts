@@ -64,6 +64,21 @@ export const useChat = create<ChatState>((set) => ({
     const items: ChatItem[] = [];
     for (const m of stored) {
       if (m.role === 'user') {
+        // 注入的截图消息（content 是数组且含 image_url part）：
+        // 回挂到最近的 take_screenshot 工具卡片，不产生独立 user 气泡（消除重载幽灵气泡+丢图）
+        if (Array.isArray(m.content)) {
+          const imgPart = m.content.find((p) => p.type === 'image_url');
+          if (imgPart && imgPart.type === 'image_url') {
+            for (let i = items.length - 1; i >= 0; i--) {
+              const it = items[i];
+              if (it && it.role === 'tool' && it.name === 'take_screenshot' && !it.image) {
+                it.image = imgPart.imageUrl;
+                break;
+              }
+            }
+            continue;
+          }
+        }
         items.push({ role: 'user', text: contentText(m.content) });
       } else if (m.role === 'assistant') {
         const text = contentText(m.content);

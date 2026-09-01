@@ -155,6 +155,24 @@ describe('chat store', () => {
     expect(toolItem.ok).toBe(false);
   });
 
+  it('loadFromStorage：注入的截图 user 消息回挂到 take_screenshot 卡片，不产生幽灵气泡', () => {
+    const stored = [
+      { role: 'user', content: '截个图' },
+      { role: 'assistant', content: '', toolCalls: [{ id: 't1', name: 'take_screenshot', arguments: '{}' }] },
+      { role: 'tool', toolCallId: 't1', name: 'take_screenshot', content: '截图已捕获，见下一条消息' },
+      { role: 'user', content: [{ type: 'text', text: '（take_screenshot 返回的页面截图）' }, { type: 'image_url', imageUrl: 'data:image/jpeg;base64,ZZZ' }] },
+    ] as unknown as ChatMessage[];
+    useChat.getState().loadFromStorage(stored);
+    const items = useChat.getState().messages;
+    // 截图卡片回挂了 image
+    const shot = items.find((m) => m.role === 'tool' && m.name === 'take_screenshot');
+    expect(shot?.image).toBe('data:image/jpeg;base64,ZZZ');
+    // 没有把注入截图消息渲染成 user 气泡（user 气泡只有最初那条"截个图"）
+    const userBubbles = items.filter((m) => m.role === 'user');
+    expect(userBubbles).toHaveLength(1);
+    expect(userBubbles[0]!.text).toBe('截个图');
+  });
+
   it('思考后直接调用工具（无正文）时思考块收起，不残留"思考中"', () => {
     useChat.getState().applyEvent({ type: 'reasoning-delta', text: '要看页面' });
     useChat.getState().applyEvent({ type: 'tool-start', name: 'take_snapshot', args: '{}', callId: 'c1' });
