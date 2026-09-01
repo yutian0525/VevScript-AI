@@ -1,0 +1,25 @@
+agent/loop-guards.ts
+  s_3900119a55d6ce::t_3e64d417ca2a33 6-9,27,34-35,40
+tests/agent/loop-guards.test.ts
+  s_3900119a55d6ce::t_77cc41ca734bd1 50,52-54
+agent/loop.ts
+  s_3900119a55d6ce::t_3614de05155fd1 3
+  s_3900119a55d6ce::t_933f4b3a4bceb2 68-69
+  s_3900119a55d6ce::t_105b60712b9a53 136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "dc323e3b15e59e60fabc4fec4d5b154b233c0fe2",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
