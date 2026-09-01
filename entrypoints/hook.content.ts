@@ -91,20 +91,33 @@ export default defineContentScript({
       const ts = Date.now();
       const seqN = ++seq;
       const reqHeaders = headersToObj(init?.headers ?? (input instanceof Request ? (input as Request).headers : undefined));
+      // 仅抓 string body（有意为之）：Blob/FormData/URLSearchParams/ReadableStream 及 fetch(new Request(...)) 的 body 不抓，Phase 3b 范围内接受。
       const reqBody = typeof init?.body === 'string' ? init.body : undefined;
       if (isSelf(url)) return origFetch.apply(this as never, args);
       try {
         const resp = await origFetch.apply(this as never, args);
-        let respBody: string | undefined; let truncated: boolean | undefined;
-        try {
-          const ct = resp.headers.get('content-type') ?? '';
-          if (TEXT_CT.test(ct) || ct === '') {
-            const c = capBody(await resp.clone().text()); respBody = c.body; truncated = c.truncated;
-          }
-        } catch { /* body 读取失败忽略 */ }
+        // 同步 tee：必须在页面读取 resp.body 之前 clone；随后异步读克隆分支，
+        // 绝不 await 克隆的 .text()——否则流式响应(SSE/chunked)会挂起页面的 fetch。
         const rq = capBody(reqBody);
-        const entry: HookNetEntry = { loadNonce, seq: seqN, method, url, ts, endTs: Date.now(), status: resp.status, requestHeaders: reqHeaders, responseHeaders: headersToObj(resp.headers), requestBody: rq.body, responseBody: respBody, truncated: truncated || rq.truncated };
-        post({ source: HOOK_MSG, kind: 'network', entry });
+        const ct = resp.headers.get('content-type') ?? '';
+        const base = { loadNonce, seq: seqN, method, url, ts, status: resp.status, requestHeaders: reqHeaders, responseHeaders: headersToObj(resp.headers), requestBody: rq.body };
+        let cloned: Response | null = null;
+        try { cloned = resp.clone(); } catch { cloned = null; }
+        // SSE 是常见的无限流：跳过 body 抓取，避免克隆分支永不关闭导致内存无界。
+        const isStream = /event-stream/i.test(ct);
+        if (cloned && !isStream && (TEXT_CT.test(ct) || ct === '')) {
+          cloned.text().then((text) => {
+            try {
+              const c = capBody(text);
+              post({ source: HOOK_MSG, kind: 'network', entry: { ...base, endTs: Date.now(), responseBody: c.body, truncated: c.truncated || rq.truncated } as HookNetEntry });
+            } catch { /* ignore */ }
+          }).catch(() => {
+            try { post({ source: HOOK_MSG, kind: 'network', entry: { ...base, endTs: Date.now(), truncated: rq.truncated } as HookNetEntry }); } catch { /* ignore */ }
+          });
+        } else {
+          // 非文本 / 无法克隆 / SSE：立即记录无 body 的条目
+          post({ source: HOOK_MSG, kind: 'network', entry: { ...base, endTs: Date.now(), truncated: rq.truncated } as HookNetEntry });
+        }
         return resp;
       } catch (err) {
         const rq = capBody(reqBody);
@@ -117,7 +130,7 @@ export default defineContentScript({
     const XHR = XMLHttpRequest.prototype;
     const origOpen = XHR.open;
     const origSend = XHR.send;
-    interface Tracked { _m?: string; _u?: string; _ts?: number; _seq?: number; _reqBody?: string }
+    interface Tracked { _m?: string; _u?: string; _ts?: number; _seq?: number; _reqBody?: string; _hooked?: boolean }
     origOpen && (XHR.open = function (this: XMLHttpRequest & Tracked, method: string, url: string, ...rest: unknown[]) {
       this._m = String(method).toUpperCase(); this._u = String(url);
       // @ts-expect-error 透传原始可变参数
@@ -127,7 +140,8 @@ export default defineContentScript({
       this._ts = Date.now(); this._seq = ++seq;
       this._reqBody = typeof body === 'string' ? body : undefined;
       const url = this._u ?? '';
-      if (!isSelf(url)) {
+      if (!isSelf(url) && !this._hooked) {
+        this._hooked = true;
         this.addEventListener('loadend', () => {
           try {
             let respBody: string | undefined; let truncated: boolean | undefined;
