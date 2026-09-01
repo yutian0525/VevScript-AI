@@ -1,0 +1,33 @@
+entrypoints/sidepanel/styles.css
+  s_3900119a55d6ce::t_34c46771e5b601 478-480,482
+CLAUDE.md
+  s_3900119a55d6ce::t_98781623fc65a7 84-87
+  s_a82d412179adb6::t_f00f5da0853abf 1-83
+docs/superpowers/plans/2026-09-01-ai-browser-extension-phase3a.md
+  s_3900119a55d6ce::t_8670a81d5e949c 60,97,102,179,184,201,266,271,333,338,355,404,409,464,469,486,554,559,602,607,624,689,694,752,757,774,815,820,865,870,875,892,949,954,973,994,1043,1048,1065,1098,1103,1142,1147,1165,1185,1190,1198,1226,1231,1250,1261,1266,1285,1298,1310,1315,1330,1335,1346,1350,1354
+  s_3900119a55d6ce::t_ad584129a55307 1379-1383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "2731765c74488da80077ec3eb87d1603ddba8ad6",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    },
+    "s_a82d412179adb6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "caeffecf-1979-4bc7-9558-bda472c91766",
+        "model": "kimi-k2.7-code"
+      },
+      "human_author": null
+    }
+  }
+}
