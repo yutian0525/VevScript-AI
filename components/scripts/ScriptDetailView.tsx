@@ -1,7 +1,7 @@
 // components/scripts/ScriptDetailView.tsx
 // 脚本详情页（spec §9.2）：元数据表单 + code 编辑（轻量 textarea）+ 保存/删除/导出/重载当前页。
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Download, RotateCw, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, Power, RotateCw, Save, Trash2 } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -20,13 +20,18 @@ export function ScriptDetailView({ id }: { id: string }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const resp = await sendScriptsRequest<{ ok: boolean; data?: { script: UserScript }; error?: string }>({
-        type: 'SCRIPTS_GET',
-        id,
-      });
-      if (cancelled) return;
-      if (resp.ok && resp.data) setScript(resp.data.script);
-      else setNotFound(true);
+      try {
+        const resp = await sendScriptsRequest<{ ok: boolean; data?: { script: UserScript }; error?: string }>({
+          type: 'SCRIPTS_GET',
+          id,
+        });
+        if (cancelled) return;
+        if (resp.ok && resp.data) setScript(resp.data.script);
+        else setNotFound(true);
+      } catch {
+        // 传输异常（如 SW 死亡）时兜底为未找到，避免永停「加载中」
+        if (!cancelled) setNotFound(true);
+      }
     })();
     return () => {
       cancelled = true;
@@ -36,6 +41,24 @@ export function ScriptDetailView({ id }: { id: string }) {
   function patch(fields: Partial<UserScript>): void {
     setScript((s) => (s ? { ...s, ...fields } : s));
     setDirty(true);
+  }
+
+  // 启停当前脚本（spec §9.2 要素）：更新本地状态并刷新列表
+  async function toggleEnabled(): Promise<void> {
+    if (!script) return;
+    const resp = await sendScriptsRequest<{ ok: boolean; data?: { script: UserScript }; error?: string }>({
+      type: 'SCRIPTS_SET_ENABLED',
+      id: script.id,
+      enabled: !script.enabled,
+    });
+    if (resp.ok && resp.data) {
+      setScript(resp.data.script);
+      setDirty(false);
+      setMessage(resp.data.script.enabled ? '已启用，刷新页面生效' : '已禁用，刷新页面生效');
+      await useScripts.getState().refresh();
+    } else {
+      setMessage(resp.error ?? '操作失败');
+    }
   }
 
   async function save(): Promise<void> {
@@ -197,6 +220,9 @@ export function ScriptDetailView({ id }: { id: string }) {
         <div className="scripts-footer">
           <Button variant="primary" disabled={!dirty} onClick={() => void save()}>
             <Save size={14} /> 保存
+          </Button>
+          <Button onClick={() => void toggleEnabled()}>
+            <Power size={14} color={script.enabled ? 'var(--ok)' : 'var(--ink-3)'} /> {script.enabled ? '禁用' : '启用'}
           </Button>
           <Button onClick={() => void reloadActivePage()}>
             <RotateCw size={14} /> 重载当前页

@@ -24,7 +24,6 @@ export function ScriptsListView() {
 
   const runtime: ScriptsRuntimeEntry | undefined = activeTabId != null ? runtimeEntries[activeTabId] : undefined;
   const visible = filterSummaries(summaries, query);
-  const runningIds = new Set(runtime?.scriptIds ?? []);
 
   async function createNew(): Promise<void> {
     const resp = await sendScriptsRequest<{ ok: boolean; data?: { script: { id: string } }; error?: string }>({
