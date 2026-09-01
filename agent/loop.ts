@@ -47,6 +47,7 @@ async function drive(tabId: number, deps: LoopDeps, guardState: GuardState): Pro
 
     const result = await runTurn(deps.provider, { messages, tools: getToolSchemas(), signal: ac.signal }, {
       onTextDelta: (t) => deps.emit({ type: 'text-delta', text: t }),
+      onReasoningDelta: (t) => deps.emit({ type: 'reasoning-delta', text: t }),
     });
 
     if (result.error) {
@@ -57,7 +58,7 @@ async function drive(tabId: number, deps: LoopDeps, guardState: GuardState): Pro
 
     // length 守卫：输出被截断 → 该轮 tool_calls 全判失败喂回
     if (result.finishReason === 'length' && result.toolCalls.length > 0) {
-      await appendMessage(tabId, assistantMsg(result.text, result.toolCalls));
+      await appendMessage(tabId, assistantMsg(result.text, result.toolCalls, result.reasoning));
       const truncFailed: ToolResult[] = [];
       for (const tc of result.toolCalls) {
         await appendMessage(tabId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: '错误：模型输出被截断，该工具调用参数不完整，请重新发起' });
@@ -80,14 +81,14 @@ async function drive(tabId: number, deps: LoopDeps, guardState: GuardState): Pro
       const finalText = truncated
         ? `${result.text}\n\n[注意：回复因达到长度上限被截断，可能不完整]`
         : result.text;
-      await appendMessage(tabId, { role: 'assistant', content: finalText });
+      await appendMessage(tabId, { role: 'assistant', content: finalText, reasoning: result.reasoning });
       deps.emit({ type: 'done', finalText });
       await setStatus(tabId, 'idle');
       return;
     }
 
     // 执行工具（先 append assistant(toolCalls)，再依次 append 每个 tool result，保持配对连续）
-    await appendMessage(tabId, assistantMsg(result.text, result.toolCalls));
+    await appendMessage(tabId, assistantMsg(result.text, result.toolCalls, result.reasoning));
     const results: ToolResult[] = [];
     for (const tc of result.toolCalls) {
       if (ac.signal.aborted) { await setStatus(tabId, 'idle'); return; }
@@ -97,8 +98,9 @@ async function drive(tabId: number, deps: LoopDeps, guardState: GuardState): Pro
       const r = await deps.executeTool(tc.name, toolArgs, ac.signal);
       results.push(r);
       const summary = r.ok ? '成功' : (r.error ?? '失败');
-      deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: r.ok, summary });
-      await appendMessage(tabId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: toToolContent(r) });
+      const output = toToolContent(r);
+      deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: r.ok, summary, output });
+      await appendMessage(tabId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: output });
     }
 
     // 熔断阀
@@ -112,8 +114,8 @@ async function drive(tabId: number, deps: LoopDeps, guardState: GuardState): Pro
   }
 }
 
-function assistantMsg(text: string, toolCalls: ToolCall[]): ChatMessage {
-  return { role: 'assistant', content: text, toolCalls };
+function assistantMsg(text: string, toolCalls: ToolCall[], reasoning?: string): ChatMessage {
+  return { role: 'assistant', content: text, toolCalls, reasoning };
 }
 
 /** 本轮消耗 token = prompt + completion（prompt 通常占大头，只算 completion 会严重低估 token 阀）。 */

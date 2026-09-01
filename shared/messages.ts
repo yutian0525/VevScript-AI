@@ -93,9 +93,10 @@ export type PortMsgFromPanel =
   | { type: 'agent:resume'; tabId: number };
 
 export type PortMsgToPanel =
+  | { type: 'reasoning-delta'; text: string }
   | { type: 'text-delta'; text: string }
   | { type: 'tool-start'; name: string; args: string; callId: string }
-  | { type: 'tool-end'; name: string; callId: string; ok: boolean; summary: string }
+  | { type: 'tool-end'; name: string; callId: string; ok: boolean; summary: string; output?: string }
   | { type: 'paused'; reason: string }
   | { type: 'done'; finalText: string }
   | { type: 'error'; message: string }

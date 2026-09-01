@@ -123,4 +123,35 @@ describe('agent loop', () => {
     expect(session.status).toBe('paused');
     expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'paused' }));
   });
+
+  it('reasoning-delta 转发到 Port，且 reasoning 存进 assistant 消息', async () => {
+    const provider = queuedProvider([[
+      { type: 'reasoning-delta', text: '先想想' },
+      { type: 'text-delta', text: '好的' },
+      { type: 'message-done', finishReason: 'stop' },
+    ]]);
+    const exec = vi.fn<LoopDeps['executeTool']>();
+    const d = deps(provider, exec);
+    await runAgentLoop({ tabId: 10, sessionId: 's', userMessage: 'x' }, d);
+    expect(d.emit).toHaveBeenCalledWith({ type: 'reasoning-delta', text: '先想想' });
+    const session = await getSession(10);
+    const last = session.messages[session.messages.length - 1]!;
+    expect(last.role).toBe('assistant');
+    expect(last.reasoning).toBe('先想想');
+    expect(last.content).toBe('好的');
+  });
+
+  it('工具分支 assistant 消息也带 reasoning；tool-end 带完整 output', async () => {
+    const provider = queuedProvider([
+      [{ type: 'reasoning-delta', text: '需要看页面' }, { type: 'tool-call-delta', index: 0, id: 'c1', name: 'take_snapshot', argsDelta: '{}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: '看到了' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true, data: '[1] button 完整快照文本' } as ToolResult);
+    const d = deps(provider, exec);
+    await runAgentLoop({ tabId: 11, sessionId: 's', userMessage: 'x' }, d);
+    const session = await getSession(11);
+    const asst = session.messages.find((m) => m.role === 'assistant' && m.toolCalls?.length)!;
+    expect(asst.reasoning).toBe('需要看页面');
+    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', callId: 'c1', ok: true, output: '[1] button 完整快照文本' }));
+  });
 });
