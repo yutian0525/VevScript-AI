@@ -1,0 +1,26 @@
+entrypoints/sidepanel/styles.css
+  s_3900119a55d6ce::t_1e69a3f5231d6b 474-481
+tests/stores/chat.test.ts
+  s_3900119a55d6ce::t_12da265018ed8b 116-122
+components/chat/ChatView.tsx
+  s_3900119a55d6ce::t_c016f6f19cbfaf 227-232
+stores/chat.ts
+  s_3900119a55d6ce::t_3268feec602e5d 17
+  s_3900119a55d6ce::t_58b61c36297a7e 123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "921c80bb76a941870ffcc294eb8d5de07f75b0ea",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
