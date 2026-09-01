@@ -41,7 +41,7 @@ describe('settings storage', () => {
     await saveSettings({ agent: { confirmGate: false, screenshotPolicy: 'never' } });
     await saveSettings({ agent: { screenshotPolicy: 'on-demand' } });
     const s = await getSettings();
-    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false });
+    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted' });
   });
 
   it('saveSettings 持久化到 local:settings（fakeBrowser storage 驱动）', async () => {
@@ -67,6 +67,17 @@ describe('settings storage', () => {
     });
     const s = await getSettings();
     expect(s.provider).toEqual({ baseUrl: 'https://old.com/v1', apiKey: '', model: '' });
-    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false });
+    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted' });
+  });
+
+  it('AgentConfig 默认 networkCaptureHeaders=redacted', async () => {
+    const s = await getSettings();
+    expect(s.agent.networkCaptureHeaders).toBe('redacted');
+  });
+
+  it('可存 networkCaptureHeaders=full', async () => {
+    await saveSettings({ agent: { networkCaptureHeaders: 'full' } });
+    const s = await getSettings();
+    expect(s.agent.networkCaptureHeaders).toBe('full');
   });
 });

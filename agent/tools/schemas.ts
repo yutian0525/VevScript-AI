@@ -1,5 +1,5 @@
 // agent/tools/schemas.ts
-// 16 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）。描述对齐 chrome-devtools-mcp。
+// 19 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）。描述对齐 chrome-devtools-mcp。
 import type { ToolSchema } from '../provider/types';
 
 // 显式声明返回 Record<string, unknown>，避免 type:'object' 字面量收窄导致的赋值报错。
@@ -220,6 +220,40 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
         },
         ['url'],
       ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_console_messages',
+      description: '读取当前操作目标页面的 console 日志（含 console.log/info/warn/error/debug 与运行时错误）。用于诊断页面报错、观察脚本输出。返回按时间倒序的最近若干条。',
+      parameters: obj({
+        level: { type: 'string', enum: ['log', 'info', 'warn', 'error', 'debug'], description: '只看某一级别（默认全部）' },
+        limit: { type: 'number', description: '最多返回条数（默认 50，上限 200）' },
+      }),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_network_requests',
+      description: '列出当前操作目标页面发生过的网络请求（摘要：方法/URL/状态/类型/耗时/是否有 body）。用于观察页面调了哪些接口。要看某条的请求头/响应体，用 get_network_request。',
+      parameters: obj({
+        method: { type: 'string', description: '按方法过滤（如 GET/POST，可选）' },
+        urlContains: { type: 'string', description: '按 URL 子串过滤（可选）' },
+        status: { type: 'number', description: '按状态码过滤（可选）' },
+        limit: { type: 'number', description: '最多返回条数（默认 50）' },
+      }),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_network_request',
+      description: '按 requestId 取单条网络请求的完整信息（含请求头/响应头/请求体/响应体，若页面 JS 发起时被捕获）。requestId 来自 list_network_requests。敏感头默认脱敏。',
+      parameters: obj({
+        requestId: { type: 'string', description: '来自 list_network_requests 的 requestId' },
+      }, ['requestId']),
     },
   },
 ];

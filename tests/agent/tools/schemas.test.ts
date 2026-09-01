@@ -2,13 +2,26 @@ import { describe, it, expect } from 'vitest';
 import { TOOL_SCHEMAS } from '../../../agent/tools/schemas';
 
 describe('工具 schema', () => {
-  it('恰好 16 个工具（Phase 2 的 9 + Phase 3a 的 7）', () => {
+  it('恰好 19 个工具（Phase 2 的 9 + Phase 3a 的 7 + Phase 3b 的 3）', () => {
     const names = TOOL_SCHEMAS.map((s) => s.function.name).sort();
     expect(names).toEqual([
-      'click', 'close_page', 'evaluate_script', 'fill', 'fill_form', 'hover',
-      'http_request', 'list_pages', 'navigate_page', 'new_page', 'press_key',
-      'scroll', 'select_page', 'take_screenshot', 'take_snapshot', 'wait_for',
+      'click', 'close_page', 'evaluate_script', 'fill', 'fill_form',
+      'get_network_request', 'hover', 'http_request', 'list_console_messages',
+      'list_network_requests', 'list_pages', 'navigate_page', 'new_page',
+      'press_key', 'scroll', 'select_page', 'take_screenshot', 'take_snapshot', 'wait_for',
     ]);
+  });
+
+  it('list_console_messages 的 level 枚举', () => {
+    const t = TOOL_SCHEMAS.find((s) => s.function.name === 'list_console_messages')!;
+    const p = t.function.parameters as { properties: Record<string, { enum?: string[] }> };
+    expect(p.properties.level!.enum).toEqual(['log', 'info', 'warn', 'error', 'debug']);
+  });
+
+  it('get_network_request 的 requestId 必填', () => {
+    const t = TOOL_SCHEMAS.find((s) => s.function.name === 'get_network_request')!;
+    const p = t.function.parameters as { required: string[] };
+    expect(p.required).toContain('requestId');
   });
 
   it('全部是 function 类型且有描述', () => {
