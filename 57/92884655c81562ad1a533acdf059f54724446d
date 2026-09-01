@@ -1,0 +1,23 @@
+docs/superpowers/specs/2026-09-01-snapshot-full-content-tree-design.md
+  s_6fe7ed92def0ff::t_3ef77480647444 36-50,52-105
+  s_6fe7ed92def0ff::t_6c768da7abbdfc 35
+  s_6fe7ed92def0ff::t_a77646cda5128c 1-4,6-34
+  s_6fe7ed92def0ff::t_25a806ab2a5f43 51
+  s_6fe7ed92def0ff::t_17a0a8adc2026f 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "5792884655c81562ad1a533acdf059f54724446d",
+  "prompts": {},
+  "sessions": {
+    "s_6fe7ed92def0ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5aec521b-da47-4488-b4f7-f815e77cf1dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
