@@ -323,6 +323,33 @@ describe('OpenAICompatProvider', () => {
     expect(ti).toBeGreaterThan(ri);
   });
 
+  it('content 里的 <think>…</think>（跨 chunk）拆成 reasoning-delta + text-delta', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(
+      new Response(
+        sseStream([
+          { choices: [{ delta: { content: '<thi' } }] },
+          { choices: [{ delta: { content: 'nk>思考中' } }] },
+          { choices: [{ delta: { content: '</think>答案' } }] },
+          { choices: [{ delta: {}, finish_reason: 'stop' }] },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const p = new OpenAICompatProvider({ baseUrl: 'https://api.x.com/v1', apiKey: 'sk', model: 'local-r1' });
+    const events: StreamEvent[] = [];
+    await new Promise<void>((resolve) => {
+      p.streamChat(baseParams(), (e) => {
+        events.push(e);
+        if (e.type === 'message-done') resolve();
+      });
+    });
+    const reasoning = events.filter((e) => e.type === 'reasoning-delta').map((e) => (e as { text: string }).text).join('');
+    const text = events.filter((e) => e.type === 'text-delta').map((e) => (e as { text: string }).text).join('');
+    expect(reasoning).toBe('思考中');
+    expect(text).toBe('答案');
+  });
+
   it('toWireMessages 不含 reasoning（锁定：思考绝不回填 LLM）', async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValue(

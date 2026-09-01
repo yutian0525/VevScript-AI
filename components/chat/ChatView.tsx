@@ -37,7 +37,11 @@ export function ChatView() {
     };
   }, [ensurePort]);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  // 只在「有新消息 / 流式增量 / 工具状态变化」时滚到底；展开·收起（只改 expanded）不触发——
+  // 否则点开工具详情会因 toggleExpand 新建 messages 引用而被拽到底部。
+  const last = messages[messages.length - 1];
+  const scrollKey = `${messages.length}:${last?.text?.length ?? 0}:${last?.reasoning?.length ?? 0}:${last?.status ?? ''}`;
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [scrollKey]);
 
   // 挂载恢复：store 为空时，从当前 tab 的 storage 读历史渲染（含思考折叠、工具卡片）。
   // 只读 storage 渲染，不接管运行中 loop 的事件流（重连归 Phase 5）。

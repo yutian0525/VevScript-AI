@@ -8,6 +8,7 @@
 // - 不变量：每次 streamChat 调用恰好终止于一个 message-done（可能前面有 error），
 //   取消（abort/cancel）也不例外——消费者可安全地「await 到 message-done 为止」。
 import { createSseParser } from './sse';
+import { createThinkSplitter } from './think-splitter';
 import type {
   ChatMessage,
   ChatParams,
@@ -114,6 +115,13 @@ export class OpenAICompatProvider implements Provider {
           reader.cancel().catch(() => { /* 流已结束/已取消时忽略 */ });
         };
 
+        // content 里若混着 <think>…</think>（部分中转/本地模型的思考写法），
+        // 拆分器把标签内→reasoning、标签外→text；不含标签则整段透传为 text。
+        const think = createThinkSplitter({
+          reasoning: (t) => onEvent({ type: 'reasoning-delta', text: t }),
+          text: (t) => onEvent({ type: 'text-delta', text: t }),
+        });
+
         const parser = createSseParser((data) => {
           let chunk: {
             choices?: Array<{
@@ -140,7 +148,7 @@ export class OpenAICompatProvider implements Provider {
           const reasoning = choice?.delta?.reasoning_content ?? choice?.delta?.reasoning;
           if (reasoning) onEvent({ type: 'reasoning-delta', text: reasoning });
           if (choice?.delta?.content) {
-            onEvent({ type: 'text-delta', text: choice.delta.content });
+            think.push(choice.delta.content); // 经拆分器：<think> 内转 reasoning，其余转 text
           }
           if (choice?.delta?.tool_calls) {
             for (const tc of choice.delta.tool_calls) {
@@ -171,6 +179,7 @@ export class OpenAICompatProvider implements Provider {
             parser.push(decoder.decode(value, { stream: true }));
           }
           parser.flush();
+          think.flush(); // 吐出拆分器里残留的半截/未闭合内容
         } catch (err) {
           // 取消是主动行为不是错误，AbortError 静默（但 message-done 仍在下方发出，
           // 维持「恰好一次终止事件」不变量）。fetch 可能 reject 非 Error 值
