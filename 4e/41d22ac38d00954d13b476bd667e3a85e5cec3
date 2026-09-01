@@ -1,0 +1,61 @@
+tests/content/snapshot/build.test.ts
+  s_6fe7ed92def0ff::t_26a37035d255d0 147,152-154
+  s_6fe7ed92def0ff::t_f67a5371c3656e 155-171
+  s_6fe7ed92def0ff::t_18daf9d224396c 14,18
+  s_6fe7ed92def0ff::t_57ba729b7d675f 105-146,148-151
+content/snapshot/visibility.ts
+  s_6fe7ed92def0ff::t_7230b63842e3fd 19-22
+content/snapshot/build.ts
+  s_6fe7ed92def0ff::t_929697b92b786e 2-4,12,30-39,47-51,53-57,60,62,65,67-74,76,78-94,98-111,113-114,118,120-121,123-128,130,134,137,140-141,144-147
+  s_6fe7ed92def0ff::t_9eb6f2e240fa74 66
+  s_6fe7ed92def0ff::t_f0b90740aa5878 75
+  s_6fe7ed92def0ff::t_533693464d46d9 129,131-133,135-136
+agent/tools/schemas.ts
+  s_6fe7ed92def0ff::t_ff1df4f2dc231b 23
+  s_6fe7ed92def0ff::t_b35abce17ef63b 22
+content/snapshot/roles.ts
+  s_6fe7ed92def0ff::t_2e271b47c930ed 114
+  s_6fe7ed92def0ff::t_c7d3b7100bb39e 138,141
+  s_6fe7ed92def0ff::t_7d2a0cef7215f3 96-98
+  s_6fe7ed92def0ff::t_f58022499cad36 20
+  s_6fe7ed92def0ff::t_d5f1f3576515cd 131
+  s_6fe7ed92def0ff::t_d9b03a2a4610e8 6-8
+  s_6fe7ed92def0ff::t_c84fc24c98e137 103-105
+  s_6fe7ed92def0ff::t_50577a5a4c5734 39-54
+  s_6fe7ed92def0ff::t_d4fcfd50ef738e 157
+  s_6fe7ed92def0ff::t_b54240ffe62569 86-88
+  s_6fe7ed92def0ff::t_67779e5c37a5c9 4
+  s_6fe7ed92def0ff::t_a9834e8fd14bac 58
+  s_6fe7ed92def0ff::t_fe635ecac23094 145-156,158-159
+  s_6fe7ed92def0ff::t_c563436627bcf9 102
+  s_6fe7ed92def0ff::t_33ca31c77d48b0 55,101,106-113,115-130,132-137,139-140,142-144,160
+  s_6fe7ed92def0ff::t_d45d274f123708 56
+tests/content/snapshot/roles.test.ts
+  s_6fe7ed92def0ff::t_46f438f649f7f7 111-126
+  s_6fe7ed92def0ff::t_21d17d8b05c0cb 127,129-133,135-137,141-159
+  s_6fe7ed92def0ff::t_da7d41dc11df91 138-140
+  s_6fe7ed92def0ff::t_741138dab32fea 55-65
+  s_6fe7ed92def0ff::t_6ae1768b0e59b2 160-164
+  s_6fe7ed92def0ff::t_cdf29229f44f6f 3
+  s_6fe7ed92def0ff::t_3ec94a8efafb71 34
+  s_6fe7ed92def0ff::t_8e39061f3262e9 78-100
+  s_6fe7ed92def0ff::t_bb0e1422dd330d 105
+  s_6fe7ed92def0ff::t_7ee78c10a70e53 101-104,106-110
+  s_6fe7ed92def0ff::t_cb261e373c7ab9 128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "4e41d22ac38d00954d13b476bd667e3a85e5cec3",
+  "prompts": {},
+  "sessions": {
+    "s_6fe7ed92def0ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5aec521b-da47-4488-b4f7-f815e77cf1dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
