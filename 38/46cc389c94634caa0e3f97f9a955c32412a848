@@ -1,0 +1,26 @@
+docs/superpowers/specs/2026-09-01-ai-browser-extension-phase3b-design.md
+  s_3900119a55d6ce::t_7a57038845b75e 130-197
+  s_3900119a55d6ce::t_6089d67140ab47 30-72
+  s_3900119a55d6ce::t_92f65da5770768 95
+  s_3900119a55d6ce::t_111b114010f1f7 17
+  s_3900119a55d6ce::t_eaef3dfac7f64f 128
+  s_3900119a55d6ce::t_2f7598f368fc50 1-16,18-29
+  s_3900119a55d6ce::t_3ba42182c36da3 73-81,83-94,96-127,129
+  s_3900119a55d6ce::t_e166dd50dd1519 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "3846cc389c94634caa0e3f97f9a955c32412a848",
+  "prompts": {},
+  "sessions": {
+    "s_3900119a55d6ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b67a6ab-2328-452d-8448-e8e77ddf85ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
