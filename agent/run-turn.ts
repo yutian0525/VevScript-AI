@@ -48,9 +48,18 @@ export function runTurn(provider: Provider, params: ChatParams, hooks: RunTurnHo
           error = e.error;
           break;
         case 'message-done': {
-          const toolCalls: ToolCall[] = [...agg.entries()]
-            .sort((a, b) => a[0] - b[0])
-            .map(([, v]) => ({ id: v.id ?? '', name: v.name ?? '', arguments: v.args }));
+          // 按 index 排序后映射；再按非空 id 去重——某些中转站会把同一个 tool_call
+          // 以不同 index、相同 id 重复返回，若不去重 loop 会对同一动作 executeTool 两次
+          // （双导航/双点击）+ UI 出现"一张 done 一张永远 running"的双卡片。
+          // OpenAI 规范中 tool_call.id 唯一，故按 id 去重无条件正确；id 为空的不去重（无从判定）。
+          const seen = new Set<string>();
+          const toolCalls: ToolCall[] = [];
+          for (const [, v] of [...agg.entries()].sort((a, b) => a[0] - b[0])) {
+            const call: ToolCall = { id: v.id ?? '', name: v.name ?? '', arguments: v.args };
+            if (call.id && seen.has(call.id)) continue;
+            if (call.id) seen.add(call.id);
+            toolCalls.push(call);
+          }
           settle({ text, toolCalls, finishReason: e.finishReason, usage: e.usage, error });
           break;
         }

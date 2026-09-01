@@ -54,4 +54,20 @@ describe('chat store', () => {
     expect(last.role).toBe('error');
     expect(useChat.getState().status).toBe('idle');
   });
+
+  it('重复 tool-start（同 callId）幂等：只留一张卡片', () => {
+    useChat.getState().applyEvent({ type: 'tool-start', name: 'click', args: '{"uid":1}', callId: 'c1' });
+    useChat.getState().applyEvent({ type: 'tool-start', name: 'click', args: '{"uid":1}', callId: 'c1' });
+    const tools = useChat.getState().messages.filter((m) => m.role === 'tool' && m.callId === 'c1');
+    expect(tools).toHaveLength(1);
+  });
+
+  it('重复 tool-start 后 tool-end 正常置 done（不残留 running）', () => {
+    useChat.getState().applyEvent({ type: 'tool-start', name: 'click', args: '{}', callId: 'c1' });
+    useChat.getState().applyEvent({ type: 'tool-start', name: 'click', args: '{}', callId: 'c1' });
+    useChat.getState().applyEvent({ type: 'tool-end', name: 'click', callId: 'c1', ok: true, summary: '成功' });
+    const tools = useChat.getState().messages.filter((m) => m.role === 'tool' && m.callId === 'c1');
+    expect(tools).toHaveLength(1);
+    expect(tools[0]!.status).toBe('done');
+  });
 });

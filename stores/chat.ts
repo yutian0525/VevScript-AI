@@ -39,9 +39,14 @@ export const useChat = create<ChatState>((set) => ({
         }
         return { messages };
       }
-      case 'tool-start':
+      case 'tool-start': {
+        // 按 callId 幂等：重复的 tool-start（同 callId）不再新推卡片，避免"一张 done 一张永远 running"
+        if (e.callId && messages.some((m) => m.role === 'tool' && m.callId === e.callId)) {
+          return { messages };
+        }
         messages.push({ role: 'tool', name: e.name, args: e.args, callId: e.callId, status: 'running' });
         return { messages };
+      }
       case 'tool-end': {
         const idx = messages.findIndex((m) => m.role === 'tool' && m.callId === e.callId);
         if (idx >= 0) messages[idx] = { ...messages[idx]!, status: 'done', ok: e.ok, summary: e.summary };

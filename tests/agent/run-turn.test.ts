@@ -95,4 +95,25 @@ describe('runTurn', () => {
     const r = await handle;
     expect(r.text).toBe('部分');
   });
+
+  it('同 id 不同 index 的重复 tool_call 按 id 去重（防中转站重复 → 双执行/双卡片）', async () => {
+    const p = scriptedProvider([
+      { type: 'tool-call-delta', index: 0, id: 'call_1', name: 'navigate_page', argsDelta: '{"type":"url","url":"https://baidu.com"}' },
+      { type: 'tool-call-delta', index: 1, id: 'call_1', name: 'navigate_page', argsDelta: '{"type":"url","url":"https://baidu.com"}' },
+      { type: 'message-done', finishReason: 'tool_calls' },
+    ]);
+    const r = await runTurn(p, params(), {});
+    expect(r.toolCalls).toHaveLength(1);
+    expect(r.toolCalls[0]!.id).toBe('call_1');
+  });
+
+  it('不同 id 的多工具正常保留（不误去重）', async () => {
+    const p = scriptedProvider([
+      { type: 'tool-call-delta', index: 0, id: 'c0', name: 'click', argsDelta: '{"uid":1}' },
+      { type: 'tool-call-delta', index: 1, id: 'c1', name: 'fill', argsDelta: '{"uid":2,"value":"x"}' },
+      { type: 'message-done', finishReason: 'tool_calls' },
+    ]);
+    const r = await runTurn(p, params(), {});
+    expect(r.toolCalls.map((t) => t.id)).toEqual(['c0', 'c1']);
+  });
 });
