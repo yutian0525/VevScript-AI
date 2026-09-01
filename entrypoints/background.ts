@@ -1,7 +1,8 @@
 // entrypoints/background.ts
 import { MessageRouter } from '../background/router';
-import type { CsToBgNotification, CsReadyNotification } from '../shared/messages';
+import type { CsToBgNotification, CsReadyNotification, DebugExecRequest } from '../shared/messages';
 import { attachAgentPort, notifyCsReady } from '../background/agent-port';
+import { handleDebugExec } from '../background/debug-exec';
 
 export default defineBackground(() => {
   const router = new MessageRouter();
@@ -16,6 +17,9 @@ export default defineBackground(() => {
     console.log('[bg] netlog push (stub)', entries.length);
     return { ok: true };
   });
+
+  // 调试台：直接执行单个工具（绕过 LLM）
+  router.on('DEBUG_EXEC_TOOL', (msg) => handleDebugExec(msg as unknown as DebugExecRequest));
 
   // content script 就绪通知：唤醒 navigate_page 的等待者
   router.on('CS_READY', async (msg, sender) => {

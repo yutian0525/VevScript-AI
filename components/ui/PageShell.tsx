@@ -3,29 +3,33 @@ import type { ReactNode } from 'react';
 
 export function PageShell({
   title,
+  eyebrow,
+  right,
   actions,
   children,
 }: {
   title: string;
+  /** 页眉标题上方的机器标签（mono 大写），如 AGENT / TOOLBENCH */
+  eyebrow?: string;
+  /** 页眉右侧状态槽（如 Live 仪表条） */
+  right?: ReactNode;
+  /** 页眉右侧操作按钮 */
   actions?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px 16px',
-          borderBottom: '1px solid var(--border)',
-          flexShrink: 0,
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{title}</h1>
-        <div style={{ display: 'flex', gap: 8 }}>{actions}</div>
+    <div className="shell">
+      <header className="shell__head">
+        <div className="shell__titles">
+          {eyebrow && <span className="eyebrow">{eyebrow}</span>}
+          <h1 className="shell__title">{title}</h1>
+        </div>
+        <div className="shell__actions">
+          {right}
+          {actions}
+        </div>
       </header>
-      <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>{children}</div>
+      <div className="shell__body">{children}</div>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 // components/chat/ChatView.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Send, Wrench, CircleAlert, Loader2 } from 'lucide-react';
+import { Send, Wrench, CircleAlert, Loader2, Check, X } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
+import { Gauge } from '../ui/Gauge';
 import { useChat, type ChatItem } from '../../stores/chat';
 import type { PortMsgFromPanel, PortMsgToPanel } from '../../shared/messages';
 
@@ -80,33 +81,43 @@ export function ChatView() {
     postToPort({ type: 'agent:resume', tabId });
   };
 
+  const lastIdx = messages.length - 1;
+
   return (
-    <PageShell title="会话">
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <PageShell title="会话" eyebrow="AGENT" right={<Gauge state={status} />}>
+      <div className="chat">
+        <div className="chat__log">
           {messages.length === 0 && (
-            <div style={{ color: 'var(--fg-muted)' }}>输入指令让 AI 操作当前页面，例如“帮我点掉 cookie 弹窗”。</div>
+            <div className="chat__empty">
+              输入指令，让 AI 操作当前页面。
+              <br />
+              例如“帮我点掉 cookie 弹窗”。
+            </div>
           )}
-          {messages.map((m, i) => <MessageRow key={i} item={m} />)}
+          {messages.map((m, i) => (
+            <MessageRow key={i} item={m} streaming={status === 'running' && i === lastIdx} />
+          ))}
           {status === 'paused' && (
-            <div style={{ padding: 10, background: '#fef9c3', borderRadius: 8, fontSize: 13 }}>
-              已暂停：{pauseReason}
-              <div style={{ marginTop: 8 }}><Button variant="primary" onClick={resume}>继续</Button></div>
+            <div className="pausebar rise">
+              <div style={{ marginBottom: 8 }}>
+                <span className="token" style={{ color: 'var(--warn)' }}>PAUSED</span> {pauseReason}
+              </div>
+              <Button variant="signal" onClick={resume}>继续</Button>
             </div>
           )}
           <div ref={endRef} />
         </div>
-        <div style={{ display: 'flex', gap: 8, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+        <div className="dock">
           <textarea
+            className="textarea"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
             placeholder={status === 'running' ? 'AI 执行中…' : '输入指令…'}
             disabled={status === 'running'}
             rows={2}
-            style={{ flex: 1, resize: 'none', padding: 8, borderRadius: 6, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'inherit' }}
           />
-          <Button variant="primary" onClick={send} disabled={status === 'running'} aria-label="发送">
+          <Button variant="signal" className="dock__send" onClick={send} disabled={status === 'running'} aria-label="发送">
             {status === 'running' ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
           </Button>
         </div>
@@ -115,21 +126,38 @@ export function ChatView() {
   );
 }
 
-function MessageRow({ item }: { item: ChatItem }) {
+function MessageRow({ item, streaming }: { item: ChatItem; streaming: boolean }) {
   if (item.role === 'user') {
-    return <div style={{ alignSelf: 'flex-end', background: '#eff6ff', padding: '8px 12px', borderRadius: 10, maxWidth: '85%', fontSize: 13 }}>{item.text}</div>;
+    return <div className="msg-user rise">{item.text}</div>;
   }
   if (item.role === 'assistant') {
-    return <div style={{ fontSize: 13, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{item.text}</div>;
+    return <div className={`msg-assistant rise${streaming ? ' caret' : ''}`}>{item.text}</div>;
   }
   if (item.role === 'error') {
-    return <div style={{ display: 'flex', gap: 6, color: '#dc2626', fontSize: 12 }}><CircleAlert size={14} /> {item.text}</div>;
+    return (
+      <div className="msg-error rise">
+        <CircleAlert size={15} />
+        <span>{item.text}</span>
+      </div>
+    );
   }
+  const state = item.status === 'running' ? 'running' : item.ok ? 'ok' : 'err';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--fg-muted)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px' }} title={item.args}>
-      {item.status === 'running' ? <Loader2 size={13} className="spin" /> : <Wrench size={13} />}
-      <span>{item.name}</span>
-      {item.status === 'done' && <span style={{ color: item.ok ? '#16a34a' : '#dc2626' }}>· {item.summary}</span>}
+    <div className={`toolcard toolcard--${state} rise`} title={item.args}>
+      <span className="toolcard__icon">
+        {item.status === 'running' ? (
+          <Loader2 size={13} className="spin" />
+        ) : item.ok ? (
+          <Check size={13} color="var(--ok)" />
+        ) : (
+          <X size={13} color="var(--err)" />
+        )}
+      </span>
+      <span className="toolcard__name">{item.name}</span>
+      {item.status === 'done' && item.summary && (
+        <span className={`toolcard__summary${item.ok ? '' : ' toolcard__summary--err'}`}>· {item.summary}</span>
+      )}
+      {item.status === 'running' && <Wrench size={11} color="var(--ink-3)" style={{ marginLeft: 'auto' }} />}
     </div>
   );
 }

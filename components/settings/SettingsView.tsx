@@ -1,17 +1,10 @@
 // components/settings/SettingsView.tsx
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { getSettings, saveSettings, type Settings } from '../../storage/settings';
 import { testConnection, type ConnectionTestResult } from '../../agent/provider/connection-test';
-
-const fieldStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-  marginBottom: 14,
-};
 
 export function SettingsView() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -24,8 +17,8 @@ export function SettingsView() {
 
   if (!settings) {
     return (
-      <PageShell title="设置">
-        <div>加载中…</div>
+      <PageShell title="设置" eyebrow="CONFIG">
+        <div className="hint">加载中…</div>
       </PageShell>
     );
   }
@@ -48,19 +41,19 @@ export function SettingsView() {
   };
 
   return (
-    <PageShell title="设置">
-      <section style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 14, fontWeight: 600, margin: '0 0 12px' }}>AI 服务（OpenAI 兼容）</h2>
-        <div style={fieldStyle}>
-          <label>Base URL</label>
+    <PageShell title="设置" eyebrow="CONFIG">
+      <section className="section">
+        <h2 className="section__title">AI 服务（OpenAI 兼容）</h2>
+        <div className="field">
+          <label className="field-label">Base URL</label>
           <Input
             value={settings.provider.baseUrl}
             onChange={(e) => setProvider({ baseUrl: e.target.value })}
             placeholder="https://api.deepseek.com/v1"
           />
         </div>
-        <div style={fieldStyle}>
-          <label>API Key</label>
+        <div className="field">
+          <label className="field-label">API Key</label>
           <Input
             type="password"
             value={settings.provider.apiKey}
@@ -68,8 +61,8 @@ export function SettingsView() {
             placeholder="sk-…"
           />
         </div>
-        <div style={fieldStyle}>
-          <label>模型</label>
+        <div className="field">
+          <label className="field-label">模型</label>
           <Input
             value={settings.provider.model}
             onChange={(e) => setProvider({ model: e.target.value })}
@@ -78,7 +71,7 @@ export function SettingsView() {
         </div>
       </section>
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Button variant="primary" onClick={handleSave}>
           保存
         </Button>
@@ -86,7 +79,7 @@ export function SettingsView() {
           {testing ? '测试中…' : '测试连接'}
         </Button>
         {testResult && (
-          <span style={{ fontSize: 12, color: testResult.ok ? '#16a34a' : '#dc2626' }}>
+          <span className={`status-text ${testResult.ok ? 'status-text--ok' : 'status-text--err'}`}>
             {testResult.ok ? `连接成功：${testResult.data}` : testResult.error}
           </span>
         )}

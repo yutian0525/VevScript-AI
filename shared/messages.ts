@@ -65,6 +65,24 @@ export interface CsReadyNotification {
   payload: { url: string };
 }
 
+// ---------- 调试台：绕过 LLM 直接执行单个工具（sidepanel → background，一问一答）----------
+
+/** 调试执行请求：指定 tab + 工具名 + 参数，走真实 executeTool 链路。 */
+export interface DebugExecRequest {
+  type: 'DEBUG_EXEC_TOOL';
+  tabId: number;
+  name: string;
+  args: Record<string, unknown>;
+}
+
+/** 调试执行响应：dispatched=链路是否跑通（非工具语义 ok），result=工具返回，ms=耗时。 */
+export interface DebugExecResponse {
+  dispatched: boolean;
+  result?: ToolResult;
+  ms: number;
+  error?: string; // 链路层错误（如 executeTool 抛出）
+}
+
 // ---------- sidepanel ↔ background Port 协议（独立于 cs 协议）----------
 // 约定：Port name 为 'agent'；消息用 'agent:' 前缀（→bg）或事件名（bg→）区分。
 
