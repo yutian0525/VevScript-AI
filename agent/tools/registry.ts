@@ -60,7 +60,33 @@ export async function executeTool(
     if (!resp?.result) return { ok: false, error: 'content script 无响应（页面可能未加载完成）' };
     return resp.result;
   } catch (err) {
-    return { ok: false, error: `发送到页面失败：${err instanceof Error ? err.message : String(err)}` };
+    // "Receiving end does not exist"：页面在扩展重载前就已打开，未被自动注入 content script。
+    // 动态注入 content.js 兜底后重试一次（设计 §4.4 静态注册 + 动态注入兜底）。
+    const injected = await injectContentScript(ctx.tabId);
+    if (!injected) {
+      return { ok: false, error: `发送到页面失败：${err instanceof Error ? err.message : String(err)}（该页可能不允许注入）` };
+    }
+    try {
+      const retry = await browser.tabs.sendMessage(ctx.tabId, req, { frameId: 0 }) as { result?: ToolResult } | undefined;
+      if (!retry?.result) return { ok: false, error: 'content script 无响应（注入后仍无应答）' };
+      return retry.result;
+    } catch (err2) {
+      return { ok: false, error: `发送到页面失败（注入后重试仍失败）：${err2 instanceof Error ? err2.message : String(err2)}` };
+    }
+  }
+}
+
+/** 向目标标签页主帧动态注入 content script（老页面未自动注入时的兜底）。成功返回 true。 */
+async function injectContentScript(tabId: number): Promise<boolean> {
+  try {
+    await browser.scripting.executeScript({
+      target: { tabId },
+      files: ['/content-scripts/content.js'],
+    });
+    return true;
+  } catch (e) {
+    console.warn('[registry] 动态注入 content script 失败', e);
+    return false;
   }
 }
 
