@@ -122,10 +122,14 @@ export class OpenAICompatProvider implements Provider {
           text: (t) => onEvent({ type: 'text-delta', text: t }),
         });
 
+        // 诊断：记录已见过的 delta 字段名，每个字段首次出现时打印一次（名+样例值），
+        // 用于排查「思考未输出」——直接看网关到底在 delta 里发了什么字段。排查完可删。
+        const seenDeltaKeys = new Set<string>();
+
         const parser = createSseParser((data) => {
           let chunk: {
             choices?: Array<{
-              delta?: {
+              delta?: Record<string, unknown> & {
                 content?: string | null;
                 reasoning_content?: string | null;
                 reasoning?: string | null;
@@ -145,6 +149,15 @@ export class OpenAICompatProvider implements Provider {
             return; // 跳过无法解析的行（某些中转站夹带非标准行）
           }
           const choice = chunk.choices?.[0];
+          if (choice?.delta) {
+            for (const k of Object.keys(choice.delta)) {
+              if (seenDeltaKeys.has(k)) continue;
+              seenDeltaKeys.add(k);
+              const v = (choice.delta as Record<string, unknown>)[k];
+              const sample = typeof v === 'string' ? v.slice(0, 60) : JSON.stringify(v)?.slice(0, 60);
+              console.log('[provider][diag] delta 字段:', k, '=', sample);
+            }
+          }
           const reasoning = choice?.delta?.reasoning_content ?? choice?.delta?.reasoning;
           if (reasoning) onEvent({ type: 'reasoning-delta', text: reasoning });
           if (choice?.delta?.content) {
