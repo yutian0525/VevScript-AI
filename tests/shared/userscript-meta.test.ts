@@ -18,11 +18,12 @@ const fixture = `// ==UserScript==
 document.querySelector('.ad')?.remove();`;
 
 describe('parseUserScript', () => {
-  it('解析标准头：name/matches/run-at/grants/代码体', () => {
+  it('解析标准头：name/matches/run-at/world/grants/代码体', () => {
     const { fields, warnings } = parseUserScript(fixture);
     expect(fields.name).toBe('去广告助手');
     expect(fields.matches).toEqual(['https://example.com/*', 'https://www.example.com/*']);
     expect(fields.runAt).toBe('document_end');
+    expect(fields.world).toBe('USER_SCRIPT'); // 缺省
     expect(fields.code).toBe('\ndocument.querySelector(\'.ad\')?.remove();');
     expect(fields.meta).toMatchObject({ namespace: 'https://example.org/', version: '1.2.0', author: 'someone', description: '移除页面广告', grants: ['GM_setValue'] });
     expect(warnings.some((w) => w.includes('GM_*'))).toBe(true);
@@ -33,6 +34,7 @@ describe('parseUserScript', () => {
     expect(fields.code).toBe('console.log(1)');
     expect(fields.name).toBe('my');
     expect(fields.matches).toEqual([]);
+    expect(fields.world).toBe('USER_SCRIPT');
     expect(warnings.some((w) => w.includes('元数据头'))).toBe(true);
   });
 
@@ -51,12 +53,35 @@ describe('parseUserScript', () => {
     expect(bad.warnings.some((w) => w.includes('@run-at'))).toBe(true);
   });
 
-  it('@include 警告并忽略；无 @match 警告', () => {
-    const src = '// ==UserScript==\n// @include https://a.com/*\n// ==/UserScript==\ncode();';
+  it('@include pattern 形式并入 matches（去重），不再警告', () => {
+    const src = '// ==UserScript==\n// @match https://a.com/*\n// @include https://b.com/*\n// @include https://a.com/*\n// ==/UserScript==\ncode();';
+    const r = parseUserScript(src);
+    expect(r.fields.matches).toEqual(['https://a.com/*', 'https://b.com/*']);
+    expect(r.warnings.some((w) => w.includes('@include'))).toBe(false);
+  });
+
+  it('@include 正则形式 /…/ 警告并忽略', () => {
+    const src = '// ==UserScript==\n// @include /^https:\\/\\/a\\.com\\//\n// ==/UserScript==\ncode();';
     const r = parseUserScript(src);
     expect(r.fields.matches).toEqual([]);
-    expect(r.warnings.some((w) => w.includes('@include'))).toBe(true);
-    expect(r.warnings.some((w) => w.includes('@match'))).toBe(true);
+    expect(r.warnings.some((w) => w.includes('正则形式'))).toBe(true);
+    expect(r.warnings.some((w) => w.includes('@match/@include'))).toBe(true); // 无匹配规则警告仍在
+  });
+
+  it('@include 非 pattern glob 警告并忽略', () => {
+    const src = '// ==UserScript==\n// @include *.a.com/*\n// ==/UserScript==\ncode();';
+    const r = parseUserScript(src);
+    expect(r.fields.matches).toEqual([]);
+    expect(r.warnings.some((w) => w.includes('match pattern 语法'))).toBe(true);
+  });
+
+  it('@world：USER_SCRIPT/MAIN 映射 + 非法值警告回退 USER_SCRIPT', () => {
+    const mk = (v: string) => `// ==UserScript==\n// @world ${v}\n// ==/UserScript==\n`;
+    expect(parseUserScript(mk('MAIN')).fields.world).toBe('MAIN');
+    expect(parseUserScript(mk('USER_SCRIPT')).fields.world).toBe('USER_SCRIPT');
+    const bad = parseUserScript(mk('ISOLATED'));
+    expect(bad.fields.world).toBe('USER_SCRIPT');
+    expect(bad.warnings.some((w) => w.includes('@world'))).toBe(true);
   });
 
   it('其它不支持的键汇总为一条 ignored 警告', () => {
@@ -75,9 +100,9 @@ describe('parseUserScript', () => {
 });
 
 describe('stringifyUserScript / parse 往返', () => {
-  it('stringify → parse 元数据无损', () => {
+  it('stringify → parse 元数据无损（world USER_SCRIPT 缺省不输出）', () => {
     const s: UserScript = {
-      id: 's1', name: '测试', enabled: true, matches: ['https://a.com/*'],
+      id: 's1', text: '', name: '测试', enabled: true, matches: ['https://a.com/*'],
       code: 'console.log("x");', runAt: 'document_start', world: 'USER_SCRIPT', source: 'import',
       meta: { namespace: 'ns', version: '0.1', author: 'me', description: '描述', grants: ['GM_getValue'] },
       createdAt: 0, updatedAt: 0,
@@ -88,7 +113,22 @@ describe('stringifyUserScript / parse 往返', () => {
     expect(back.fields.name).toBe('测试');
     expect(back.fields.matches).toEqual(['https://a.com/*']);
     expect(back.fields.runAt).toBe('document_start');
+    expect(back.fields.world).toBe('USER_SCRIPT');
     expect(back.fields.code).toBe('\nconsole.log("x");');
     expect(back.fields.meta).toEqual(s.meta);
+  });
+
+  it('world MAIN 往返无损（@world 输出）', () => {
+    const s: UserScript = {
+      id: 's2', text: '', name: '主世界', enabled: true, matches: ['https://a.com/*'],
+      code: 'x();', runAt: 'document_idle', world: 'MAIN', source: 'user',
+      createdAt: 0, updatedAt: 0,
+    };
+    const text = stringifyUserScript(s);
+    expect(text).toContain('@world');
+    const back = parseUserScript(text);
+    expect(back.fields.world).toBe('MAIN');
+    expect(back.fields.name).toBe('主世界');
+    expect(back.fields.code).toBe('\nx();');
   });
 });
