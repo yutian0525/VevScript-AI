@@ -1,0 +1,30 @@
+entrypoints/content.ts
+  s_6fe7ed92def0ff::t_d7403d7ff7cf54 8
+  s_6fe7ed92def0ff::t_b4a13ac6555898 22
+agent/tools/schemas.ts
+  s_6fe7ed92def0ff::t_7e8b40791917e5 30
+tests/shared/messages-phase2.test.ts
+  s_6fe7ed92def0ff::t_1a897e018d3da0 11-15
+tests/content/handler.test.ts
+  s_6fe7ed92def0ff::t_9099a136a0d228 30,34,36-37
+tests/content/wait.test.ts
+  s_6fe7ed92def0ff::t_8b95d7ad9612ff 3
+shared/messages.ts
+  s_6fe7ed92def0ff::t_f695b8596f9cb0 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "ac4dc18857098ba4eb51128a654bbe94f0bd5ff2",
+  "prompts": {},
+  "sessions": {
+    "s_6fe7ed92def0ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5aec521b-da47-4488-b4f7-f815e77cf1dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
