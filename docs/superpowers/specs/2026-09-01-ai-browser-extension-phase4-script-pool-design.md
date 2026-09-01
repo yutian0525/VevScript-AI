@@ -1,7 +1,8 @@
 # AI Browser Extension 设计文档（Phase 4：脚本池 —— 脚本管理器 + 注入引擎 + AI 工具）
 
-> 状态：已定稿，待实现。前置：Phase 3a（工具 9→16）已完成；Phase 3b（MAIN world hook + 观测三工具）设计已定稿但未实现，**本阶段不依赖 3b**（注入走 `chrome.userScripts`，观测 hook 是独立子系统）。
+> 状态：已实现（`feature/phase4-script-pool`）；2026-09-02 完成修订。前置：Phase 3a（工具 9→16）已完成；Phase 3b（MAIN world hook + 观测三工具）设计已定稿但未实现，**本阶段不依赖 3b**（注入走 `chrome.userScripts`，观测 hook 是独立子系统）。
 > 本阶段目标：落地类 Tampermonkey 的脚本管理器——脚本 CRUD/启停/搜索/导入导出 UI、`chrome.userScripts` 注入引擎、per-tab 运行态展示、AI 脚本管理六工具。
+> **修订 2026-09-02（文本为源）**：`UserScript.text`（完整 `.user.js` 原文，含 `==UserScript==` 头）为唯一真源，name/matches/code/runAt/world/meta 均为保存时解析生成的投影；`@include` 的 pattern 形式直接并入 matches；新增 `@world` 键；`get_script` 支持行区间读取（带 totalLines），`create_script`/`update_script` 以文本为参数（整文替换 + 行区间替换）；详情页由表单填空改为源码编辑器。
 
 ## 1. 目标与范围
 
@@ -23,7 +24,7 @@
 
 - 不实现任何 GM_* API（GM_setValue/GM_xmlhttpRequest/…）。
 - 不做确认门控 UI（pendingOps/批准卡，下阶段）。
-- 不做 `@include`/`@exclude` glob 语义（与 match pattern 有损转换，宁缺毋滥——解析时警告并忽略）。
+- ~~不做 `@include`/`@exclude` glob 语义~~（修订 2026-09-02）：`@include` 的 pattern 形式（能通过 match pattern 校验）直接并入 matches 按 @match 语义生效；正则形式 `/…/` 与其它 glob 形式、以及 `@exclude`，仍警告并忽略。
 - 不做脚本执行错误回执（phone-home）——保证「代码原样执行」透明性；脚本异常走页面 window.onerror（Phase 3b hook 上线后天然可观测）。
 - 不做 iframe 注入控制（v1 仅主帧）；不做 @noframes 之外的 frame 规则。
 - 不做脚本市场/更新检查（@updateURL/@downloadURL 仅记录不使用）。
@@ -55,12 +56,13 @@ shared/match-pattern.ts(新)
 ```ts
 interface UserScript {
   id: string;                    // uuid（crypto.randomUUID）
-  name: string;
-  enabled: boolean;
-  matches: string[];             // match patterns（@match 语义）
-  code: string;
-  runAt: 'document_start' | 'document_end' | 'document_idle';
-  world: 'USER_SCRIPT' | 'MAIN'; // 默认 USER_SCRIPT（隔离世界）
+  text: string;                  // 完整 .user.js 原文（含 ==UserScript== 头）——唯一真源（修订 2026-09-02）
+  name: string;                  // 解析投影
+  enabled: boolean;              // 头部之外的运行时开关（同 TM）
+  matches: string[];             // 解析投影：@match + pattern 形 @include 合并
+  code: string;                  // 解析投影：头部之后的代码体
+  runAt: 'document_start' | 'document_end' | 'document_idle'; // 解析投影
+  world: 'USER_SCRIPT' | 'MAIN'; // 解析投影：@world，默认 USER_SCRIPT
   source: 'user' | 'agent' | 'import';
   meta?: {                       // TM 导入保留的展示性元数据（不参与注入）
     namespace?: string;
@@ -76,6 +78,7 @@ interface UserScript {
 ```
 
 - **存储键**：单键 `local:scripts:index`（`UserScript[]`），沿用原总体设计 §8 键名。个人量级（<100 条）全量读写无压力，YAGNI 分键。
+- **投影与迁移（修订 2026-09-02）**：除 `text/enabled/source/id/时间戳` 外的字段均为保存时 `parseUserScript(text)` 生成的投影，不接受独立编辑；旧记录（无 `text`）读取时用 `stringifyUserScript` 反拼生成并惰性写回。`text` 上限 280KB（`MAX_TEXT_LENGTH`）。
 - **上限**：200 条/单脚本 code ≤ 256KB，超限报错（上限常量导出，工具层与编排层共用）。
 - API：`listScripts() / getScript(id) / saveScript(script) / deleteScript(id)`（纯 storage 层，无注册逻辑）。
 - `confirmGate` 保留在 `storage/settings.ts`，本阶段只读取展示（设置页已有开关），编排层留注释标记门控接入点。
@@ -87,22 +90,22 @@ interface UserScript {
 返回 `{ fields, warnings }`：
 
 - 提取 `// ==UserScript==` … `// ==/UserScript==` 块（无块 = 整段作为 code，fields 全默认，warning 提示「未找到元数据头」）。
-- 支持键：`@name`（缺省用 fallbackName/「未命名脚本」）、`@namespace`、`@version`、`@author`、`@description`、`@match`（多条）、`@run-at`（`document-start|document-end|document-idle` → 内部下划线枚举，缺省 `document_idle`）、`@grant`（多条，记录到 `meta.grants`）、`@noframes`（记录）。
+- 支持键：`@name`（缺省用 fallbackName/「未命名脚本」）、`@namespace`、`@version`、`@author`、`@description`、`@match`（多条）、`@include`（修订 2026-09-02：值通过 match pattern 校验 → 并入 matches 去重生效）、`@run-at`（`document-start|document-end|document-idle` → 内部下划线枚举，缺省 `document_idle`）、`@world`（修订：`USER_SCRIPT|MAIN`，缺省 `USER_SCRIPT`，非法值警告回退）、`@grant`（多条，记录到 `meta.grants`）、`@noframes`（记录）。
 - **警告规则**：
   - `@grant` 存在非 `none` 值 →「本扩展不支持 GM_* API，脚本可能运行报错」。
-  - `@include` / `@exclude` / `@ant-match` 等不支持的匹配键 → 警告并忽略。
+  - `@include` 正则形式 `/…/` 或不合 match pattern 语法的值 → 警告并忽略（修订 2026-09-02：pattern 形式不再忽略，见上）。`@exclude`/`@ant-match` 等其余匹配键 → 警告并忽略。
   - 无任何 `@match` → `matches: []` + 警告（**不默认 `<all_urls>`**；无匹配规则 = 不注册不运行，UI 醒目提示补规则）。
   - `@updateURL` / `@downloadURL` / `@icon` 等其它键 → 静默忽略进 `meta` 之外的未知键计数（一条汇总 warning「已忽略 N 个不支持的元数据键」即可，不逐键罗列）。
 - 块外的代码体原样保留（不 trim 块内缩进，不改写用户代码）。
 
 ### 5.2 序列化 `stringifyUserScript(script: UserScript): string`
 
-反向生成带元数据头的 `.user.js` 文本（导出用）：`@name/@namespace/@version/@author/@description/@match(多条)/@run-at/@grant(有则输出)/@noframes`。`parseUserScript(stringifyUserScript(s))` 往返等价（meta 无损）。
+反向生成带元数据头的 `.user.js` 文本（修订 2026-09-02 后仅用于旧记录 text 迁移与兜底生成，导出直接用原文）：`@name/@namespace/@version/@author/@description/@match(多条)/@run-at/@world(仅 MAIN 时输出)/@grant(有则输出)/@noframes`。`parseUserScript(stringifyUserScript(s))` 往返等价（meta/world 无损）。
 
 ### 5.3 导入 / 导出
 
 - 导入：列表页「导入 .user.js」（file input `accept=".user.js,.js"`）；「新建」时粘贴内容含元数据头则自动解析预填表单。导入默认 `enabled: true`、`source: 'import'`；warnings 全部透传到 UI 展示。
-- 导出：详情页「导出 .user.js」——纯前端 `<a download>` + blob，无需消息通道。
+- 导出（修订 2026-09-02）：直接下载 `script.text` 原文（不再反向拼头）——纯前端 `<a download>` + blob，无需消息通道。
 
 ## 6. 注入引擎与注册同步（`background/scripts.ts`）
 
@@ -116,6 +119,7 @@ interface UserScript {
 - **自愈**：SW 顶层启动时调一次 `syncRegistrations()`（persistAcrossSessions 理论自持久，扩展更新/注册漂移时对齐）。
 - **降级**：`chrome.userScripts` undefined → 读操作（list/get/get_runtime）照常；写操作返回固定文案「脚本注入引擎不可用：请在 chrome://extensions 开启开发者模式或升级 Chrome 120+」；UI 顶部常驻警示条（可折叠）。导入/新建在降级态仍可保存（enabled 但不注册，引擎恢复后由启动 sync 自动注册）。
 - match pattern 非法 → create/update/import 拒绝，返回非法条目列表（校验用 `shared/match-pattern.ts`）。**编排层允许 `matches: []`**（导入无 @match 的脚本能保存，但永不注册，UI 醒目提示）；「必填非空」只是工具层 create_script 的 schema 约束。
+- **文本为源（修订 2026-09-02）**：`handleCreate(input { text, enabled?, source-tag })` 与 `handleImport(text, filename?)` 先 `parseUserScript` 再校验再落库；`handleUpdate(id, patch { text?, enabled?, edit? })` 中 `edit: { startLine, endLine, text }` 为行区间替换（1-based 含端点，非法区间/越界报错），splice 到当前原文后**整体重解析**——投影字段不接受直接 patch；`handleGet(id, offset?, limit?)` 返回 `{ script, totalLines, startLine, endLine }`（缺省全文；传区间时 `script.text` 为行切片，越界钳制）。
 
 ### 6.2 运行态跟踪（语义 = 预期注入）
 
@@ -133,12 +137,12 @@ interface UserScript {
 ```ts
 // sidepanel → bg（request/response，走现有 MessageRouter）
 SCRIPTS_LIST        {}                                   → { scripts: ScriptSummary[] }   // 摘要无 code
-SCRIPTS_GET         { id }                               → { script: UserScript }
+SCRIPTS_GET         { id, offset?, limit? }              → { script, totalLines, startLine, endLine }   // 修订：行区间读取（1-based），缺省全文
 SCRIPTS_CREATE      { input: ScriptInput }               → { script: UserScript }
 SCRIPTS_UPDATE      { id, patch: ScriptPatch }           → { script: UserScript }
 SCRIPTS_DELETE      { id }                               → {}
 SCRIPTS_SET_ENABLED { id, enabled }                      → { script: UserScript }
-SCRIPTS_IMPORT      { source: string, filename?: string } → { script: UserScript, warnings: string[] }
+SCRIPTS_IMPORT      { text: string, filename?: string }  → { script: UserScript, warnings: string[] }   // 修订：字段 source→text
 SCRIPTS_GET_RUNTIME {}                                   → { entries: Array<{ tabId, url, scriptIds }> }
 
 // bg → panel 广播（fire-and-forget）
@@ -156,17 +160,18 @@ SCRIPTS_RUNTIME     { tabId, url, scriptIds }
 ```
 list_scripts    enabled?: boolean; urlContains?: string
                 → data: { scripts: [{ id, name, matches, enabled, source, runAt, world, updatedAt }] }
-get_script      id: string
-                → data: { script }          // 全文含 code（模型读代码）
-create_script   name: string; code: string; matches: string[]; runAt?; world?; enabled?
-update_script   id: string; patch: { name?, code?, matches?, runAt?, world?, enabled? }
+get_script      id: string; offset?: number; limit?: number        // 修订 2026-09-02：行区间读取
+                → data: { script, totalLines, startLine, endLine } // 缺省全文；传区间时 script.text 为行切片
+create_script   source: string; enabled?                           // 修订：完整 .user.js 文本（带头部）；解析后 matches 须非空
+update_script   id: string; patch: { text?, enabled?, edit?: { startLine, endLine, text } }
+                // 修订：text 整文替换；edit 行区间替换（1-based 含端点，越界报错）；替换后整体重解析
 delete_script   id: string
 toggle_script   id: string; enabled: boolean
 ```
 
 - 六工具与 UI 走**同一编排层**（`background/scripts.ts` handler 函数直接复用），AI 改脚本 = 用户改脚本，行为零分叉。
 - 全部豁免受限页预检（不碰页面内容，纯 storage/注册操作；registry.ts 受限页检查之前分发）。
-- `create_script` schema description 注明：脚本以用户脚本权限在匹配页面上运行；要求模型先向用户说明脚本用途与作用域再创建。code 非空 + ≤256KB；matches 必填非空数组 + 语法校验（校验失败返回非法条目列表，模型可自修正）。
+- `create_script` schema description 注明：脚本以用户脚本权限在匹配页面上运行；要求模型先向用户说明脚本用途与作用域再创建。source 必填（完整 `.user.js` 文本，含 `==UserScript==` 头）；解析后 matches 非空 + 语法校验（校验失败返回非法条目列表，模型可自修正）；code ≤256KB、text ≤280KB。
 - 工具返回沿用 `{ ok: true, data? } | { ok: false, error }` 判别联合。
 - schema 经现有 `TOOL_SCHEMAS` 机制自动同步调试台。
 
@@ -177,14 +182,14 @@ toggle_script   id: string; enabled: boolean
 - 顶部「当前页运行中」区：活动 tab 运行集（脚本名列表，`●` 脉冲圆点，`prefers-reduced-motion` 下静态）；空态「无脚本在此页运行」；受限页显示「此页面不注入脚本」。
 - 搜索框：name/description/matches 大小写不敏感子串过滤（纯前端，过滤 store 内数据）。
 - 脚本行：名称 + 匹配摘要（mono）+ 来源徽标（user/agent/import）+ GM_* 警告徽标（`meta.grants` 非 none 时）+ enabled 开关（即时发 `SCRIPTS_SET_ENABLED`）+ 点击进详情。
-- 底部操作：「新建」「导入 .user.js」。
+- 底部操作：「新建」「导入 .user.js」。新建（修订 2026-09-02）插入带头部骨架的模板文本（`@name 未命名脚本` + `@match *://*/*` + `@run-at document-idle`），落地直接进详情页编辑原文。
 - 引擎不可用警示条（`engineAvailable === false` 时顶部常驻，可折叠）。
 - 双声道排版：脚本名 sans、匹配 pattern/状态令牌 mono。
 
 ### 9.2 ScriptDetailView（详情页）
 
-- 返回（清 `ui.scriptId`）、name input、matches 编辑（textarea 每行一条 pattern，失焦逐条校验标红）、runAt select、world select（USER_SCRIPT/MAIN + 一行差异说明）、enabled 开关、meta 只读区（version/author/description/grants 警告）、code textarea（mono、Tab 键插两空格、固定高度内部滚动）。
-- 操作：保存 / 删除（二次确认）/ 导出 .user.js / 重载当前页（`tabs.reload`）。
+- （修订 2026-09-02：表单填空 → 文本为源）返回（清 `ui.scriptId`）、源码 textarea（完整 `.user.js` 原文，mono、Tab 键插两空格、固定高度内部滚动）+ 实时只读解析面板（随输入 `parseUserScript`：名称/版本/匹配列表/run-at/world/GM 警告/解析 warnings）+ enabled 开关。
+- 操作：保存（`patch { text }`）/ 删除（二次确认）/ 导出 .user.js（直接下载原文）/ 重载当前页（`tabs.reload`）。
 - 保存后提示「已重新注册，刷新页面生效」。
 - 导航：`stores/ui.ts` 加 `scriptId: string | null`（非空 = 详情态），railnav 不动。
 
@@ -192,10 +197,10 @@ toggle_script   id: string; enabled: boolean
 
 | 层 | 用例 |
 |---|---|
-| `userscript-meta.ts` | 各种头解析 / 无头 / grants 警告 / @include 忽略 / run-at 映射 / 无 @match 警告 / stringify 往返无损 |
+| `userscript-meta.ts` | 各种头解析 / 无头 / grants 警告 / @include pattern 形并入+正则形忽略 / @world / run-at 映射 / 无 @match 警告 / stringify 往返无损 |
 | `match-pattern.ts` | 合法/非法 pattern、路径通配、`<all_urls>` 不匹配受限页、大小写与端口语义 |
-| `storage/scripts.ts` | CRUD / 200 条上限 / 256KB 上限（storage mock 对齐现有测试做法） |
-| `background/scripts.ts` | syncRegistrations diff（register/unregister/update 三路，mock userScripts API）/ 引擎不可用降级文案 / 运行集重算三时机 / 广播 payload |
+| `storage/scripts.ts` | CRUD / 200 条上限 / 256KB 上限 / 旧记录 text 惰性迁移（storage mock 对齐现有测试做法） |
+| `background/scripts.ts` | syncRegistrations diff（register/unregister/update 三路，mock userScripts API）/ 引擎不可用降级文案 / 运行集重算三时机 / 广播 payload / 文本为源 CRUD（create/update from text、edit 行区间 splice、get 行区间） |
 | 工具执行器 | mock 编排层：参数校验、非法 matches 错误、豁免受限页、list 摘要不含 code |
 | schema | +6 断言、create_script 必填项/枚举 |
 | UI（jsdom） | 列表过滤 / 运行区随 SCRIPTS_RUNTIME 广播更新 / 详情保存流程 / 引擎警示条显隐 |
@@ -249,7 +254,7 @@ jsdom 不可覆盖的（真实 userScripts 注册、注入生效、跨 world 行
 - **编排层单点**：`background/scripts.ts` 的 CRUD handler 是门控接入点——下阶段确认门控（pendingOps + 批准卡）只需在 handler 前拦截，UI/工具层零改动。
 - `UserScript` 数据形状冻结；`parseUserScript`/`stringifyUserScript` 是 TM 兼容层的全部入口，后续补 GM_* 时在其上加 API shim 层，不动解析器。
 - 运行态广播（`SCRIPTS_RUNTIME`）形状冻结，后续「实际执行回执」（若做）以增量字段并入。
-- 六工具名与参数冻结（对齐 chrome-devtools-mcp 语义惯例），后续只增不改。
+- 六工具名冻结（对齐 chrome-devtools-mcp 语义惯例）；参数于 2026-09-02 修订一轮（get_script 行区间、create_script 文本化、update_script text/edit patch），此后继续只增不改。
 
 ## 14. 已知降级（实现中接受）
 
