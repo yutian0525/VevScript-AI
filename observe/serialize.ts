@@ -9,20 +9,20 @@ function cap(s: string): string {
 }
 
 function one(v: unknown): string {
-  if (v === null) return 'null';
-  if (v === undefined) return 'undefined';
-  const t = typeof v;
-  if (t === 'string') return v as string;
-  if (t === 'number' || t === 'boolean' || t === 'bigint') return String(v);
-  if (t === 'function') return `[Function${(v as { name?: string }).name ? `: ${(v as { name: string }).name}` : ''}]`;
-  if (t === 'symbol') return String(v as symbol);
-  if (v instanceof Error) return `${v.name}: ${v.message}`;
-  // DOM 节点：取标签名概要（typeof Node 守卫，jsdom/页面都可能无 Node）
-  if (typeof Node !== 'undefined' && v instanceof Node) {
-    const el = v as { nodeName?: string; id?: string };
-    return `<${(el.nodeName ?? 'node').toLowerCase()}${el.id ? `#${el.id}` : ''}>`;
-  }
   try {
+    if (v === null) return 'null';
+    if (v === undefined) return 'undefined';
+    const t = typeof v;
+    if (t === 'string') return v as string;
+    if (t === 'number' || t === 'boolean' || t === 'bigint') return String(v);
+    if (t === 'function') return `[Function${(v as { name?: string }).name ? `: ${(v as { name: string }).name}` : ''}]`;
+    if (t === 'symbol') return String(v as symbol);
+    if (v instanceof Error) return `${v.name}: ${v.message}`;
+    // DOM 节点：取标签名概要（typeof Node 守卫，jsdom/页面都可能无 Node）
+    if (typeof Node !== 'undefined' && v instanceof Node) {
+      const el = v as { nodeName?: string; id?: string };
+      return `<${(el.nodeName ?? 'node').toLowerCase()}${el.id ? `#${el.id}` : ''}>`;
+    }
     return JSON.stringify(v);
   } catch {
     return '[无法序列化的对象]';
