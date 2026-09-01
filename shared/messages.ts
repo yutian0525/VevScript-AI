@@ -1,9 +1,10 @@
 // shared/messages.ts
 // 三环境（background / content script / sidepanel）共享的消息协议。
 // 设计决策：request/response 模式 + correlation id（设计 §4.4）；
-// 例外：cs→bg 的 fire-and-forget 通知（见 CsToBgNotification）。
+// 例外：cs→bg 的 fire-and-forget 通知（见 HookConsoleNotification / HookNetworkNotification）。
 
 import type { ToolResult, Uid } from './types';
+import type { ConsoleEntry, HookNetEntry } from './hook-bridge';
 
 export interface BgToCsRequestMap {
   SNAPSHOT: { verbose?: boolean };
@@ -27,10 +28,17 @@ export type BgToCsRequest = {
   };
 }[keyof BgToCsRequestMap];
 
-/** cs→bg 的 fire-and-forget 通知（无 correlationId，无需 background 逐条应答）。 */
-export interface CsToBgNotification {
-  type: 'NETLOG_PUSH';
-  payload: { entries: unknown[] };
+/** cs→bg 的 fire-and-forget 通知：MAIN hook 经 ISOLATED content.ts 中继来的 console 观测。
+ *  tabId 由 background 从 sender.tab.id 取，此处不带。 */
+export interface HookConsoleNotification {
+  type: 'HOOK_CONSOLE';
+  payload: { entries: ConsoleEntry[] };
+}
+
+/** cs→bg 的 fire-and-forget 通知：中继来的 hook 网络观测（fetch/XHR body/headers）。 */
+export interface HookNetworkNotification {
+  type: 'HOOK_NETWORK';
+  payload: { entries: HookNetEntry[] };
 }
 
 export interface CsResponse {
@@ -57,7 +65,7 @@ export function isResponseFor(resp: CsResponse, req: BgToCsRequest): boolean {
   return resp.correlationId === req.correlationId && resp.type === req.type;
 }
 
-// ---------- cs→bg fire-and-forget 通知（扩展 CsToBgNotification 的兄弟类型）----------
+// ---------- cs→bg fire-and-forget 通知（HookConsole/HookNetwork 的兄弟类型）----------
 
 /** content script 加载完成通知（navigate 后等待此信号）。 */
 export interface CsReadyNotification {
