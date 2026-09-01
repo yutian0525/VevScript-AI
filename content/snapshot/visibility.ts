@@ -16,3 +16,7 @@ export function isHidden(el: Element): boolean {
   }
   return false;
 }
+
+export function isSkipTag(el: Element): boolean {
+  return SKIP_TAGS.has(el.tagName);
+}

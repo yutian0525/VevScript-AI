@@ -19,8 +19,8 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'take_snapshot',
       description:
-        '获取当前页面的可访问性快照（带 [uid] 编号的元素树）。后续 click/fill 等操作用 uid 定位元素。页面变化后应重新调用。',
-      parameters: obj({ verbose: { type: 'boolean', description: '是否输出更详细的树（默认 false）' } }),
+        '获取当前页面的完整内容树：根为 RootWebArea，含所有可见元素与文本（StaticText）行，每行带 [uid]。用 uid 做 click/fill/hover。注意 uid 定位到可点击元素，同一元素下多行文本可能共享同一 uid（非逐行唯一）。隐藏子菜单聚合在父节点的 description 里，要操作需先 hover 展开再重新 take_snapshot。页面变化后 uid 会失效，需重新调用。',
+      parameters: obj({}),
     },
   },
   {
