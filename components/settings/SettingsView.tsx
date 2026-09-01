@@ -6,13 +6,34 @@ import { Input } from '../ui/Input';
 import { getSettings, saveSettings, type Settings } from '../../storage/settings';
 import { testConnection, type ConnectionTestResult } from '../../agent/provider/connection-test';
 
+/** 解析额外参数 JSON：空串→undefined；非对象或非法→抛错（供保存时拦截）。 */
+function parseExtraBody(text: string): Record<string, unknown> | undefined {
+  const t = text.trim();
+  if (!t) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(t);
+  } catch {
+    throw new Error('不是合法 JSON');
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('必须是 JSON 对象，如 {"enable_thinking": true}');
+  }
+  return parsed as Record<string, unknown>;
+}
+
 export function SettingsView() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
+  const [extraText, setExtraText] = useState('');
+  const [extraError, setExtraError] = useState<string | null>(null);
 
   useEffect(() => {
-    getSettings().then(setSettings);
+    getSettings().then((s) => {
+      setSettings(s);
+      setExtraText(s.provider.extraBody ? JSON.stringify(s.provider.extraBody, null, 2) : '');
+    });
   }, []);
 
   if (!settings) {
@@ -26,16 +47,34 @@ export function SettingsView() {
   const setProvider = (patch: Partial<Settings['provider']>) =>
     setSettings({ ...settings, provider: { ...settings.provider, ...patch } });
 
+  /** 校验额外参数文本；非法则设错误并返回 null（拦截保存）。合法返回带 extraBody 的 provider。 */
+  const resolveProvider = (): Settings['provider'] | null => {
+    try {
+      const extraBody = parseExtraBody(extraText);
+      setExtraError(null);
+      return { ...settings.provider, extraBody };
+    } catch (e) {
+      setExtraError(e instanceof Error ? e.message : String(e));
+      return null;
+    }
+  };
+
   const handleSave = async () => {
-    await saveSettings({ provider: settings.provider, agent: settings.agent });
+    const provider = resolveProvider();
+    if (!provider) return;
+    setSettings({ ...settings, provider });
+    await saveSettings({ provider, agent: settings.agent });
     setTestResult(null);
   };
 
   const handleTest = async () => {
+    const provider = resolveProvider();
+    if (!provider) return;
+    setSettings({ ...settings, provider });
     setTesting(true);
     setTestResult(null);
-    await saveSettings({ provider: settings.provider }); // 测试的就是当前表单值
-    const r = await testConnection(settings.provider);
+    await saveSettings({ provider }); // 测试的就是当前表单值
+    const r = await testConnection(provider);
     setTestResult(r);
     setTesting(false);
   };
@@ -68,6 +107,22 @@ export function SettingsView() {
             onChange={(e) => setProvider({ model: e.target.value })}
             placeholder="deepseek-chat"
           />
+        </div>
+        <div className="field">
+          <label className="field-label">额外请求参数（JSON，选填）</label>
+          <textarea
+            className="textarea mono-input"
+            value={extraText}
+            onChange={(e) => { setExtraText(e.target.value); setExtraError(null); }}
+            placeholder={'{\n  "enable_thinking": true\n}'}
+            spellCheck={false}
+            rows={4}
+          />
+          {extraError ? (
+            <span className="status-text status-text--err">参数无效：{extraError}</span>
+          ) : (
+            <span className="hint">合并进请求体，用于开启各网关的思考等开关（如 enable_thinking / reasoning_effort）。核心字段受保护不被覆盖。</span>
+          )}
         </div>
       </section>
 

@@ -69,4 +69,7 @@ export interface ProviderConfig {
   baseUrl: string;
   apiKey: string;
   model: string;
+  /** 额外请求体参数：合并进 /chat/completions body。核心字段（model/messages/stream/
+   *  stream_options/tools/tool_choice）优先，不被覆盖。用于开启各网关的思考等开关。 */
+  extraBody?: Record<string, unknown>;
 }

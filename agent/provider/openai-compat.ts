@@ -72,6 +72,8 @@ export class OpenAICompatProvider implements Provider {
 
     const url = `${this.config.baseUrl.replace(/\/$/, '')}/chat/completions`;
     const body: Record<string, unknown> = {
+      // 用户自定义参数先铺底；下面的核心字段随后覆盖，确保协议不被破坏（如误设 stream:false）
+      ...this.config.extraBody,
       model: this.config.model,
       messages: toWireMessages(params.messages),
       // OpenAI 官方对 tools: [] 直接 400（empty array），无工具时整个字段省略

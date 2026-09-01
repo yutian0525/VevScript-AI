@@ -323,6 +323,27 @@ describe('OpenAICompatProvider', () => {
     expect(ti).toBeGreaterThan(ri);
   });
 
+  it('extraBody 合并进请求体，且不能覆盖核心字段', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(
+      new Response(sseStream([{ choices: [{ delta: {}, finish_reason: 'stop' }] }]), { status: 200 }),
+    );
+    const p = new OpenAICompatProvider({
+      baseUrl: 'https://api.x.com/v1',
+      apiKey: 'sk',
+      model: 'real-model',
+      // 混入一个自定义开关 + 一个企图覆盖核心字段的恶意值
+      extraBody: { enable_thinking: true, stream: false, model: 'HIJACK' },
+    });
+    await new Promise<void>((resolve) => {
+      p.streamChat(baseParams(), (e) => { if (e.type === 'message-done') resolve(); });
+    });
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.enable_thinking).toBe(true);      // 自定义参数进入 body
+    expect(body.stream).toBe(true);               // 核心字段不被覆盖
+    expect(body.model).toBe('real-model');        // 核心字段不被覆盖
+  });
+
   it('content 里的 <think>…</think>（跨 chunk）拆成 reasoning-delta + text-delta', async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValue(

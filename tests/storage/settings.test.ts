@@ -53,6 +53,12 @@ describe('settings storage', () => {
     });
   });
 
+  it('extraBody 可存可读回（对象原样保留）', async () => {
+    await saveSettings({ provider: { extraBody: { enable_thinking: true, reasoning_effort: 'high' } } });
+    const s = await getSettings();
+    expect(s.provider.extraBody).toEqual({ enable_thinking: true, reasoning_effort: 'high' });
+  });
+
   it('存量数据缺字段时 getSettings 用默认值补齐（前向兼容）', async () => {
     // 模拟旧版本写入的数据（如未来新增 agent 字段后，旧存量缺该字段）
     await storage.setItem('local:settings', {
