@@ -1,0 +1,21 @@
+tests/shared/gm-apis.test.ts
+  s_5acdc8bbc45473::t_4d0ca72c1b43bf 1-34
+shared/gm-apis.ts
+  s_5acdc8bbc45473::t_bf05f78bb0f092 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "eab4791154e983dff518a3a0c5b75197a60800d7",
+  "prompts": {},
+  "sessions": {
+    "s_5acdc8bbc45473": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b74cc937-d353-45e9-904d-631075ccdd75",
+        "model": "zhipu/glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
