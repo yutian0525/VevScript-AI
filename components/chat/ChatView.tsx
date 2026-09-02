@@ -1,6 +1,6 @@
 // components/chat/ChatView.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Send, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, ChevronDown, Brain, Square, SquarePen, ArrowUp, ArrowDown } from 'lucide-react';
+import { Paperclip, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, ChevronDown, Brain, SquarePen, ArrowUp, ArrowDown, Square } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Gauge } from '../ui/Gauge';
@@ -109,6 +109,8 @@ export function ChatView() {
   const title = list.find((c) => c.id === currentId)?.title ?? '新会话';
   const lastIdx = messages.length - 1;
 
+  const hasInput = input.trim().length > 0;
+
   return (
     <PageShell
       title={title}
@@ -116,10 +118,10 @@ export function ChatView() {
       right={<Gauge state={status} />}
       actions={
         <>
-          <Button variant="ghost" aria-label="新建会话" onClick={() => void useConversations.getState().newConversation()}>
+          <Button variant="ghost" className="btn--icon" aria-label="新建会话" onClick={() => void useConversations.getState().newConversation()}>
             <SquarePen size={16} />
           </Button>
-          <Button variant="ghost" aria-label="会话列表" aria-expanded={menuOpen} onClick={() => { if (!menuOpen) void useConversations.getState().refreshList(); setMenuOpen(!menuOpen); }}>
+          <Button variant="ghost" className="btn--icon" aria-label="会话列表" aria-expanded={menuOpen} onClick={() => { if (!menuOpen) void useConversations.getState().refreshList(); setMenuOpen(!menuOpen); }}>
             <ChevronDown size={16} />
           </Button>
         </>
@@ -148,33 +150,50 @@ export function ChatView() {
           )}
           <div ref={endRef} />
         </div>
-        <div className="dock">
+        <div className="composer">
           <textarea
-            className="textarea"
+            className="composer__input"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
-            placeholder={compacting ? '压缩中…' : status === 'running' ? 'AI 执行中…' : '输入指令…'}
+            placeholder={compacting ? '压缩中…' : status === 'running' ? 'AI 执行中…' : '输入指令，让 AI 操作页面…'}
             disabled={status === 'running' || compacting}
             rows={2}
           />
-          <div className="dock__controls">
-            <ContextRing
-              used={promptTokens}
-              window={contextWindow}
-              compacting={compacting}
-              disabled={!currentId || messages.length === 0 || status === 'running'}
-              onCompact={compact}
-            />
-            {status === 'running' ? (
-              <Button variant="signal" className="dock__send" onClick={stop} aria-label="停止">
-                <Square size={15} fill="currentColor" />
-              </Button>
-            ) : (
-              <Button variant="signal" className="dock__send" onClick={send} aria-label="发送">
-                <Send size={16} />
-              </Button>
-            )}
+          <div className="composer__bar">
+            <button
+              type="button"
+              className="composer__attach"
+              disabled
+              title="附件上传（即将支持）"
+              aria-label="上传附件（即将支持）"
+            >
+              <Paperclip size={16} />
+            </button>
+            <div className="composer__actions">
+              <ContextRing
+                used={promptTokens}
+                windowSize={contextWindow}
+                compacting={compacting}
+                disabled={!currentId || messages.length === 0 || status === 'running'}
+                onCompact={compact}
+              />
+              {status === 'running' ? (
+                <button type="button" className="composer__send" onClick={stop} aria-label="停止执行">
+                  <Square size={13} fill="currentColor" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="composer__send"
+                  onClick={() => void send()}
+                  disabled={!hasInput || compacting}
+                  aria-label="发送"
+                >
+                  <ArrowUp size={17} strokeWidth={2.5} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

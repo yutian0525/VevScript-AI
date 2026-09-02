@@ -153,6 +153,8 @@ body {
 .btn--danger:hover:not(:disabled) { background: var(--err-wash); }
 .btn--ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
 .btn--ghost:hover:not(:disabled) { background: var(--sunken); border-color: transparent; }
+/* 图标按钮：等宽高方形，hover 底色为正方形（去横向 padding 撑出的矩形） */
+.btn--icon { width: 30px; height: 30px; padding: 0; }
 
 /* ============ 输入 ============ */
 .field-label {
@@ -388,16 +390,60 @@ body {
   color: var(--ink);
 }
 
-/* 输入坞 */
-.dock { display: flex; gap: 8px; align-items: flex-end; padding-top: 12px; margin-top: 4px; border-top: 1px solid var(--line); }
-.dock .textarea { flex: 1; }
-.dock__send {
+/* 输入坞：整卡片，上输入 / 下操作条 */
+.composer {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border-radius: var(--r-md);
+  margin-top: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  padding: 3px 3px 2px;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
+.composer:focus-within {
+  border-color: var(--signal);
+  box-shadow: 0 0 0 3px var(--signal-wash);
+}
+.composer__input {
+  display: block;
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  resize: none;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+  padding: 8px 9px 4px;
+  min-height: 46px;
+  max-height: 168px;
+}
+.composer__input::placeholder { color: var(--ink-3); }
+.composer__input:disabled { color: var(--ink-3); cursor: not-allowed; }
+.composer__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 3px 2px 5px;
+}
+.composer__attach {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.composer__attach:hover:not(:disabled) { color: var(--ink-2); background: var(--sunken); }
+.composer__attach:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+.composer__attach:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ============ 通用块 ============ */
 .section { margin-bottom: 22px; }
@@ -483,23 +529,38 @@ body {
   margin-top: 4px;
 }
 
-/* ============ 环形上下文指示器 ============ */
-.dock__controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+/* ============ 右侧操作簇：上下文小环 + 圆形发送钮 ============ */
+.composer__actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+/* 上下文占比小环 = 压缩按钮 */
 .ctxring {
-  width: 28px; height: 28px; padding: 0;
+  width: 26px; height: 26px; padding: 0;
   border: none; background: transparent; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
   color: var(--ink-3); border-radius: 50%;
-  transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+  transition: background var(--t-fast) var(--ease);
 }
 .ctxring:hover:not(:disabled) { background: var(--sunken); }
 .ctxring:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
-.ctxring:disabled { cursor: default; opacity: 0.55; }
+.ctxring:disabled { cursor: default; opacity: 0.5; }
 .ctxring__track { stroke: var(--line-strong); }
 .ctxring__fill { stroke: var(--ink-3); transition: stroke-dashoffset var(--t-mid) var(--ease), stroke var(--t-fast) var(--ease); }
 .ctxring--warn .ctxring__fill { stroke: var(--warn); }
-.ctxring--warn:not(.ctxring--disabled) { animation: pulse 1.6s var(--ease) infinite; }
 .ctxring--danger .ctxring__fill { stroke: var(--err); }
+
+/* 圆形发送 / 停止钮 */
+.composer__send {
+  flex-shrink: 0;
+  width: 32px; height: 32px; padding: 0;
+  border: none; border-radius: 50%;
+  background: var(--signal); color: #fff;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
+}
+.composer__send:hover:not(:disabled) { background: var(--signal-ink); }
+.composer__send:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.composer__send:disabled { background: var(--sunken); color: var(--ink-3); cursor: not-allowed; }
 
 /* ============ 每轮 token 标注 ============ */
 .msg-usage {

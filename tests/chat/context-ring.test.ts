@@ -1,6 +1,6 @@
 // tests/chat/context-ring.test.ts
 import { describe, it, expect } from 'vitest';
-import { dashOffset, RING_CIRCUMFERENCE } from '../../components/chat/ContextRing';
+import { dashOffset, RING_CIRCUMFERENCE } from '../../components/chat/context-ring';
 
 describe('ContextRing dashOffset', () => {
   it('ratio 0 → 全空（offset = 周长）', () => {
