@@ -3,6 +3,9 @@
 /** 自动压缩触发阈值：占比达到此值时 loop 在下一轮前触发一次摘要。 */
 export const COMPACT_THRESHOLD = 0.8;
 
+/** 危险档阈值：占比达到此值时进入 danger 档位。 */
+export const DANGER_THRESHOLD = 0.95;
+
 export type MeterZone = 'normal' | 'warn' | 'danger';
 
 /** 已用 token 占窗口比例，裁剪到 [0,1]。used 未知或 window 非法时返回 0。 */
@@ -16,7 +19,7 @@ export function meterRatio(used: number | undefined, window: number): number {
 
 /** 占比 → 颜色档位：<80% normal / [80%,95%) warn / >=95% danger。 */
 export function meterZone(ratio: number): MeterZone {
-  if (ratio >= 0.95) return 'danger';
+  if (ratio >= DANGER_THRESHOLD) return 'danger';
   if (ratio >= COMPACT_THRESHOLD) return 'warn';
   return 'normal';
 }
