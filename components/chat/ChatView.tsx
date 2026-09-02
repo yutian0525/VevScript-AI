@@ -1,6 +1,6 @@
 // components/chat/ChatView.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Send, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, ChevronDown, Brain, Square, SquarePen } from 'lucide-react';
+import { Send, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, ChevronDown, Brain, Square, SquarePen, ArrowUp, ArrowDown } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Gauge } from '../ui/Gauge';
@@ -205,6 +205,12 @@ function MessageRow({ item, index, streaming }: { item: ChatItem; index: number;
         {item.text != null && (
           <div className={`msg-assistant${streaming && !item.thinking ? ' caret' : ''}`}>{item.text}</div>
         )}
+        {item.usage && (item.usage.prompt != null || item.usage.completion != null) && (
+          <div className="msg-usage mono">
+            {item.usage.prompt != null && (<><ArrowUp size={10} />{formatTokens(item.usage.prompt)}</>)}
+            {item.usage.completion != null && (<><ArrowDown size={10} />{formatTokens(item.usage.completion)}</>)}
+          </div>
+        )}
       </div>
     );
   }
@@ -288,4 +294,9 @@ function formatArgs(args: string): string {
   } catch {
     return args;
   }
+}
+
+/** token 数格式化：>=1000 显示 xk，否则原样。 */
+function formatTokens(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
