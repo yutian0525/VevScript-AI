@@ -8,7 +8,7 @@
 
 ### 1.1 目标
 
-1. **GM_* API 首批 13 个**：GM_info、GM_getValue、GM_setValue、GM_deleteValue、GM_listValues、GM_addValueChangeListener、GM_addStyle、GM_log、GM_registerMenuCommand、GM_setClipboard、GM_notification、GM_openInTab、GM_xmlhttpRequest。
+1. **GM_* API 首批 14 个**：GM_info、GM_getValue、GM_setValue、GM_deleteValue、GM_listValues、GM_addValueChangeListener、GM_addStyle、GM_log、GM_registerMenuCommand、GM_setClipboard、GM_notification、GM_openInTab、GM_xmlhttpRequest、GM_getResourceText（随 @resource 支持附带——纯快照本地读，零桥接成本；没有它 @resource 嵌入无消费方）。
 2. **API 文档**：`docs/gm-api.md`，面向脚本作者（签名/示例/与 TM 差异/未实现清单）。
 3. **管理器优化四项**：脚本错误捕获展示、grant 徽标精确化、菜单命令入口（侧边栏）、@require/@resource 支持。
 
@@ -21,7 +21,7 @@
 ### 1.3 brainstorming 已拍板的地基决策
 
 1. **桥接 = ISOLATED world + wrapper（VM 路线）**：脚本注入时前置 wrapper，GM_* 调用经 window 事件桥给同帧 ISOLATED content script，再 `runtime.sendMessage` 到 SW。安全隔离好（页面拿不到 GM_*），world 语义不变。不采用 userScripts 世界直连 SW（messaging:true 方案 MAIN world 隔离差）。
-2. **API 范围 = 核心 13 个**：GM_download/GM_cookie/GM_setValues 系列等留待后续。
+2. **API 范围 = 核心 14 个**：GM_download/GM_cookie/GM_setValues 系列等留待后续。
 3. **双形态语义**：下划线形式同步返回（快照读），`GM.*` 点形式返回 Promise——同 TM/VM/SC。
 4. **GM_xmlhttpRequest 跨域 = @connect 白名单 + 运行时确认弹窗（SC 路线）**：同域/子域/@connect 命中放行；列了 @connect 不匹配→拒绝；未列→确认卡（允许一次/总是允许/拒绝）。
 5. **管理器优化四项全做**：错误捕获、grant 精确化、菜单入口、@require/@resource。
@@ -110,7 +110,7 @@ try { new Function(用户代码) 预编译探测 }  // 语法错误上报（只�
 try { 用户代码 } catch (e) { console.error('[脚本名]', e) + GM_REPORT_ERROR }
 ```
 
-- 无 grant / `@grant none` 脚本不加 wrapper——维持现状零开销。
+- 无 grant / `@grant none` 脚本不加 wrapper——维持现状零开销。例外：有 `@require` 的脚本即使无 grant 也加 wrapper（require 段需要拼接宿主）；此时 GM 对象仅含 `GM_info`（VM `GRANT_NONE_VARS` 同款）与 `@resource` 消费方 `GM_getResourceText`（若有 @resource）。
 - `@grant unsafeWindow`：MAIN world 下 = `window`；USER_SCRIPT world 下 = 隔离世界 window（VM Chrome 同款限制），文档明示「要真页面 window 请 `@world MAIN`」。
 - preamble 每脚本内联（不做共享 lib 注册——跨 world 共享全局不可靠）。~150 行 × 20 脚本量级无压力。
 - 语法错误盲区处理：wrapper 对用户代码先 `new Function(code)` 预编译探测（不执行），编译错误即上报——只探测编译，不改变执行语义（探测通过后仍以拼接形式原样执行）。
@@ -129,7 +129,7 @@ try { 用户代码 } catch (e) { console.error('[脚本名]', e) + GM_REPORT_ERR
 
 `classifyGrants(grants, registry) → { supported: string[], unsupported: string[] }`（纯函数）。
 
-## 8. GM API 语义表（首批 13 个）
+## 8. GM API 语义表（首批 14 个）
 
 | API | 下划线形式 | 点形式 | 实现 |
 |---|---|---|---|
@@ -146,6 +146,7 @@ try { 用户代码 } catch (e) { console.error('[脚本名]', e) + GM_REPORT_ERR
 | `GM_notification(details, ondone)` | void | Promise | 桥 → SW `chrome.notifications`；点击/关闭经 `NOTIF_CLICK` 下行触发回调 |
 | `GM_openInTab(url, opts)` | 返回 `{close(), onclose, closed}` | Promise | 桥 → SW `tabs.create({active: !opts.active})`；句柄经 `TAB_EVENT` 下行维护 `closed` |
 | `GM_xmlhttpRequest(details)` | 返回 `{abort}` | Promise | 桥 → SW `fetch`；`onload/onerror/ontimeout` 事件化回传（一次性桥，非流式，响应体 ≤1MB 截断） |
+| `GM_getResourceText(name)` | 同步返回资源文本 | Promise | 快照读（`__resources` 直嵌；@resource 预取产物） |
 
 ### 8.1 GM_xmlhttpRequest 跨域确认流
 
@@ -169,7 +170,6 @@ SW: 校验 grants → @connect 匹配？
 
 - 无 unsafe header 改写（无 DNR）；响应非流式、≤1MB；无 stream responseType。
 - GM_download/GM_cookie/GM_setValues 系列/GM_addElement/GM_getResourceURL 未实现——调用即 undefined（未 grant 的 API 不存在语义），文档列替代方案（如 GM_xmlhttpRequest 手动处理）。
-- `GM_getResourceText` 仅对 `@resource` 文本资源有效（本阶段随 @resource 支持一并提供；不在首批 13 个内则记为未实现）。
 - unsafeWindow 在 USER_SCRIPT world 下是隔离世界 window。
 
 ## 9. 管理器优化
@@ -232,7 +232,7 @@ GM_CONFIRM_PENDING   { confirm }               // 确认卡数据
 
 | 层 | 用例 |
 |---|---|
-| `gm-apis.ts` | 表完整性（每个注册 API 有 impl 分支）；classifyGrants 对 13 API + 未知 grant 的分类 |
+| `gm-apis.ts` | 表完整性（每个注册 API 有 impl 分支）；classifyGrants 对 14 API + 未知 grant 的分类 |
 | `gm-wrapper.ts` | 拼装产物含 preamble/GM_info/快照/require 段；grant 安装精确性；`@grant none` 不含 wrapper；用户代码在 require 之后；预编译探测语法错误路径 |
 | `userscript-meta.ts` | @connect/@require/@resource 解析进 meta；多条去重；grant 警告按注册表判定 |
 | 桥协议（jsdom 三界模拟） | 请求→响应回路（reqId 匹配）；下行事件分发；token 校验拒绝伪造 detail |
