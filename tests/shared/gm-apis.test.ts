@@ -31,4 +31,8 @@ describe('classifyGrants', () => {
     expect(classifyGrants(['none'])).toEqual({ supported: [], unsupported: [] });
     expect(classifyGrants([])).toEqual({ supported: [], unsupported: [] });
   });
+
+  it('空字符串 grant 不进 unsupported（裸 @grant 防御）', () => {
+    expect(classifyGrants(['', 'GM_getValue'])).toEqual({ supported: ['GM_getValue'], unsupported: [] });
+  });
 });

@@ -9,12 +9,10 @@ export interface GmApiDef {
   impl: GmImpl;
   /** 点形式 GM.xxx 的 Promise 包装（GM_info 的 GM.info 是同引用，非 Promise） */
   promiseForm: boolean;
-  /** 点形式别名（默认 GM_foo → GM.foo；GM_info → GM.info） */
-  dotAlias?: string;
 }
 
 export const GM_API_REGISTRY: Record<string, GmApiDef> = {
-  GM_info: { impl: 'snapshot', promiseForm: false, dotAlias: 'GM.info' },
+  GM_info: { impl: 'snapshot', promiseForm: false },
   GM_getValue: { impl: 'snapshot', promiseForm: true },
   GM_setValue: { impl: 'bridge', promiseForm: true },
   GM_deleteValue: { impl: 'bridge', promiseForm: true },
@@ -38,7 +36,7 @@ export function classifyGrants(grants: string[]): { supported: string[]; unsuppo
   const supported: string[] = [];
   const unsupported: string[] = [];
   for (const g of grants) {
-    if (g === 'none') continue;
+    if (!g || g === 'none') continue;
     if (GM_API_REGISTRY[g] != null || SPECIAL_GRANTS.has(g)) supported.push(g);
     else unsupported.push(g);
   }
