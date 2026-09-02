@@ -3,7 +3,7 @@
 //
 // 纯函数（splitForCompaction / estimateContextTokens）+ 主流程 compactConversation
 // （调用 runTurn 生成摘要、读写 storage）。失败不改会话。
-import type { ChatMessage, ContentPart, Provider } from './provider/types';
+import type { ChatMessage, Provider } from './provider/types';
 import { runTurn } from './run-turn';
 import { getConversation, setSummary } from '../storage/conversations';
 
