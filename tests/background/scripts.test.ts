@@ -148,6 +148,17 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     expect(script.matches).toEqual([]);
   });
 
+  it('handleCreate：头部有效但 body 空 → 拒绝（code 不能为空）；带 body 的新建模板可创建', async () => {
+    installFakeUserScripts();
+    // 回归护栏：仅头部（body 空）解析出 code='' → 校验拒绝。UI「新建」模板必须带非空 body 才可创建
+    const headerOnly = '// ==UserScript==\n// @name 未命名\n// @match *://*/*\n// ==/UserScript==\n';
+    await expect(handleCreate({ text: headerOnly })).rejects.toThrow('code 不能为空');
+    const withBody = `${headerOnly}\nconsole.log('新脚本');\n`;
+    const { script } = await handleCreate({ text: withBody });
+    expect(script.matches).toEqual(['*://*/*']);
+    expect(script.code.trim()).not.toBe('');
+  });
+
   it('handleCreate：引擎不可用 → 照常落库 + warnings 带固定文案', async () => {
     // beforeEach 已卸载 userScripts 属性 → 引擎不可用路径
     const { warnings } = await handleCreate({ text: mkText('c') });

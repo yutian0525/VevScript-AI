@@ -17,6 +17,7 @@ const SOURCE_LABEL: Record<ScriptSummary['source'], string> = {
 };
 
 // 新建模板：带头部骨架（spec §9.1 修订：头部即配置，落地直接进详情页编辑原文）
+// body 需非空占位——解析后 code 不能为空（编排层 validateScriptFields 会拒空 code）
 const NEW_SCRIPT_TEMPLATE = [
   '// ==UserScript==',
   '// @name        未命名脚本',
@@ -24,6 +25,7 @@ const NEW_SCRIPT_TEMPLATE = [
   '// @run-at      document-idle',
   '// ==/UserScript==',
   '',
+  "console.log('新脚本');",
   '',
 ].join('\n');
 
@@ -44,6 +46,9 @@ export function ScriptsListView() {
     if (resp.ok && resp.data) {
       await useScripts.getState().refresh();
       openScript(resp.data.script.id);
+    } else {
+      // 不再静默失败：把创建错误（如校验拒绝）展示到导入警告区
+      setImportWarnings([resp.error ?? '新建失败']);
     }
   }
 
