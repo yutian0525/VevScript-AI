@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { runAgentLoop, type LoopDeps } from '../../agent/loop';
-import { getConversation, appendMessage } from '../../storage/conversations';
+import { getConversation } from '../../storage/conversations';
 import type { Provider, StreamEvent, ChatParams } from '../../agent/provider/types';
 import type { ToolResult } from '../../shared/types';
 
