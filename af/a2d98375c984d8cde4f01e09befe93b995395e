@@ -1,0 +1,25 @@
+storage/conversations.ts
+  s_7852414883df95::t_6e8cb211e8566d 28
+  s_7852414883df95::t_e047b33fff37ec 57-58
+  s_7852414883df95::t_17f05256bb83c8 81
+tests/storage/conversations.test.ts
+  s_7852414883df95::t_f3f412ef532ba0 30,32-33,35-47
+  s_7852414883df95::t_a35b87285d8561 74-93
+  s_7852414883df95::t_919ae720824704 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "afa2d98375c984d8cde4f01e09befe93b995395e",
+  "prompts": {},
+  "sessions": {
+    "s_7852414883df95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b441830-79d5-4104-a599-d42b6e004130",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
