@@ -2,12 +2,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { storage } from 'wxt/utils/storage';
-import { listScripts, getScript, saveScript, deleteScript, toSummary, MAX_SCRIPTS } from '../../storage/scripts';
+import {
+  listScripts, getScript, saveScript, deleteScript, toSummary, MAX_SCRIPTS, MAX_TEXT_LENGTH,
+} from '../../storage/scripts';
 import type { UserScript } from '../../shared/types';
 
 function mkScript(over: Partial<UserScript> = {}): UserScript {
   return {
-    id: 's1', name: '测试', enabled: true, matches: ['https://a.com/*'],
+    id: 's1', text: '// ==UserScript==\n// @name 测试\n// @match https://a.com/*\n// ==/UserScript==\nconsole.log(1);\n',
+    name: '测试', enabled: true, matches: ['https://a.com/*'],
     code: 'console.log(1);', runAt: 'document_idle', world: 'USER_SCRIPT',
     source: 'user', createdAt: 1, updatedAt: 1, ...over,
   };
@@ -56,13 +59,31 @@ describe('storage/scripts', () => {
   it('code 超长抛错', async () => {
     await expect(saveScript(mkScript({ code: 'x'.repeat(256 * 1024 + 1) }))).rejects.toThrow('上限');
   });
+
+  it('text 超长抛错', async () => {
+    await expect(saveScript(mkScript({ text: 'x'.repeat(MAX_TEXT_LENGTH + 1) }))).rejects.toThrow('上限');
+  });
+
+  it('旧记录缺 text：listScripts 反拼补齐并惰性写回', async () => {
+    const legacy = {
+      id: 'old', name: '旧', enabled: true, matches: ['https://a.com/*'], code: 'x();',
+      runAt: 'document_idle', world: 'USER_SCRIPT', source: 'import', createdAt: 1, updatedAt: 1,
+    };
+    await storage.setItem('local:scripts:index', [legacy]);
+    const all = await listScripts();
+    expect(all[0]!.text).toContain('@name');
+    expect(all[0]!.text).toContain('x();');
+    const raw = await storage.getItem<Array<Record<string, unknown>>>('local:scripts:index');
+    expect(raw![0]!).toHaveProperty('text');
+  });
 });
 
 describe('toSummary', () => {
-  it('裁掉 code，带 hasGrants/description', () => {
+  it('裁掉 code/text，带 hasGrants/description', () => {
     const s = mkScript({ meta: { description: '描述', grants: ['GM_getValue'] } });
     const sum = toSummary(s);
     expect(sum).not.toHaveProperty('code');
+    expect(sum).not.toHaveProperty('text');
     expect(sum).toMatchObject({ id: 's1', description: '描述', hasGrants: true });
   });
 });

@@ -1,24 +1,40 @@
 // storage/scripts.ts
 // 脚本池存储（spec §4）。单键 local:scripts:index（UserScript[]），沿用原总体设计 §8 键名。
 // 个人量级（<100 条）全量读写无压力，YAGNI 分键。
+// 修订 2026-09-02（文本为源）：text 为唯一真源；旧记录（无 text）读取时用 stringifyUserScript 反拼惰性迁移。
 
 import { storage } from 'wxt/utils/storage';
 import type { ScriptSummary, UserScript } from '../shared/types';
+import { stringifyUserScript } from '../shared/userscript-meta';
 
 const KEY = 'local:scripts:index' as const;
 
 export const MAX_SCRIPTS = 200;
 export const MAX_CODE_LENGTH = 256 * 1024;
+/** text = 头部 + 代码体，上限略宽于 code（修订 2026-09-02） */
+export const MAX_TEXT_LENGTH = 280 * 1024;
+
+/** 旧记录（无 text）→ stringifyUserScript 反拼补齐，并惰性写回（一次性迁移，失败不影响读取）。 */
+async function migrateText(all: UserScript[]): Promise<UserScript[]> {
+  let changed = false;
+  const next = all.map((s) => {
+    if (typeof s.text === 'string') return s;
+    changed = true;
+    return { ...s, text: stringifyUserScript(s) };
+  });
+  if (changed) await storage.setItem(KEY, next).catch(() => {});
+  return next;
+}
 
 export async function listScripts(): Promise<UserScript[]> {
-  return (await storage.getItem<UserScript[]>(KEY)) ?? [];
+  return migrateText((await storage.getItem<UserScript[]>(KEY)) ?? []);
 }
 
 export async function getScript(id: string): Promise<UserScript | undefined> {
   return (await listScripts()).find((s) => s.id === id);
 }
 
-/** upsert；数量/code 上限超限 throw（文案给用户/模型可读的中文原因）。 */
+/** upsert；数量/code/text 上限超限 throw（文案给用户/模型可读的中文原因）。 */
 export async function saveScript(script: UserScript): Promise<void> {
   const all = await listScripts();
   const exists = all.some((s) => s.id === script.id);
@@ -27,6 +43,9 @@ export async function saveScript(script: UserScript): Promise<void> {
   }
   if (script.code.length > MAX_CODE_LENGTH) {
     throw new Error(`脚本代码超过上限（${MAX_CODE_LENGTH} 字符）`);
+  }
+  if (script.text.length > MAX_TEXT_LENGTH) {
+    throw new Error(`脚本文本超过上限（${MAX_TEXT_LENGTH} 字符）`);
   }
   const next = exists ? all.map((s) => (s.id === script.id ? script : s)) : [...all, script];
   await storage.setItem(KEY, next);
