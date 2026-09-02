@@ -1,0 +1,26 @@
+components/chat/Markdown.tsx
+  s_0731280e1142fe::t_481b20da70ab3a 1-4,9,12-13,17,19-26,33-45,50-57,60,62-67
+  s_0731280e1142fe::t_21ac7321f0fc2b 5-8,10-11,14-16,18,27-32,46-49,58-59,61
+tests/chat/markdown.test.tsx
+  s_0731280e1142fe::t_f7da89b12efc86 1-37,42-55,57-58,60,67-81,84,86,88,90-91
+  s_0731280e1142fe::t_1224bc44a3edf7 38-41
+  s_0731280e1142fe::t_660138f84f9b32 56
+  s_0731280e1142fe::t_ab5f19a318d314 82-83,85,87,89
+  s_0731280e1142fe::t_2ee5bb1f5ab4ce 59,61-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "88de4cec211cf96c0aace34af011b9f70be0dff6",
+  "prompts": {},
+  "sessions": {
+    "s_0731280e1142fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ff30c9f-7595-4e78-9bfb-8ec6103cbeac",
+        "model": "glm-5.3"
+      },
+      "human_author": null
+    }
+  }
+}
