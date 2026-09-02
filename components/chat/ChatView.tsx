@@ -1,27 +1,30 @@
 // components/chat/ChatView.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Send, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, Brain, Square } from 'lucide-react';
+import { Send, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, ChevronDown, Brain, Square, SquarePen } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Gauge } from '../ui/Gauge';
+import { ContextRing } from './ContextRing';
+import { ConversationMenu } from './ConversationMenu';
 import { useChat, type ChatItem } from '../../stores/chat';
-import { getSession } from '../../storage/sessions';
+import { useConversations } from '../../stores/conversations';
+import { getSettings } from '../../storage/settings';
+import { resolveContextWindow, DEFAULT_CONTEXT_WINDOW } from '../../agent/model-windows';
 import type { PortMsgFromPanel, PortMsgToPanel } from '../../shared/messages';
 
 export function ChatView() {
-  const { messages, status, pauseReason, addUserMessage, applyEvent } = useChat();
+  const { messages, status, pauseReason, applyEvent, promptTokens, compacting } = useChat();
+  const { currentId, list, menuOpen, setMenuOpen } = useConversations();
   const [input, setInput] = useState('');
+  const [contextWindow, setContextWindow] = useState(DEFAULT_CONTEXT_WINDOW);
   const portRef = useRef<ReturnType<typeof browser.runtime.connect> | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
-  // 惰性建立/复用 Port：MV3 service worker 空闲会被杀导致 port 断开，
-  // 这里在每次使用前确保有活 port，断开后自动重连（下次 connect 会唤醒 SW）。
   const ensurePort = useCallback(() => {
     if (portRef.current) return portRef.current;
     const port = browser.runtime.connect({ name: 'agent' });
     port.onMessage.addListener((m) => applyEvent(m as PortMsgToPanel));
     port.onDisconnect.addListener(() => {
-      // 读掉 lastError 抑制 "Unchecked runtime.lastError" 噪声；置空以便下次重连
       void browser.runtime.lastError;
       portRef.current = null;
     });
@@ -31,53 +34,34 @@ export function ChatView() {
 
   useEffect(() => {
     ensurePort();
-    return () => {
-      portRef.current?.disconnect();
-      portRef.current = null;
-    };
+    return () => { portRef.current?.disconnect(); portRef.current = null; };
   }, [ensurePort]);
 
-  // 只在「有新消息 / 流式增量 / 工具状态变化」时滚到底；展开·收起（只改 expanded）不触发——
-  // 否则点开工具详情会因 toggleExpand 新建 messages 引用而被拽到底部。
   const last = messages[messages.length - 1];
   const scrollKey = `${messages.length}:${last?.text?.length ?? 0}:${last?.reasoning?.length ?? 0}:${last?.status ?? ''}`;
-  // 首次滚动（挂载/切回会话 tab 时列表已满）用 auto 瞬时到底，避免从顶部平滑滚一段；
-  // 之后的流式增量才用 smooth 平滑跟随。
   const firstScroll = useRef(true);
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: firstScroll.current ? 'auto' : 'smooth' });
     firstScroll.current = false;
   }, [scrollKey]);
 
-  // 挂载恢复：store 为空时，从当前 tab 的 storage 读历史渲染（含思考折叠、工具卡片）。
-  // 只读 storage 渲染，不接管运行中 loop 的事件流（重连归 Phase 5）。
+  // 挂载：默认开一个新会话（草稿，不落库）+ 载入会话列表 + 读上下文窗口。
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (useChat.getState().messages.length > 0) return;
-      const tabId = await activeTabId();
-      if (tabId == null || cancelled) return;
-      const session = await getSession(tabId);
-      if (cancelled || useChat.getState().messages.length > 0) return;
-      if (session.messages.length > 0) useChat.getState().loadFromStorage(session.messages);
-    })();
-    return () => { cancelled = true; };
+    void useConversations.getState().refreshList();
+    void useConversations.getState().newConversation();
+    void getSettings().then((s) => setContextWindow(resolveContextWindow(s.provider.model, s.provider.contextWindow)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function activeTabId(): Promise<number | undefined> {
-    // 侧边栏里 currentWindow 有时取不到；退化到 lastFocusedWindow 兜底。
     let [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (!tab) [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true });
     return tab?.id;
   }
 
-  // 经活 port 发送；port 已死（SW 被杀）时同步抛错，捕获后重置 port + 回退状态并提示。
   const postToPort = (msg: PortMsgFromPanel): boolean => {
-    try {
-      ensurePort().postMessage(msg);
-      return true;
-    } catch {
+    try { ensurePort().postMessage(msg); return true; }
+    catch {
       portRef.current = null;
       applyEvent({ type: 'error', message: '与后台的连接已断开，请重试（若持续，请重新加载扩展）' });
       return false;
@@ -86,41 +70,63 @@ export function ChatView() {
 
   const send = async () => {
     const text = input.trim();
-    if (!text || status === 'running') return;
-    useChat.getState().setStatus('running'); // 乐观置 running，关闭 await 期间的并发窗口
+    if (!text || status === 'running' || compacting) return;
+    const convId = currentId;
+    if (!convId) return;
+    useChat.getState().setStatus('running');
     const tabId = await activeTabId();
     if (tabId == null) {
-      // 拿不到标签页不再静默——给用户明确提示（而非"发了没反应"）
       useChat.getState().setStatus('idle');
       applyEvent({ type: 'error', message: '无法获取当前标签页，请先切到一个普通网页标签再试' });
       return;
     }
-    console.debug('[chat] send agent:start', { tabId, text });
-    addUserMessage(text);
+    useChat.getState().addUserMessage(text);
     setInput('');
-    postToPort({ type: 'agent:start', tabId, userMessage: text });
+    postToPort({ type: 'agent:start', convId, tabId, userMessage: text });
+    // 首条消息发出后会话落库 → 刷新列表让其出现在下拉里
+    void useConversations.getState().refreshList();
   };
 
   const resume = async () => {
+    if (!currentId) return;
     const tabId = await activeTabId();
     if (tabId == null) return;
     useChat.getState().setStatus('running');
-    postToPort({ type: 'agent:resume', tabId });
+    postToPort({ type: 'agent:resume', convId: currentId, tabId });
   };
 
   const stop = async () => {
-    const tabId = await activeTabId();
-    if (tabId == null) return;
-    // 乐观回到 idle 给即时反馈；后台 loop 收到 abort 后在下个检查点干净退出
+    if (!currentId) return;
     useChat.getState().setStatus('idle');
-    postToPort({ type: 'agent:stop', tabId });
+    postToPort({ type: 'agent:stop', convId: currentId });
   };
 
+  const compact = () => {
+    if (!currentId || compacting || status === 'running') return;
+    postToPort({ type: 'agent:compact', convId: currentId });
+  };
+
+  const title = list.find((c) => c.id === currentId)?.title ?? '新会话';
   const lastIdx = messages.length - 1;
 
   return (
-    <PageShell title="会话" eyebrow="AGENT" right={<Gauge state={status} />}>
+    <PageShell
+      title={title}
+      eyebrow="AGENT"
+      right={<Gauge state={status} />}
+      actions={
+        <>
+          <Button variant="ghost" aria-label="新建会话" onClick={() => void useConversations.getState().newConversation()}>
+            <SquarePen size={16} />
+          </Button>
+          <Button variant="ghost" aria-label="会话列表" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>
+            <ChevronDown size={16} />
+          </Button>
+        </>
+      }
+    >
       <div className="chat">
+        <ConversationMenu />
         <div className="chat__log">
           {messages.length === 0 && (
             <div className="chat__empty">
@@ -148,19 +154,28 @@ export function ChatView() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
-            placeholder={status === 'running' ? 'AI 执行中…' : '输入指令…'}
-            disabled={status === 'running'}
+            placeholder={compacting ? '压缩中…' : status === 'running' ? 'AI 执行中…' : '输入指令…'}
+            disabled={status === 'running' || compacting}
             rows={2}
           />
-          {status === 'running' ? (
-            <Button variant="signal" className="dock__send" onClick={stop} aria-label="停止">
-              <Square size={15} fill="currentColor" />
-            </Button>
-          ) : (
-            <Button variant="signal" className="dock__send" onClick={send} aria-label="发送">
-              <Send size={16} />
-            </Button>
-          )}
+          <div className="dock__controls">
+            <ContextRing
+              used={promptTokens}
+              window={contextWindow}
+              compacting={compacting}
+              disabled={messages.length === 0 || status === 'running'}
+              onCompact={compact}
+            />
+            {status === 'running' ? (
+              <Button variant="signal" className="dock__send" onClick={stop} aria-label="停止">
+                <Square size={15} fill="currentColor" />
+              </Button>
+            ) : (
+              <Button variant="signal" className="dock__send" onClick={send} aria-label="发送">
+                <Send size={16} />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </PageShell>
