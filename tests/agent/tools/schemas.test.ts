@@ -13,12 +13,25 @@ describe('工具 schema', () => {
     // Phase 3b 落地后此处 +3（list_console_messages / list_network_requests / get_network_request → 25）
   });
 
-  it('create_script：name/code/matches 必填，runAt/world 枚举', () => {
-    const t = TOOL_SCHEMAS.find((s) => s.function.name === 'create_script')!;
-    const p = t.function.parameters as { properties: Record<string, { enum?: string[] }>; required: string[] };
-    expect(p.required).toEqual(expect.arrayContaining(['name', 'code', 'matches']));
-    expect(p.properties.runAt!.enum).toEqual(['document_start', 'document_end', 'document_idle']);
-    expect(p.properties.world!.enum).toEqual(['USER_SCRIPT', 'MAIN']);
+  it('create_script：source 必填；update_script patch.edit 行区间；get_script 行区间参数', () => {
+    const create = TOOL_SCHEMAS.find((s) => s.function.name === 'create_script')!;
+    const cp = create.function.parameters as { properties: Record<string, { type: string }>; required: string[] };
+    expect(cp.required).toEqual(['source']);
+    expect(cp.properties.source!.type).toBe('string');
+
+    const update = TOOL_SCHEMAS.find((s) => s.function.name === 'update_script')!;
+    const up = update.function.parameters as {
+      properties: { patch: { properties: Record<string, { required?: string[] }> } };
+      required: string[];
+    };
+    expect(up.required).toEqual(['id', 'patch']);
+    expect(up.properties.patch.properties.edit!.required).toEqual(['startLine', 'endLine', 'text']);
+
+    const get = TOOL_SCHEMAS.find((s) => s.function.name === 'get_script')!;
+    const gp = get.function.parameters as { properties: Record<string, { type: string }>; required: string[] };
+    expect(gp.required).toEqual(['id']);
+    expect(gp.properties.offset!.type).toBe('number');
+    expect(gp.properties.limit!.type).toBe('number');
   });
 
   it('toggle_script：id/enabled 必填', () => {

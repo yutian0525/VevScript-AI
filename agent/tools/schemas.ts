@@ -239,8 +239,16 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     type: 'function',
     function: {
       name: 'get_script',
-      description: '读取单个用户脚本的完整定义（含代码体）。id 来自 list_scripts。',
-      parameters: obj({ id: { type: 'string', description: '脚本 id' } }, ['id']),
+      description:
+        '读取单个用户脚本：完整 text（.user.js 原文）+ 解析投影 + totalLines 总行数。可选 offset/limit 读取行区间（1-based 含端点，越界自动钳制；limit 缺省读到末尾），此时 script.text 为切片、startLine/endLine 为实际返回区间。id 来自 list_scripts。',
+      parameters: obj(
+        {
+          id: { type: 'string', description: '脚本 id' },
+          offset: { type: 'number', description: '起始行（1-based，缺省 1）' },
+          limit: { type: 'number', description: '行数（缺省读到末尾）' },
+        },
+        ['id'],
+      ),
     },
   },
   {
@@ -248,25 +256,13 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'create_script',
       description:
-        '创建用户脚本：以浏览器用户脚本权限在 matches 匹配的页面上自动运行。创建前先向用户说明脚本用途与作用范围。代码以页面脚本方式原样执行，无 GM_* API。matches 必填（match pattern，如 https://example.com/*），明确作用域。',
+        '创建用户脚本：以浏览器用户脚本权限在头部匹配规则命中的页面上自动运行。创建前先向用户说明脚本用途与作用范围。source 是完整的 .user.js 文本（含 ==UserScript== 元数据头）——头部 @字段 即配置（@name/@match/@include/@run-at/@world/@grant），没有独立的名称/匹配参数。代码以页面脚本方式原样执行，无 GM_* API。解析后须有匹配规则（@match 或 pattern 形式的 @include）。',
       parameters: obj(
         {
-          name: { type: 'string', description: '脚本名' },
-          code: { type: 'string', description: '完整 JS 代码体（无 ==UserScript== 元数据头）' },
-          matches: { type: 'array', items: { type: 'string' }, description: 'match pattern 列表' },
-          runAt: {
-            type: 'string',
-            enum: ['document_start', 'document_end', 'document_idle'],
-            description: '运行时机，默认 document_idle',
-          },
-          world: {
-            type: 'string',
-            enum: ['USER_SCRIPT', 'MAIN'],
-            description: '执行世界：USER_SCRIPT 隔离世界（默认）；MAIN 可访问页面变量',
-          },
+          source: { type: 'string', description: '完整 .user.js 文本（含 ==UserScript== 元数据头）' },
           enabled: { type: 'boolean', description: '创建后是否立即启用，默认 true' },
         },
-        ['name', 'code', 'matches'],
+        ['source'],
       ),
     },
   },
@@ -274,20 +270,27 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     type: 'function',
     function: {
       name: 'update_script',
-      description: '更新用户脚本的部分字段。代码/规则更新在下次页面导航后生效。',
+      description:
+        '更新用户脚本。patch 至少一项：text 整文替换（完整 .user.js 原文，重新解析头部）；edit 行区间替换（1-based 含端点，越界报错，替换后整体重解析）；enabled 启停。改头部字段（名称/匹配/时机等）就是改原文，没有独立字段可改。规则/代码更新在下次页面导航后生效。',
       parameters: obj(
         {
           id: { type: 'string', description: '脚本 id' },
           patch: {
             type: 'object',
-            description: '要更新的字段（至少一项）',
+            description: '至少包含 text / enabled / edit 之一',
             properties: {
-              name: { type: 'string' },
-              code: { type: 'string' },
-              matches: { type: 'array', items: { type: 'string' } },
-              runAt: { type: 'string', enum: ['document_start', 'document_end', 'document_idle'] },
-              world: { type: 'string', enum: ['USER_SCRIPT', 'MAIN'] },
-              enabled: { type: 'boolean' },
+              text: { type: 'string', description: '整文替换：完整 .user.js 原文' },
+              enabled: { type: 'boolean', description: '启停' },
+              edit: {
+                type: 'object',
+                description: '行区间替换（在当前原文上 splice 后整体重解析）',
+                properties: {
+                  startLine: { type: 'number', description: '起始行（1-based）' },
+                  endLine: { type: 'number', description: '结束行（含端点）' },
+                  text: { type: 'string', description: '替换文本（可多行）' },
+                },
+                required: ['startLine', 'endLine', 'text'],
+              },
             },
           },
         },
