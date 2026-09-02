@@ -52,18 +52,24 @@ async function drive(convId: string, startTabId: number, deps: LoopDeps, guardSt
 
     // 自动压缩：上一轮 usage 达阈值 → 进下一轮前先摘要一次（不打断已完成的工具链）
     if (deps.compact && deps.getContextWindow && lastPromptTokens != null) {
-      const window = await deps.getContextWindow();
-      if (meterRatio(lastPromptTokens, window) >= COMPACT_THRESHOLD) {
+      const windowSize = await deps.getContextWindow();
+      if (meterRatio(lastPromptTokens, windowSize) >= COMPACT_THRESHOLD) {
         deps.emit({ type: 'compact-start' });
         const r = await deps.compact(convId).catch(() => ({ ok: false as const }));
         if (r.ok && r.newPromptTokens != null) {
           lastPromptTokens = r.newPromptTokens;
           await setLastPromptTokens(convId, r.newPromptTokens);
           deps.emit({ type: 'usage', promptTokens: r.newPromptTokens });
+        } else {
+          // 压缩无法再缩减（无新内容可摘）：清空 lastPromptTokens，避免每轮反复空触发
+          // compact-start/done（UI 闪烁 + 浪费调用）；等下一轮 runTurn 的真实 usage 再判定。
+          lastPromptTokens = undefined;
         }
         deps.emit({ type: 'compact-done', newPromptTokens: r.ok ? r.newPromptTokens : undefined });
       }
     }
+    // 压缩期间用户可能已中断：进 runTurn 前再检查一次，避免浪费一次 API 调用
+    if (signal.aborted) return void (await finishAborted(convId, deps));
 
     const conv = await getConversation(convId);
     const page = await deps.getPageInfo(targetTab).catch(() => ({ url: '', title: '' }));
@@ -180,6 +186,7 @@ function assistantMsg(text: string, toolCalls: ToolCall[], reasoning?: string): 
   return { role: 'assistant', content: text, toolCalls, reasoning };
 }
 
+/** 用户中断的收尾：置 idle + 通知面板结束（复用 done 事件，UI 回到可输入态）。 */
 async function finishAborted(convId: string, deps: LoopDeps): Promise<void> {
   await setStatus(convId, 'idle');
   deps.emit({ type: 'done', finalText: '已停止' });
