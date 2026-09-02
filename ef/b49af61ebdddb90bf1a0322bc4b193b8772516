@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-09-02-phase4-text-as-source.md
+  s_3eb7e42476e8c7::t_48bee901a3c5c6 40,181,186,323,328,354,418,423,489,496,518,614,619,696,703,728,1039,1044,1211,1218,1242,1359,1364,1444,1528,1557,1562,1581,1796,1842,1850,1864,1872,1877
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "efb49af61ebdddb90bf1a0322bc4b193b8772516",
+  "prompts": {},
+  "sessions": {
+    "s_3eb7e42476e8c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9512b7e8-f3ac-4d75-98c5-0ad6c88c7716",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
