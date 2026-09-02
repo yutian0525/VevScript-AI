@@ -308,7 +308,6 @@ body {
 .msg-assistant {
   font-size: 13.5px;
   line-height: 1.65;
-  white-space: pre-wrap;
   word-break: break-word;
   color: var(--ink);
 }

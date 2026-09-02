@@ -5,6 +5,7 @@ import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Gauge } from '../ui/Gauge';
 import { ContextRing } from './ContextRing';
+import { Markdown } from './Markdown';
 import { ConversationMenu } from './ConversationMenu';
 import { useChat, type ChatItem } from '../../stores/chat';
 import { useConversations } from '../../stores/conversations';
@@ -222,7 +223,9 @@ function MessageRow({ item, index, streaming }: { item: ChatItem; index: number;
           <ReasoningBlock item={item} onToggle={() => toggleExpand(index)} />
         )}
         {item.text != null && (
-          <div className={`msg-assistant${streaming && !item.thinking ? ' caret' : ''}`}>{item.text}</div>
+          <div className="msg-assistant">
+            <Markdown text={item.text} streaming={streaming && !item.thinking} />
+          </div>
         )}
         {item.usage && (item.usage.prompt != null || item.usage.completion != null) && (
           <div className="msg-usage mono">
