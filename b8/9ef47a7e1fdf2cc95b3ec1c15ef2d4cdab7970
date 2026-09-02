@@ -1,0 +1,23 @@
+agent/model-windows.ts
+  s_7852414883df95::t_b71fbeec01a2c4 26,29-30
+  s_7852414883df95::t_04365b2af00e85 7
+tests/agent/model-windows.test.ts
+  s_7852414883df95::t_a704f9d92e6c24 8,11-12
+  s_7852414883df95::t_1aa8477b85ee78 19-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b89ef47a7e1fdf2cc95b3ec1c15ef2d4cdab7970",
+  "prompts": {},
+  "sessions": {
+    "s_7852414883df95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b441830-79d5-4104-a599-d42b6e004130",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
