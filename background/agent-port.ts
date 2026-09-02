@@ -1,11 +1,13 @@
 // background/agent-port.ts
-// sidepanel ↔ background Port 管理 + agent loop 生命周期挂载（设计 §7）。
+// sidepanel ↔ background Port 管理 + agent loop 生命周期挂载（设计 §7 / §1.4）。
 import type { PortMsgFromPanel, PortMsgToPanel } from '../shared/messages';
 import type { Provider } from '../agent/provider/types';
 import { OpenAICompatProvider } from '../agent/provider/openai-compat';
 import { getSettings } from '../storage/settings';
 import { runAgentLoop, resumeAgentLoop, type LoopDeps } from '../agent/loop';
 import { executeTool } from '../agent/tools/registry';
+import { compactConversation } from '../agent/compact';
+import { resolveContextWindow } from '../agent/model-windows';
 
 export async function buildProviderFromSettings(): Promise<Provider | null> {
   const { provider } = await getSettings();
@@ -63,14 +65,20 @@ export async function resolveOpenedTab(
 
 function makeDeps(
   provider: Provider,
+  convId: string,
   port: Pick<Browser.runtime.Port, 'postMessage'>,
 ): LoopDeps {
   return {
     provider,
     executeTool: (name, args, tabId, signal) =>
-      executeTool(name, args, { tabId, sessionId: 'main', signal, waitForReady: (t) => waitForCsReady(t) }),
+      executeTool(name, args, { tabId, sessionId: convId, signal, waitForReady: (t) => waitForCsReady(t) }),
     getPageInfo,
     resolveOpenedTab: (_name, openerTabId) => resolveOpenedTab(openerTabId, (t) => waitForCsReady(t)),
+    getContextWindow: async () => {
+      const { provider: p } = await getSettings();
+      return resolveContextWindow(p.model, p.contextWindow);
+    },
+    compact: (id) => compactConversation(id, { provider }),
     emit: (m: PortMsgToPanel) => {
       try {
         port.postMessage(m);
@@ -81,13 +89,12 @@ function makeDeps(
   };
 }
 
-// 同 tab 单 loop 闸门 + 中断句柄：每个运行中的 tab 挂一个 AbortController。
-// 既作"是否在运行"的判据（防并发 drive 竞态），又作 agent:stop 的中断句柄。
-const runningTabs = new Map<number, AbortController>();
+// 同 conv 单 loop 闸门 + 中断句柄：每个运行中的会话挂一个 AbortController。
+const runningConvs = new Map<string, AbortController>();
 
-/** 中断指定 tab 的运行中 loop（agent:stop）。loop 在下个检查点干净退出。 */
-export function stopTab(tabId: number): void {
-  runningTabs.get(tabId)?.abort();
+/** 中断指定会话的运行中 loop（agent:stop）。loop 在下个检查点干净退出。 */
+export function stopConv(convId: string): void {
+  runningConvs.get(convId)?.abort();
 }
 
 /** 挂载 Port 监听（在 background 入口调用）。 */
@@ -99,17 +106,35 @@ export function attachAgentPort(): void {
     };
     port.onMessage.addListener(async (raw) => {
       const msg = raw as PortMsgFromPanel;
-      console.log('[agent-port] 收到消息', msg.type, 'tabId=', (msg as { tabId?: number }).tabId);
+      console.log('[agent-port] 收到消息', msg.type, (msg as { convId?: string }).convId);
 
-      // 中断：优先处理，无论该 tab 是否在运行都幂等（未运行则 no-op）。
       if (msg.type === 'agent:stop') {
-        stopTab(msg.tabId);
+        stopConv(msg.convId);
         return;
       }
-      // attach 留 Phase 5（重连拉状态回放）
+
+      // 手动压缩：与运行中 loop 互斥（避免并发改会话）
+      if (msg.type === 'agent:compact') {
+        if (runningConvs.has(msg.convId)) {
+          safePost({ type: 'error', message: '任务运行中，无法压缩，请等待完成后再试' });
+          return;
+        }
+        const provider = await buildProviderFromSettings().catch(() => null);
+        if (!provider) {
+          safePost({ type: 'error', message: '请先在设置页配置 AI 服务（Base URL + 模型）' });
+          return;
+        }
+        safePost({ type: 'compact-start' });
+        const r = await compactConversation(msg.convId, { provider }).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
+        if (r.ok && r.newPromptTokens != null) safePost({ type: 'usage', promptTokens: r.newPromptTokens });
+        if (!r.ok) safePost({ type: 'error', message: `压缩失败：${r.error ?? '未知错误'}` });
+        safePost({ type: 'compact-done', newPromptTokens: r.ok ? r.newPromptTokens : undefined });
+        return;
+      }
+
       if (msg.type !== 'agent:start' && msg.type !== 'agent:resume') return;
-      if (runningTabs.has(msg.tabId)) {
-        safePost({ type: 'error', message: '该标签页已有任务在运行，请等待完成或停止后再试' });
+      if (runningConvs.has(msg.convId)) {
+        safePost({ type: 'error', message: '该会话已有任务在运行，请等待完成或停止后再试' });
         return;
       }
       const provider = await buildProviderFromSettings().catch((e) => {
@@ -117,26 +142,23 @@ export function attachAgentPort(): void {
         return null;
       });
       if (!provider) {
-        console.warn('[agent-port] provider 为空（未配置 baseUrl/model）');
         safePost({ type: 'error', message: '请先在设置页配置 AI 服务（Base URL + 模型）' });
         return;
       }
-      const deps = makeDeps(provider, port);
+      const deps = makeDeps(provider, msg.convId, port);
       const ac = new AbortController();
-      runningTabs.set(msg.tabId, ac);
-      console.log('[agent-port] 启动 loop', msg.type, msg.tabId);
+      runningConvs.set(msg.convId, ac);
       try {
         if (msg.type === 'agent:start') {
-          await runAgentLoop({ tabId: msg.tabId, sessionId: 'main', userMessage: msg.userMessage }, deps, ac.signal);
+          await runAgentLoop({ convId: msg.convId, tabId: msg.tabId, userMessage: msg.userMessage }, deps, ac.signal);
         } else {
-          await resumeAgentLoop(msg.tabId, deps, ac.signal);
+          await resumeAgentLoop(msg.convId, msg.tabId, deps, ac.signal);
         }
-        console.log('[agent-port] loop 结束', msg.tabId);
       } catch (err) {
         console.error('[agent-port] loop 抛错', err);
         safePost({ type: 'error', message: err instanceof Error ? err.message : String(err) });
       } finally {
-        runningTabs.delete(msg.tabId);
+        runningConvs.delete(msg.convId);
       }
     });
   });
