@@ -249,7 +249,15 @@ body {
 .rise { animation: rise var(--t-slow) var(--ease) both; }
 
 @keyframes blink { 50% { opacity: 0; } }
-.caret::after {
+/* 光标视觉（单条规则 DRY）：.caret 是静态文本光标；其余为流式 Markdown 光标——
+ * 伪元素挂在最后一个块级子元素内，紧跟末字符。列表/引用尾部与 codeblock 同模式：
+ * 包裹层自身伪元素隐藏，caret 下沉一层（li / blockquote 末子元素 / pre）。 */
+.caret::after,
+.md--live > :last-child::after,
+.md--live > .md-codeblock:last-child .md-codeblock__pre::after,
+.md--live > ul:last-child > li:last-child::after,
+.md--live > ol:last-child > li:last-child::after,
+.md--live > blockquote:last-child > :last-child::after {
   content: '';
   display: inline-block;
   width: 2px;
@@ -259,6 +267,14 @@ body {
   background: var(--signal);
   animation: blink 1s step-end infinite;
 }
+/* 流式尾部包裹层：隐藏自身伪元素（否则 caret 掉行），由上面的下沉规则接管。
+ * 下沉选择器用 > 贯穿到底，嵌套列表不双渲染。.md-table-scroll 直接不显示——
+ * 表格流式中罕见，且 overflow 容器会裁切伪元素。 */
+.md--live > .md-codeblock:last-child::after,
+.md--live > .md-table-scroll:last-child::after,
+.md--live > ul:last-child::after,
+.md--live > ol:last-child::after,
+.md--live > blockquote:last-child::after { content: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
@@ -366,6 +382,94 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* ============ Markdown 正文（.md） ============ */
+/* assistant 消息的 Markdown 渲染容器。块级排版接管换行，样式全部走 :root 变量。 */
+.md {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--ink);
+  word-break: break-word;
+}
+.md > :last-child { margin-bottom: 0; }
+.md p { margin: 0 0 8px; }
+.md h1, .md h2, .md h3, .md h4, .md h5, .md h6 {
+  margin: 14px 0 6px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--ink);
+}
+.md h1 { font-size: 15px; }
+.md h2 { font-size: 14px; }
+.md h3 { font-size: 13.5px; }
+.md h4, .md h5, .md h6 { font-size: 13px; color: var(--ink-2); }
+.md h1:first-child, .md h2:first-child, .md h3:first-child { margin-top: 0; }
+.md ul, .md ol { margin: 0 0 8px; padding-left: 18px; }
+.md li { margin: 2px 0; }
+.md li > p { margin: 0; }
+.md blockquote {
+  margin: 0 0 8px;
+  padding: 5px 10px;
+  border-left: 2px solid var(--signal);
+  background: var(--signal-wash);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.md blockquote > p { margin: 0; }
+.md hr { border: none; border-top: 1px solid var(--line-strong); margin: 12px 0; }
+
+/* 行内 code：机器声道 */
+.md-code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: var(--sunken);
+  border-radius: var(--r-sm);
+  padding: 0.5px 4px;
+}
+
+/* 代码块：.well 井视觉 + 语言标签 */
+.md-codeblock { margin: 0 0 10px; }
+.md-codeblock__lang {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 3px;
+}
+.md-codeblock__pre {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 9px 10px;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+}
+.md-codeblock__pre code { font-family: inherit; background: none; padding: 0; }
+
+/* GFM 表格：横向滚动容器防溢出 */
+.md-table-scroll { overflow-x: auto; margin: 0 0 10px; }
+.md table { border-collapse: collapse; font-size: 12.5px; }
+.md th, .md td {
+  border: 1px solid var(--line);
+  padding: 4px 8px;
+  text-align: left;
+  word-break: break-word;
+}
+.md th { background: var(--sunken); font-weight: 600; }
+
+/* 任务列表 + 链接 + 删除线 */
+.md input[type='checkbox'] { accent-color: var(--signal); margin-right: 4px; }
+.md a { color: var(--signal-ink); }
+.md a:hover { text-decoration: underline; }
+.md a:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.md del { color: var(--ink-2); }
 
 /* 可展开工具卡 */
 .toolcard--btn {
