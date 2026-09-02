@@ -36,11 +36,19 @@ export const useConversations = create<ConvState>((set, get) => ({
   switchTo: async (id) => {
     const conv = await getConversation(id);
     useChat.getState().loadFromStorage(conv.messages);
-    useChat.setState({ promptTokens: conv.lastPromptTokens, status: conv.status });
+    // status 恢复：残留的 running（如 SW 被杀/中途关标签）本面板并未附着实时流，
+    // 恢复成 running 会让输入框永久禁用且无 loop 来解除——本阶段一律降到 idle（并发发送仍有后台闸门拦截）。
+    useChat.setState({
+      promptTokens: conv.lastPromptTokens,
+      status: conv.status === 'running' ? 'idle' : conv.status,
+      compacting: false,
+    });
     set({ currentId: id, menuOpen: false });
   },
 
   rename: async (id, title) => {
+    const conv = await getConversation(id);
+    if (conv.updatedAt === 0) return; // 草稿未落库：不给空会话建档
     await renameConversation(id, title);
     await get().refreshList();
   },

@@ -32,10 +32,12 @@ describe('conversations store', () => {
     await appendMessage(a.id, { role: 'user', content: 'A' });
     const b = await createConversation();
     await appendMessage(b.id, { role: 'user', content: 'B' });
+    const c = await createConversation();
+    await appendMessage(c.id, { role: 'user', content: 'C' });
     await useConversations.getState().switchTo(a.id);
     await useConversations.getState().remove(a.id);
-    // b 更近（后建/后更新）→ 成为当前
-    expect(useConversations.getState().currentId).toBe(b.id);
+    // c 最近（后建/后更新）→ 成为当前，而非 b 或任意
+    expect(useConversations.getState().currentId).toBe(c.id);
   });
 
   it('remove 当前会话且无其他 → 开新草稿', async () => {
@@ -47,5 +49,29 @@ describe('conversations store', () => {
     expect(st.currentId).toBeTruthy();
     expect(st.currentId).not.toBe(a.id);
     expect(st.list).toEqual([]);
+  });
+
+  it('rename 往返：建档后改标题刷新列表', async () => {
+    const c = await createConversation();
+    await appendMessage(c.id, { role: 'user', content: '原始消息' });
+    await useConversations.getState().rename(c.id, '新标题');
+    await useConversations.getState().refreshList();
+    const found = useConversations.getState().list.find((m) => m.id === c.id);
+    expect(found?.title).toBe('新标题');
+  });
+
+  it('rename 草稿不落库', async () => {
+    await useConversations.getState().newConversation();
+    const draftId = useConversations.getState().currentId!;
+    await useConversations.getState().rename(draftId, 'x');
+    await useConversations.getState().refreshList();
+    expect(useConversations.getState().list).toEqual([]);
+  });
+
+  it('switchTo 无 lastPromptTokens → promptTokens=undefined', async () => {
+    const c = await createConversation();
+    await appendMessage(c.id, { role: 'user', content: '消息' });
+    await useConversations.getState().switchTo(c.id);
+    expect(useChat.getState().promptTokens).toBe(undefined);
   });
 });
