@@ -1,0 +1,31 @@
+tests/background/scripts.test.ts
+  s_3eb7e42476e8c7::t_2c96a3b87775b4 225-226,233,248,252,257-263,271-272,274
+  s_3eb7e42476e8c7::t_3d8762f07593d4 281,283,297-302
+  s_3eb7e42476e8c7::t_ed64ac37352a14 179-180
+  s_3eb7e42476e8c7::t_b5da6ba4bb3bb6 6,10,16-17
+  s_3eb7e42476e8c7::t_109112b2a1cfa3 105,113-126,128,130-133,144,146-147,153,155
+  s_3eb7e42476e8c7::t_703786bf2410c6 158,160,166,175-178,181-212,215
+background/scripts.ts
+  s_3eb7e42476e8c7::t_86c602eed01580 336-337
+  s_3eb7e42476e8c7::t_e8e13adba8e336 317-320,322,324
+  s_3eb7e42476e8c7::t_bd4fc5e2707236 361-362
+  s_3eb7e42476e8c7::t_60e398639e46ef 7-9
+  s_3eb7e42476e8c7::t_6ec3f3c974ffc1 192,194-215,218-229,231-243,245,247,254-275,282-297
+  s_3eb7e42476e8c7::t_300d0a7b3893d4 298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "d4f37377c1c3bdfe4a816ca2c6bb195b80363ec8",
+  "prompts": {},
+  "sessions": {
+    "s_3eb7e42476e8c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9512b7e8-f3ac-4d75-98c5-0ad6c88c7716",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
