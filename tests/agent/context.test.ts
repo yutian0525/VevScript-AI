@@ -78,3 +78,45 @@ describe('历史图片裁剪', () => {
     expect(withImg).toHaveLength(2);
   });
 });
+
+const page = { url: 'https://x.com', title: 'X' };
+
+describe('buildContext summary 分支', () => {
+  it('无 summary 时首条为 system，其后是历史', () => {
+    const history: ChatMessage[] = [{ role: 'user', content: 'hi' }];
+    const out = buildContext(history, page);
+    expect(out[0]!.role).toBe('system');
+    expect(out[1]).toEqual({ role: 'user', content: 'hi' });
+  });
+
+  it('有 summary 时：system + 前情摘要(user) + coversUpTo 之后的原始消息', () => {
+    const history: ChatMessage[] = [
+      { role: 'user', content: 'm0' },
+      { role: 'assistant', content: 'm1' },
+      { role: 'user', content: 'm2' },
+      { role: 'assistant', content: 'm3' },
+    ];
+    const out = buildContext(history, page, 60, { text: '前情：做了 m0-m1', coversUpTo: 1 });
+    expect(out[0]!.role).toBe('system');
+    expect(out[1]!.role).toBe('user');
+    expect(String(out[1]!.content)).toContain('前情：做了 m0-m1');
+    // coversUpTo=1 → 保留 index 2,3
+    expect(out.slice(2)).toEqual([
+      { role: 'user', content: 'm2' },
+      { role: 'assistant', content: 'm3' },
+    ]);
+  });
+
+  it('summary 保留段头部若为孤立 tool 消息则剥离（避免 tool_call_id 悬空）', () => {
+    const history: ChatMessage[] = [
+      { role: 'user', content: 'm0' },
+      { role: 'tool', toolCallId: 't1', name: 'click', content: 'ok' },
+      { role: 'assistant', content: 'm2' },
+    ];
+    // coversUpTo=0 → 保留段从 index1 起是 tool（悬空），应被剥掉，留 assistant
+    const out = buildContext(history, page, 60, { text: 's', coversUpTo: 0 });
+    const afterSummary = out.slice(2);
+    expect(afterSummary[0]!.role).not.toBe('tool');
+    expect(afterSummary).toEqual([{ role: 'assistant', content: 'm2' }]);
+  });
+});

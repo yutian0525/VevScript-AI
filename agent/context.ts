@@ -50,11 +50,28 @@ export function trimImageParts(messages: ChatMessage[], keep = KEEP_IMAGES): Cha
   });
 }
 
-export function buildContext(history: ChatMessage[], page: PageInfo, keepRecent = 60): ChatMessage[] {
+export function buildContext(
+  history: ChatMessage[],
+  page: PageInfo,
+  keepRecent = 60,
+  summary?: { text: string; coversUpTo: number },
+): ChatMessage[] {
   const pageBlock = page.url
     ? `\n\n当前页面：\n- URL: ${page.url}\n- 标题: ${page.title}`
     : '';
   const system: ChatMessage = { role: 'system', content: SYSTEM_PROMPT + pageBlock };
+
+  if (summary) {
+    // coversUpTo 之后的原始消息为保留段；剥掉头部孤立 tool 消息（其 assistant(toolCalls)
+    // 已被折进摘要，回放会因 tool_call_id 悬空 400）。摘要作为一条 user 消息置于顶部。
+    let recent = history.slice(summary.coversUpTo + 1);
+    let start = 0;
+    while (start < recent.length && recent[start]!.role === 'tool') start += 1;
+    recent = recent.slice(start);
+    const summaryMsg: ChatMessage = { role: 'user', content: `【前情摘要】\n${summary.text}` };
+    return [system, summaryMsg, ...trimImageParts(recent)];
+  }
+
   const trimmed = trimImageParts(truncateMessages(history, keepRecent));
   return [system, ...trimmed];
 }
