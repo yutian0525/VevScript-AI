@@ -1,0 +1,22 @@
+tests/chat/markdown.test.tsx
+  s_0731280e1142fe::t_2ee5bb1f5ab4ce 55,57-62
+  s_0731280e1142fe::t_f7da89b12efc86 1-54,56,63-87
+components/chat/Markdown.tsx
+  s_0731280e1142fe::t_481b20da70ab3a 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "01ab241a5e90d8d23601c9d77b9efbc4fb4977c1",
+  "prompts": {},
+  "sessions": {
+    "s_0731280e1142fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ff30c9f-7595-4e78-9bfb-8ec6103cbeac",
+        "model": "zhipu/glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
