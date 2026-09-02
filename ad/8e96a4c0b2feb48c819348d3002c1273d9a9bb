@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-09-02-markdown-rendering-design.md
+  s_0731280e1142fe::t_f4838e49931585 1-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "ad8e96a4c0b2feb48c819348d3002c1273d9a9bb",
+  "prompts": {},
+  "sessions": {
+    "s_0731280e1142fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ff30c9f-7595-4e78-9bfb-8ec6103cbeac",
+        "model": "zhipu/glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
