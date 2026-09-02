@@ -25,6 +25,7 @@ export interface ConversationMeta {
 }
 
 const MAX_MESSAGES = 200;
+const MAX_TITLE_LEN = 30;
 const DEFAULT_TITLE = '新会话';
 const key = (id: string) => `local:conv:${id}` as const;
 const INDEX_KEY = 'local:conv-index';
@@ -53,8 +54,8 @@ export async function listConversations(): Promise<ConversationMeta[]> {
 export async function getConversation(id: string): Promise<Conversation> {
   const raw = await storage.getItem<Conversation>(key(id));
   if (raw) return raw;
-  const now = 0;
-  return { id, title: DEFAULT_TITLE, messages: [], status: 'idle', createdAt: now, updatedAt: now };
+  const EPOCH = 0; // 未知会话用 epoch 0 作时间哨兵
+  return { id, title: DEFAULT_TITLE, messages: [], status: 'idle', createdAt: EPOCH, updatedAt: EPOCH };
 }
 
 export async function saveConversation(conv: Conversation): Promise<void> {
@@ -77,7 +78,7 @@ export async function appendMessage(id: string, msg: ChatMessage): Promise<void>
   const trimmed = messages.length > MAX_MESSAGES ? messages.slice(messages.length - MAX_MESSAGES) : messages;
   let title = conv.title;
   if (title === DEFAULT_TITLE && msg.role === 'user' && typeof msg.content === 'string' && msg.content.trim()) {
-    title = msg.content.trim().slice(0, 30);
+    title = msg.content.trim().slice(0, MAX_TITLE_LEN);
   }
   await saveConversation({ ...conv, messages: trimmed, title });
 }

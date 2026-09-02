@@ -4,6 +4,7 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import {
   createConversation, getConversation, saveConversation, appendMessage,
   setStatus, renameConversation, deleteConversation, listConversations,
+  setLastPromptTokens, setSummary,
 } from '../../storage/conversations';
 
 describe('conversations storage', () => {
@@ -26,11 +27,24 @@ describe('conversations storage', () => {
     expect(await listConversations()).toEqual([]);
   });
 
-  it('首条 user 消息生成标题（前 30 字）并同步 index', async () => {
+  it('首条 user 消息生成标题——短于 30 字不截断', async () => {
     const c = await createConversation();
-    await appendMessage(c.id, { role: 'user', content: '帮我点掉这个页面上恼人的 cookie 同意弹窗谢谢你了' });
+    const short = '帮我点掉弹窗';
+    await appendMessage(c.id, { role: 'user', content: short });
     const got = await getConversation(c.id);
-    expect(got.title).toBe('帮我点掉这个页面上恼人的 cookie 同意弹窗谢谢你了'.slice(0, 30));
+    expect(got.title).toBe(short);
+    const index = await listConversations();
+    expect(index.find((m) => m.id === c.id)!.title).toBe(short);
+  });
+
+  it('首条 user 消息生成标题——超过 30 字截断为 30 字', async () => {
+    const c = await createConversation();
+    // 39 字符的输入，前 30 字符应为：第一二三四五六七八九十两三四五六七八九十三三四五六七八九十四
+    const long = '第一二三四五六七八九十两三四五六七八九十三三四五六七八九十四123456789';
+    await appendMessage(c.id, { role: 'user', content: long });
+    const got = await getConversation(c.id);
+    expect(got.title).toBe('第一二三四五六七八九十两三四五六七八九十三三四五六七八九十四');
+    expect(got.title.length).toBe(30);
     const index = await listConversations();
     expect(index.find((m) => m.id === c.id)!.title).toBe(got.title);
   });
@@ -55,6 +69,26 @@ describe('conversations storage', () => {
     await setStatus(c.id, 'running');
     expect((await getConversation(c.id)).status).toBe('running');
     expect((await listConversations()).find((m) => m.id === c.id)!.status).toBe('running');
+  });
+
+  it('setLastPromptTokens 写回 token 数且不动消息', async () => {
+    const c = await createConversation();
+    await appendMessage(c.id, { role: 'user', content: 'hi' });
+    await setLastPromptTokens(c.id, 4321);
+    const got = await getConversation(c.id);
+    expect(got.lastPromptTokens).toBe(4321);
+    expect(got.messages).toHaveLength(1);
+    expect(got.messages[0]!.content).toBe('hi');
+  });
+
+  it('setSummary 写回摘要且不动消息', async () => {
+    const c = await createConversation();
+    await appendMessage(c.id, { role: 'user', content: 'hi' });
+    await setSummary(c.id, { text: '前情', coversUpTo: 3 });
+    const got = await getConversation(c.id);
+    expect(got.summary).toEqual({ text: '前情', coversUpTo: 3 });
+    expect(got.messages).toHaveLength(1);
+    expect(got.messages[0]!.content).toBe('hi');
   });
 
   it('deleteConversation 移除会话与 index 项', async () => {
