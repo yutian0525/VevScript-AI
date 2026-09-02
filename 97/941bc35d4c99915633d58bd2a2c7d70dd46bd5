@@ -1,0 +1,21 @@
+background/gm-permissions.ts
+  s_5acdc8bbc45473::t_a35e6ee84885ec 1-33
+tests/background/gm-permissions.test.ts
+  s_5acdc8bbc45473::t_ba28fa1b8321d2 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "97941bc35d4c99915633d58bd2a2c7d70dd46bd5",
+  "prompts": {},
+  "sessions": {
+    "s_5acdc8bbc45473": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b74cc937-d353-45e9-904d-631075ccdd75",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
