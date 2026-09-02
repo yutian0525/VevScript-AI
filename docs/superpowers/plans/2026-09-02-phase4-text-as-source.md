@@ -37,7 +37,7 @@
   - `stringifyUserScript`：`world === 'MAIN'` 时输出 `// @world       MAIN`（USER_SCRIPT 缺省不输出）
   - 无匹配规则警告文案改为：`未找到 @match/@include 匹配规则：脚本不会在任何页面运行，请在头部补规则`（含 `@match` 子串，旧断言兼容）
 
-- [ ] **Step 1: 替换测试文件**
+- [x] **Step 1: 替换测试文件**
 
 `tests/shared/userscript-meta.test.ts` **整体替换**为：
 
@@ -178,12 +178,12 @@ describe('stringifyUserScript / parse 往返', () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `npx vitest run tests/shared/userscript-meta.test.ts`
 Expected: FAIL（`fields.world` 为 undefined、@include 用例失败）
 
-- [ ] **Step 3: 整体替换 `shared/userscript-meta.ts`**
+- [x] **Step 3: 整体替换 `shared/userscript-meta.ts`**
 
 ```ts
 // shared/userscript-meta.ts
@@ -320,12 +320,12 @@ export function stringifyUserScript(script: UserScript): string {
 }
 ```
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `npx vitest run tests/shared/userscript-meta.test.ts`
 Expected: PASS（全部用例）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add shared/userscript-meta.ts tests/shared/userscript-meta.test.ts
@@ -351,7 +351,7 @@ git commit -m "feat(scripts): 解析器修订——@include pattern 形式并入
   - `ScriptGetData { script: UserScript; totalLines: number; startLine: number; endLine: number }`
   - `ScriptsRequest`：`SCRIPTS_GET` 加 `offset?: number; limit?: number`；`SCRIPTS_IMPORT` 字段 `source` → `text`
 
-- [ ] **Step 1: 替换测试文件**
+- [x] **Step 1: 替换测试文件**
 
 `tests/shared/messages-phase4.test.ts` **整体替换**为：
 
@@ -415,12 +415,12 @@ describe('Phase 4 脚本消息协议', () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `npx vitest run tests/shared/messages-phase4.test.ts`
 Expected: FAIL（`text`/`ScriptEditRange`/`ScriptGetData` 不存在）
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 `shared/types.ts` 的 `UserScript`（`id` 字段之后插入 `text`，其余字段注释微调）：
 
@@ -486,14 +486,14 @@ export interface ScriptGetData {
 
 （`ScriptsRuntimeEntry`/`ScriptsRuntimeEvent`/`ScriptsListData` 不动；顶部 import 若有无用项由编译提示清理。）
 
-- [ ] **Step 4: 跑本 task 测试确认通过**
+- [x] **Step 4: 跑本 task 测试确认通过**
 
 Run: `npx vitest run tests/shared/messages-phase4.test.ts tests/shared/userscript-meta.test.ts`
 Expected: PASS
 
 > 注意：此时 `npm run compile` 会因 background/tools/UI 尚未适配而报错、其它旧测试会红——**计划内中间态**，不要修本 task 之外的文件。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add shared/types.ts shared/messages.ts tests/shared/messages-phase4.test.ts
@@ -515,7 +515,7 @@ git commit -m "feat(scripts): 共享类型/协议修订——UserScript.text 真
   - `listScripts()`/`getScript()` 对缺 `text` 的旧记录用 `stringifyUserScript` 反拼补齐并**惰性写回**
   - `toSummary` 不变（无 text）
 
-- [ ] **Step 1: 替换测试文件**
+- [x] **Step 1: 替换测试文件**
 
 `tests/storage/scripts.test.ts` **整体替换**为：
 
@@ -611,12 +611,12 @@ describe('toSummary', () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `npx vitest run tests/storage/scripts.test.ts`
 Expected: FAIL（`MAX_TEXT_LENGTH` 不存在；迁移用例失败）
 
-- [ ] **Step 3: 整体替换 `storage/scripts.ts`**
+- [x] **Step 3: 整体替换 `storage/scripts.ts`**
 
 ```ts
 // storage/scripts.ts
@@ -693,14 +693,14 @@ export function toSummary(s: UserScript): ScriptSummary {
 }
 ```
 
-- [ ] **Step 4: 跑本 task 测试确认通过**
+- [x] **Step 4: 跑本 task 测试确认通过**
 
 Run: `npx vitest run tests/storage/scripts.test.ts`
 Expected: PASS
 
 > 仍为计划内中间态：compile 因 background/tools/UI 未适配而报错，不修本 task 之外文件。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add storage/scripts.ts tests/storage/scripts.test.ts
@@ -725,7 +725,7 @@ git commit -m "feat(scripts): 存储层 text 真源 + 旧记录反拼惰性迁�
   - `handleImport(text, filename?)`：原文存 text；签名第二参仍为 filename
   - `handleDelete`/`handleSetEnabled`/`syncRegistrations`/运行态全不变
 
-- [ ] **Step 1: 整体替换测试文件**
+- [x] **Step 1: 整体替换测试文件**
 
 `tests/background/scripts.test.ts` **整体替换**为：
 
@@ -1036,12 +1036,12 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `npx vitest run tests/background/scripts.test.ts`
 Expected: FAIL（`handleGet`/`spliceLines` 不存在；handleCreate 仍按字段式处理）
 
-- [ ] **Step 3: 修改 `background/scripts.ts`**
+- [x] **Step 3: 修改 `background/scripts.ts`**
 
 3a. 顶部 import 区替换为：
 
@@ -1208,14 +1208,14 @@ export async function handleImport(text: string, filename?: string): Promise<{ s
 
 （`validateScriptFields`、注册同步、运行态跟踪、其余 handler 均不动。）
 
-- [ ] **Step 4: 跑本 task 测试确认通过**
+- [x] **Step 4: 跑本 task 测试确认通过**
 
 Run: `npx vitest run tests/background/scripts.test.ts tests/storage/scripts.test.ts tests/shared/`
 Expected: PASS
 
 > 仍为计划内中间态：compile 因工具/UI 未适配而报错。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add background/scripts.ts tests/background/scripts.test.ts
@@ -1239,7 +1239,7 @@ git commit -m "feat(scripts): 编排层文本为源——handleCreate/Update 走
   - `doGetScript(args: { id, offset?, limit? })` 透传 `handleGet`
   - `list_scripts`/`delete_script`/`toggle_script` 与 registry 分发不变（工具总数仍 22）
 
-- [ ] **Step 1: 替换测试文件**
+- [x] **Step 1: 替换测试文件**
 
 `tests/agent/tools/script-pool.test.ts` **整体替换**为：
 
@@ -1356,12 +1356,12 @@ describe('script-pool 工具执行器', () => {
 });
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `npx vitest run tests/agent/tools/script-pool.test.ts`
 Expected: FAIL（create_script 仍按 name/code/matches 处理）
 
-- [ ] **Step 3: 替换 `agent/tools/schemas.ts` 三个 schema 块**
+- [x] **Step 3: 替换 `agent/tools/schemas.ts` 三个 schema 块**
 
 `get_script` 块（`name: 'get_script'` 所在对象）**整体替换**为：
 
@@ -1441,7 +1441,7 @@ Expected: FAIL（create_script 仍按 name/code/matches 处理）
   },
 ```
 
-- [ ] **Step 4: 整体替换 `agent/tools/script-pool.ts`**
+- [x] **Step 4: 整体替换 `agent/tools/script-pool.ts`**
 
 ```ts
 // agent/tools/script-pool.ts
@@ -1525,7 +1525,7 @@ export async function doToggleScript(args: { id: string; enabled: boolean }): Pr
 }
 ```
 
-- [ ] **Step 5: 替换 `tests/agent/tools/schemas.test.ts` 的 create_script 用例**
+- [x] **Step 5: 替换 `tests/agent/tools/schemas.test.ts` 的 create_script 用例**
 
 把用例 `it('create_script：name/code/matches 必填，runAt/world 枚举', ...)` **整体替换**为：
 
@@ -1554,12 +1554,12 @@ export async function doToggleScript(args: { id: string; enabled: boolean }): Pr
 
 （22 个工具计数用例、toggle_script 用例、其余用例不动。）
 
-- [ ] **Step 6: 跑本 task 测试确认通过**
+- [x] **Step 6: 跑本 task 测试确认通过**
 
 Run: `npx vitest run tests/agent/tools/`
 Expected: PASS（含 registry.test.ts 等其余工具测试）
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add agent/tools/schemas.ts agent/tools/script-pool.ts tests/agent/tools/script-pool.test.ts tests/agent/tools/schemas.test.ts
@@ -1578,7 +1578,7 @@ git commit -m "feat(scripts): 工具层文本化——create_script source 参�
 - Consumes: Task 2 `SCRIPTS_GET { id } → ScriptGetData`（含 `script.text`）、`SCRIPTS_IMPORT { text, filename? }`、`SCRIPTS_CREATE { input: { text } }`、Task 1 `parseUserScript`。
 - Produces: 无下游消费者（UI 是末端）。无新增样式（复用 `.scripts-run`/`.scripts-warnline`/`.script-editor`）。
 
-- [ ] **Step 1: 整体替换 `components/scripts/ScriptDetailView.tsx`**
+- [x] **Step 1: 整体替换 `components/scripts/ScriptDetailView.tsx`**
 
 ```tsx
 // components/scripts/ScriptDetailView.tsx
@@ -1793,7 +1793,7 @@ export function ScriptDetailView({ id }: { id: string }) {
 }
 ```
 
-- [ ] **Step 2: 修改 `components/scripts/ScriptsListView.tsx`（3 处）**
+- [x] **Step 2: 修改 `components/scripts/ScriptsListView.tsx`（3 处）**
 
 2a. `SOURCE_LABEL` 常量之后追加模板常量：
 
@@ -1839,7 +1839,7 @@ const NEW_SCRIPT_TEMPLATE = [
 
 （`importFile` 的其余部分、`setEnabled`、render 全不动。）
 
-- [ ] **Step 3: 编译 + 构建恢复全绿（本修订的 compile 恢复点）**
+- [x] **Step 3: 编译 + 构建恢复全绿（本修订的 compile 恢复点）**
 
 Run: `npm run compile && npm run build`
 Expected: 全绿。若仍报错，只允许修本 task 范围内的遗漏适配（如 stores/scripts.ts 的类型引用）；超出范围的报错停下上报，不要顺手大修。
@@ -1847,7 +1847,7 @@ Expected: 全绿。若仍报错，只允许修本 task 范围内的遗漏适配�
 Run: `npx vitest run`
 Expected: 全绿（此前各 task 的中间态红在本步收拢）。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add components/scripts/ScriptDetailView.tsx components/scripts/ScriptsListView.tsx
@@ -1861,7 +1861,7 @@ git commit -m "feat(scripts): 详情页文本为源——源码编辑器+实时�
 **Files:**
 - Modify: `CLAUDE.md`
 
-- [ ] **Step 1: CLAUDE.md「当前阶段」Phase 4 段末尾追加一句**
+- [x] **Step 1: CLAUDE.md「当前阶段」Phase 4 段末尾追加一句**
 
 在 `（工具 16→22，与 UI 共用 `background/scripts.ts` 编排层；确认门控下阶段经该文件 handler 拦截位接入 `confirmGate`）。` 之后追加：
 
@@ -1869,12 +1869,12 @@ git commit -m "feat(scripts): 详情页文本为源——源码编辑器+实时�
 Phase 4 修订（2026-09-02，文本为源）：`UserScript.text`（完整 .user.js 原文）为唯一真源，name/matches/code/runAt/world/meta 均为保存时 `parseUserScript` 的解析投影（旧记录 `stringifyUserScript` 反拼惰性迁移，text 上限 280KB）；`@include` pattern 形式并入 matches、新增 `@world` 键；详情页=源码编辑器+实时解析面板（无表单填空）；工具修订：`get_script` 行区间读取（offset/limit + totalLines）、`create_script` 参数改 `source`（完整 .user.js 文本）、`update_script` patch={text | edit 行区间 | enabled}，替换后整体重解析。
 ```
 
-- [ ] **Step 2: 全量回归**
+- [x] **Step 2: 全量回归**
 
 Run: `npm run compile && npm test && npm run build`
 Expected: 全绿。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add CLAUDE.md
