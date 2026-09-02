@@ -1,0 +1,25 @@
+components/scripts/ScriptDetailView.tsx
+  s_3eb7e42476e8c7::t_e94c909adfce95 50,69,72,74-75,77,79-80,97,101
+  s_3eb7e42476e8c7::t_f9de8fe92a89cc 2-4,10-11,16,30-35,46-48
+  s_3eb7e42476e8c7::t_7d9ac38c54e8db 122,131-144,146-150,152-153,156-158,160,163-167,176-177
+components/scripts/ScriptsListView.tsx
+  s_3eb7e42476e8c7::t_ad6432ecb37b37 51,54
+  s_3eb7e42476e8c7::t_5093c7ad45745e 42
+  s_3eb7e42476e8c7::t_1c6ed23ca9587f 19-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "827b10668920309162f2e24dcf94956a610dd74f",
+  "prompts": {},
+  "sessions": {
+    "s_3eb7e42476e8c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9512b7e8-f3ac-4d75-98c5-0ad6c88c7716",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
