@@ -1,0 +1,21 @@
+entrypoints/sidepanel/styles.css
+  s_0731280e1142fe::t_974fa3cc03e0b5 252-260,270-277
+  s_0731280e1142fe::t_2f73cb1797bd94 386-393,395-473
+  s_0731280e1142fe::t_7ac91d6197aa86 394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "4ee7bb4a4d2c0d9f2514f89bd8df41809f5f4268",
+  "prompts": {},
+  "sessions": {
+    "s_0731280e1142fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ff30c9f-7595-4e78-9bfb-8ec6103cbeac",
+        "model": "glm-5.3"
+      },
+      "human_author": null
+    }
+  }
+}
