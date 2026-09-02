@@ -1,0 +1,27 @@
+tests/shared/userscript-meta.test.ts
+  s_3eb7e42476e8c7::t_1598eb67fd9395 78-86
+tests/background/scripts.test.ts
+  s_3eb7e42476e8c7::t_05c67b08d949ed 144,146-151
+CLAUDE.md
+  s_3eb7e42476e8c7::t_7b5a86e18b868b 91
+shared/userscript-meta.ts
+  s_3eb7e42476e8c7::t_dd5e8b714a6920 45
+  s_3eb7e42476e8c7::t_36878cf005a07a 67-73
+  s_3eb7e42476e8c7::t_02c1eb0b0187c2 106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "0232bb238fdd06a769da527b48c81c5e12d6779e",
+  "prompts": {},
+  "sessions": {
+    "s_3eb7e42476e8c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9512b7e8-f3ac-4d75-98c5-0ad6c88c7716",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
