@@ -482,3 +482,64 @@ body {
   border-radius: var(--r-md);
   margin-top: 4px;
 }
+
+/* ============ 环形上下文指示器 ============ */
+.dock__controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.ctxring {
+  width: 28px; height: 28px; padding: 0;
+  border: none; background: transparent; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--ink-3); border-radius: 50%;
+  transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.ctxring:hover:not(:disabled) { background: var(--sunken); }
+.ctxring:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+.ctxring:disabled { cursor: default; opacity: 0.55; }
+.ctxring__track { stroke: var(--line-strong); }
+.ctxring__fill { stroke: var(--ink-3); transition: stroke-dashoffset var(--t-mid) var(--ease), stroke var(--t-fast) var(--ease); }
+.ctxring--warn .ctxring__fill { stroke: var(--warn); }
+.ctxring--warn:not(.ctxring--disabled) { animation: pulse 1.6s var(--ease) infinite; }
+.ctxring--danger .ctxring__fill { stroke: var(--err); }
+
+/* ============ 每轮 token 标注 ============ */
+.msg-usage {
+  display: inline-flex; align-items: center; gap: 2px;
+  margin-top: 3px; font-size: 10px; color: var(--ink-3);
+}
+.msg-usage > svg { margin-left: 6px; }
+.msg-usage > svg:first-child { margin-left: 0; }
+
+/* ============ 会话下拉抽屉 ============ */
+.chat { position: relative; }
+.convmenu__scrim { position: absolute; inset: 0; z-index: 10; }
+.convmenu {
+  position: absolute; z-index: 11; top: 0; left: 0; right: 0;
+  max-height: 60%; overflow: auto;
+  background: var(--surface); border: 1px solid var(--line-strong);
+  border-radius: var(--r-md); box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+.convmenu__new {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border: none; border-bottom: 1px solid var(--line);
+  background: transparent; color: var(--ink); cursor: pointer; font-family: var(--sans); font-size: 13px;
+}
+.convmenu__new:hover { background: var(--sunken); }
+.convmenu__empty { padding: 14px 12px; color: var(--ink-3); font-size: 12px; }
+.convrow { display: flex; align-items: center; }
+.convrow--active { background: var(--signal-wash); }
+.convrow__main {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px;
+  padding: 9px 12px; border: none; background: transparent; cursor: pointer;
+  font-family: var(--sans); font-size: 13px; color: var(--ink); text-align: left;
+}
+.convrow__main:hover { background: var(--sunken); }
+.convrow__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.convrow__time { font-size: 10px; color: var(--ink-3); flex-shrink: 0; }
+.convrow__actions { display: none; gap: 2px; padding-right: 8px; }
+.convrow:hover .convrow__actions { display: flex; }
+.convrow__edit { flex: 1; display: flex; align-items: center; gap: 4px; padding: 5px 8px; }
+.convrow__iconbtn {
+  border: none; background: transparent; color: var(--ink-3); cursor: pointer;
+  padding: 4px; border-radius: var(--r-sm); display: inline-flex;
+}
+.convrow__iconbtn:hover { background: var(--line-strong); color: var(--ink); }
