@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { getSettings, saveSettings, type Settings } from '../../storage/settings';
 import { testConnection, type ConnectionTestResult } from '../../agent/provider/connection-test';
+import { resolveContextWindow } from '../../agent/model-windows';
 
 /** 解析额外参数 JSON：空串→undefined；非对象或非法→抛错（供保存时拦截）。 */
 function parseExtraBody(text: string): Record<string, unknown> | undefined {
@@ -107,6 +108,19 @@ export function SettingsView() {
             onChange={(e) => setProvider({ model: e.target.value })}
             placeholder="deepseek-chat"
           />
+        </div>
+        <div className="field">
+          <label className="field-label">上下文窗口（token，选填）</label>
+          <Input
+            type="number"
+            value={settings.provider.contextWindow ?? ''}
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              setProvider({ contextWindow: v === '' ? undefined : Number(v) });
+            }}
+            placeholder={String(resolveContextWindow(settings.provider.model))}
+          />
+          <span className="hint">留空则按模型名自动推断。用于上下文用量标识与压缩阈值。</span>
         </div>
         <div className="field">
           <label className="field-label">额外请求参数（JSON，选填）</label>

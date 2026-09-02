@@ -5,6 +5,8 @@ export interface ProviderConfig {
   baseUrl: string; // OpenAI 兼容，如 https://api.deepseek.com/v1
   apiKey: string;
   model: string;
+  /** 上下文窗口（token）。留空则按 model 名映射；见 agent/model-windows.ts。 */
+  contextWindow?: number;
   /** 额外请求体参数：合并进 /chat/completions body（核心字段受保护不被覆盖）。
    *  用于开启各家网关的思考等开关，如 { enable_thinking: true } / { reasoning_effort: 'high' }。 */
   extraBody?: Record<string, unknown>;
