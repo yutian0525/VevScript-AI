@@ -93,16 +93,20 @@ export interface DebugExecResponse {
 // 约定：Port name 为 'agent'；消息用 'agent:' 前缀（→bg）或事件名（bg→）区分。
 
 export type PortMsgFromPanel =
-  | { type: 'agent:start'; tabId: number; userMessage: string }
-  | { type: 'agent:stop'; tabId: number }
-  | { type: 'agent:attach'; tabId: number }
-  | { type: 'agent:resume'; tabId: number };
+  | { type: 'agent:start'; convId: string; tabId: number; userMessage: string }
+  | { type: 'agent:stop'; convId: string }
+  | { type: 'agent:attach'; convId: string }
+  | { type: 'agent:resume'; convId: string; tabId: number }
+  | { type: 'agent:compact'; convId: string };
 
 export type PortMsgToPanel =
   | { type: 'reasoning-delta'; text: string }
   | { type: 'text-delta'; text: string }
   | { type: 'tool-start'; name: string; args: string; callId: string }
   | { type: 'tool-end'; name: string; callId: string; ok: boolean; summary: string; output?: string; image?: string }
+  | { type: 'usage'; promptTokens?: number; completionTokens?: number }
+  | { type: 'compact-start' }
+  | { type: 'compact-done'; newPromptTokens?: number }
   | { type: 'paused'; reason: string }
   | { type: 'done'; finalText: string }
   | { type: 'error'; message: string }
