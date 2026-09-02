@@ -1,0 +1,20 @@
+entrypoints/sidepanel/styles.css
+  s_0731280e1142fe::t_2cf3ed8907329c 263-288
+  s_0731280e1142fe::t_2f73cb1797bd94 396-483
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "c35cd12066bee9bcc56fe97b7d0b80791208dc97",
+  "prompts": {},
+  "sessions": {
+    "s_0731280e1142fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ff30c9f-7595-4e78-9bfb-8ec6103cbeac",
+        "model": "glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
