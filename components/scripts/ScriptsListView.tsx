@@ -16,6 +16,17 @@ const SOURCE_LABEL: Record<ScriptSummary['source'], string> = {
   import: 'TM',
 };
 
+// 新建模板：带头部骨架（spec §9.1 修订：头部即配置，落地直接进详情页编辑原文）
+const NEW_SCRIPT_TEMPLATE = [
+  '// ==UserScript==',
+  '// @name        未命名脚本',
+  '// @match       *://*/*',
+  '// @run-at      document-idle',
+  '// ==/UserScript==',
+  '',
+  '',
+].join('\n');
+
 export function ScriptsListView() {
   const { summaries, runtimeEntries, activeTabId, query, engineWarning, setQuery } = useScripts();
   const openScript = useUi((s) => s.openScript);
@@ -28,7 +39,7 @@ export function ScriptsListView() {
   async function createNew(): Promise<void> {
     const resp = await sendScriptsRequest<{ ok: boolean; data?: { script: { id: string } }; error?: string }>({
       type: 'SCRIPTS_CREATE',
-      input: { name: '未命名脚本', code: '// 新脚本\n', matches: [] },
+      input: { text: NEW_SCRIPT_TEMPLATE },
     });
     if (resp.ok && resp.data) {
       await useScripts.getState().refresh();
@@ -37,10 +48,10 @@ export function ScriptsListView() {
   }
 
   async function importFile(file: File): Promise<void> {
-    const source = await file.text();
+    const text = await file.text();
     const resp = await sendScriptsRequest<{ ok: boolean; data?: { script: { id: string }; warnings: string[] }; error?: string }>({
       type: 'SCRIPTS_IMPORT',
-      source,
+      text,
       filename: file.name,
     });
     if (resp.ok && resp.data) {
