@@ -64,6 +64,7 @@ export function buildContext(
   if (summary) {
     // coversUpTo 之后的原始消息为保留段；剥掉头部孤立 tool 消息（其 assistant(toolCalls)
     // 已被折进摘要，回放会因 tool_call_id 悬空 400）。摘要作为一条 user 消息置于顶部。
+    // 注：summary 分支不使用 keepRecent——保留边界由压缩流程的 coversUpTo 决定。
     let recent = history.slice(summary.coversUpTo + 1);
     let start = 0;
     while (start < recent.length && recent[start]!.role === 'tool') start += 1;

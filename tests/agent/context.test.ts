@@ -119,4 +119,16 @@ describe('buildContext summary 分支', () => {
     expect(afterSummary[0]!.role).not.toBe('tool');
     expect(afterSummary).toEqual([{ role: 'assistant', content: 'm2' }]);
   });
+
+  it('coversUpTo 越界时保留段为空，只余 system + 摘要', () => {
+    const history: ChatMessage[] = [
+      { role: 'user', content: 'm0' },
+      { role: 'assistant', content: 'm1' },
+    ];
+    const out = buildContext(history, page, 60, { text: 's', coversUpTo: 5 });
+    expect(out).toHaveLength(2);
+    expect(out[0]!.role).toBe('system');
+    expect(out[1]!.role).toBe('user');
+    expect(String(out[1]!.content)).toContain('s');
+  });
 });
