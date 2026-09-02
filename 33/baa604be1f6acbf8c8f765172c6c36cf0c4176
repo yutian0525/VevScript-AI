@@ -1,0 +1,19 @@
+entrypoints/background.ts
+  s_7852414883df95::t_e2fe78def40207 48,50-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "33baa604be1f6acbf8c8f765172c6c36cf0c4176",
+  "prompts": {},
+  "sessions": {
+    "s_7852414883df95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b441830-79d5-4104-a599-d42b6e004130",
+        "model": "kimi-k2.7-code"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
