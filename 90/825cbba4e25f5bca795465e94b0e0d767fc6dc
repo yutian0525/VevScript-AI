@@ -1,0 +1,23 @@
+tests/stores/conversations.test.ts
+  s_7852414883df95::t_0ea05886445a26 53-76
+  s_7852414883df95::t_14dd56683a18b9 35-36,39-40
+stores/conversations.ts
+  s_7852414883df95::t_699e532f6555b6 39-45
+  s_7852414883df95::t_52683aff83abb4 50-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "90825cbba4e25f5bca795465e94b0e0d767fc6dc",
+  "prompts": {},
+  "sessions": {
+    "s_7852414883df95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b441830-79d5-4104-a599-d42b6e004130",
+        "model": "kimi-k2.7-code"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
