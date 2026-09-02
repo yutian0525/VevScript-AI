@@ -8,6 +8,7 @@ import { runAgentLoop, resumeAgentLoop, type LoopDeps } from '../agent/loop';
 import { executeTool } from '../agent/tools/registry';
 import { compactConversation } from '../agent/compact';
 import { resolveContextWindow } from '../agent/model-windows';
+import { setLastPromptTokens } from '../storage/conversations';
 
 export async function buildProviderFromSettings(): Promise<Provider | null> {
   const { provider } = await getSettings();
@@ -126,7 +127,10 @@ export function attachAgentPort(): void {
         }
         safePost({ type: 'compact-start' });
         const r = await compactConversation(msg.convId, { provider }).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
-        if (r.ok && r.newPromptTokens != null) safePost({ type: 'usage', promptTokens: r.newPromptTokens });
+        if (r.ok && r.newPromptTokens != null) {
+          await setLastPromptTokens(msg.convId, r.newPromptTokens);
+          safePost({ type: 'usage', promptTokens: r.newPromptTokens });
+        }
         if (!r.ok) safePost({ type: 'error', message: `压缩失败：${r.error ?? '未知错误'}` });
         safePost({ type: 'compact-done', newPromptTokens: r.ok ? r.newPromptTokens : undefined });
         return;
