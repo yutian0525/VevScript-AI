@@ -45,8 +45,14 @@ export default defineBackground(() => {
     return { ok: true };
   });
 
-  browser.runtime.onInstalled.addListener(() => {
+  browser.runtime.onInstalled.addListener(async () => {
     browser.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+    // 弃用旧的按标签页会话（local:session:{tabId}）——WXT 存储裸 key 为 'session:{tabId}'
+    try {
+      const all = await browser.storage.local.get(null);
+      const stale = Object.keys(all).filter((k) => k.startsWith('session:'));
+      if (stale.length) await browser.storage.local.remove(stale);
+    } catch { /* 清理失败不阻断启动 */ }
   });
 
   // webRequest 接线放 background（统管 browser 事件），observe-store 保持纯数据可测。
