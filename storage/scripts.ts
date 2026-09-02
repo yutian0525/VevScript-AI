@@ -56,7 +56,8 @@ export async function deleteScript(id: string): Promise<void> {
   await storage.setItem(KEY, all.filter((s) => s.id !== id));
 }
 
-export function toSummary(s: UserScript): ScriptSummary {
+// storage/scripts.ts —— toSummary 签名改为接收错误计数（SW 内存态由编排层持有）
+export function toSummary(s: UserScript, errorCount = 0): ScriptSummary {
   return {
     id: s.id,
     name: s.name,
@@ -68,5 +69,7 @@ export function toSummary(s: UserScript): ScriptSummary {
     updatedAt: s.updatedAt,
     description: s.meta?.description,
     hasGrants: (s.meta?.grants?.length ?? 0) > 0,
+    errorCount,
+    hasRequires: (s.meta?.requires?.length ?? 0) > 0,
   };
 }

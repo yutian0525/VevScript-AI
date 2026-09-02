@@ -31,6 +31,12 @@ export interface UserScriptMeta {
   description?: string;
   /** @grant 记录；仅用于「需要 GM_*（本扩展不支持）」警告徽标 */
   grants?: string[];
+  /** @connect 域名白名单（GM_xmlhttpRequest 跨域放行表，spec §8.1） */
+  connects?: string[];
+  /** @require URL 列表（创建/更新时预取，wrapper 前置拼接） */
+  requires?: string[];
+  /** @resource name → url（GM_getResourceText 的数据源） */
+  resources?: Record<string, string>;
   noframes?: boolean;
 }
 
@@ -62,4 +68,8 @@ export interface ScriptSummary {
   updatedAt: number;
   description?: string;
   hasGrants: boolean;
+  /** SW 错误环形缓冲当前条数（0 = 无错误；spec §9.1） */
+  errorCount: number;
+  /** 有 @require（资源缺失时详情页提示，spec §9.4） */
+  hasRequires: boolean;
 }

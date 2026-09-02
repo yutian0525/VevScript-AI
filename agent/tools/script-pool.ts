@@ -6,6 +6,7 @@ import type { ToolResult } from '../../shared/types';
 import type { ScriptPatch } from '../../shared/messages';
 import { parseUserScript } from '../../shared/userscript-meta';
 import { listScripts, toSummary } from '../../storage/scripts';
+import { gmErrorCounts } from '../../background/gm-api';
 import {
   handleCreate, handleDelete, handleGet, handleSetEnabled, handleUpdate,
 } from '../../background/scripts';
@@ -14,7 +15,7 @@ const err = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 export async function doListScripts(args: { enabled?: boolean; urlContains?: string }): Promise<ToolResult> {
   try {
-    let scripts = (await listScripts()).map(toSummary);
+    let scripts = (await listScripts()).map((s) => toSummary(s, gmErrorCounts()[s.id] ?? 0));
     if (args.enabled !== undefined) scripts = scripts.filter((s) => s.enabled === args.enabled);
     if (args.urlContains) {
       const needle = args.urlContains.toLowerCase();

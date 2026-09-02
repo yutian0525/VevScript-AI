@@ -9,6 +9,7 @@ import type { ScriptRunAt, ScriptSource, ScriptWorld, UserScript } from '../shar
 import { deleteScript, getScript, listScripts, saveScript, toSummary, MAX_CODE_LENGTH, MAX_TEXT_LENGTH } from '../storage/scripts';
 import { isValidMatchPattern, matchUrl } from '../shared/match-pattern';
 import { parseUserScript } from '../shared/userscript-meta';
+import { gmErrorCounts } from './gm-api'; // Task 7 提供：Record<scriptId, number>
 
 export const ENGINE_UNAVAILABLE_MSG = '脚本注入引擎不可用：请在 chrome://extensions 开启开发者模式或升级 Chrome 120+';
 
@@ -329,7 +330,10 @@ export async function handleImport(text: string, filename?: string): Promise<{ s
 export function initScriptsModule(router: MessageRouter): void {
   router.on('SCRIPTS_LIST', async () => ({
     ok: true,
-    data: { scripts: (await listScripts()).map(toSummary), engineAvailable: engineAvailable() },
+    data: {
+      scripts: (await listScripts()).map((s) => toSummary(s, gmErrorCounts()[s.id] ?? 0)),
+      engineAvailable: engineAvailable(),
+    },
   }));
 
   router.on('SCRIPTS_GET', async (msg) => {
