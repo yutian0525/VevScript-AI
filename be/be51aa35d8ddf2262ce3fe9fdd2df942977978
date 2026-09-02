@@ -1,0 +1,21 @@
+components/chat/ChatView.tsx
+  s_7852414883df95::t_a3b7c10812bcea 208-213
+  s_7852414883df95::t_b6e842a10f5cff 3
+  s_7852414883df95::t_8a3e56ca09826d 298-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "bebe51aa35d8ddf2262ce3fe9fdd2df942977978",
+  "prompts": {},
+  "sessions": {
+    "s_7852414883df95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b441830-79d5-4104-a599-d42b6e004130",
+        "model": "kimi-k2.7-code"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
