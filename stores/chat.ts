@@ -15,12 +15,15 @@ export interface ChatItem {
   status?: 'running' | 'done'; ok?: boolean; summary?: string;
   output?: string;           // 工具完整输出（供展开）
   image?: string;            // 截图缩略图 dataURL（take_screenshot）
+  usage?: { prompt?: number; completion?: number }; // 该轮 token 用量（消息下方标注）
 }
 
 interface ChatState {
   messages: ChatItem[];
   status: ChatStatus;
   pauseReason?: string;
+  promptTokens?: number;   // 当前会话最近一轮真实发出的 token（环形指示器分子）
+  compacting: boolean;     // 是否正在压缩
   addUserMessage: (text: string) => void;
   applyEvent: (e: PortMsgToPanel) => void;
   setStatus: (s: ChatStatus) => void;
@@ -46,6 +49,7 @@ function collapseTrailingThinking(messages: ChatItem[]): void {
 export const useChat = create<ChatState>((set) => ({
   messages: [],
   status: 'idle',
+  compacting: false,
   addUserMessage: (text) => set((s) => ({ messages: [...s.messages, { role: 'user', text }], status: 'running' })),
   setStatus: (status) => set({ status }),
   toggleExpand: (index) => set((s) => {
@@ -101,7 +105,7 @@ export const useChat = create<ChatState>((set) => ({
     }
     return { messages: items, status: 'idle', pauseReason: undefined };
   }),
-  reset: () => set({ messages: [], status: 'idle', pauseReason: undefined }),
+  reset: () => set({ messages: [], status: 'idle', pauseReason: undefined, promptTokens: undefined, compacting: false }),
   applyEvent: (e) => set((s) => {
     const messages = [...s.messages];
     switch (e.type) {
@@ -139,6 +143,19 @@ export const useChat = create<ChatState>((set) => ({
         return { messages };
       }
       case 'state': return { status: e.status };
+      case 'usage': {
+        // 挂到最后一条 assistant 项（供消息下方标注）；同时更新环的分子
+        const idx = [...messages].reverse().findIndex((m) => m.role === 'assistant');
+        if (idx >= 0) {
+          const real = messages.length - 1 - idx;
+          messages[real] = { ...messages[real]!, usage: { prompt: e.promptTokens, completion: e.completionTokens } };
+        }
+        return { messages, promptTokens: e.promptTokens ?? s.promptTokens };
+      }
+      case 'compact-start':
+        return { compacting: true };
+      case 'compact-done':
+        return { compacting: false, promptTokens: e.newPromptTokens ?? s.promptTokens };
       case 'paused':
         collapseTrailingThinking(messages);
         return { messages, status: 'paused', pauseReason: e.reason };

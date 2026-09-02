@@ -191,3 +191,50 @@ describe('chat store', () => {
     expect(useChat.getState().messages.at(-1)).toMatchObject({ role: 'assistant', reasoning: '想', thinking: false });
   });
 });
+
+describe('chat store 新分支', () => {
+  beforeEach(() => useChat.getState().reset());
+
+  it('usage 事件：更新 promptTokens 且挂到最后一条 assistant 项', () => {
+    const s = useChat.getState();
+    s.applyEvent({ type: 'text-delta', text: '回答' });
+    s.applyEvent({ type: 'usage', promptTokens: 8000, completionTokens: 120 });
+    const st = useChat.getState();
+    expect(st.promptTokens).toBe(8000);
+    const last = st.messages[st.messages.length - 1]!;
+    expect(last.role).toBe('assistant');
+    expect(last.usage).toEqual({ prompt: 8000, completion: 120 });
+  });
+
+  it('compact-start / compact-done 切换 compacting 并回落 promptTokens', () => {
+    const s = useChat.getState();
+    s.applyEvent({ type: 'usage', promptTokens: 100000 });
+    s.applyEvent({ type: 'compact-start' });
+    expect(useChat.getState().compacting).toBe(true);
+    s.applyEvent({ type: 'compact-done', newPromptTokens: 3000 });
+    const st = useChat.getState();
+    expect(st.compacting).toBe(false);
+    expect(st.promptTokens).toBe(3000);
+  });
+
+  it('compact-done 无 newPromptTokens 时只关 compacting，不动 promptTokens', () => {
+    const s = useChat.getState();
+    s.applyEvent({ type: 'usage', promptTokens: 100000 });
+    s.applyEvent({ type: 'compact-start' });
+    s.applyEvent({ type: 'compact-done' });
+    const st = useChat.getState();
+    expect(st.compacting).toBe(false);
+    expect(st.promptTokens).toBe(100000);
+  });
+
+  it('reset 清空 promptTokens/compacting', () => {
+    const s = useChat.getState();
+    s.applyEvent({ type: 'usage', promptTokens: 5000 });
+    s.applyEvent({ type: 'compact-start' });
+    s.reset();
+    const st = useChat.getState();
+    expect(st.promptTokens).toBeUndefined();
+    expect(st.compacting).toBe(false);
+    expect(st.messages).toEqual([]);
+  });
+});
