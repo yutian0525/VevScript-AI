@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-09-02-phase5-gm-api.md
+  s_5acdc8bbc45473::t_99648c7217ccf7 1-2586
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "829f7493065ddc825971f8778b8fee98040fadc9",
+  "prompts": {},
+  "sessions": {
+    "s_5acdc8bbc45473": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b74cc937-d353-45e9-904d-631075ccdd75",
+        "model": "unknown"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
