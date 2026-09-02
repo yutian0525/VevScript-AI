@@ -1,0 +1,32 @@
+background/gm-api.ts
+  s_5acdc8bbc45473::t_3a3bace0b96fd2 1-2
+shared/types.ts
+  s_5acdc8bbc45473::t_14b8df807208cc 71-74
+  s_5acdc8bbc45473::t_4368266e495c74 34-39
+background/scripts.ts
+  s_5acdc8bbc45473::t_2d1e870818180a 12
+  s_5acdc8bbc45473::t_db54ebcf5f15d1 333-336
+storage/scripts.ts
+  s_5acdc8bbc45473::t_94cd6dcf196933 59-60,72-73
+agent/tools/script-pool.ts
+  s_5acdc8bbc45473::t_5ac5d3ea2ee3e3 9
+  s_5acdc8bbc45473::t_ec06a201f690fc 18
+tests/stores/scripts.test.ts
+  s_5acdc8bbc45473::t_04a9b514872e17 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "95e87eb86aef7d9477d14b9905c4f329e4a0ca33",
+  "prompts": {},
+  "sessions": {
+    "s_5acdc8bbc45473": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b74cc937-d353-45e9-904d-631075ccdd75",
+        "model": "glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
