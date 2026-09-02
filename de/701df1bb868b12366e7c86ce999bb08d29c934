@@ -1,0 +1,22 @@
+tests/storage/scripts.test.ts
+  s_3eb7e42476e8c7::t_16c39a9021020b 5-7,12-13,62-78,82,86
+storage/scripts.ts
+  s_3eb7e42476e8c7::t_f61153ebac02f5 4,8,14-27,30,37,47-48
+  s_3eb7e42476e8c7::t_8379ed983fbd53 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "de701df1bb868b12366e7c86ce999bb08d29c934",
+  "prompts": {},
+  "sessions": {
+    "s_3eb7e42476e8c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9512b7e8-f3ac-4d75-98c5-0ad6c88c7716",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
