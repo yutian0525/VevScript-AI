@@ -144,11 +144,10 @@ export const useChat = create<ChatState>((set) => ({
       }
       case 'state': return { status: e.status };
       case 'usage': {
-        // 挂到最后一条 assistant 项（供消息下方标注）；同时更新环的分子
-        const idx = [...messages].reverse().findIndex((m) => m.role === 'assistant');
+        // 事件未带 promptTokens 时保留上一轮环值（?? 回落）
+        const idx = messages.findLastIndex((m) => m.role === 'assistant');
         if (idx >= 0) {
-          const real = messages.length - 1 - idx;
-          messages[real] = { ...messages[real]!, usage: { prompt: e.promptTokens, completion: e.completionTokens } };
+          messages[idx] = { ...messages[idx]!, usage: { prompt: e.promptTokens, completion: e.completionTokens } };
         }
         return { messages, promptTokens: e.promptTokens ?? s.promptTokens };
       }

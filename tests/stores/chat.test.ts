@@ -237,4 +237,10 @@ describe('chat store 新分支', () => {
     expect(st.compacting).toBe(false);
     expect(st.messages).toEqual([]);
   });
+
+  it('usage 无 assistant 项时不崩，仅更新 promptTokens', () => {
+    useChat.getState().applyEvent({ type: 'usage', promptTokens: 500, completionTokens: 10 });
+    expect(useChat.getState().promptTokens).toBe(500);
+    expect(useChat.getState().messages).toEqual([]);
+  });
 });
