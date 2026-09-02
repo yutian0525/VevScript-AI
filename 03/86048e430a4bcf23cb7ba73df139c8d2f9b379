@@ -1,0 +1,21 @@
+tests/agent/context.test.ts
+  s_7852414883df95::t_1cc401270ab7d1 122-133
+agent/context.ts
+  s_7852414883df95::t_cba34089296bcd 67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "0386048e430a4bcf23cb7ba73df139c8d2f9b379",
+  "prompts": {},
+  "sessions": {
+    "s_7852414883df95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b441830-79d5-4104-a599-d42b6e004130",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
