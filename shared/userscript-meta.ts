@@ -5,6 +5,7 @@
 
 import type { ScriptRunAt, ScriptWorld, UserScript, UserScriptMeta } from './types';
 import { isValidMatchPattern } from './match-pattern';
+import { classifyGrants } from './gm-apis';
 
 const RUN_AT_IN: Record<string, ScriptRunAt> = {
   'document-start': 'document_start',
@@ -43,6 +44,9 @@ export function parseUserScript(source: string, fallbackName?: string): ParsedUs
   const regexIncludes: string[] = [];
   const badIncludes: string[] = [];
   const badMatches: string[] = [];
+  const connects: string[] = [];
+  const requires: string[] = [];
+  const resources: Record<string, string> = {};
   const meta: UserScriptMeta = {};
   const ignoredKeys = new Set<string>();
   let name = '';
@@ -91,6 +95,14 @@ export function parseUserScript(source: string, fallbackName?: string): ParsedUs
         break;
       }
       case 'grant': grants.push(value); break;
+      case 'connect': if (value && !connects.includes(value)) connects.push(value); break;
+      case 'require': if (value && !requires.includes(value)) requires.push(value); break;
+      case 'resource': {
+        // @resource <name> <url>（VM parseMeta 的 pair 匹配模式）
+        const pair = /^(\S+)\s+(\S+)$/.exec(value);
+        if (pair) resources[pair[1] ?? ''] = pair[2] ?? '';
+        break;
+      }
       case 'noframes': meta.noframes = true; break;
       default:
         if (UNSUPPORTED_MATCH_KEYS.has(key)) unsupportedMatch = true;
@@ -108,12 +120,19 @@ export function parseUserScript(source: string, fallbackName?: string): ParsedUs
   const realGrants = grants.filter((g) => g !== 'none');
   if (realGrants.length > 0) {
     meta.grants = grants;
-    warnings.push(`@grant 非 none：本扩展不支持 GM_* API（${realGrants.join(', ')}），脚本调用会报错`);
+    // 仅警示 unsupported grant；supported 清单不点名（避免与「未点名即支持」的断言语义冲突，全集见 docs/gm-api.md）
+    const { unsupported } = classifyGrants(grants);
+    if (unsupported.length > 0) {
+      warnings.push(`@grant 未支持：${unsupported.join(', ')}——调用会报错（可用 API 见 docs/gm-api.md）`);
+    }
   }
   if (unsupportedMatch) warnings.push('不支持的匹配键 @exclude/@ant-match 已忽略，请改用 @match');
   if (ignoredKeys.size > 0) {
     warnings.push(`已忽略 ${ignoredKeys.size} 个不支持的元数据键：${[...ignoredKeys].map((k) => `@${k}`).join(' ')}`);
   }
+  if (connects.length > 0) meta.connects = connects;
+  if (requires.length > 0) meta.requires = requires;
+  if (Object.keys(resources).length > 0) meta.resources = resources;
   if (matches.length === 0) warnings.push('未找到 @match/@include 匹配规则：脚本不会在任何页面运行，请在头部补规则');
 
   return {
@@ -134,6 +153,9 @@ export function stringifyUserScript(script: UserScript): string {
   lines.push(`// @run-at      ${RUN_AT_OUT[script.runAt]}`);
   if (script.world === 'MAIN') lines.push('// @world       MAIN');
   if (meta.grants) for (const g of meta.grants) lines.push(`// @grant       ${g}`);
+  if (meta.connects) for (const c of meta.connects) lines.push(`// @connect     ${c}`);
+  if (meta.requires) for (const r of meta.requires) lines.push(`// @require     ${r}`);
+  if (meta.resources) for (const [n, u] of Object.entries(meta.resources)) lines.push(`// @resource    ${n} ${u}`);
   if (meta.noframes) lines.push('// @noframes');
   lines.push('// ==/UserScript==', '');
   return [...lines, script.code].join('\n');
