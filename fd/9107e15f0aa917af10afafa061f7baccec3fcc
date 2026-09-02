@@ -1,0 +1,21 @@
+background/gm-token.ts
+  s_5acdc8bbc45473::t_a68cf3b69fdd5a 11-25
+tests/background/gm-token.test.ts
+  s_5acdc8bbc45473::t_8c1144a5716ee9 2,16-21,23-26,29,39,50,55-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "fd9107e15f0aa917af10afafa061f7baccec3fcc",
+  "prompts": {},
+  "sessions": {
+    "s_5acdc8bbc45473": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b74cc937-d353-45e9-904d-631075ccdd75",
+        "model": "glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
