@@ -4,7 +4,7 @@
 export const DEFAULT_CONTEXT_WINDOW = 128_000;
 
 /** 子串匹配表（大小写不敏感）：命中第一个即返回。顺序上把更具体的放前面。 */
-const WINDOW_TABLE: Array<[pattern: string, window: number]> = [
+const WINDOW_TABLE: Array<[pattern: string, size: number]> = [
   ['gpt-4o', 128_000],
   ['gpt-4.1', 1_000_000],
   ['gpt-4-turbo', 128_000],
@@ -23,11 +23,11 @@ const WINDOW_TABLE: Array<[pattern: string, window: number]> = [
 
 /** 解析上下文窗口。override 为正数时优先；否则按 model 子串匹配；再否则默认。 */
 export function resolveContextWindow(model: string | undefined, override?: number): number {
-  if (typeof override === 'number' && override > 0) return override;
+  if (typeof override === 'number' && Number.isFinite(override) && override > 0) return override;
   const name = (model ?? '').toLowerCase();
   if (name) {
-    for (const [pattern, window] of WINDOW_TABLE) {
-      if (name.includes(pattern)) return window;
+    for (const [pattern, size] of WINDOW_TABLE) {
+      if (name.includes(pattern)) return size;
     }
   }
   return DEFAULT_CONTEXT_WINDOW;
