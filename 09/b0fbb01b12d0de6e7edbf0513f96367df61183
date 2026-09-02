@@ -1,0 +1,20 @@
+background/agent-port.ts
+  s_7852414883df95::t_9ec77c0185b135 130-133
+  s_7852414883df95::t_6f844ae446f541 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "09b0fbb01b12d0de6e7edbf0513f96367df61183",
+  "prompts": {},
+  "sessions": {
+    "s_7852414883df95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b441830-79d5-4104-a599-d42b6e004130",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
