@@ -1,0 +1,22 @@
+docs/superpowers/specs/2026-09-02-ai-browser-extension-phase5-gm-api-design.md
+  s_5acdc8bbc45473::t_8cee14fc866ade 149
+  s_5acdc8bbc45473::t_460a65b3e62eb1 24,132,235
+  s_5acdc8bbc45473::t_bc0cdaaf079edd 11
+  s_5acdc8bbc45473::t_53371e22489065 113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "ed97df7b4cb119a624a26abf4dddb69585f6a095",
+  "prompts": {},
+  "sessions": {
+    "s_5acdc8bbc45473": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b74cc937-d353-45e9-904d-631075ccdd75",
+        "model": "glm-5.3"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
