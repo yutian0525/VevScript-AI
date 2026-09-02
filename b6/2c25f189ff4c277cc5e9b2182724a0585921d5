@@ -1,0 +1,31 @@
+entrypoints/background.ts
+  s_5acdc8bbc45473::t_93dbfc13feddab 7
+  s_5acdc8bbc45473::t_f06b2aff19c2ed 40
+tests/background/gm-api.test.ts
+  s_5acdc8bbc45473::t_3a0a1a53424733 1-104,109,113,115-130
+  s_5acdc8bbc45473::t_75c330de26d11c 105-108,110-112,114
+background/gm-api.ts
+  s_5acdc8bbc45473::t_a4ea974d5e7d54 54-113
+  s_5acdc8bbc45473::t_28ccaa56fb3993 1-53
+  s_5acdc8bbc45473::t_8a68930f5f8003 235-238,240-267
+  s_5acdc8bbc45473::t_a31d67cc5a0d65 239
+  s_5acdc8bbc45473::t_f4e3059310ddbe 114-172
+  s_5acdc8bbc45473::t_b38460f306d53c 273-303
+  s_5acdc8bbc45473::t_f21eb90f784aa3 173-234,268-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b62c25f189ff4c277cc5e9b2182724a0585921d5",
+  "prompts": {},
+  "sessions": {
+    "s_5acdc8bbc45473": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b74cc937-d353-45e9-904d-631075ccdd75",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
