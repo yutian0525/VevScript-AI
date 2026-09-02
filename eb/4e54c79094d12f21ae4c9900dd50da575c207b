@@ -1,0 +1,26 @@
+tests/shared/messages-phase4.test.ts
+  s_3eb7e42476e8c7::t_b9b2e73eb11f1e 2,4-7,10,14-15,17-18,21,24,27-28,32-46
+  s_3eb7e42476e8c7::t_34ba888e618518 47
+shared/types.ts
+  s_3eb7e42476e8c7::t_230ae20a9aea34 39-40
+shared/messages.ts
+  s_3eb7e42476e8c7::t_8e37234e23ada6 107-113,115-116,123-124,126-135
+  s_3eb7e42476e8c7::t_4421ec206939a8 146,151
+  s_3eb7e42476e8c7::t_45fcf1d35de7c1 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "eb4e54c79094d12f21ae4c9900dd50da575c207b",
+  "prompts": {},
+  "sessions": {
+    "s_3eb7e42476e8c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9512b7e8-f3ac-4d75-98c5-0ad6c88c7716",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
