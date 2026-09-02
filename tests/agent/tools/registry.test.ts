@@ -11,7 +11,7 @@ describe('工具 registry', () => {
   });
 
   it('getToolSchemas 返回全部 schema', () => {
-    expect(getToolSchemas().length).toBe(19);
+    expect(getToolSchemas().length).toBe(25);
   });
 
   it('content script 类工具经 tabs.sendMessage 分发到主帧 frameId:0', async () => {

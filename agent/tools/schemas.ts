@@ -1,5 +1,5 @@
 // agent/tools/schemas.ts
-// 19 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）。描述对齐 chrome-devtools-mcp。
+// 25 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）。描述对齐 chrome-devtools-mcp。
 import type { ToolSchema } from '../provider/types';
 
 // 显式声明返回 Record<string, unknown>，避免 type:'object' 字面量收窄导致的赋值报错。
@@ -254,6 +254,104 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
       parameters: obj({
         requestId: { type: 'string', description: '来自 list_network_requests 的 requestId' },
       }, ['requestId']),
+    },
+  },
+  // ---- Phase 4：脚本池（19→25 见 schemas.test 注释；与 UI 共用 background/scripts 编排层）----
+  {
+    type: 'function',
+    function: {
+      name: 'list_scripts',
+      description:
+        '列出脚本库中的用户脚本摘要（不含代码体）。enabled 按启用状态过滤；urlContains 按匹配模式子串过滤（大小写不敏感）。需要完整代码时用 get_script。',
+      parameters: obj({
+        enabled: { type: 'boolean', description: '按启用状态过滤' },
+        urlContains: { type: 'string', description: '匹配模式包含该子串（大小写不敏感）' },
+      }),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_script',
+      description:
+        '读取单个用户脚本：完整 text（.user.js 原文）+ 解析投影 + totalLines 总行数。可选 offset/limit 读取行区间（1-based 含端点，越界自动钳制；limit 缺省读到末尾），此时 script.text 为切片、startLine/endLine 为实际返回区间。id 来自 list_scripts。',
+      parameters: obj(
+        {
+          id: { type: 'string', description: '脚本 id' },
+          offset: { type: 'number', description: '起始行（1-based，缺省 1）' },
+          limit: { type: 'number', description: '行数（缺省读到末尾）' },
+        },
+        ['id'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_script',
+      description:
+        '创建用户脚本：以浏览器用户脚本权限在头部匹配规则命中的页面上自动运行。创建前先向用户说明脚本用途与作用范围。source 是完整的 .user.js 文本（含 ==UserScript== 元数据头）——头部 @字段 即配置（@name/@match/@include/@run-at/@world/@grant），没有独立的名称/匹配参数。代码以页面脚本方式原样执行，无 GM_* API。解析后须有匹配规则（@match 或 pattern 形式的 @include）。',
+      parameters: obj(
+        {
+          source: { type: 'string', description: '完整 .user.js 文本（含 ==UserScript== 元数据头）' },
+          enabled: { type: 'boolean', description: '创建后是否立即启用，默认 true' },
+        },
+        ['source'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_script',
+      description:
+        '更新用户脚本。patch 至少一项：text 整文替换（完整 .user.js 原文，重新解析头部）；edit 行区间替换（1-based 含端点，越界报错，替换后整体重解析）；enabled 启停。改头部字段（名称/匹配/时机等）就是改原文，没有独立字段可改。规则/代码更新在下次页面导航后生效。',
+      parameters: obj(
+        {
+          id: { type: 'string', description: '脚本 id' },
+          patch: {
+            type: 'object',
+            description: '至少包含 text / enabled / edit 之一',
+            properties: {
+              text: { type: 'string', description: '整文替换：完整 .user.js 原文' },
+              enabled: { type: 'boolean', description: '启停' },
+              edit: {
+                type: 'object',
+                description: '行区间替换（在当前原文上 splice 后整体重解析）',
+                properties: {
+                  startLine: { type: 'number', description: '起始行（1-based）' },
+                  endLine: { type: 'number', description: '结束行（含端点）' },
+                  text: { type: 'string', description: '替换文本（可多行）' },
+                },
+                required: ['startLine', 'endLine', 'text'],
+              },
+            },
+          },
+        },
+        ['id', 'patch'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_script',
+      description: '删除用户脚本（不可恢复）。',
+      parameters: obj({ id: { type: 'string', description: '脚本 id' } }, ['id']),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'toggle_script',
+      description: '启用或禁用用户脚本。禁用后匹配页面不再注入，刷新页面生效。',
+      parameters: obj(
+        {
+          id: { type: 'string', description: '脚本 id' },
+          enabled: { type: 'boolean', description: 'true 启用 / false 禁用' },
+        },
+        ['id', 'enabled'],
+      ),
     },
   },
 ];

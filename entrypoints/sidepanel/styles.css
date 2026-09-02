@@ -707,3 +707,68 @@ body {
   padding: 4px; border-radius: var(--r-sm); display: inline-flex;
 }
 .convrow__iconbtn:hover { background: var(--line-strong); color: var(--ink); }
+
+/* —— Phase 4 脚本池（scripts- 前缀防撞名）—— */
+.scripts-run {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.scripts-run__head { display: flex; align-items: center; gap: 6px; color: var(--ink-2); margin-bottom: 4px; }
+.scripts-run__dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ok); display: inline-block; flex: none;
+  animation: scriptPulse 1.6s ease-in-out infinite;
+}
+.scripts-run__dot--off { background: var(--ink-3); animation: none; }
+@keyframes scriptPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .scripts-run__dot { animation: none; } }
+.scripts-run__item { font-family: var(--mono); font-size: 11px; color: var(--ink); padding: 1px 0; }
+.scripts-run__empty { color: var(--ink-3); }
+
+.scripts-notice {
+  display: flex; gap: 6px; align-items: flex-start;
+  border: 1px solid var(--warn); background: var(--warn-wash); color: var(--warn);
+  border-radius: 10px; padding: 8px 10px; font-size: 12px; margin-bottom: 10px;
+}
+
+.scripts-toolbar { display: flex; gap: 6px; margin-bottom: 10px; }
+.scripts-toolbar .input { flex: 1; }
+
+.scripts-row {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  padding: 8px 10px; margin-bottom: 6px; cursor: pointer; text-align: left; width: 100%;
+}
+.scripts-row:hover { border-color: var(--line-strong); }
+.scripts-row.is-off { opacity: 0.55; }
+.scripts-row__name { font-weight: 600; color: var(--ink); font-size: 13px; white-space: nowrap; }
+.scripts-row__match {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;
+}
+.scripts-badge {
+  font-size: 10px; padding: 1px 6px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--ink-2); flex: none;
+}
+.scripts-badge--warn { color: var(--warn); border-color: var(--warn); background: var(--warn-wash); }
+.scripts-badge--signal { color: var(--signal-ink); border-color: var(--signal); background: var(--signal-wash); }
+.scripts-warnline { font-size: 11px; color: var(--warn); margin: 2px 0 8px; }
+.scripts-footer { display: flex; gap: 6px; margin-top: 10px; }
+.script-editor {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--sunken);
+  width: 100%;
+  min-height: 240px;
+  max-height: 40vh;
+  overflow: auto;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px;
+  color: var(--ink);
+}

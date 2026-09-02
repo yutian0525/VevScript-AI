@@ -13,6 +13,8 @@ import {
   clearTabNetwork,
 } from '../background/observe-store';
 import type { ConsoleEntry, HookNetEntry } from '../shared/hook-bridge';
+import { initScriptsModule } from '../background/scripts';
+import { initGmApi } from '../background/gm-api';
 
 export default defineBackground(() => {
   const router = new MessageRouter();
@@ -82,6 +84,8 @@ export default defineBackground(() => {
 
   attachAgentPort();
   attachObservers();
+  initScriptsModule(router);
+  initGmApi(router);
   router.attach();
   console.log('[ai-browser-ext] background started');
 });

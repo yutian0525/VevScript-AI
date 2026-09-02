@@ -9,6 +9,10 @@ import { doScreenshot } from './screenshot';
 import { doEvaluate } from './evaluate';
 import { doHttpRequest } from './http';
 import { doListConsoleMessages, doListNetworkRequests, doGetNetworkRequest } from './observe';
+import {
+  doListScripts, doGetScript, doCreateScript, doUpdateScript, doDeleteScript, doToggleScript,
+} from './script-pool';
+import type { ScriptInput, ScriptPatch } from '../../shared/messages';
 
 export interface ToolCtx {
   tabId: number;
@@ -63,6 +67,14 @@ export async function executeTool(
   if (name === 'list_console_messages') return doListConsoleMessages(ctx.tabId, args as { level?: string; limit?: number });
   if (name === 'list_network_requests') return doListNetworkRequests(ctx.tabId, args as { method?: string; urlContains?: string; status?: number; limit?: number });
   if (name === 'get_network_request') return doGetNetworkRequest(ctx.tabId, args as { requestId: string });
+
+  // 脚本池六工具：纯 storage/注册操作，不碰页面内容，豁免受限页预检（spec §8）。
+  if (name === 'list_scripts') return doListScripts(args as { enabled?: boolean; urlContains?: string });
+  if (name === 'get_script') return doGetScript(args as { id: string; offset?: number; limit?: number });
+  if (name === 'create_script') return doCreateScript(args as unknown as ScriptInput);
+  if (name === 'update_script') return doUpdateScript(args as { id: string; patch: ScriptPatch });
+  if (name === 'delete_script') return doDeleteScript(args as { id: string });
+  if (name === 'toggle_script') return doToggleScript(args as { id: string; enabled: boolean });
 
   // ---- 以下工具操作当前目标页，需受限页预检 ----
   const tab = await browser.tabs.get(ctx.tabId).catch(() => undefined);
