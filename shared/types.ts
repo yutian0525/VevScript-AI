@@ -36,6 +36,8 @@ export interface UserScriptMeta {
 
 export interface UserScript {
   id: string;
+  /** 完整 .user.js 原文（含 ==UserScript== 头）——唯一真源（修订 2026-09-02）；name/matches/code/runAt/world/meta 均为保存时解析生成的投影 */
+  text: string;
   name: string;
   enabled: boolean;
   matches: string[];

@@ -3,7 +3,7 @@
 // 设计决策：request/response 模式 + correlation id（设计 §4.4）；
 // 例外：cs→bg 的 fire-and-forget 通知（见 CsToBgNotification）。
 
-import type { ScriptRunAt, ScriptSource, ScriptSummary, ScriptWorld, ToolResult, Uid } from './types';
+import type { ScriptSource, ScriptSummary, ToolResult, Uid, UserScript } from './types';
 
 export interface BgToCsRequestMap {
   SNAPSHOT: { verbose?: boolean };
@@ -104,24 +104,35 @@ export type PortMsgToPanel =
 
 // ---------- Phase 4：脚本池（sidepanel → bg request/response，走 MessageRouter；spec §7）----------
 
+/** 行区间替换（修订 2026-09-02）：1-based、含端点；非法区间/越界由编排层报错 */
+export interface ScriptEditRange {
+  startLine: number;
+  endLine: number;
+  text: string;
+}
+
 export interface ScriptInput {
-  name: string;
-  code: string;
-  matches: string[];
-  runAt?: ScriptRunAt;
-  world?: ScriptWorld;
+  /** 完整 .user.js 文本（含 ==UserScript== 头）——唯一配置源（修订 2026-09-02） */
+  text: string;
   enabled?: boolean;
   /** 创建来源：UI 默认 user；AI 工具传 agent；导入走 SCRIPTS_IMPORT（固定 import） */
   source?: ScriptSource;
 }
 
 export interface ScriptPatch {
-  name?: string;
-  code?: string;
-  matches?: string[];
-  runAt?: ScriptRunAt;
-  world?: ScriptWorld;
+  /** 整文替换：替换后整体重解析（投影字段全部重建） */
+  text?: string;
   enabled?: boolean;
+  /** 行区间替换：在当前原文上 splice 后整体重解析 */
+  edit?: ScriptEditRange;
+}
+
+/** SCRIPTS_GET 响应 data 形状：传 offset/limit 时 script.text 为行切片（修订 2026-09-02） */
+export interface ScriptGetData {
+  script: UserScript;
+  totalLines: number;
+  startLine: number;
+  endLine: number;
 }
 
 export interface ScriptsRuntimeEntry {
@@ -132,12 +143,12 @@ export interface ScriptsRuntimeEntry {
 
 export type ScriptsRequest =
   | { type: 'SCRIPTS_LIST' }
-  | { type: 'SCRIPTS_GET'; id: string }
+  | { type: 'SCRIPTS_GET'; id: string; offset?: number; limit?: number }
   | { type: 'SCRIPTS_CREATE'; input: ScriptInput }
   | { type: 'SCRIPTS_UPDATE'; id: string; patch: ScriptPatch }
   | { type: 'SCRIPTS_DELETE'; id: string }
   | { type: 'SCRIPTS_SET_ENABLED'; id: string; enabled: boolean }
-  | { type: 'SCRIPTS_IMPORT'; source: string; filename?: string }
+  | { type: 'SCRIPTS_IMPORT'; text: string; filename?: string }
   | { type: 'SCRIPTS_GET_RUNTIME' };
 
 /** bg → 扩展页面广播（fire-and-forget）：某 tab 运行集变化（spec §6.2「预期注入」语义） */
