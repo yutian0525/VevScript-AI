@@ -4,9 +4,9 @@
 // confirmGate 拦截位：下阶段确认门控在本文件各写 handler 入口处统一拦截（pendingOps + 批准卡）。
 
 import type { MessageRouter } from './router';
-import type { ScriptInput, ScriptPatch, ScriptsRuntimeEntry } from '../shared/messages';
-import type { ScriptRunAt, ScriptWorld, UserScript } from '../shared/types';
-import { deleteScript, getScript, listScripts, saveScript, toSummary, MAX_CODE_LENGTH } from '../storage/scripts';
+import type { ScriptGetData, ScriptInput, ScriptPatch, ScriptsRuntimeEntry } from '../shared/messages';
+import type { ScriptRunAt, ScriptSource, ScriptWorld, UserScript } from '../shared/types';
+import { deleteScript, getScript, listScripts, saveScript, toSummary, MAX_CODE_LENGTH, MAX_TEXT_LENGTH } from '../storage/scripts';
 import { isValidMatchPattern, matchUrl } from '../shared/match-pattern';
 import { parseUserScript } from '../shared/userscript-meta';
 
@@ -189,41 +189,111 @@ function newId(): string {
     : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+// ---------- 文本为源（修订 2026-09-02）：行区间原语 + 解析构建 ----------
+
+/** 行区间替换（1-based 含端点）：非法区间/越界 throw；返回替换后的完整文本。 */
+export function spliceLines(text: string, startLine: number, endLine: number, replacement: string): string {
+  if (!Number.isInteger(startLine) || !Number.isInteger(endLine) || startLine < 1 || endLine < startLine) {
+    throw new Error(`非法行区间：${startLine}-${endLine}（需 1 ≤ startLine ≤ endLine）`);
+  }
+  const lines = text.split('\n');
+  if (endLine > lines.length) {
+    throw new Error(`行区间越界：endLine=${endLine} 超过总行数 ${lines.length}`);
+  }
+  return [...lines.slice(0, startLine - 1), replacement, ...lines.slice(endLine)].join('\n');
+}
+
+/** 文本 → 校验通过的全量 UserScript：投影字段全部由 parseUserScript 生成（spec §6.1 修订）。 */
+function buildFromText(args: {
+  text: string; id: string; enabled: boolean; source: ScriptSource; createdAt: number; fallbackName?: string;
+}): { script: UserScript; warnings: string[] } {
+  if (args.text.length > MAX_TEXT_LENGTH) throw new Error(`脚本文本超过上限（${MAX_TEXT_LENGTH} 字符）`);
+  const parsed = parseUserScript(args.text, args.fallbackName);
+  const errors = validateScriptFields({
+    name: parsed.fields.name, code: parsed.fields.code, matches: parsed.fields.matches,
+    runAt: parsed.fields.runAt, world: parsed.fields.world,
+  });
+  if (errors.length > 0) throw new Error(errors.join('；'));
+  const script: UserScript = {
+    id: args.id,
+    text: args.text,
+    name: parsed.fields.name,
+    enabled: args.enabled,
+    matches: parsed.fields.matches,
+    code: parsed.fields.code,
+    runAt: parsed.fields.runAt,
+    world: parsed.fields.world,
+    source: args.source,
+    meta: Object.keys(parsed.fields.meta).length > 0 ? parsed.fields.meta : undefined,
+    createdAt: args.createdAt,
+    updatedAt: Date.now(),
+  };
+  return { script, warnings: parsed.warnings };
+}
+
 // ---------- CRUD 编排（UI 与 AI 工具共用；confirmGate 拦截位见文件头注释）----------
 
 export async function handleCreate(input: ScriptInput): Promise<{ script: UserScript; warnings: string[] }> {
-  const errors = validateScriptFields(input);
-  if (errors.length > 0) throw new Error(errors.join('；'));
-  const ts = Date.now();
-  const script: UserScript = {
-    id: newId(),
-    name: input.name.trim(),
-    enabled: input.enabled ?? true,
-    matches: input.matches,
-    code: input.code,
-    runAt: input.runAt ?? 'document_idle',
-    world: input.world ?? 'USER_SCRIPT',
-    source: input.source ?? 'user',
-    createdAt: ts,
-    updatedAt: ts,
-  };
+  if (typeof input?.text !== 'string' || !input.text.trim()) {
+    throw new Error('text 必填：完整的 .user.js 文本（含 ==UserScript== 头）');
+  }
+  const { script, warnings } = buildFromText({
+    text: input.text, id: newId(), enabled: input.enabled ?? true,
+    source: input.source ?? 'user', createdAt: Date.now(),
+  });
   await saveScript(script);
-  const warnings = await syncBestEffort();
+  const syncWarnings = await syncBestEffort();
   await recomputeAllTabs().catch(() => {});
-  return { script, warnings };
+  return { script, warnings: [...warnings, ...syncWarnings] };
 }
 
 export async function handleUpdate(id: string, patch: ScriptPatch): Promise<UserScript> {
   await requireEngine(); // spec §6.1：改注册类操作引擎不可用直接报固定文案
   const existing = await getScript(id);
   if (!existing) throw new Error(`脚本不存在：${id}`);
-  const errors = validateScriptFields(patch);
-  if (errors.length > 0) throw new Error(errors.join('；'));
-  const next: UserScript = { ...existing, ...patch, updatedAt: Date.now() };
+  if (patch.text === undefined && patch.edit === undefined && patch.enabled === undefined) {
+    throw new Error('patch 至少包含 text / enabled / edit 之一');
+  }
+  let next: UserScript;
+  if (patch.text !== undefined || patch.edit) {
+    // 文本路径：整文替换或行区间 splice 后整体重解析（文本为源，投影字段全部重建）
+    let text = existing.text;
+    if (patch.edit) {
+      text = spliceLines(text, patch.edit.startLine, patch.edit.endLine, patch.edit.text);
+    } else if (typeof patch.text === 'string' && patch.text.trim()) {
+      text = patch.text;
+    } else {
+      throw new Error('text 必填：完整的 .user.js 文本（含 ==UserScript== 头）');
+    }
+    next = buildFromText({
+      text, id: existing.id, enabled: patch.enabled ?? existing.enabled,
+      source: existing.source, createdAt: existing.createdAt,
+    }).script;
+  } else {
+    // 仅启停：不重解析
+    next = { ...existing, enabled: patch.enabled as boolean, updatedAt: Date.now() };
+  }
   await saveScript(next);
   await syncRegistrations();
   await recomputeAllTabs().catch(() => {});
   return next;
+}
+
+/** 行区间读取（修订 2026-09-02）：offset/limit 缺省全文；1-based、越界钳制、limit 缺省读到末尾。 */
+export async function handleGet(id: string, offset?: number, limit?: number): Promise<ScriptGetData> {
+  const script = await getScript(id);
+  if (!script) throw new Error(`脚本不存在：${id}`);
+  const lines = script.text.split('\n');
+  const totalLines = lines.length;
+  if (offset === undefined && limit === undefined) {
+    return { script, totalLines, startLine: 1, endLine: totalLines };
+  }
+  const rawStart = Math.trunc(offset ?? 1);
+  const rawEnd = limit === undefined ? totalLines : rawStart + Math.max(1, Math.trunc(limit)) - 1;
+  const startLine = Math.min(Math.max(1, rawStart), totalLines);
+  const endLine = Math.min(Math.max(1, rawEnd), totalLines);
+  const text = startLine > endLine ? '' : lines.slice(startLine - 1, endLine).join('\n');
+  return { script: { ...script, text }, totalLines, startLine, endLine };
 }
 
 export async function handleDelete(id: string): Promise<void> {
@@ -244,28 +314,14 @@ export async function handleSetEnabled(id: string, enabled: boolean): Promise<Us
   return next;
 }
 
-export async function handleImport(source: string, filename?: string): Promise<{ script: UserScript; warnings: string[] }> {
-  const parsed = parseUserScript(source, filename);
-  const errors = validateScriptFields({ name: parsed.fields.name, code: parsed.fields.code, matches: parsed.fields.matches });
-  if (errors.length > 0) throw new Error(errors.join('；'));
-  const ts = Date.now();
-  const script: UserScript = {
-    id: newId(),
-    name: parsed.fields.name,
-    enabled: true,
-    matches: parsed.fields.matches,
-    code: parsed.fields.code,
-    runAt: parsed.fields.runAt,
-    world: 'USER_SCRIPT',
-    source: 'import',
-    meta: Object.keys(parsed.fields.meta).length > 0 ? parsed.fields.meta : undefined,
-    createdAt: ts,
-    updatedAt: ts,
-  };
+export async function handleImport(text: string, filename?: string): Promise<{ script: UserScript; warnings: string[] }> {
+  const { script, warnings } = buildFromText({
+    text, id: newId(), enabled: true, source: 'import', createdAt: Date.now(), fallbackName: filename,
+  });
   await saveScript(script);
-  const warnings = [...parsed.warnings, ...(await syncBestEffort())];
+  const syncWarnings = await syncBestEffort();
   await recomputeAllTabs().catch(() => {});
-  return { script, warnings };
+  return { script, warnings: [...warnings, ...syncWarnings] };
 }
 
 // ---------- 消息接线（spec §7）：8 个 handler + tabs 监听 + 启动自愈 ----------
@@ -277,10 +333,8 @@ export function initScriptsModule(router: MessageRouter): void {
   }));
 
   router.on('SCRIPTS_GET', async (msg) => {
-    const id = (msg as unknown as { id: string }).id;
-    const script = await getScript(id);
-    if (!script) return { ok: false, error: `脚本不存在：${id}` };
-    return { ok: true, data: { script } };
+    const { id, offset, limit } = msg as unknown as { id: string; offset?: number; limit?: number };
+    return { ok: true, data: await handleGet(id, offset, limit) };
   });
 
   router.on('SCRIPTS_CREATE', async (msg) => {
@@ -304,8 +358,8 @@ export function initScriptsModule(router: MessageRouter): void {
   });
 
   router.on('SCRIPTS_IMPORT', async (msg) => {
-    const { source, filename } = msg as unknown as { source: string; filename?: string };
-    const { script, warnings } = await handleImport(source, filename);
+    const { text, filename } = msg as unknown as { text: string; filename?: string };
+    const { script, warnings } = await handleImport(text, filename);
     return { ok: true, data: { script, warnings } };
   });
 
