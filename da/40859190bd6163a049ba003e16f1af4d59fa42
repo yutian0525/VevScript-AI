@@ -1,0 +1,22 @@
+tests/shared/gm-apis.test.ts
+  s_5acdc8bbc45473::t_2aea0e84385aff 34-37
+shared/gm-apis.ts
+  s_5acdc8bbc45473::t_3a2aeb15e575b5 15
+  s_5acdc8bbc45473::t_8e603eb4d1028a 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "da40859190bd6163a049ba003e16f1af4d59fa42",
+  "prompts": {},
+  "sessions": {
+    "s_5acdc8bbc45473": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b74cc937-d353-45e9-904d-631075ccdd75",
+        "model": "unknown"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
