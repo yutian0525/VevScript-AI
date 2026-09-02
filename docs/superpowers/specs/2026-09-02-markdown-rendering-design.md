@@ -76,7 +76,14 @@ react-markdown 默认不渲染原始 HTML（未启用 `rehype-raw`，自动转�
 
 无新增动画，无需 reduced-motion 处理。
 
-## 测试（tests/markdown.test.tsx，vitest + jsdom）
+## 测试（tests/chat/markdown.test.tsx）
+
+测试基建现状：项目已有 vitest v4 + jsdom（`vitest.config.ts` 用 `WxtVitest()` 插件），但**尚无组件渲染测试先例**（现有测试全是纯函数/store 逻辑，无 `@testing-library/react`）。本测试为首个 .tsx 组件测试：
+
+- 走 `@testing-library/react` 的 `render` + `@testing-library/jest-dom` 断言（需新增两个 devDependencies，jsdom 环境按文件注解 `// @vitest-environment jsdom`）。
+- 若 `@testing-library/react` 与 React 19 / 项目配置冲突导致不可行，降级方案：`react-dom/client` 的 `createRoot` + `document.createElement` 手写挂载断言（零新增依赖）——实现计划里以首选方案先试。
+
+用例：
 
 1. 渲染冒烟：标题/粗体/列表/表格/代码块各渲染出对应 DOM 结构
 2. XSS 防御：`<script>alert(1)</script>`、`<img onerror=...>` 输入 → DOM 无 script/img 节点
