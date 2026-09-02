@@ -1,0 +1,21 @@
+agent/loop.ts
+  s_7852414883df95::t_1041671e3ff3c8 45,48,51-66,68,70,79,81,85-91,94,99,102,108,120,122,126,129,152,158,166,172
+  s_7852414883df95::t_7a24bf9a3611b5 2,10-11,19-22,28,34-36,40-42
+  s_7852414883df95::t_afea0d7c0921ec 183-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "0740126bc137f9b316f970bb80a34032ba3c3018",
+  "prompts": {},
+  "sessions": {
+    "s_7852414883df95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b441830-79d5-4104-a599-d42b6e004130",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
