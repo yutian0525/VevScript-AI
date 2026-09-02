@@ -1,0 +1,20 @@
+agent/loop.ts
+  s_7852414883df95::t_cbdeed786c0ace 55-56,63-66,71-72
+  s_7852414883df95::t_8f9d96b0c0657a 189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b7c5be589ef10cd2280305f30bab6a9b7619a056",
+  "prompts": {},
+  "sessions": {
+    "s_7852414883df95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b441830-79d5-4104-a599-d42b6e004130",
+        "model": "kimi-k2.7-code"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
