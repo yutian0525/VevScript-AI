@@ -8,12 +8,21 @@ import { matchUrl } from '../shared/match-pattern';
 
 const SEED_KEY = 'local:gm:seed';
 
-async function getSeed(): Promise<string> {
-  const raw = await storage.getItem<string>(SEED_KEY);
-  if (typeof raw === 'string' && raw.length >= 16) return raw;
-  const seed = crypto.randomUUID().replace(/-/g, '');
-  await storage.setItem(SEED_KEY, seed);
-  return seed;
+/** seed 生成的 in-flight 记忆：并发首用（seed 尚未落库）时只生成一次，
+ *  防止两个并发 getBridgeToken 各自生成 seed 后写覆盖——先写方 wrapper 内嵌 token 会与落库 seed 永久失配。 */
+let seedPromise: Promise<string> | null = null;
+
+function getSeed(): Promise<string> {
+  if (!seedPromise) {
+    seedPromise = (async () => {
+      const raw = await storage.getItem<string>(SEED_KEY);
+      if (typeof raw === 'string' && raw.length >= 16) return raw;
+      const seed = crypto.randomUUID().replace(/-/g, '');
+      await storage.setItem(SEED_KEY, seed);
+      return seed;
+    })();
+  }
+  return seedPromise;
 }
 
 /** FNV-1a 64 位近似（JS number 精度内 32 位循环两次拼接）——确定性、无依赖、够防猜。 */
