@@ -141,11 +141,14 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     ]);
   });
 
-  it('handleCreate：非法 pattern 拒绝并列出条目；无匹配规则允许（matches 为空）', async () => {
+  it('handleCreate：非法 @match 警告+跳过（保留合法条目），不整条失败；无匹配规则允许（matches 为空）', async () => {
     installFakeUserScripts();
-    await expect(handleCreate({ text: mkText('c', '\n// @match https://bad') })).rejects.toThrow('非法 match pattern');
-    const { script } = await handleCreate({ text: 'console.log(1);' });
-    expect(script.matches).toEqual([]);
+    // TM 兼容（2026-09-02 决策）：非法 @match 降级为警告+跳过，合法的 https://a.com/* 仍保留并注册
+    const { script, warnings } = await handleCreate({ text: mkText('c', '\n// @match https://bad') });
+    expect(script.matches).toEqual(['https://a.com/*']);
+    expect(warnings.some((w) => w.includes('@match') && w.includes('已忽略'))).toBe(true);
+    const { script: s2 } = await handleCreate({ text: 'console.log(1);' });
+    expect(s2.matches).toEqual([]);
   });
 
   it('handleCreate：头部有效但 body 空 → 拒绝（code 不能为空）；带 body 的新建模板可创建', async () => {

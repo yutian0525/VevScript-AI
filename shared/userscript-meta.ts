@@ -42,6 +42,7 @@ export function parseUserScript(source: string, fallbackName?: string): ParsedUs
   const grants: string[] = [];
   const regexIncludes: string[] = [];
   const badIncludes: string[] = [];
+  const badMatches: string[] = [];
   const meta: UserScriptMeta = {};
   const ignoredKeys = new Set<string>();
   let name = '';
@@ -63,7 +64,13 @@ export function parseUserScript(source: string, fallbackName?: string): ParsedUs
       case 'version': meta.version = value; break;
       case 'author': meta.author = value; break;
       case 'description': meta.description = value; break;
-      case 'match': matches.push(value); break;
+      case 'match': {
+        // 修订 2026-09-02：@match 容错——合法并入（去重），非法警告并跳过（TM 更宽松，Chrome match pattern 更严；不因一条坏规则整条拒绝导入）
+        if (value && isValidMatchPattern(value)) {
+          if (!matches.includes(value)) matches.push(value);
+        } else if (value) badMatches.push(value);
+        break;
+      }
       case 'include': {
         // 修订 2026-09-02：pattern 形式并入 matches（去重）；正则 /…/ 与非法 glob 警告忽略
         if (/^\/.+\/$/.test(value)) regexIncludes.push(value);
@@ -96,6 +103,7 @@ export function parseUserScript(source: string, fallbackName?: string): ParsedUs
   if (badRunAt) warnings.push(`@run-at 值「${badRunAt}」不支持，已用 document-idle`);
   if (regexIncludes.length > 0) warnings.push(`@include 正则形式不支持（${regexIncludes.join('、')}），已忽略`);
   if (badIncludes.length > 0) warnings.push(`@include 值不符合 match pattern 语法（${badIncludes.join('、')}），已忽略`);
+  if (badMatches.length > 0) warnings.push(`@match 值不符合 match pattern 语法（${badMatches.join('、')}），已忽略`);
   if (badWorld) warnings.push(`@world 值「${badWorld}」不支持，已用 USER_SCRIPT`);
   const realGrants = grants.filter((g) => g !== 'none');
   if (realGrants.length > 0) {

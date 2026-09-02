@@ -75,6 +75,15 @@ describe('parseUserScript', () => {
     expect(r.warnings.some((w) => w.includes('match pattern 语法'))).toBe(true);
   });
 
+  it('@match 容错：合法保留、非法（缺路径/带端口）警告并跳过，不整条失败', () => {
+    const src = '// ==UserScript==\n// @match https://a.com/*\n// @match https://b.com\n// @match *://c.com:8080/*\n// ==/UserScript==\ncode();';
+    const r = parseUserScript(src);
+    expect(r.fields.matches).toEqual(['https://a.com/*']); // 只保留合法条目
+    expect(r.warnings.some((w) => w.includes('@match') && w.includes('match pattern 语法'))).toBe(true);
+    expect(r.warnings.join('\n')).toContain('https://b.com');
+    expect(r.warnings.join('\n')).toContain('*://c.com:8080/*');
+  });
+
   it('@world：USER_SCRIPT/MAIN 映射 + 非法值警告回退 USER_SCRIPT', () => {
     const mk = (v: string) => `// ==UserScript==\n// @world ${v}\n// ==/UserScript==\n`;
     expect(parseUserScript(mk('MAIN')).fields.world).toBe('MAIN');
