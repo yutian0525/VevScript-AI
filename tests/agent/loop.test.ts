@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { runAgentLoop, type LoopDeps } from '../../agent/loop';
-import { getSession } from '../../storage/sessions';
+import { getConversation, appendMessage } from '../../storage/conversations';
 import type { Provider, StreamEvent, ChatParams } from '../../agent/provider/types';
 import type { ToolResult } from '../../shared/types';
 
@@ -30,13 +30,13 @@ describe('agent loop', () => {
   it('无 tool_calls 时一轮即自然终止，保存最终回复', async () => {
     const provider = queuedProvider([[{ type: 'text-delta', text: '完成了' }, { type: 'message-done', finishReason: 'stop' }]]);
     const exec = vi.fn<LoopDeps['executeTool']>();
-    await runAgentLoop({ tabId: 1, sessionId: 's', userMessage: '你好' }, deps(provider, exec));
-    const session = await getSession(1);
+    await runAgentLoop({ convId: 'c1', tabId: 1, userMessage: '你好' }, deps(provider, exec));
+    const conv = await getConversation('c1');
     expect(exec).not.toHaveBeenCalled();
-    const last = session.messages[session.messages.length - 1]!;
+    const last = conv.messages[conv.messages.length - 1]!;
     expect(last.role).toBe('assistant');
     expect(last.content).toBe('完成了');
-    expect(session.status).toBe('idle');
+    expect(conv.status).toBe('idle');
   });
 
   it('外部 signal 已 abort → 不调 provider，立即 idle + emit done', async () => {
@@ -46,20 +46,19 @@ describe('agent loop', () => {
     const d = deps(provider, exec);
     const ac = new AbortController();
     ac.abort();
-    await runAgentLoop({ tabId: 40, sessionId: 's', userMessage: 'x' }, d, ac.signal);
-    expect(stream).not.toHaveBeenCalled(); // 首个检查点即退出
-    expect((await getSession(40)).status).toBe('idle');
+    await runAgentLoop({ convId: 'c40', tabId: 40, userMessage: 'x' }, d, ac.signal);
+    expect(stream).not.toHaveBeenCalled();
+    expect((await getConversation('c40')).status).toBe('idle');
     expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
   });
 
   it('运行中 abort（流式输出后）→ 保留已输出助手文本，不进工具执行，emit done', async () => {
-    // provider 第一轮流式输出一段文本 + 请求工具；但期间 signal 被 abort
     const ac = new AbortController();
     const provider: Provider = {
       streamChat(_p, onEvent) {
         queueMicrotask(() => {
           onEvent({ type: 'text-delta', text: '我正在处理' });
-          ac.abort(); // 模拟用户在流式途中按停止
+          ac.abort();
           onEvent({ type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":1}' });
           onEvent({ type: 'message-done', finishReason: 'tool_calls' });
         });
@@ -68,25 +67,24 @@ describe('agent loop', () => {
     };
     const exec = vi.fn<LoopDeps['executeTool']>();
     const d = deps(provider, exec);
-    await runAgentLoop({ tabId: 41, sessionId: 's', userMessage: 'x' }, d, ac.signal);
-    const session = await getSession(41);
-    expect(exec).not.toHaveBeenCalled(); // abort 后不执行工具
-    // 已流式输出的助手文本被保留
-    const asst = session.messages.find((m) => m.role === 'assistant');
+    await runAgentLoop({ convId: 'c41', tabId: 41, userMessage: 'x' }, d, ac.signal);
+    const conv = await getConversation('c41');
+    expect(exec).not.toHaveBeenCalled();
+    const asst = conv.messages.find((m) => m.role === 'assistant');
     expect(asst?.content).toBe('我正在处理');
-    expect(session.status).toBe('idle');
+    expect(conv.status).toBe('idle');
     expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
   });
 
   it('纯文本被 length 截断时回复带截断提示', async () => {
     const provider = queuedProvider([[{ type: 'text-delta', text: '半截回复' }, { type: 'message-done', finishReason: 'length' }]]);
     const exec = vi.fn<LoopDeps['executeTool']>();
-    await runAgentLoop({ tabId: 8, sessionId: 's', userMessage: 'x' }, deps(provider, exec));
-    const session = await getSession(8);
-    const last = session.messages[session.messages.length - 1]!;
+    await runAgentLoop({ convId: 'c8', tabId: 8, userMessage: 'x' }, deps(provider, exec));
+    const conv = await getConversation('c8');
+    const last = conv.messages[conv.messages.length - 1]!;
     expect(String(last.content)).toContain('半截回复');
     expect(String(last.content)).toContain('截断');
-    expect(session.status).toBe('idle');
+    expect(conv.status).toBe('idle');
   });
 
   it('一轮工具调用后再自然终止', async () => {
@@ -95,11 +93,10 @@ describe('agent loop', () => {
       [{ type: 'text-delta', text: '看到了' }, { type: 'message-done', finishReason: 'stop' }],
     ]);
     const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true, data: { text: '[1] button' } } as ToolResult);
-    await runAgentLoop({ tabId: 2, sessionId: 's', userMessage: '看页面' }, deps(provider, exec));
+    await runAgentLoop({ convId: 'c2', tabId: 2, userMessage: '看页面' }, deps(provider, exec));
     expect(exec).toHaveBeenCalledOnce();
-    const session = await getSession(2);
-    const roles = session.messages.map((m) => m.role);
-    expect(roles).toEqual(['user', 'assistant', 'tool', 'assistant']);
+    const conv = await getConversation('c2');
+    expect(conv.messages.map((m) => m.role)).toEqual(['user', 'assistant', 'tool', 'assistant']);
   });
 
   it('工具错误作为 tool result 喂回，不中断', async () => {
@@ -108,9 +105,9 @@ describe('agent loop', () => {
       [{ type: 'text-delta', text: '换个方法' }, { type: 'message-done', finishReason: 'stop' }],
     ]);
     const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: false, error: 'stale' });
-    await runAgentLoop({ tabId: 3, sessionId: 's', userMessage: 'x' }, deps(provider, exec));
-    const session = await getSession(3);
-    const toolMsg = session.messages.find((m) => m.role === 'tool')!;
+    await runAgentLoop({ convId: 'c3', tabId: 3, userMessage: 'x' }, deps(provider, exec));
+    const conv = await getConversation('c3');
+    const toolMsg = conv.messages.find((m) => m.role === 'tool')!;
     expect(String(toolMsg.content)).toContain('stale');
   });
 
@@ -120,17 +117,17 @@ describe('agent loop', () => {
       [{ type: 'text-delta', text: '重试' }, { type: 'message-done', finishReason: 'stop' }],
     ]);
     const exec = vi.fn<LoopDeps['executeTool']>();
-    await runAgentLoop({ tabId: 4, sessionId: 's', userMessage: 'x' }, deps(provider, exec));
+    await runAgentLoop({ convId: 'c4', tabId: 4, userMessage: 'x' }, deps(provider, exec));
     expect(exec).not.toHaveBeenCalled();
-    const session = await getSession(4);
-    expect(session.messages.some((m) => m.role === 'tool' && String(m.content).includes('截断'))).toBe(true);
+    const conv = await getConversation('c4');
+    expect(conv.messages.some((m) => m.role === 'tool' && String(m.content).includes('截断'))).toBe(true);
   });
 
   it('provider error 事件终止并保存错误', async () => {
     const provider = queuedProvider([[{ type: 'error', error: 'HTTP 401' }, { type: 'message-done' }]]);
     const exec = vi.fn<LoopDeps['executeTool']>();
     const d = deps(provider, exec);
-    await runAgentLoop({ tabId: 5, sessionId: 's', userMessage: 'x' }, d);
+    await runAgentLoop({ convId: 'c5', tabId: 5, userMessage: 'x' }, d);
     expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
   });
 
@@ -139,14 +136,13 @@ describe('agent loop', () => {
       { type: 'tool-call-delta', index: 0, id: `c${Math.random()}`, name: 'click', argsDelta: '{"uid":' },
       { type: 'message-done', finishReason: 'length' },
     ];
-    // 提供足够多轮，若无熔断会无限循环；有熔断应在步数阀(50)前的连续错误阀(5)处停
     const provider = queuedProvider(Array.from({ length: 60 }, () => lengthTurn()));
     const exec = vi.fn<LoopDeps['executeTool']>();
     const d = deps(provider, exec);
-    await runAgentLoop({ tabId: 7, sessionId: 's', userMessage: 'x' }, d);
-    const session = await getSession(7);
-    expect(session.status).toBe('paused');
-    expect(exec).not.toHaveBeenCalled(); // 截断的 call 从不执行
+    await runAgentLoop({ convId: 'c7', tabId: 7, userMessage: 'x' }, d);
+    const conv = await getConversation('c7');
+    expect(conv.status).toBe('paused');
+    expect(exec).not.toHaveBeenCalled();
     expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'paused' }));
   });
 
@@ -158,9 +154,8 @@ describe('agent loop', () => {
     const provider = queuedProvider([turn(), turn(), turn(), turn(), turn()]);
     const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true });
     const d = deps(provider, exec);
-    await runAgentLoop({ tabId: 6, sessionId: 's', userMessage: 'x' }, d);
-    const session = await getSession(6);
-    expect(session.status).toBe('paused');
+    await runAgentLoop({ convId: 'c6', tabId: 6, userMessage: 'x' }, d);
+    expect((await getConversation('c6')).status).toBe('paused');
     expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'paused' }));
   });
 
@@ -172,11 +167,10 @@ describe('agent loop', () => {
     ]]);
     const exec = vi.fn<LoopDeps['executeTool']>();
     const d = deps(provider, exec);
-    await runAgentLoop({ tabId: 10, sessionId: 's', userMessage: 'x' }, d);
+    await runAgentLoop({ convId: 'c10', tabId: 10, userMessage: 'x' }, d);
     expect(d.emit).toHaveBeenCalledWith({ type: 'reasoning-delta', text: '先想想' });
-    const session = await getSession(10);
-    const last = session.messages[session.messages.length - 1]!;
-    expect(last.role).toBe('assistant');
+    const conv = await getConversation('c10');
+    const last = conv.messages[conv.messages.length - 1]!;
     expect(last.reasoning).toBe('先想想');
     expect(last.content).toBe('好的');
   });
@@ -188,9 +182,9 @@ describe('agent loop', () => {
     ]);
     const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true, data: '[1] button 完整快照文本' } as ToolResult);
     const d = deps(provider, exec);
-    await runAgentLoop({ tabId: 11, sessionId: 's', userMessage: 'x' }, d);
-    const session = await getSession(11);
-    const asst = session.messages.find((m) => m.role === 'assistant' && m.toolCalls?.length)!;
+    await runAgentLoop({ convId: 'c11', tabId: 11, userMessage: 'x' }, d);
+    const conv = await getConversation('c11');
+    const asst = conv.messages.find((m) => m.role === 'assistant' && m.toolCalls?.length)!;
     expect(asst.reasoning).toBe('需要看页面');
     expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', callId: 'c1', ok: true, output: '[1] button 完整快照文本' }));
   });
@@ -207,7 +201,7 @@ describe('agent loop', () => {
       if (name === 'new_page') return { ok: true, data: { targetTab: 555, url: 'https://n.com' } };
       return { ok: true, data: { text: 'snap' } };
     });
-    await runAgentLoop({ tabId: 10, sessionId: 's', userMessage: 'x' }, deps(provider, exec));
+    await runAgentLoop({ convId: 'c-np', tabId: 10, userMessage: 'x' }, deps(provider, exec));
     expect(calls[0]).toBe(10);
     expect(calls[1]).toBe(555);
   });
@@ -226,56 +220,23 @@ describe('agent loop', () => {
       if (name === 'close_page') return { ok: true, data: { closed: 777 } };
       return { ok: true, data: { text: 'snap' } };
     });
-    await runAgentLoop({ tabId: 20, sessionId: 's', userMessage: 'x' }, deps(provider, exec));
+    await runAgentLoop({ convId: 'c-cp', tabId: 20, userMessage: 'x' }, deps(provider, exec));
     expect(calls[2]).toBe(20);
   });
 
-  it('click 打开新标签（target=_blank）后 targetTab 跟随，后续工具作用于新标签', async () => {
+  it('click 打开新标签后 targetTab 跟随', async () => {
     const provider = queuedProvider([
       [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":3}' }, { type: 'message-done', finishReason: 'tool_calls' }],
       [{ type: 'tool-call-delta', index: 0, id: 'c2', name: 'take_snapshot', argsDelta: '{}' }, { type: 'message-done', finishReason: 'tool_calls' }],
       [{ type: 'text-delta', text: '完成' }, { type: 'message-done', finishReason: 'stop' }],
     ]);
     const calls: number[] = [];
-    const exec = vi.fn<LoopDeps['executeTool']>().mockImplementation(async (_name, _args, tabId) => {
-      calls.push(tabId);
-      return { ok: true, data: { text: 'snap' } };
-    });
-    // 交互后探测：click 打开了以 targetTab(50) 为 opener 的新标签 888
-    const resolveOpenedTab = vi.fn<NonNullable<LoopDeps['resolveOpenedTab']>>()
-      .mockImplementation(async (name) => (name === 'click' ? 888 : undefined));
-    await runAgentLoop({ tabId: 50, sessionId: 's', userMessage: 'x' }, deps(provider, exec, { resolveOpenedTab }));
-    expect(calls[0]).toBe(50);  // click 作用于启动标签
-    expect(calls[1]).toBe(888); // take_snapshot 跟随到新标签
+    const exec = vi.fn<LoopDeps['executeTool']>().mockImplementation(async (_n, _a, tabId) => { calls.push(tabId); return { ok: true, data: { text: 'snap' } }; });
+    const resolveOpenedTab = vi.fn<NonNullable<LoopDeps['resolveOpenedTab']>>().mockImplementation(async (name) => (name === 'click' ? 888 : undefined));
+    await runAgentLoop({ convId: 'c-ck', tabId: 50, userMessage: 'x' }, deps(provider, exec, { resolveOpenedTab }));
+    expect(calls[0]).toBe(50);
+    expect(calls[1]).toBe(888);
     expect(resolveOpenedTab).toHaveBeenCalledWith('click', 50, expect.any(AbortSignal));
-  });
-
-  it('click 未开新标签（resolveOpenedTab 返回 undefined）时 targetTab 不变', async () => {
-    const provider = queuedProvider([
-      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":3}' }, { type: 'message-done', finishReason: 'tool_calls' }],
-      [{ type: 'tool-call-delta', index: 0, id: 'c2', name: 'take_snapshot', argsDelta: '{}' }, { type: 'message-done', finishReason: 'tool_calls' }],
-      [{ type: 'text-delta', text: '完成' }, { type: 'message-done', finishReason: 'stop' }],
-    ]);
-    const calls: number[] = [];
-    const exec = vi.fn<LoopDeps['executeTool']>().mockImplementation(async (_name, _args, tabId) => {
-      calls.push(tabId);
-      return { ok: true, data: { text: 'snap' } };
-    });
-    const resolveOpenedTab = vi.fn<NonNullable<LoopDeps['resolveOpenedTab']>>().mockResolvedValue(undefined);
-    await runAgentLoop({ tabId: 60, sessionId: 's', userMessage: 'x' }, deps(provider, exec, { resolveOpenedTab }));
-    expect(calls[0]).toBe(60);
-    expect(calls[1]).toBe(60); // 无新标签，仍在启动标签
-  });
-
-  it('click 失败时不探测新标签（resolveOpenedTab 不被调用）', async () => {
-    const provider = queuedProvider([
-      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":3}' }, { type: 'message-done', finishReason: 'tool_calls' }],
-      [{ type: 'text-delta', text: '换个方法' }, { type: 'message-done', finishReason: 'stop' }],
-    ]);
-    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: false, error: 'stale' });
-    const resolveOpenedTab = vi.fn<NonNullable<LoopDeps['resolveOpenedTab']>>().mockResolvedValue(undefined);
-    await runAgentLoop({ tabId: 70, sessionId: 's', userMessage: 'x' }, deps(provider, exec, { resolveOpenedTab }));
-    expect(resolveOpenedTab).not.toHaveBeenCalled();
   });
 
   it('take_screenshot 成功后注入 user 图片消息 + emit 带缩略图', async () => {
@@ -285,12 +246,51 @@ describe('agent loop', () => {
     ]);
     const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true, data: { screenshot: 'data:image/jpeg;base64,ZZZ' } });
     const d = deps(provider, exec);
-    await runAgentLoop({ tabId: 30, sessionId: 's', userMessage: 'x' }, d);
-    const session = await getSession(30);
-    const userImg = session.messages.find((m) => m.role === 'user' && Array.isArray(m.content));
-    expect(userImg).toBeDefined();
+    await runAgentLoop({ convId: 'c30', tabId: 30, userMessage: 'x' }, d);
+    const conv = await getConversation('c30');
+    const userImg = conv.messages.find((m) => m.role === 'user' && Array.isArray(m.content));
     const parts = userImg!.content as Array<{ type: string; imageUrl?: string }>;
     expect(parts.some((p) => p.type === 'image_url' && p.imageUrl === 'data:image/jpeg;base64,ZZZ')).toBe(true);
     expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', image: 'data:image/jpeg;base64,ZZZ' }));
+  });
+
+  it('usage：provider 返回 promptTokens → emit usage 且存入 lastPromptTokens', async () => {
+    const provider = queuedProvider([[
+      { type: 'text-delta', text: 'ok' },
+      { type: 'message-done', finishReason: 'stop', usage: { promptTokens: 12345, completionTokens: 67 } },
+    ]]);
+    const exec = vi.fn<LoopDeps['executeTool']>();
+    const d = deps(provider, exec);
+    await runAgentLoop({ convId: 'c-usage', tabId: 1, userMessage: 'x' }, d);
+    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'usage', promptTokens: 12345, completionTokens: 67 }));
+    expect((await getConversation('c-usage')).lastPromptTokens).toBe(12345);
+  });
+
+  it('自动压缩：上一轮 promptTokens 超 80% 窗口 → 下一轮前调 compact', async () => {
+    // 第一轮请求工具（带高 usage），第二轮自然终止
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'take_snapshot', argsDelta: '{}' }, { type: 'message-done', finishReason: 'tool_calls', usage: { promptTokens: 120000 } }],
+      [{ type: 'text-delta', text: '完成' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true, data: { text: 'snap' } } as ToolResult);
+    const compact = vi.fn<NonNullable<LoopDeps['compact']>>().mockResolvedValue({ ok: true, newPromptTokens: 3000 });
+    const getContextWindow = vi.fn<NonNullable<LoopDeps['getContextWindow']>>().mockResolvedValue(128000);
+    const d = deps(provider, exec, { compact, getContextWindow });
+    await runAgentLoop({ convId: 'c-auto', tabId: 1, userMessage: 'x' }, d);
+    expect(compact).toHaveBeenCalledWith('c-auto');
+    expect(d.emit).toHaveBeenCalledWith({ type: 'compact-start' });
+    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'compact-done', newPromptTokens: 3000 }));
+  });
+
+  it('未超阈值时不自动压缩', async () => {
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'take_snapshot', argsDelta: '{}' }, { type: 'message-done', finishReason: 'tool_calls', usage: { promptTokens: 1000 } }],
+      [{ type: 'text-delta', text: '完成' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true, data: { text: 'snap' } } as ToolResult);
+    const compact = vi.fn<NonNullable<LoopDeps['compact']>>().mockResolvedValue({ ok: true, newPromptTokens: 1 });
+    const getContextWindow = vi.fn<NonNullable<LoopDeps['getContextWindow']>>().mockResolvedValue(128000);
+    await runAgentLoop({ convId: 'c-noauto', tabId: 1, userMessage: 'x' }, deps(provider, exec, { compact, getContextWindow }));
+    expect(compact).not.toHaveBeenCalled();
   });
 });
