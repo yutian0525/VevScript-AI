@@ -95,7 +95,7 @@ export function ChatView() {
     postToPort({ type: 'agent:resume', convId: currentId, tabId });
   };
 
-  const stop = async () => {
+  const stop = () => {
     if (!currentId) return;
     useChat.getState().setStatus('idle');
     postToPort({ type: 'agent:stop', convId: currentId });
@@ -119,7 +119,7 @@ export function ChatView() {
           <Button variant="ghost" aria-label="新建会话" onClick={() => void useConversations.getState().newConversation()}>
             <SquarePen size={16} />
           </Button>
-          <Button variant="ghost" aria-label="会话列表" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>
+          <Button variant="ghost" aria-label="会话列表" aria-expanded={menuOpen} onClick={() => { if (!menuOpen) void useConversations.getState().refreshList(); setMenuOpen(!menuOpen); }}>
             <ChevronDown size={16} />
           </Button>
         </>
@@ -163,7 +163,7 @@ export function ChatView() {
               used={promptTokens}
               window={contextWindow}
               compacting={compacting}
-              disabled={messages.length === 0 || status === 'running'}
+              disabled={!currentId || messages.length === 0 || status === 'running'}
               onCompact={compact}
             />
             {status === 'running' ? (
