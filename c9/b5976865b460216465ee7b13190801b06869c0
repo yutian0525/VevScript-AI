@@ -1,0 +1,22 @@
+background/agent-port.ts
+  s_7852414883df95::t_8740bd5e9827d4 109,112,115-134,136-137,148,150,153,155,161
+  s_7852414883df95::t_00f5c44e0e8012 2,9-10
+  s_7852414883df95::t_9980f3a9850603 68,74,77-81
+  s_7852414883df95::t_1ac69ee8673d7c 92-93,95-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "c9b5976865b460216465ee7b13190801b06869c0",
+  "prompts": {},
+  "sessions": {
+    "s_7852414883df95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b441830-79d5-4104-a599-d42b6e004130",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
