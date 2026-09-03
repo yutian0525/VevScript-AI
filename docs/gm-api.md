@@ -4,6 +4,20 @@
 > 面向脚本作者的签名/示例/差异细节随 Phase 5 实施补齐；实现设计见 `docs/superpowers/specs/2026-09-02-ai-browser-extension-phase5-gm-api-design.md`。
 > 状态图例：**Phase 5**（本阶段实现，14 个）· **后续候选**（架构可容纳，按需排期）· **明确不做**（架构不匹配或 YAGNI，附理由与替代）。
 
+## Phase 5 实现说明（本扩展的落地细节）
+
+面向脚本作者的实现细节，补充上面清单里 **Phase 5** 标注项的行为：
+
+- **双形态**：`GM_xxx` 下划线形式同步返回（值类 API 读注入时快照，零 RPC）；`GM.xxx` 点形式返回 Promise。同 TM/VM/SC。
+- **值存储**：注入时把当前值快照直嵌进 wrapper（同步读快照）；写操作经桥穿透到 SW 落库，并广播到匹配同脚本 @match 的其它 tab（`GM_addValueChangeListener` 收到的跨 tab 事件 `remote=true`，发起 tab 本地事件 `remote=false`）。
+- **GM_xmlhttpRequest**：@connect 三分支——self（同 host / 请求为页面子域）与 @connect 命中直接放行；列了 @connect 但不命中直接拒绝；未列入则弹确认卡（允许一次 / 总是允许 / 拒绝，60s 无响应按拒绝），「总是允许」记入 `local:gm:permissions` 授权库。被 fetch 禁的头（`user-agent`/`referer`/`cookie`/`origin`/`host`）忽略并在响应 `droppedHeaders` 列出。响应非流式、`≤1MB` 截断（超出置 `truncated:true`）。`credentials: 'include'`（带浏览器会话 cookie）。
+- **GM_addStyle**：当前 world 直接 `createElement('style')` 建 DOM。
+- **GM_log**：写本地 `console`，带 `[脚本名]` 前缀。
+- **GM_registerMenuCommand**：菜单命令入口在**侧边栏脚本页「菜单命令」区**（非浏览器右键菜单）；点击经 SW 回发到注册来源 tab 触发回调。
+- **GM_setClipboard**：仅文本（`navigator.clipboard.writeText`）；MV3 SW 无用户手势链时可能失败，返回可读错误文本。
+- **GM_notification**：图标为内嵌占位（Chrome basic 通知要求非空 `iconUrl`，public 无图标资产时用内嵌透明 PNG 的 data URL）；后续可通过 `details.image` 扩展自定义图标。
+- **unsafeWindow**：MAIN world 下 = `window`（真页面 window）；USER_SCRIPT world 下 = 隔离世界 window（要真页面 window 请 `@world MAIN`）。
+
 ## 0. @grant 语义（三家通用，本扩展遵循）
 
 - `@grant <API名>` 声明即授权：只有声明过的 API 才会被安装到脚本上下文，未声明的 API **不存在**（调用报 `undefined is not a function`，而非运行时弹权限窗）。

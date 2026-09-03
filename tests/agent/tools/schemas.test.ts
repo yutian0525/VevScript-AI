@@ -40,6 +40,12 @@ describe('工具 schema', () => {
     expect(p.required).toEqual(['id', 'enabled']);
   });
 
+  it('list_scripts 描述提及 errorCount 与 grant 状态', () => {
+    const l = TOOL_SCHEMAS.find((s) => s.function.name === 'list_scripts')!;
+    expect(l.function.description).toContain('errorCount');
+    expect(l.function.description).toContain('grantUnsupported');
+  });
+
   it('全部是 function 类型且有描述', () => {
     for (const s of TOOL_SCHEMAS) {
       expect(s.type).toBe('function');

@@ -285,6 +285,8 @@ jsdom 盲区（手测清单）：真实 `userScripts.register` 的 wrapper 执�
 - MV3 SW clipboard 无用户手势链时 writeText 可能失败，返回可读错误。
 - 值快照在注入时直嵌：注入后其它 tab 写入经广播更新本地快照；页面休眠/事件桥断开期间快照可能滞后（写穿透 SW 落库不丢，读旧值）。
 - 管理器优化不含更新检查/云同步/回收站（SC 的差异化功能，后续按需）。
+- **handleUpdate 依赖预取告警不进 UI**（Task 11 审查发现）：create/import 的依赖下载失败 warning 透传到 UI，但 update 路径因返回类型无 warnings 槽，仅 console.warn——更新一个 @require 变 404 的脚本时 UI 无提示（SW 控制台可见）。与 create/import 的告警一致性差，属既定取舍。
+- **早到 gmreq 竞态**（Task 12 审查发现）：桥宿主在 document_idle 且异步拉到 token 表后才挂 gmreq 监听；wrapper（userScripts 可 document_start 注入）可能更早触发，窗口内派发的 gmreq 无监听器 → 彻底丢失（无重发/缓冲）。后果：早期 fire-and-forget 写穿透丢失（本地快照仍一致，非数据损坏）；早期 Promise/回调形 GM 调用（GM_setClipboard/点形式/GM_xmlhttpRequest）pending 永不 resolve → 挂死。彻底修复需宿主就绪握手 + wrapper backlog flush（类比 Phase 3b RELAY_READY+backlog），跨 wrapper 与宿主，列为 Phase 6 后续任务。缓解现状：多数脚本 run-at document_idle 与宿主同期、且导航重跑 initBridgeHost 自愈。
 
 ## 15. 给后续阶段的接口契约（本阶段冻结）
 

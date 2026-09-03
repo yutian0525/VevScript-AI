@@ -51,6 +51,9 @@ const API_TO_GRANT: Record<string, string> = {
 // SW 只当存储；错误上报是框架自身调用（spec §8）。
 const GRANT_EXEMPT = new Set(['ReportError', 'SetValue', 'GetValue', 'DeleteValue', 'ListValues']);
 
+// GM_notification 兜底图标（Chrome basic 通知要求非空 iconUrl；public 无图标资产时用内嵌 data URL）
+const NOTIF_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
 // ---- SW 内存态（重启丢失、可自重建，spec §4.1）----
 const errorBuffers = new Map<string, GmErrorEntry[]>();
 const ERROR_BUFFER_MAX = 20;
@@ -378,7 +381,7 @@ export async function handleGmCall(
       const [details, notifId] = params as [{ title?: string; text?: string }, string];
       try {
         await browser.notifications.create(notifId, {
-          type: 'basic', iconUrl: '', title: details?.title ?? scriptId, message: details?.text ?? '',
+          type: 'basic', iconUrl: NOTIF_ICON, title: details?.title ?? scriptId, message: details?.text ?? '',
         });
         return { ok: true, data: null };
       } catch (e) {
