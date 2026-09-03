@@ -1,0 +1,51 @@
+stores/scripts.ts
+  s_5acdc8bbc45473::t_34d050210b9a14 77-79,89-98
+  s_5acdc8bbc45473::t_5e85694d593c81 13-29
+  s_5acdc8bbc45473::t_fcb17291775c16 50-55,60-64
+  s_5acdc8bbc45473::t_f9773639b13b27 99
+shared/messages.ts
+  s_5acdc8bbc45473::t_1eb384fed0c299 152-155
+storage/scripts.ts
+  s_5acdc8bbc45473::t_2f2ed87190814a 9
+  s_5acdc8bbc45473::t_2e65251b48158f 62,76-77
+components/scripts/ScriptDetailView.tsx
+  s_5acdc8bbc45473::t_34097ee5bf892c 192-205
+  s_5acdc8bbc45473::t_5dcb52ea668c97 5,11
+  s_5acdc8bbc45473::t_eb0def22ad0fb5 143-151
+  s_5acdc8bbc45473::t_eab06f7925115a 16
+components/scripts/ScriptsConfirmCard.tsx
+  s_5acdc8bbc45473::t_20a051017aa6e4 1-31
+shared/types.ts
+  s_5acdc8bbc45473::t_d4af4632af884d 75-78
+components/scripts/ScriptsListView.tsx
+  s_5acdc8bbc45473::t_cb89f59bc3ac6e 34,41
+  s_5acdc8bbc45473::t_5e8ff0f367be81 87-103
+  s_5acdc8bbc45473::t_99483cc9e249e4 152-157,160-161
+  s_5acdc8bbc45473::t_99d361315c2ac9 8,10
+  s_5acdc8bbc45473::t_52c867f9968d19 162
+entrypoints/sidepanel/styles.css
+  s_5acdc8bbc45473::t_6cffb8afcf0af8 536-541
+components/scripts/ScriptsView.tsx
+  s_5acdc8bbc45473::t_70639468012e77 21-35
+  s_5acdc8bbc45473::t_4a022ad803944e 7
+tests/stores/scripts.test.ts
+  s_5acdc8bbc45473::t_f1a0de00360e85 4
+  s_5acdc8bbc45473::t_c8c60910297499 90-132
+  s_5acdc8bbc45473::t_fe58e5300a2925 11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "e12899dfcc4e2ef067f6106e086c10c8f1ccb4bf",
+  "prompts": {},
+  "sessions": {
+    "s_5acdc8bbc45473": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b74cc937-d353-45e9-904d-631075ccdd75",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
