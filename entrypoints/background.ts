@@ -48,7 +48,8 @@ export default defineBackground(() => {
   });
 
   browser.runtime.onInstalled.addListener(async () => {
-    browser.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+    // 工具栏图标已由 action.default_popup 接管（弹 popup 浮窗），不再 setPanelBehavior 直开侧边栏；
+    // 侧边栏改由 popup 内「打开侧边栏」按钮经 sidePanel.open 唤起。
     // 弃用旧的按标签页会话（local:session:{tabId}）——WXT 存储裸 key 为 'session:{tabId}'
     try {
       const all = await browser.storage.local.get(null);

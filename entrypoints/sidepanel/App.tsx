@@ -1,10 +1,22 @@
 // entrypoints/sidepanel/App.tsx
+import { useEffect } from 'react';
+import { storage } from 'wxt/utils/storage';
 import { MessageSquare, Puzzle, SquareTerminal, Settings as SettingsIcon } from 'lucide-react';
 import { useUi, type Page } from '../../stores/ui';
 import { ChatView } from '../../components/chat/ChatView';
 import { ScriptsView } from '../../components/scripts/ScriptsView';
 import { DebugView } from '../../components/debug/DebugView';
 import { SettingsView } from '../../components/settings/SettingsView';
+import type { UiNavNotification } from '../../shared/messages';
+
+/** 消费 popup 落下的待航标记：侧边栏挂载时切到目标页，然后清除（一次性）。 */
+async function consumePendingView(): Promise<void> {
+  const pending = await storage.getItem<Page>('session:ui:pendingView');
+  if (pending) {
+    await storage.removeItem('session:ui:pendingView');
+    useUi.getState().setPage(pending);
+  }
+}
 
 const NAV: Array<{ page: Page; label: string; Icon: typeof MessageSquare }> = [
   { page: 'chat', label: '会话', Icon: MessageSquare },
@@ -18,6 +30,17 @@ const PITCH = 42; // 每个导航按钮的纵向节距（40 高 + 2 gap）
 export default function App() {
   const { page, setPage } = useUi();
   const activeIndex = NAV.findIndex((n) => n.page === page);
+
+  // popup → 侧边栏跨面导航：挂载消费待航标记（侧边栏刚被 popup 唤起时）+ 实时监听 UI_NAV（侧边栏已开时）。
+  useEffect(() => {
+    void consumePendingView().catch(() => {}); // storage.session 某些环境不可用，容错
+    const onMessage = (msg: unknown) => {
+      const m = msg as { type?: string };
+      if (m?.type === 'UI_NAV') useUi.getState().setPage((msg as UiNavNotification).view);
+    };
+    browser.runtime.onMessage.addListener(onMessage);
+    return () => browser.runtime.onMessage.removeListener(onMessage);
+  }, []);
 
   return (
     <div style={{ display: 'flex', height: '100%' }}>
