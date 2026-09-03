@@ -1,0 +1,26 @@
+components/settings/ModelSettings.tsx
+  s_b7bd017b0c4a22::t_32ef476b4bfd61 1-35,40
+  s_b7bd017b0c4a22::t_9c0d5f055de05f 36-39,41-166
+components/settings/SettingsView.tsx
+  s_b7bd017b0c4a22::t_63f8c99ebfa257 2-7,10-11,13-16
+tests/settings/settings-view.test.tsx
+  s_b7bd017b0c4a22::t_cd26b8ee3f289c 1-30
+components/settings/SettingsHome.tsx
+  s_b7bd017b0c4a22::t_8c2efb0e9c9932 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e9a3add90a03844781a64c8a6ba5a3c8f311680f",
+  "prompts": {},
+  "sessions": {
+    "s_b7bd017b0c4a22": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35a6fc13-9177-401c-9f52-80bff4f0899e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
