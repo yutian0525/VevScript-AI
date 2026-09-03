@@ -1,0 +1,21 @@
+docs/superpowers/specs/2026-09-03-script-manager-ui-redesign-design.md
+  s_2b19cd6f0d1a64::t_f8ad466257b849 1-141,145-179,181-222
+  s_2b19cd6f0d1a64::t_c9f4530586c438 180
+  s_2b19cd6f0d1a64::t_9ce9941ba6c8ee 142-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4ea5fc6b082581605b47d4f48546886abe6a6d7c",
+  "prompts": {},
+  "sessions": {
+    "s_2b19cd6f0d1a64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ddeffbdf-2d36-4398-b172-bdf044461ded",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
