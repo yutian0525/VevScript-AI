@@ -36,7 +36,10 @@ export default function App() {
     void consumePendingView().catch(() => {}); // storage.session 某些环境不可用，容错
     const onMessage = (msg: unknown) => {
       const m = msg as { type?: string };
-      if (m?.type === 'UI_NAV') useUi.getState().setPage((msg as UiNavNotification).view);
+      if (m?.type === 'UI_NAV') {
+        useUi.getState().setPage((msg as UiNavNotification).view);
+        void storage.removeItem('session:ui:pendingView').catch(() => {}); // 双通道任一生效都清标记，防陈旧
+      }
     };
     browser.runtime.onMessage.addListener(onMessage);
     return () => browser.runtime.onMessage.removeListener(onMessage);
