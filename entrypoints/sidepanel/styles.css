@@ -739,15 +739,7 @@ body {
 .convrow__iconbtn:hover { background: var(--line-strong); color: var(--ink); }
 
 /* —— Phase 4 脚本池（scripts- 前缀防撞名）—— */
-.scripts-run {
-  border: 1px solid var(--line);
-  background: var(--surface);
-  border-radius: 10px;
-  padding: 8px 12px;
-  margin-bottom: 10px;
-  font-size: 12px;
-}
-.scripts-run__head { display: flex; align-items: center; gap: 6px; color: var(--ink-2); margin-bottom: 4px; }
+/* 呼吸点（popup RUNNING 计数头在用；2026-09-03 重设计后容器/条目类已删） */
 .scripts-run__dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--ok); display: inline-block; flex: none;
@@ -756,8 +748,6 @@ body {
 .scripts-run__dot--off { background: var(--ink-3); animation: none; }
 @keyframes scriptPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { .scripts-run__dot { animation: none; } }
-.scripts-run__item { font-family: var(--mono); font-size: 11px; color: var(--ink); padding: 1px 0; }
-.scripts-run__empty { color: var(--ink-3); }
 
 .scripts-notice {
   display: flex; gap: 6px; align-items: flex-start;
@@ -807,27 +797,6 @@ body {
 .scripts-badge--warn { color: var(--warn); border-color: var(--warn); background: var(--warn-wash); }
 .scripts-badge--signal { color: var(--signal-ink); border-color: var(--signal); background: var(--signal-wash); }
 .scripts-warnline { font-size: 11px; color: var(--warn); margin: 2px 0 8px; }
-.scripts-footer { display: flex; gap: 6px; margin-top: 10px; }
-.scripts-menubtn {
-  font: inherit; font-size: 12px; text-align: left; cursor: pointer;
-  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
-  border-radius: 8px; padding: 4px 8px; margin: 2px 0; display: block; width: 100%;
-}
-.scripts-menubtn:hover { border-color: var(--line-strong); }
-.script-editor {
-  font-family: var(--mono);
-  font-size: 12px;
-  background: var(--sunken);
-  width: 100%;
-  min-height: 240px;
-  max-height: 40vh;
-  overflow: auto;
-  resize: vertical;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 8px;
-  color: var(--ink);
-}
 
 /* ============ 全屏脚本详情页（script-detail.html） ============ */
 .detail { display: flex; flex-direction: column; height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--sans); }
