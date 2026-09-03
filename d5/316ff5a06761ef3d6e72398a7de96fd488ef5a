@@ -1,0 +1,21 @@
+tests/debug/tool-tags.test.ts
+  s_b7bd017b0c4a22::t_6cc40ab51a7c83 1-28
+components/debug/tool-tags.ts
+  s_b7bd017b0c4a22::t_682fe193dbd3d4 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d5316ff5a06761ef3d6e72398a7de96fd488ef5a",
+  "prompts": {},
+  "sessions": {
+    "s_b7bd017b0c4a22": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35a6fc13-9177-401c-9f52-80bff4f0899e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
