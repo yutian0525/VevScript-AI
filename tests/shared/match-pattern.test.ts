@@ -46,4 +46,10 @@ describe('matchUrl', () => {
   it('空 matches 恒不匹配', () => {
     expect(matchUrl([], 'https://example.com/')).toBe(false);
   });
+  it('裸根路径 / 非通配开头路径需与带斜杠的实际 URL 匹配（曾因 host/path 间遗漏字面量 / 分隔符而全部失配）', () => {
+    expect(matchUrl(['https://www.baidu.com/'], 'https://www.baidu.com/')).toBe(true);
+    expect(matchUrl(['http://www.baidu.com/'], 'http://www.baidu.com/')).toBe(true);
+    expect(matchUrl(['https://www.baidu.com/index.php*'], 'https://www.baidu.com/index.php?tn=1')).toBe(true);
+    expect(matchUrl(['https://www.baidu.com/index.php*'], 'https://www.baidu.com/other.php')).toBe(false);
+  });
 });

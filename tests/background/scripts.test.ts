@@ -123,7 +123,7 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     expect(() => spliceLines('a\nb\nc', 2, 9, 'X')).toThrow('越界');
   });
 
-  it('handleCreate：解析投影落库 + register（code/matches/runAt/world/persistAcrossSessions）', async () => {
+  it('handleCreate：解析投影落库 + register（code/matches/runAt/world）', async () => {
     const api = installFakeUserScripts();
     const { script, warnings } = await handleCreate({ text: mkText('c();') });
     expect(warnings).toEqual([]);
@@ -136,7 +136,7 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     expect(api.register.mock.calls[0]![0]).toEqual([
       expect.objectContaining({
         id: script.id, matches: ['https://a.com/*'],
-        js: [{ code: 'c();' }], runAt: 'document_idle', world: 'USER_SCRIPT', persistAcrossSessions: true,
+        js: [{ code: 'c();' }], runAt: 'document_idle', world: 'USER_SCRIPT',
       }),
     ]);
   });

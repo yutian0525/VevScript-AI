@@ -27,7 +27,9 @@ export function matchPatternToRegExp(pattern: string): RegExp {
   else if (host.startsWith('*.')) hostRe = `([^/]+\\.)?${escapeRe(host.slice(2))}`;
   else hostRe = escapeRe(host);
   const pathRe = escapeRe(path).replace(/\\\*/g, '.*');
-  return new RegExp(`^${schemeRe}://${hostRe}${pathRe}$`);
+  // MATCH_RE 的第三个 / 是 host 与 path 间的字面量分隔符，未被任何捕获组包含——
+  // 拼接时必须补回，否则裸根路径（path=""）拼不出结尾的 /，非通配开头路径会与 host 粘连
+  return new RegExp(`^${schemeRe}://${hostRe}/${pathRe}$`);
 }
 
 export function matchUrl(patterns: string[], url: string): boolean {

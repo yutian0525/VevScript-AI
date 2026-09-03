@@ -6,14 +6,20 @@ import { ArrowLeft, Check, Download, Power, RotateCw, Save, Trash2, X } from 'lu
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { sendScriptsRequest, useScripts } from '../../stores/scripts';
+import type { GmErrorItem } from '../../stores/scripts';
 import { useUi } from '../../stores/ui';
 import { parseUserScript } from '../../shared/userscript-meta';
 import { classifyGrants } from '../../shared/gm-apis';
 import type { UserScript } from '../../shared/types';
 
+const EMPTY_ERRORS: GmErrorItem[] = [];
+
 export function ScriptDetailView({ id }: { id: string }) {
   const openScript = useUi((s) => s.openScript);
-  const errors = useScripts((s) => s.errors[id] ?? []);
+  // 选择器不得新建引用：zustand v5 用原生 useSyncExternalStore，getSnapshot 必须稳定，
+  // 否则 React 判定快照一直在变 → 无限重渲染（错误 #185）。`?? []` 挪到选择器外部。
+  const errorsRecord = useScripts((s) => s.errors[id]);
+  const errors = errorsRecord ?? EMPTY_ERRORS;
   const [script, setScript] = useState<UserScript | null>(null);
   const [text, setText] = useState('');
   const [notFound, setNotFound] = useState(false);

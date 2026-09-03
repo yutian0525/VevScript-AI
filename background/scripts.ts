@@ -71,7 +71,6 @@ interface RegisterUserScript {
   js: Array<{ code: string }>;
   runAt: ScriptRunAt;
   world: ScriptWorld;
-  persistAcrossSessions?: boolean;
 }
 
 interface UserScriptsApi {
@@ -135,7 +134,11 @@ function extensionVersion(): string {
 
 /** 期望注册详情：带 grant 或 @require 的脚本走 wrapper（buildWrappedCode），否则裸 code（零开销）。 */
 async function toRegisterDetailsAsync(s: UserScript): Promise<RegisterUserScript> {
-  const base = { id: s.id, matches: s.matches, runAt: s.runAt, world: s.world, persistAcrossSessions: true };
+  // 注意：chrome.userScripts.RegisteredUserScript 没有 persistAcrossSessions 字段（那是
+  // chrome.scripting.RegisteredContentScript 的属性）——带上它会被 Chrome 参数校验直接拒绝整个
+  // register() 调用（"Unexpected property: 'persistAcrossSessions'"），脚本因此永不注册。
+  // userScripts 本身默认即跨会话持久，无需也不能显式声明。
+  const base = { id: s.id, matches: s.matches, runAt: s.runAt, world: s.world };
   const realGrants = (s.meta?.grants ?? []).filter((g) => g !== 'none');
   const hasRequires = (s.meta?.requires?.length ?? 0) > 0;
   if (realGrants.length === 0 && !hasRequires) {
