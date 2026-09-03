@@ -50,20 +50,33 @@ export function ScriptDebugPage({ onBack }: { onBack: () => void }) {
   const [info, setInfo] = useState<GmDebugInfoData | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
-      const resp = await sendScriptsRequest<{ ok: boolean; data?: { scripts: ScriptSummary[] } }>({ type: 'SCRIPTS_LIST' });
-      const list = resp.data?.scripts ?? [];
-      setScripts(list);
-      if (list.length > 0 && list[0]) setScriptId(list[0].id);
+      try {
+        const resp = await sendScriptsRequest<{ ok: boolean; data?: { scripts: ScriptSummary[] } }>({ type: 'SCRIPTS_LIST' });
+        if (cancelled) return;
+        const list = resp.data?.scripts ?? [];
+        setScripts(list);
+        if (list.length > 0 && list[0]) setScriptId(list[0].id);
+      } catch {
+        if (!cancelled) setScripts([]); // 传输异常维持空态（脚本池为空文案）
+      }
     })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     if (!scriptId) { setInfo(null); return; }
     void (async () => {
-      const resp = await sendScriptsRequest<{ ok: boolean; data?: GmDebugInfoData }>({ type: 'GM_DEBUG_INFO', scriptId });
-      setInfo(resp.data ?? null);
+      try {
+        const resp = await sendScriptsRequest<{ ok: boolean; data?: GmDebugInfoData }>({ type: 'GM_DEBUG_INFO', scriptId });
+        if (!cancelled) setInfo(resp.data ?? null);
+      } catch {
+        if (!cancelled) setInfo(null); // SW 死亡等传输异常：置空回显，不停「加载中」
+      }
     })();
+    return () => { cancelled = true; };
   }, [scriptId]);
 
   const targetHost = info ? hostOf(info.tabUrl) : '—';
