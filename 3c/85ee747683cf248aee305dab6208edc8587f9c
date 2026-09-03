@@ -1,0 +1,36 @@
+entrypoints/popup/index.html
+  s_2b19cd6f0d1a64::t_ff1c79ed39100b 1-12
+entrypoints/background.ts
+  s_2b19cd6f0d1a64::t_17ea1147eba5d4 51-52
+entrypoints/sidepanel/App.tsx
+  s_2b19cd6f0d1a64::t_43c8c97ce4cfaa 34-44
+  s_2b19cd6f0d1a64::t_52e0b62ab87981 2-3,10-19
+tests/popup/popup-app.test.tsx
+  s_2b19cd6f0d1a64::t_bb15995a2f7959 1-101
+components/popup/PopupApp.tsx
+  s_2b19cd6f0d1a64::t_6229a8fb5f41e4 115
+  s_2b19cd6f0d1a64::t_1a766f2a75af78 82-84
+  s_2b19cd6f0d1a64::t_1f767fe884f863 1-81,85-114,116-149
+wxt.config.ts
+  s_2b19cd6f0d1a64::t_3e0c6b18a8cfb0 8-12
+entrypoints/sidepanel/styles.css
+  s_2b19cd6f0d1a64::t_7b4ce713c7a76d 905-941
+entrypoints/popup/main.tsx
+  s_2b19cd6f0d1a64::t_0d622355fa3822 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3c85ee747683cf248aee305dab6208edc8587f9c",
+  "prompts": {},
+  "sessions": {
+    "s_2b19cd6f0d1a64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ddeffbdf-2d36-4398-b172-bdf044461ded",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
