@@ -64,4 +64,38 @@ describe('gm-bridge-host', () => {
     expect(evtListener).toHaveBeenCalledTimes(1);
     expect((evtListener.mock.calls[0]![0] as CustomEvent).detail).toMatchObject({ kind: 'MENU_CLICK', data: { key: 'm1' } });
   });
+
+  it('debugCall：拉 token + 真实链路调 GM_API_CALL，回 data', async () => {
+    browser.runtime.onMessage.addListener((msg: { type: string }, _s, sendResponse) => {
+      if (msg.type === 'GM_BRIDGE_TOKENS') { sendResponse({ ok: true, data: { entries: [{ scriptId: 's1', token: 'tok' }] } }); return true; }
+      if (msg.type === 'GM_API_CALL') { sendResponse({ ok: true, data: { got: (msg as unknown as { params: unknown[] }).params } }); return true; }
+      sendResponse({ ok: false, error: 'x' }); return true;
+    });
+    const { debugCall } = await import('../../content/gm-bridge-host');
+    const r = await debugCall('s1', 'GetValue', ['k'], 500);
+    expect(r).toMatchObject({ ok: true, data: { got: ['k'] } });
+  });
+
+  it('debugCall：token 拉不到时报错（脚本未注入此页）', async () => {
+    browser.runtime.onMessage.addListener((msg: { type: string }, _s, sendResponse) => {
+      if (msg.type === 'GM_BRIDGE_TOKENS') { sendResponse({ ok: true, data: { entries: [] } }); return true; }
+      sendResponse({ ok: true }); return true;
+    });
+    const { debugCall } = await import('../../content/gm-bridge-host');
+    const r = await debugCall('sX', 'GetValue', ['k'], 500);
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/未注入|token/);
+  });
+
+  it('debugCall：无 gmres 时超时', async () => {
+    browser.runtime.onMessage.addListener((msg: { type: string }, _s, sendResponse) => {
+      if (msg.type === 'GM_BRIDGE_TOKENS') { sendResponse({ ok: true, data: { entries: [{ scriptId: 's1', token: 'tok' }] } }); return true; }
+      // GM_API_CALL 永不响应（模拟宿主转发后 SW 卡住）
+      return true;
+    });
+    const { debugCall } = await import('../../content/gm-bridge-host');
+    const r = await debugCall('s1', 'SetValue', ['k', 1], 30);
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/超时/);
+  });
 });
