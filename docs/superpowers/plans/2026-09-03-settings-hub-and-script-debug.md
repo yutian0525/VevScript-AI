@@ -960,7 +960,8 @@ async function handleDebugCall(
   }
   try {
     const req = createRequest('GM_DEBUG_INVOKE', { scriptId, api, params });
-    const resp = (await browser.tabs.sendMessage(tab.id, req)) as CsResponse | undefined;
+    // frameId: 0 钉主帧——content script allFrames 注册，不钉会广播到所有帧（iframe 重复执行 debugCall，抢答）
+    const resp = (await browser.tabs.sendMessage(tab.id, req, { frameId: 0 })) as CsResponse | undefined;
     return { dispatched: true, result: resp?.result, ms: Date.now() - started };
   } catch (e) {
     return { dispatched: false, ms: Date.now() - started, error: e instanceof Error ? e.message : String(e) };
