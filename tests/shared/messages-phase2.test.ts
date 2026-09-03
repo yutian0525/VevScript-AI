@@ -22,7 +22,7 @@ describe('Phase 2 协议扩展', () => {
 
   it('Port 消息类型可赋值（双向）', () => {
     const fromPanel: PortMsgFromPanel = { type: 'agent:start', convId: 'c1', tabId: 1, userMessage: 'hi' };
-    const toPanel: PortMsgToPanel = { type: 'text-delta', text: 'x' };
+    const toPanel: PortMsgToPanel = { type: 'text-delta', text: 'x', convId: 'c1' };
     expect(fromPanel.type).toBe('agent:start');
     expect(toPanel.type).toBe('text-delta');
   });

@@ -95,11 +95,13 @@ export interface DebugExecResponse {
 export type PortMsgFromPanel =
   | { type: 'agent:start'; convId: string; tabId: number; userMessage: string }
   | { type: 'agent:stop'; convId: string }
+  /** 面板（重）挂载/切会话时附着：后台回权威 state + 补发未落库的流式尾巴。 */
   | { type: 'agent:attach'; convId: string }
   | { type: 'agent:resume'; convId: string; tabId: number }
   | { type: 'agent:compact'; convId: string };
 
-export type PortMsgToPanel =
+/** agent 领域事件（loop 只关心语义，不关心投递给谁）。 */
+export type AgentEvent =
   | { type: 'reasoning-delta'; text: string }
   | { type: 'text-delta'; text: string }
   | { type: 'tool-start'; name: string; args: string; callId: string }
@@ -111,3 +113,8 @@ export type PortMsgToPanel =
   | { type: 'done'; finalText: string }
   | { type: 'error'; message: string }
   | { type: 'state'; status: 'idle' | 'running' | 'paused'; messageCount: number };
+
+/** 下行到面板的事件 = 领域事件 + 归属会话（面板按当前会话过滤，避免多会话串台）。
+ *  用分布式条件类型逐支叠加，保留可辨识联合（直接写 `AgentEvent & {convId}` 会破坏 type 判别收窄）。 */
+type WithConv<T> = T extends unknown ? T & { convId: string } : never;
+export type PortMsgToPanel = WithConv<AgentEvent>;

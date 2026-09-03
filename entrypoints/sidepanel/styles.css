@@ -287,6 +287,8 @@ body {
 
 /* ============ 会话 ============ */
 .chat { display: flex; flex-direction: column; height: 100%; }
+/* 日志舞台：给「回到底部」悬浮钮当定位参照（放 .chat 上会被 composer 高度顶偏） */
+.chat__stage { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .chat__log { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 2px; }
 .chat__empty {
   margin: auto 0;
@@ -668,6 +670,30 @@ body {
 .composer__send:hover:not(:disabled) { background: var(--signal-ink); }
 .composer__send:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 .composer__send:disabled { background: var(--sunken); color: var(--ink-3); cursor: not-allowed; }
+
+/* ============ 回到底部悬浮钮（用户上滚、跟随关闭时出现）============ */
+.chat__tobottom {
+  /* 水平居中走 inset+margin:auto，不占用 transform：
+     rise 的 keyframes 里有 translateY，会整体覆盖 translateX(-50%)，
+     导致动画期间右偏半个身位、动画结束又跳回 —— 出现/消失那一下的抖动就是它。 */
+  position: absolute;
+  left: 0; right: 0;
+  margin-inline: auto;
+  bottom: 8px;
+  z-index: 5;
+  width: 30px; height: 30px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  animation: rise var(--t-mid) var(--ease);
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.chat__tobottom:hover { background: var(--sunken); color: var(--ink); }
+.chat__tobottom:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 
 /* ============ 每轮 token 标注 ============ */
 .msg-usage {
