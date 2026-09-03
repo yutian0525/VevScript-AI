@@ -170,12 +170,20 @@ export type ScriptsRequest =
   | { type: 'SCRIPTS_MENU_INVOKE'; scriptId: string; key: string }
   | { type: 'SCRIPTS_CLEAR_ERRORS'; scriptId: string }
   | { type: 'SCRIPTS_GET_GM_STATE' }
+  | { type: 'SCRIPTS_GET_PERMISSIONS'; id: string }
+  | { type: 'SCRIPTS_REVOKE_PERMISSION'; id: string; host: string }
   | { type: 'GM_CONFIRM_RESOLVE'; confirmId: string; decision: 'allow-once' | 'always' | 'deny' };
 
 /** bg → 扩展页面广播（fire-and-forget）：某 tab 运行集变化（spec §6.2「预期注入」语义） */
 export interface ScriptsRuntimeEvent {
   type: 'SCRIPTS_RUNTIME';
   payload: ScriptsRuntimeEntry;
+}
+
+/** popup/侧边栏跨面导航通知（popup → sidepanel，fire-and-forget；sidepanel 未开时由 pendingView 兜底） */
+export interface UiNavNotification {
+  type: 'UI_NAV';
+  view: 'chat' | 'scripts' | 'debug' | 'settings';
 }
 
 /** SCRIPTS_LIST 响应 data 形状 */

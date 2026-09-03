@@ -31,3 +31,19 @@ export async function removeScriptPermissions(scriptId: string): Promise<void> {
   delete all[scriptId];
   await storage.setItem(KEY, all);
 }
+
+/** 指定脚本的已授权 host 列表（脚本设置页 XHR 安全区用）。 */
+export async function listAllowedHosts(scriptId: string): Promise<string[]> {
+  const all = await readAll();
+  return Object.keys(all[scriptId]?.cors ?? {});
+}
+
+/** 撤销单条授权（幂等：条目不存在时静默成功）。 */
+export async function revokeHost(scriptId: string, host: string): Promise<void> {
+  const all = await readAll();
+  const entry = all[scriptId];
+  if (!entry || entry.cors[host] === undefined) return;
+  delete entry.cors[host];
+  if (Object.keys(entry.cors).length === 0) delete all[scriptId];
+  await storage.setItem(KEY, all);
+}
