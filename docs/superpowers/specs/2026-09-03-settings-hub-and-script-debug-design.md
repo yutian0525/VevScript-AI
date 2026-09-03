@@ -103,7 +103,9 @@ const GROUPS = [
 | SW 有分支 2 个 | getValue / listValues | 经桥调 SW 的 `GetValue`/`ListValues` 分支，返回 storage 实时值（UI 标注「非页面快照」） |
 | 页面内 5 个 | info / getResourceText / addStyle / log / addValueChangeListener | 不可远程直调，行内置灰 + 提示「页面内 API」 |
 
-注：GM_info 与 GM_getValue 在注册表里 impl 是 `snapshot`，但 SW 侧 `handleGmCall` 有 `GetValue` 分支（`GM_listValues` 同理有 `ListValues` 分支），所以二者归「SW 有分支」类；`GM_info`/`GM_getResourceText`/`GM_addValueChangeListener` 无 SW 分支，归「页面内」类；`GM_addStyle`/`GM_log` 是 local impl，同样页面内。bridge 直调时的 api 名经 `API_TO_GRANT` 映射（点形式短名）。
+注：`GM_getValue`/`GM_listValues` 在注册表里 impl 是 `snapshot`，但 SW 侧 `handleGmCall` 有 `GetValue`/`ListValues` 分支，归「SW 有分支」类（UI 标注「非页面快照」的原因）；`GM_info`/`GM_getResourceText` 虽同为 snapshot impl 但无 SW 分支，与 local impl 的 `GM_addStyle`/`GM_log`/`GM_addValueChangeListener` 同归「页面内」类。
+
+直调时 `api` 参数用点形式短名（`SetValue`/`XmlHttpRequest`…），与 wrapper 实际发出的形式一致——`handleGmCall` 的 switch 分支与 `API_TO_GRANT` 白名单映射都按短名匹配，发 `GM_` 全名会落到「未知 GM API」。
 
 ### 直调协议
 
@@ -120,7 +122,7 @@ const GROUPS = [
 
 ## 4. 测试
 
-1. `tests/debug/tool-tags.test.ts`：TOOL_TAGS 完备性（TOOL_SCHEMAS 每个名字都有 tag）+ 四类计数 10/5/4/6——防未来加工具漏登记。
+1. `tests/debug/tool-tags.test.ts`：TOOL_TAGS 完备性（TOOL_SCHEMAS 每个名字都有 tag）+ 四类计数 10/5/4/6——防未来加工具漏登记。TOOL_TAGS 与 GROUPS 需从组件提取到可导入的纯模块（如 `components/debug/tool-tags.ts`）以便测试。
 2. 扩展 `tests/content/gm-bridge-host.test.ts`：debugCall 的 gmreq 派发 / gmres 配对 / 超时 / token 不符拒绝。
 3. `tests/background/gm-debug.test.ts`：无 token 报错；bridge 类 API 透传 `handleGmCall`（mock）。
 4. 设置页壳路由 + 列表页渲染 3 入口（@testing-library/react，同 markdown 测试模式）。
