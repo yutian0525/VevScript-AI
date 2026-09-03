@@ -61,6 +61,10 @@ describe('scripts store', () => {
         sendResponse({ ok: true, data: { entries: [{ tabId: activeId, url: 'https://a.com/', scriptIds: ['s1'] }] } });
         return true;
       }
+      if (msg.type === 'SCRIPTS_GET_GM_STATE') {
+        sendResponse({ ok: true, data: { menus: [], errors: {}, confirms: [] } });
+        return true;
+      }
       sendResponse({ ok: false, error: 'unexpected' });
       return true;
     });
@@ -80,11 +84,48 @@ describe('scripts store', () => {
         sendResponse({ ok: true, data: { scripts: [], engineAvailable: false } });
         return true;
       }
+      if (msg.type === 'SCRIPTS_GET_GM_STATE') {
+        sendResponse({ ok: true, data: { menus: [], errors: {}, confirms: [] } });
+        return true;
+      }
       sendResponse({ ok: true, data: { entries: [] } });
       return true;
     });
     await useScripts.getState().refresh();
     expect(useScripts.getState().engineWarning).toContain('不可用');
+  });
+
+  it('refresh：复水 GM 状态（menus/errors/confirms 一并填充）', async () => {
+    await fakeBrowser.windows.create({ focused: true });
+    await fakeBrowser.tabs.create({ url: 'https://a.com/', active: true });
+    browser.runtime.onMessage.addListener((msg: { type: string }, _sender, sendResponse) => {
+      if (msg.type === 'SCRIPTS_LIST') {
+        sendResponse({ ok: true, data: { scripts: [], engineAvailable: true } });
+        return true;
+      }
+      if (msg.type === 'SCRIPTS_GET_RUNTIME') {
+        sendResponse({ ok: true, data: { entries: [] } });
+        return true;
+      }
+      if (msg.type === 'SCRIPTS_GET_GM_STATE') {
+        sendResponse({ ok: true, data: {
+          menus: [{ scriptId: 's1', commands: [{ key: 'm1', name: '抓取' }] }],
+          errors: { s1: [{ at: 1, message: 'boom', line: 3 }] },
+          confirms: [{ confirmId: 'c1', scriptId: 's1', host: 'ext.com', url: 'https://ext.com/x', createdAt: 1 }],
+        } });
+        return true;
+      }
+      sendResponse({ ok: false, error: 'unexpected' });
+      return true;
+    });
+
+    await useScripts.getState().refresh();
+    const s = useScripts.getState();
+    expect(s.menus).toEqual([{ scriptId: 's1', commands: [{ key: 'm1', name: '抓取' }] }]);
+    expect(s.errors['s1']).toHaveLength(1);
+    expect(s.errors['s1']![0]).toMatchObject({ message: 'boom', line: 3 });
+    expect(s.confirms).toHaveLength(1);
+    expect(s.confirms[0]).toMatchObject({ confirmId: 'c1', scriptId: 's1', host: 'ext.com' });
   });
 });
 

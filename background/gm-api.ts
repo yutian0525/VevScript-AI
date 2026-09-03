@@ -58,6 +58,9 @@ const NOTIF_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAA
 const errorBuffers = new Map<string, GmErrorEntry[]>();
 const ERROR_BUFFER_MAX = 20;
 const menuTable = new Map<string, Map<string, GmMenuCommand>>();
+// notifId → 回发目标（GM_notification 的 onClicked/onClosed 路由回注册来源 tab，spec §8）。
+// SW 内存态，重启丢失可接受——通知本身也随 SW 失效。
+const notifTargets = new Map<string, { scriptId: string; tabId: number }>();
 
 export function gmErrorCounts(): Record<string, number> {
   const out: Record<string, number> = {};
@@ -67,6 +70,13 @@ export function gmErrorCounts(): Record<string, number> {
 
 export function getErrorBuffer(scriptId: string): GmErrorEntry[] {
   return [...(errorBuffers.get(scriptId) ?? [])];
+}
+
+/** 全部脚本的错误缓冲快照（面板复水用）。 */
+export function getAllErrors(): Record<string, GmErrorEntry[]> {
+  const out: Record<string, GmErrorEntry[]> = {};
+  for (const [id, buf] of errorBuffers) if (buf.length > 0) out[id] = [...buf];
+  return out;
 }
 
 function broadcastToPanel(msg: Record<string, unknown>): void {
@@ -135,6 +145,7 @@ export async function readValuesForSnapshot(scriptId: string): Promise<Record<st
 export async function cleanupScriptState(scriptId: string): Promise<void> {
   errorBuffers.delete(scriptId);
   menuTable.delete(scriptId);
+  for (const [id, t] of notifTargets) if (t.scriptId === scriptId) notifTargets.delete(id);
   await storage.removeItem(valuesKey(scriptId));
   broadcastMenus();
 }
@@ -146,11 +157,9 @@ async function grantAllowed(scriptId: string, api: string): Promise<boolean> {
   const script = await getScript(scriptId);
   if (!script) return false;
   const grants = script.meta?.grants ?? [];
+  // bridge 只发短 api 名（映射到 GM_ 全名）或已是 GM_ 全名，从不产生点形式，故直接精确匹配。
   const required = API_TO_GRANT[api] ?? api;
-  if (grants.includes(required)) return true;
-  // 点形式别名：GM.notification 归 GM_notification
-  const under = required.replace(/^GM\./, 'GM_');
-  return grants.includes(under);
+  return grants.includes(required);
 }
 
 async function broadcastValueChange(
@@ -379,10 +388,13 @@ export async function handleGmCall(
     }
     case 'Notification': {
       const [details, notifId] = params as [{ title?: string; text?: string }, string];
+      const tabId = sender?.tab?.id;
       try {
         await browser.notifications.create(notifId, {
           type: 'basic', iconUrl: NOTIF_ICON, title: details?.title ?? scriptId, message: details?.text ?? '',
         });
+        // 记映射：onClicked/onClosed 时回发 NOTIF_CLICK 到注册来源 tab（spec §8）
+        if (tabId != null) notifTargets.set(notifId, { scriptId, tabId });
         return { ok: true, data: null };
       } catch (e) {
         return { ok: false, error: `通知失败：${e instanceof Error ? e.message : String(e)}` };
@@ -450,6 +462,25 @@ export function initGmApi(router: RouterLike): void {
     const { confirmId, decision } = msg as unknown as { confirmId: string; decision: 'allow-once' | 'always' | 'deny' };
     await resolveConfirm(confirmId, decision);
     return { ok: true };
+  });
+
+  // 面板重开复水：一次拉齐 menus/errors/confirms（广播只补增量，冷启动/重开靠此）
+  router.on('SCRIPTS_GET_GM_STATE', async () => ({
+    ok: true,
+    data: { menus: getMenuSnapshot(), errors: getAllErrors(), confirms: getPendingConfirms() },
+  }));
+
+  // GM_notification 点击/关闭 → NOTIF_CLICK 下行到注册来源 tab（wrapper 的 ondone 回调，spec §8）
+  // 可选链保护：fakeBrowser 等环境可能无 notifications.onClicked/onClosed
+  browser.notifications?.onClicked?.addListener((notifId) => {
+    const t = notifTargets.get(notifId);
+    if (t) void sendGmEvent(t.tabId, t.scriptId, 'NOTIF_CLICK', { id: notifId, byUser: true });
+  });
+  browser.notifications?.onClosed?.addListener((notifId) => {
+    const t = notifTargets.get(notifId);
+    if (!t) return;
+    notifTargets.delete(notifId); // 关闭即清映射
+    void sendGmEvent(t.tabId, t.scriptId, 'NOTIF_CLICK', { id: notifId, byUser: false });
   });
 }
 

@@ -105,12 +105,17 @@ export const useScripts = create<ScriptsState>((set) => ({
       if (!tab) [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true });
       const listResp = await sendScriptsRequest<{ ok: boolean; data?: ScriptsListData }>({ type: 'SCRIPTS_LIST' });
       const rtResp = await sendScriptsRequest<{ ok: boolean; data?: { entries: ScriptsRuntimeEntry[] } }>({ type: 'SCRIPTS_GET_RUNTIME' });
+      // GM 状态复水（面板重开而 SW 存活时，广播不补量——冷读一次；GmErrorEntry 形状与 GmErrorItem 一致）
+      const gmResp = await sendScriptsRequest<{ ok: boolean; data?: { menus: GmMenuEntry[]; errors: Record<string, GmErrorItem[]>; confirms: GmConfirmItem[] } }>({ type: 'SCRIPTS_GET_GM_STATE' });
       const entries = rtResp.data?.entries ?? [];
       set({
         summaries: listResp.data?.scripts ?? [],
         runtimeEntries: Object.fromEntries(entries.map((e) => [e.tabId, e])),
         activeTabId: tab?.id ?? null,
         engineWarning: listResp.data?.engineAvailable === false ? `${ENGINE_WARNING_PREFIX}：请在 chrome://extensions 开启开发者模式或升级 Chrome 120+` : null,
+        menus: gmResp.data?.menus ?? [],
+        errors: gmResp.data?.errors ?? {},
+        confirms: gmResp.data?.confirms ?? [],
         loading: false,
       });
     } catch {

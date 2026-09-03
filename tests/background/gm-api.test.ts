@@ -4,6 +4,7 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { storage } from 'wxt/utils/storage';
 import {
   gmErrorCounts, getErrorBuffer, clearErrors, getMenuSnapshot, handleGmCall,
+  initGmApi, cleanupScriptState, resolveConfirm,
 } from '../../background/gm-api';
 import { saveScript } from '../../storage/scripts';
 import type { UserScript } from '../../shared/types';
@@ -123,4 +124,107 @@ describe('gm-api 简单 API', () => {
   });
 
   // XmlHttpRequest 由 gm-connect.test.ts 完整覆盖（@connect 三分支 + 确认队列），此处不再占位
+});
+
+describe('gm-api Notification 点击/关闭回调（spec §8）', () => {
+  // 每次重建可触发的 notifications listener 存根 + 经 initGmApi 注册进去
+  let clicked: ((id: string) => void) | undefined;
+  let closed: ((id: string) => void) | undefined;
+
+  beforeEach(async () => {
+    fakeBrowser.reset();
+    vi.restoreAllMocks();
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({} as never);
+    await cleanupScriptState('s1'); // 清 s1 的 notifTargets/menuTable/errorBuffers 残留
+    clicked = undefined; closed = undefined;
+    (browser as unknown as Record<string, unknown>).notifications = {
+      create: vi.fn(async () => 'id'),
+      onClicked: { addListener: (cb: (id: string) => void) => { clicked = cb; } },
+      onClosed: { addListener: (cb: (id: string) => void) => { closed = cb; } },
+    };
+    // 最小 router 存根：只需 .on 不报错（本用例不驱动 router，只借 initGmApi 注册 notifications 监听）
+    initGmApi({ on: () => {} });
+  });
+
+  it('onClicked → NOTIF_CLICK{byUser:true} 回发到注册来源 tab', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_notification'] } }));
+    const tabSpy = vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(undefined as never);
+    const r = await call('Notification', [{ title: 't', text: 'm' }, 'n1']);
+    expect(r).toEqual({ ok: true, data: null });
+
+    clicked!('n1');
+    expect(tabSpy.mock.calls[0]![0]).toBe(1); // 回发到注册来源 tab
+    expect(tabSpy.mock.calls[0]![1]).toMatchObject({
+      type: 'GM_EVENT', scriptId: 's1', kind: 'NOTIF_CLICK', data: { id: 'n1', byUser: true },
+    });
+  });
+
+  it('onClosed → NOTIF_CLICK{byUser:false} + 清映射（关闭后再点无回发）', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_notification'] } }));
+    const tabSpy = vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(undefined as never);
+    await call('Notification', [{ text: 'm' }, 'n2']);
+
+    closed!('n2');
+    expect(tabSpy.mock.calls[0]![1]).toMatchObject({
+      type: 'GM_EVENT', scriptId: 's1', kind: 'NOTIF_CLICK', data: { id: 'n2', byUser: false },
+    });
+    // 映射已清：再触发 onClicked 不应有新回发
+    tabSpy.mockClear();
+    clicked!('n2');
+    expect(tabSpy).not.toHaveBeenCalled();
+  });
+
+  it('未知 notifId（无映射）静默忽略，不回发', () => {
+    const tabSpy = vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(undefined as never);
+    clicked!('ghost');
+    closed!('ghost');
+    expect(tabSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('gm-api SCRIPTS_GET_GM_STATE 复水快照', () => {
+  const handlers = new Map<string, (msg: Record<string, unknown>) => unknown>();
+
+  beforeEach(async () => {
+    fakeBrowser.reset();
+    vi.restoreAllMocks();
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({} as never);
+    await cleanupScriptState('s1');
+    handlers.clear();
+    (browser as unknown as Record<string, unknown>).notifications = { create: vi.fn(async () => 'id') };
+    initGmApi({ on: (type, h) => { handlers.set(type, h as (msg: Record<string, unknown>) => unknown); } });
+  });
+
+  it('返回 menus/errors/confirms 三者非空且形状对', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_registerMenuCommand', 'GM_xmlhttpRequest'] } }));
+    await call('RegisterMenu', ['m1', '抓取']);
+    await call('ReportError', ['boom', 'stack', 3]);
+    // 入确认队列：XHR 打未列 @connect 的域 → CONFIRM。queueConfirm 在数个 await 之后才同步入队，
+    // 全量套件负载下固定 sleep 不稳，改轮询直到 GM 状态里出现该确认（上限 ~1s）。
+    const pending = handleGmCall(
+      { scriptId: 's1', api: 'XmlHttpRequest', reqId: 9, params: [{ url: 'https://ext.com/x' }] },
+      { tab: { id: 1, url: 'https://a.com/' } } as never,
+    );
+    const getState = handlers.get('SCRIPTS_GET_GM_STATE')!;
+    let resp!: {
+      ok: boolean;
+      data: { menus: Array<{ scriptId: string; commands: unknown[] }>; errors: Record<string, unknown[]>; confirms: Array<{ confirmId: string; scriptId: string; host: string }> };
+    };
+    for (let i = 0; i < 100; i++) {
+      resp = await getState({}) as typeof resp;
+      if (resp.data.confirms.length > 0) break;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+
+    expect(resp.ok).toBe(true);
+    expect(resp.data.menus).toEqual([{ scriptId: 's1', commands: [{ key: 'm1', name: '抓取' }] }]);
+    expect(resp.data.errors['s1']).toHaveLength(1);
+    expect(resp.data.errors['s1']![0]).toMatchObject({ message: 'boom', line: 3 });
+    expect(resp.data.confirms).toHaveLength(1);
+    expect(resp.data.confirms[0]).toMatchObject({ scriptId: 's1', host: 'ext.com' });
+
+    // 收尾：解掉挂起的确认，避免 60s 定时器悬挂
+    await resolveConfirm(resp.data.confirms[0]!.confirmId, 'deny');
+    await pending;
+  });
 });

@@ -152,6 +152,7 @@ export type ScriptsRequest =
   | { type: 'SCRIPTS_GET_RUNTIME' }
   | { type: 'SCRIPTS_MENU_INVOKE'; scriptId: string; key: string }
   | { type: 'SCRIPTS_CLEAR_ERRORS'; scriptId: string }
+  | { type: 'SCRIPTS_GET_GM_STATE' }
   | { type: 'GM_CONFIRM_RESOLVE'; confirmId: string; decision: 'allow-once' | 'always' | 'deny' };
 
 /** bg → 扩展页面广播（fire-and-forget）：某 tab 运行集变化（spec §6.2「预期注入」语义） */

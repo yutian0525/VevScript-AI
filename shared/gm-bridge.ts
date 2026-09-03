@@ -10,27 +10,8 @@ export interface GmBridgeRequest {
   params: unknown[];
 }
 
-/** 响应方向：content → wrapper（同 reqId 配对）。 */
-export interface GmBridgeResponse {
-  reqId: number;
-  ok: boolean;
-  data?: unknown;
-  error?: string;
-}
-
-/** SW → content → wrapper 下行事件（tabs.sendMessage GM_EVENT 的 payload）。 */
+/** SW → content → wrapper 下行事件类别（tabs.sendMessage GM_EVENT 的 kind）。 */
 export type GmEventKind = 'VALUE_CHANGE' | 'MENU_CLICK' | 'NOTIF_CLICK' | 'TAB_EVENT';
-
-export interface GmEventPayload {
-  kind: GmEventKind;
-  /** VALUE_CHANGE: { key, oldValue, newValue, remote }；MENU_CLICK: { key }；NOTIF_CLICK: { id, byUser }；TAB_EVENT: { tabId, closed } */
-  data: Record<string, unknown>;
-}
-
-/** content script → SW：索取当前 URL 的桥 token 表（SW 用 matchUrl 算匹配脚本集）。 */
-export interface GmBridgeTokens {
-  entries: Array<{ scriptId: string; token: string }>;
-}
 
 export const gmReqEvent = (scriptId: string) => `gmreq:${scriptId}`;
 export const gmResEvent = (scriptId: string) => `gmres:${scriptId}`;
