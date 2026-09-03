@@ -1,0 +1,24 @@
+content/gm-bridge-host.ts
+  s_5acdc8bbc45473::t_960639950012e5 1-57
+tests/content/gm-bridge-host.test.ts
+  s_5acdc8bbc45473::t_888c09894ebd18 1-67
+entrypoints/content.ts
+  s_5acdc8bbc45473::t_ccba957778492c 9
+  s_5acdc8bbc45473::t_3555b3d473ed63 60-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "591afd4436ccb081a0fe442d0d5b6b051693f9e7",
+  "prompts": {},
+  "sessions": {
+    "s_5acdc8bbc45473": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b74cc937-d353-45e9-904d-631075ccdd75",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
