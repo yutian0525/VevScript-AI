@@ -14,7 +14,7 @@ import { ResultPanel, type Outcome } from '../debug/ResultPanel';
 type CallKind = 'bridge' | 'sw' | 'page';
 
 /** 14 个 GM API 的直调分类 + 点形式短名（spec §3③）。 */
-const CALL: Record<string, { kind: CallKind; short?: string; hint: string }> = {
+export const CALL: Record<string, { kind: CallKind; short?: string; hint: string }> = {
   // bridge 7：完整真实链路
   GM_setValue: { kind: 'bridge', short: 'SetValue', hint: '["key", "value"]' },
   GM_deleteValue: { kind: 'bridge', short: 'DeleteValue', hint: '["key"]' },
