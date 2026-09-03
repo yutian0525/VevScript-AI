@@ -1,0 +1,41 @@
+components/detail/DetailInfoTab.tsx
+  s_2b19cd6f0d1a64::t_d031dd6d57435c 1-55
+components/detail/DetailCodeTab.tsx
+  s_2b19cd6f0d1a64::t_6d6be62cb477cf 1-70
+components/detail/DetailSettingsTab.tsx
+  s_2b19cd6f0d1a64::t_4c5d11f302d9b4 1-57
+entrypoints/script-detail/index.html
+  s_2b19cd6f0d1a64::t_8dc203fab2b26b 1-12
+tests/detail/detail-app.test.tsx
+  s_2b19cd6f0d1a64::t_9904cacad35e63 1-90,92,94-96
+  s_2b19cd6f0d1a64::t_be91754b1e98d7 91,93
+components/detail/useScriptDetail.ts
+  s_2b19cd6f0d1a64::t_bf1b81e4bf309d 1-63
+components/detail/DetailLogsTab.tsx
+  s_2b19cd6f0d1a64::t_afcefff4d1d745 1-44
+entrypoints/script-detail/main.tsx
+  s_2b19cd6f0d1a64::t_79d43446565e4f 1-14
+components/detail/DetailApp.tsx
+  s_2b19cd6f0d1a64::t_450155f7439326 1-103
+stores/scripts.ts
+  s_2b19cd6f0d1a64::t_a6ad772246e71f 14,16
+entrypoints/sidepanel/styles.css
+  s_2b19cd6f0d1a64::t_502b4834211077 859-904
+  s_2b19cd6f0d1a64::t_f9a1b9257fb10a 831-858
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bd3f7ab4658441aa952ac59b6635b5973ba7d2d4",
+  "prompts": {},
+  "sessions": {
+    "s_2b19cd6f0d1a64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ddeffbdf-2d36-4398-b172-bdf044461ded",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
