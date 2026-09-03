@@ -1,0 +1,32 @@
+agent/tools/schemas.ts
+  s_5acdc8bbc45473::t_5ecb614fd302ab 231
+tests/agent/tools/schemas.test.ts
+  s_5acdc8bbc45473::t_2ebbbbec0323f0 43-48
+docs/gm-api.md
+  s_5acdc8bbc45473::t_a25dbf6c50de98 7-20
+background/gm-api.ts
+  s_5acdc8bbc45473::t_421bede8bfc3ee 54-56
+  s_5acdc8bbc45473::t_95ca9b94f361ea 384
+CLAUDE.md
+  s_5acdc8bbc45473::t_d08a0443c1b75d 92-93
+wxt.config.ts
+  s_5acdc8bbc45473::t_679c3937f40ec9 11
+docs/superpowers/specs/2026-09-02-ai-browser-extension-phase5-gm-api-design.md
+  s_5acdc8bbc45473::t_0eae1e996be31d 288-289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "5881641c3e2b68bfecde17d11182917fa76a64b4",
+  "prompts": {},
+  "sessions": {
+    "s_5acdc8bbc45473": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b74cc937-d353-45e9-904d-631075ccdd75",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
