@@ -42,7 +42,7 @@ export async function listAllowedHosts(scriptId: string): Promise<string[]> {
 export async function revokeHost(scriptId: string, host: string): Promise<void> {
   const all = await readAll();
   const entry = all[scriptId];
-  if (!entry || entry.cors[host] === undefined) return;
+  if (!entry || entry.cors?.[host] === undefined) return;
   delete entry.cors[host];
   if (Object.keys(entry.cors).length === 0) delete all[scriptId];
   await storage.setItem(KEY, all);

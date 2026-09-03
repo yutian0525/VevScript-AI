@@ -1,6 +1,7 @@
 // tests/background/gm-permissions.test.ts
 import { describe, it, expect, beforeEach } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { storage } from 'wxt/utils/storage';
 import {
   getAlwaysAllow,
   setAlwaysAllow,
@@ -43,5 +44,14 @@ describe('listAllowedHosts / revokeHost', () => {
     await revokeHost('s1', 'not-exist.com'); // 幂等：不抛错
     expect(await listAllowedHosts('s1')).toEqual(['b.com']);
     expect(await listAllowedHosts('s3')).toEqual([]); // 无记录脚本 → 空数组
+  });
+
+  it('revoke 掉脚本最后一个 host 后，整个脚本条目从 storage 删除', async () => {
+    await setAlwaysAllow('s1', 'a.com');
+    await setAlwaysAllow('s2', 'b.com');
+    await revokeHost('s1', 'a.com'); // s1 唯一的 host，删空
+    const raw = await storage.getItem<Record<string, unknown>>('local:gm:permissions');
+    expect(raw && 's1' in raw).toBe(false); // s1 的 key 已不存在（非留空对象）
+    expect(raw && 's2' in raw).toBe(true); // 其他脚本不受影响
   });
 });
