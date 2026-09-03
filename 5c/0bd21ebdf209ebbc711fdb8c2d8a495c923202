@@ -1,0 +1,21 @@
+tests/detail/detail-app.test.tsx
+  s_2b19cd6f0d1a64::t_4010b80733ce27 109-133
+components/detail/DetailInfoTab.tsx
+  s_2b19cd6f0d1a64::t_4899fa586fb12a 10,12,14-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5c0bd21ebdf209ebbc711fdb8c2d8a495c923202",
+  "prompts": {},
+  "sessions": {
+    "s_2b19cd6f0d1a64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ddeffbdf-2d36-4398-b172-bdf044461ded",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
