@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-09-03-settings-hub-and-script-debug.md
+  s_b7bd017b0c4a22::t_a59738648a78b1 963-964
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "df306201e03b64ad0f35802c254ca05d1c610cb9",
+  "prompts": {},
+  "sessions": {
+    "s_b7bd017b0c4a22": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35a6fc13-9177-401c-9f52-80bff4f0899e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
