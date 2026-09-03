@@ -122,9 +122,5 @@ describe('gm-api 简单 API', () => {
     vi.unstubAllGlobals();
   });
 
-  it('XmlHttpRequest 占位：明确报错（Task 10 接入）', async () => {
-    await saveScript(mkScript({ meta: { grants: ['GM_xmlhttpRequest'] } }));
-    const r = await call('XmlHttpRequest', [{ url: 'https://x.com/' }]);
-    expect(r).toMatchObject({ ok: false });
-  });
+  // XmlHttpRequest 由 gm-connect.test.ts 完整覆盖（@connect 三分支 + 确认队列），此处不再占位
 });
