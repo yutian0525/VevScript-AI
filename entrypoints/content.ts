@@ -7,7 +7,7 @@ import { HOOK_MSG, RELAY_READY, type HookWindowMsg } from '../shared/hook-bridge
 import { buildSnapshot } from '../content/snapshot/build';
 import { doClick, doFill, doFillForm, doHover, doScroll, doPressKey } from '../content/interact';
 import { waitForText } from '../content/wait';
-import { initBridgeHost, handleGmEvent } from '../content/gm-bridge-host';
+import { initBridgeHost, handleGmEvent, debugCall } from '../content/gm-bridge-host';
 
 /** 纯处理逻辑（可单测）：一条 BgToCsRequest → CsResponse。 */
 export async function handleCsRequest(req: BgToCsRequest): Promise<CsResponse> {
@@ -30,6 +30,10 @@ async function route(req: BgToCsRequest): Promise<ToolResult> {
     case 'WAIT_TEXT': return waitForText(req.payload);
     case 'PAGE_META':
       return { ok: true, data: { url: location.href, title: document.title, readyState: document.readyState } };
+    case 'GM_DEBUG_INVOKE': {
+      const r = await debugCall(req.payload.scriptId, req.payload.api, req.payload.params);
+      return r.ok ? { ok: true, data: r.data } : { ok: false, error: r.error ?? '直调失败' };
+    }
     default: {
       const _exhaustive: never = req;
       return { ok: false, error: `未知请求：${String((_exhaustive as { type?: string }).type)}` };
