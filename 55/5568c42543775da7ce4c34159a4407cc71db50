@@ -1,0 +1,22 @@
+background/gm-permissions.ts
+  s_2b19cd6f0d1a64::t_512416688ab973 45
+tests/background/gm-permissions.test.ts
+  s_2b19cd6f0d1a64::t_3a60b6d2c038d5 48-56
+  s_2b19cd6f0d1a64::t_f8b46eb861a3c1 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "555568c42543775da7ce4c34159a4407cc71db50",
+  "prompts": {},
+  "sessions": {
+    "s_2b19cd6f0d1a64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ddeffbdf-2d36-4398-b172-bdf044461ded",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
