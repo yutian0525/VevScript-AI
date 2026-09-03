@@ -1,0 +1,40 @@
+tests/stores/scripts.test.ts
+  s_5acdc8bbc45473::t_8b224d77dbf88d 87-90,97-128
+  s_5acdc8bbc45473::t_8ee80bc658df9f 64-67
+  s_5acdc8bbc45473::t_9f316ac86527ff 129
+stores/scripts.ts
+  s_5acdc8bbc45473::t_e5b6c6e55334fb 108-109,116-118
+tests/background/gm-api.test.ts
+  s_5acdc8bbc45473::t_0eb21ac8093479 186,195
+  s_5acdc8bbc45473::t_b445f5928907ff 128-185,187-194,196-201,204-207,218-226,228-230
+  s_5acdc8bbc45473::t_f6b0813a3b57ce 202-203,208-217
+  s_5acdc8bbc45473::t_0d4f0a76e54348 7
+  s_5acdc8bbc45473::t_043d819fab47a0 227
+background/gm-api.ts
+  s_5acdc8bbc45473::t_4c316ff1e49d10 466-484
+  s_5acdc8bbc45473::t_17f19ef120130b 75-81
+  s_5acdc8bbc45473::t_496974768106c4 148
+  s_5acdc8bbc45473::t_c96bb96d0bec4e 160,162
+  s_5acdc8bbc45473::t_72df8700a503c7 391,396-397
+  s_5acdc8bbc45473::t_de1987c31dba53 61-63
+shared/gm-bridge.ts
+  s_5acdc8bbc45473::t_35924efa40060e 13
+shared/messages.ts
+  s_5acdc8bbc45473::t_a3cc5c5aefd1f7 155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "4c5568afa71a387a888bca0c0b1456a218b7199d",
+  "prompts": {},
+  "sessions": {
+    "s_5acdc8bbc45473": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b74cc937-d353-45e9-904d-631075ccdd75",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
