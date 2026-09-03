@@ -1,0 +1,23 @@
+tests/popup/popup-app.test.tsx
+  s_2b19cd6f0d1a64::t_4553a49b74b589 115,120-123
+  s_2b19cd6f0d1a64::t_99a5ed8c4fd3e0 47-56,60,65
+  s_2b19cd6f0d1a64::t_b3e798370fc50a 90-99
+entrypoints/sidepanel/App.tsx
+  s_2b19cd6f0d1a64::t_f7c9dd0f07ec91 39-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5918fea7017efbb8508f827790691b3f7062e287",
+  "prompts": {},
+  "sessions": {
+    "s_2b19cd6f0d1a64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ddeffbdf-2d36-4398-b172-bdf044461ded",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
