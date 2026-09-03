@@ -1,0 +1,74 @@
+tests/agent/tools/schemas.test.ts
+  s_273f72be4aa41c::t_e5b6173dcd4410 59
+  s_273f72be4aa41c::t_8bf5355dd64827 56-58
+  s_273f72be4aa41c::t_f96af212b8a751 60
+  s_273f72be4aa41c::t_06707c9a30f5ca 55
+CLAUDE.md
+  s_273f72be4aa41c::t_7605c6e4bce33c 106-107
+agent/tools/schemas.ts
+  s_273f72be4aa41c::t_8dbb96675ff2e9 265
+background/gm-api.ts
+  s_273f72be4aa41c::t_97593c11f5dbe3 54-56,61-63,75-81,148,160,162,185-326,391,394,396-397,423,425,460-484
+background/gm-resources.ts
+  s_273f72be4aa41c::t_c50af099084ce8 1-85
+background/scripts.ts
+  s_273f72be4aa41c::t_e33e321235ede8 12-16,127-133,136-160,178-182,187-189,191,193,196-197,272,275,305-306,332-333,354,357
+components/scripts/ScriptDetailView.tsx
+  s_273f72be4aa41c::t_11dfda18a96fcc 5,11,16,143-151,192-205
+components/scripts/ScriptsConfirmCard.tsx
+  s_273f72be4aa41c::t_221e133510ee75 1-31
+components/scripts/ScriptsListView.tsx
+  s_273f72be4aa41c::t_a05d9d0360f523 8,10,34,41,87-103,152-157,160-162
+components/scripts/ScriptsView.tsx
+  s_273f72be4aa41c::t_1eb563ba89bfcb 7,21-35
+content/gm-bridge-host.ts
+  s_273f72be4aa41c::t_b18f4bc3983ef7 1-57
+docs/gm-api.md
+  s_273f72be4aa41c::t_4f15b348685258 7-20
+docs/superpowers/specs/2026-09-02-ai-browser-extension-phase5-gm-api-design.md
+  s_273f72be4aa41c::t_f388007d865fd0 288-289
+entrypoints/sidepanel/styles.css
+  s_273f72be4aa41c::t_e24a76e58d7a79 791-796
+shared/gm-bridge.ts
+  s_273f72be4aa41c::t_d7a76edb297fd4 13
+shared/messages.ts
+  s_273f72be4aa41c::t_7f8afe8f57d175 169-173
+shared/types.ts
+  s_273f72be4aa41c::t_2dac728f19ddb1 75-78
+storage/scripts.ts
+  s_273f72be4aa41c::t_6c552293180040 9,62,76-77
+stores/scripts.ts
+  s_273f72be4aa41c::t_8adfb9f7eaf99a 13-29,50-55,60-64,77-79,89-99,108-109,116-118
+tests/background/gm-api.test.ts
+  s_273f72be4aa41c::t_c44f91c966281d 7,126-228
+tests/background/gm-connect.test.ts
+  s_273f72be4aa41c::t_594c9e5ac981cd 1-111
+tests/background/gm-resources.test.ts
+  s_273f72be4aa41c::t_85f5a0a6d0da15 1-49
+tests/background/scripts.test.ts
+  s_273f72be4aa41c::t_c0f89834b40204 319-376
+tests/content/gm-bridge-host.test.ts
+  s_273f72be4aa41c::t_465030c235c9ab 1-67
+tests/stores/scripts.test.ts
+  s_273f72be4aa41c::t_fea51dd2c46a54 4,11-12,64-67,87-90,97-172
+wxt.config.ts
+  s_273f72be4aa41c::t_90614f35bba389 11
+entrypoints/content.ts
+  s_273f72be4aa41c::t_cc48085565ccc1 10,71-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0833c87830ea34b40f60fcc2f4fedc8dbbc29ad5",
+  "prompts": {},
+  "sessions": {
+    "s_273f72be4aa41c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c8dec3c-3ac6-45f3-9f6b-0328d3c4d03f",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
