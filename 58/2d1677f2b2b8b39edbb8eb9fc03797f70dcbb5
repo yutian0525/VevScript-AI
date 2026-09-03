@@ -1,0 +1,44 @@
+docs/superpowers/plans/2026-09-03-settings-hub-and-script-debug.md
+  s_b7bd017b0c4a22::t_a6f1d50e639d89 1479-1551
+  s_b7bd017b0c4a22::t_8f4939496f6cee 1027-1087
+  s_b7bd017b0c4a22::t_26fcd66aa0d358 1-38
+  s_b7bd017b0c4a22::t_53e2e05dd7c663 768-805
+  s_b7bd017b0c4a22::t_39ed2849bbf09a 721-767
+  s_b7bd017b0c4a22::t_13ef7839663b96 993-1026
+  s_b7bd017b0c4a22::t_854eff265f8f5c 146-199
+  s_b7bd017b0c4a22::t_eaf2b070c122f0 806-894
+  s_b7bd017b0c4a22::t_14801ffcf74441 601-655
+  s_b7bd017b0c4a22::t_fef8f1d515f24b 1685-1731
+  s_b7bd017b0c4a22::t_ed48a972db239b 39-88
+  s_b7bd017b0c4a22::t_dbf6aaa12b723f 895-992
+  s_b7bd017b0c4a22::t_d8e5f6b965b1b7 200-274
+  s_b7bd017b0c4a22::t_f61f4854fb49ed 1273-1321
+  s_b7bd017b0c4a22::t_5547a23ad28fd6 1184-1272
+  s_b7bd017b0c4a22::t_864424b445ba4e 656-720
+  s_b7bd017b0c4a22::t_7d10320d2ea1bb 1651-1684
+  s_b7bd017b0c4a22::t_8d867ca1b6f7c4 416-528
+  s_b7bd017b0c4a22::t_1249eaaad6493e 337-415
+  s_b7bd017b0c4a22::t_cd30bdd5d143b0 1552-1650
+  s_b7bd017b0c4a22::t_ec5230ac8301ac 529-600
+  s_b7bd017b0c4a22::t_4ed6001279ea8e 275-336
+  s_b7bd017b0c4a22::t_68fec37e5f8279 89-145
+  s_b7bd017b0c4a22::t_099dea48c594b8 1322-1412
+  s_b7bd017b0c4a22::t_48c51a7f10ad33 1413-1478
+  s_b7bd017b0c4a22::t_5a67d8ab21466f 1088-1183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "582d1677f2b2b8b39edbb8eb9fc03797f70dcbb5",
+  "prompts": {},
+  "sessions": {
+    "s_b7bd017b0c4a22": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35a6fc13-9177-401c-9f52-80bff4f0899e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
