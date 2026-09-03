@@ -1,0 +1,23 @@
+tests/content/gm-bridge-host.test.ts
+  s_b7bd017b0c4a22::t_0e3ec618a403a8 67-70,72-100
+  s_b7bd017b0c4a22::t_0717750d061905 71
+content/gm-bridge-host.ts
+  s_b7bd017b0c4a22::t_71573b81d1d944 54-57,59,64-101
+  s_b7bd017b0c4a22::t_fe56d6de76aaa1 58,60-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ac086907d88d3a4531f6b53ac40132120d5774dc",
+  "prompts": {},
+  "sessions": {
+    "s_b7bd017b0c4a22": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35a6fc13-9177-401c-9f52-80bff4f0899e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
