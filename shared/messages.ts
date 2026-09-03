@@ -170,6 +170,7 @@ export type ScriptsRequest =
   | { type: 'SCRIPTS_MENU_INVOKE'; scriptId: string; key: string }
   | { type: 'SCRIPTS_CLEAR_ERRORS'; scriptId: string }
   | { type: 'SCRIPTS_GET_GM_STATE' }
+  | { type: 'SCRIPTS_GET_RUNTIME_FOR_TAB'; tabId: number }
   | { type: 'SCRIPTS_GET_PERMISSIONS'; id: string }
   | { type: 'SCRIPTS_REVOKE_PERMISSION'; id: string; host: string }
   | { type: 'GM_CONFIRM_RESOLVE'; confirmId: string; decision: 'allow-once' | 'always' | 'deny' };

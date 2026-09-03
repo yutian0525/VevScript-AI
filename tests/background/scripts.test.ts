@@ -9,7 +9,9 @@ import {
 import { listScripts, saveScript } from '../../storage/scripts';
 // 注：new MessageRouter() 需要运行时值——type-only 导入会被擦除导致运行时 TypeError
 import { MessageRouter } from '../../background/router';
+import { setAlwaysAllow } from '../../background/gm-permissions';
 import type { UserScript } from '../../shared/types';
+import type { ScriptsRuntimeEntry } from '../../shared/messages';
 
 function mkScript(over: Partial<UserScript> = {}): UserScript {
   return {
@@ -275,7 +277,7 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     expect(script.matches).toEqual(['https://i.com/*']);
   });
 
-  it('initScriptsModule：挂 8 个 handler + tabs 监听 + 启动 sync', async () => {
+  it('initScriptsModule：挂 11 个 handler + tabs 监听 + 启动 sync', async () => {
     const api = installFakeUserScripts();
     const router = new MessageRouter();
     vi.spyOn(browser.tabs.onUpdated, 'addListener').mockImplementation(() => {});
@@ -285,8 +287,8 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     // 空库时启动 sync 无缺失注册可补（register 不会被调）；getScripts 仅由启动自愈 sync 触达
     await vi.waitFor(() => expect(api.getScripts).toHaveBeenCalled());
 
-    // 8 个 handler 全部有注册（未注册类型才会报 no handler；SCRIPTS_GET 无参走 handleGet throw → router 兜底 ok:false）
-    for (const type of ['SCRIPTS_LIST', 'SCRIPTS_GET', 'SCRIPTS_CREATE', 'SCRIPTS_UPDATE', 'SCRIPTS_DELETE', 'SCRIPTS_SET_ENABLED', 'SCRIPTS_IMPORT', 'SCRIPTS_GET_RUNTIME']) {
+    // 11 个 handler 全部有注册（未注册类型才会报 no handler；SCRIPTS_GET 无参走 handleGet throw → router 兜底 ok:false）
+    for (const type of ['SCRIPTS_LIST', 'SCRIPTS_GET', 'SCRIPTS_CREATE', 'SCRIPTS_UPDATE', 'SCRIPTS_DELETE', 'SCRIPTS_SET_ENABLED', 'SCRIPTS_IMPORT', 'SCRIPTS_GET_RUNTIME', 'SCRIPTS_GET_RUNTIME_FOR_TAB', 'SCRIPTS_GET_PERMISSIONS', 'SCRIPTS_REVOKE_PERMISSION']) {
       const r = await router.dispatch({ type } as { type: string });
       expect(r).not.toMatchObject({ error: expect.stringContaining('no handler') });
     }
@@ -372,5 +374,46 @@ describe('wrapper 接线（Phase 5）', () => {
     await storage.setItem('local:script-values:s1', { k: 1 });
     await handleDelete('s1');
     expect(await storage.getItem('local:script-values:s1')).toBeNull();
+  });
+});
+
+describe('permissions & popup runtime handlers', () => {
+  beforeEach(() => {
+    fakeBrowser.reset();
+    vi.restoreAllMocks();
+    getRuntimeSnapshot().forEach((e) => dropTab(e.tabId));
+  });
+
+  it('SCRIPTS_GET_PERMISSIONS 返回该脚本授权 host；SCRIPTS_REVOKE_PERMISSION 撤销单条', async () => {
+    installFakeUserScripts();
+    const router = new MessageRouter();
+    vi.spyOn(browser.tabs.onUpdated, 'addListener').mockImplementation(() => {});
+    vi.spyOn(browser.tabs.onRemoved, 'addListener').mockImplementation(() => {});
+    initScriptsModule(router);
+    await setAlwaysAllow('ps1', 'x.com');
+    const got = await router.dispatch({ type: 'SCRIPTS_GET_PERMISSIONS', id: 'ps1' });
+    expect(got).toEqual({ ok: true, data: { hosts: ['x.com'] } });
+    await router.dispatch({ type: 'SCRIPTS_REVOKE_PERMISSION', id: 'ps1', host: 'x.com' });
+    const after = await router.dispatch({ type: 'SCRIPTS_GET_PERMISSIONS', id: 'ps1' });
+    expect(after).toEqual({ ok: true, data: { hosts: [] } });
+  });
+
+  it('SCRIPTS_GET_RUNTIME_FOR_TAB 只返回指定 tab 的运行条目', async () => {
+    installFakeUserScripts();
+    const router = new MessageRouter();
+    vi.spyOn(browser.tabs.onUpdated, 'addListener').mockImplementation(() => {});
+    vi.spyOn(browser.tabs.onRemoved, 'addListener').mockImplementation(() => {});
+    initScriptsModule(router);
+    await saveScript(mkScript({ id: 'rt1', enabled: true, matches: ['*://a.com/*'] }));
+    await recomputeTab(11, 'https://a.com/page');
+    const got = (await router.dispatch({ type: 'SCRIPTS_GET_RUNTIME_FOR_TAB', tabId: 11 })) as {
+      ok: boolean; data?: { entry: ScriptsRuntimeEntry | null };
+    };
+    expect(got.ok).toBe(true);
+    expect(got.data?.entry?.scriptIds).toEqual(['rt1']);
+    const none = (await router.dispatch({ type: 'SCRIPTS_GET_RUNTIME_FOR_TAB', tabId: 99 })) as {
+      ok: boolean; data?: { entry: ScriptsRuntimeEntry | null };
+    };
+    expect(none.data?.entry).toBeNull();
   });
 });

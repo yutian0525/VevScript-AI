@@ -13,7 +13,7 @@ import { gmErrorCounts, readValuesForSnapshot, cleanupScriptState } from './gm-a
 import { buildWrappedCode } from '../shared/gm-wrapper';
 import { getBridgeToken } from './gm-token';
 import { prefetchResources, getResourceBundle } from './gm-resources';
-import { removeScriptPermissions } from './gm-permissions';
+import { listAllowedHosts, revokeHost, removeScriptPermissions } from './gm-permissions';
 
 export const ENGINE_UNAVAILABLE_MSG = '脚本注入引擎不可用：请在 chrome://extensions 开启开发者模式或升级 Chrome 120+';
 
@@ -360,7 +360,7 @@ export async function handleImport(text: string, filename?: string): Promise<{ s
   return { script, warnings: [...warnings, ...resWarnings, ...syncWarnings] };
 }
 
-// ---------- 消息接线（spec §7）：8 个 handler + tabs 监听 + 启动自愈 ----------
+// ---------- 消息接线（spec §7）：11 个 handler + tabs 监听 + 启动自愈 ----------
 
 export function initScriptsModule(router: MessageRouter): void {
   router.on('SCRIPTS_LIST', async () => ({
@@ -403,6 +403,25 @@ export function initScriptsModule(router: MessageRouter): void {
   });
 
   router.on('SCRIPTS_GET_RUNTIME', async () => ({ ok: true, data: { entries: getRuntimeSnapshot() } }));
+
+  // popup 按 tab 查运行脚本：命中返回该条目，未命中返回 null（popup 显示「本页无脚本」）
+  router.on('SCRIPTS_GET_RUNTIME_FOR_TAB', async (msg) => {
+    const { tabId } = msg as unknown as { tabId: number };
+    const entry = getRuntimeSnapshot().find((e) => e.tabId === tabId) ?? null;
+    return { ok: true, data: { entry } };
+  });
+
+  // 全屏详情页 XHR 安全区：读该脚本已授权 host、撤销单条授权（幂等）
+  router.on('SCRIPTS_GET_PERMISSIONS', async (msg) => {
+    const { id } = msg as unknown as { id: string };
+    return { ok: true, data: { hosts: await listAllowedHosts(id) } };
+  });
+
+  router.on('SCRIPTS_REVOKE_PERMISSION', async (msg) => {
+    const { id, host } = msg as unknown as { id: string; host: string };
+    await revokeHost(id, host);
+    return { ok: true };
+  });
 
   // 运行态跟踪：url 变化或加载完成时重算该 tab；关闭时清理
   browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
