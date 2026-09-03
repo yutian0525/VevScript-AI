@@ -7,7 +7,7 @@ import { sendScriptsRequest } from '../../stores/scripts';
 import { parseUserScript } from '../../shared/userscript-meta';
 import type { UserScript } from '../../shared/types';
 
-export function DetailCodeTab({ script, onSaved }: { script: UserScript; onSaved: () => Promise<void> | void }) {
+export function DetailCodeTab({ script, onSaved }: { script: UserScript; onSaved: (saved: UserScript) => Promise<void> | void }) {
   const [text, setText] = useState(script.text);
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState('');
@@ -24,7 +24,7 @@ export function DetailCodeTab({ script, onSaved }: { script: UserScript; onSaved
     if (resp.ok && resp.data) {
       setDirty(false);
       setMessage('已重新注册，刷新页面生效');
-      await onSaved();
+      await onSaved(resp.data.script);
     } else {
       setMessage(resp.error ?? '保存失败');
     }

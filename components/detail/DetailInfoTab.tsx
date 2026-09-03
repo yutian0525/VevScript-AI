@@ -1,18 +1,33 @@
 // components/detail/DetailInfoTab.tsx
 // 详情 Tab：元信息（mono 键 + sans 值）+ grant 分色列表 + 脚本级操作（重载/导出）。
 // 脚本名已在顶栏 h1 展示，此处不重复（避免与顶栏标题重复渲染）。
+import { useEffect, useState } from 'react';
 import { Check, Download, RotateCw, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { classifyGrants } from '../../shared/gm-apis';
 import type { UserScript } from '../../shared/types';
 
+/** 全屏页语境：active tab 就是详情页自己，要找的是最近的普通网页标签（过滤扩展自有页面）。 */
+async function findReloadTarget(): Promise<number | null> {
+  const tabs = await browser.tabs.query({ active: true, lastFocusedWindow: true });
+  const target = tabs.find((t) => t.url != null && !t.url.startsWith('chrome-extension://')) ?? null;
+  return target?.id ?? null;
+}
+
 export function DetailInfoTab({ script }: { script: UserScript }) {
   const meta = script.meta ?? {};
+  const [reloadTargetId, setReloadTargetId] = useState<number | null>(null);
+
+  // 挂载时查一次目标页：无普通网页标签时禁用「重载当前页」
+  useEffect(() => {
+    let cancelled = false;
+    void findReloadTarget().then((id) => { if (!cancelled) setReloadTargetId(id); });
+    return () => { cancelled = true; };
+  }, []);
 
   async function reloadActivePage(): Promise<void> {
-    let [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (!tab) [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true });
-    if (tab?.id != null) await browser.tabs.reload(tab.id);
+    const id = reloadTargetId ?? (await findReloadTarget());
+    if (id != null) await browser.tabs.reload(id);
   }
 
   function exportFile(): void {
@@ -47,7 +62,13 @@ export function DetailInfoTab({ script }: { script: UserScript }) {
         </div>
       )}
       <div className="detail__actions">
-        <Button onClick={() => void reloadActivePage()}><RotateCw size={14} /> 重载当前页</Button>
+        <Button
+          onClick={() => void reloadActivePage()}
+          disabled={reloadTargetId == null}
+          title={reloadTargetId == null ? '无可重载的网页' : undefined}
+        >
+          <RotateCw size={14} /> 重载当前页
+        </Button>
         <Button onClick={exportFile}><Download size={14} /> 导出 .user.js</Button>
       </div>
     </div>

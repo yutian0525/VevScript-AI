@@ -5,6 +5,8 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { DetailApp } from '../../components/detail/DetailApp';
+import { useScripts } from '../../stores/scripts';
+import type { GmErrorItem } from '../../stores/scripts';
 import type { UserScript } from '../../shared/types';
 
 afterEach(cleanup);
@@ -26,7 +28,13 @@ function mkScript(over: Partial<UserScript> = {}): UserScript {
   } as UserScript;
 }
 
-function mockBackend(script: UserScript | null): void {
+/** updated：SCRIPTS_UPDATE 成功后回传的脚本（默认沿用原脚本）。
+ *  gmErrors：SCRIPTS_GET_GM_STATE 回传的错误缓冲——挂载时 refresh() 会拉一次，
+ *  echo 已 setState 的错误可避免 refresh 竞态把种子错误清空。 */
+function mockBackend(
+  script: UserScript | null,
+  opts: { updated?: UserScript; gmErrors?: Record<string, GmErrorItem[]> } = {},
+): void {
   browser.runtime.onMessage.addListener((msg: { type: string }, _s, sendResponse) => {
     if (msg.type === 'SCRIPTS_GET') {
       script
@@ -37,8 +45,10 @@ function mockBackend(script: UserScript | null): void {
     if (msg.type === 'SCRIPTS_LIST') { sendResponse({ ok: true, data: { scripts: [], engineAvailable: true } }); return true; }
     if (msg.type === 'SCRIPTS_GET_RUNTIME') { sendResponse({ ok: true, data: { entries: [] } }); return true; }
     if (msg.type === 'SCRIPTS_GET_PERMISSIONS') { sendResponse({ ok: true, data: { hosts: ['x.com'] } }); return true; }
-    if (msg.type === 'SCRIPTS_GET_GM_STATE') { sendResponse({ ok: true, data: { menus: [], errors: {}, confirms: [] } }); return true; }
+    if (msg.type === 'SCRIPTS_GET_GM_STATE') { sendResponse({ ok: true, data: { menus: [], errors: opts.gmErrors ?? {}, confirms: [] } }); return true; }
     if (msg.type === 'SCRIPTS_SET_ENABLED') { sendResponse({ ok: true, data: { script: mkScript({ enabled: false }) } }); return true; }
+    if (msg.type === 'SCRIPTS_UPDATE') { sendResponse({ ok: true, data: { script: opts.updated ?? script } }); return true; }
+    if (msg.type === 'SCRIPTS_REVOKE_PERMISSION') { sendResponse({ ok: true }); return true; }
     sendResponse({ ok: false, error: 'unexpected' }); return true;
   });
 }
@@ -47,6 +57,8 @@ describe('DetailApp', () => {
   beforeEach(() => {
     fakeBrowser.reset();
     vi.restoreAllMocks();
+    // store 是模块单例，逐用例复位避免错误缓冲跨用例串台
+    useScripts.setState({ summaries: [], runtimeEntries: {}, activeTabId: null, query: '', engineWarning: null, menus: [], errors: {}, confirms: [] });
   });
 
   it('加载后默认展示详情 Tab：元信息 + 操作按钮 + 左栏四导航', async () => {
@@ -92,5 +104,52 @@ describe('DetailApp', () => {
       expect(calls.length).toBeGreaterThan(0);
       expect((calls[0]?.[0] as unknown as { enabled: boolean }).enabled).toBe(false);
     });
+  });
+
+  it('dirty 保存流：编辑源码 → 保存 → 顶栏显示新名字 + patch.text 正确（钉住 #2）', async () => {
+    const newText = '// ==UserScript==\n// @name 新名字\n// @match *://*/*\n// ==/UserScript==\nconsole.log(2);';
+    mockBackend(mkScript(), { updated: mkScript({ name: '新名字', text: newText, updatedAt: 2 }) });
+    const sendSpy = vi.spyOn(browser.runtime, 'sendMessage');
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    fireEvent.click(screen.getByText('代码'));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: newText } });
+    fireEvent.click(screen.getByRole('button', { name: /保存/ }));
+    // 顶栏标题随保存后回传脚本同步（DetailApp 的 script state 更新）
+    expect(await screen.findByText('新名字')).toBeTruthy();
+    const updateCalls = sendSpy.mock.calls.filter((c) => (c[0] as unknown as { type: string }).type === 'SCRIPTS_UPDATE');
+    expect(updateCalls.length).toBeGreaterThan(0);
+    expect((updateCalls[0]?.[0] as unknown as { patch: { text: string } }).patch.text).toBe(newText);
+  });
+
+  it('撤销授权：设置 Tab 点撤销调 SCRIPTS_REVOKE_PERMISSION（host 正确）', async () => {
+    mockBackend(mkScript());
+    const sendSpy = vi.spyOn(browser.runtime, 'sendMessage');
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    fireEvent.click(screen.getByText('设置'));
+    fireEvent.click(await screen.findByRole('button', { name: /撤销/ }));
+    await vi.waitFor(() => {
+      const calls = sendSpy.mock.calls.filter((c) => (c[0] as unknown as { type: string }).type === 'SCRIPTS_REVOKE_PERMISSION');
+      expect(calls.length).toBeGreaterThan(0);
+      expect((calls[0]?.[0] as unknown as { host: string }).host).toBe('x.com');
+    });
+  });
+
+  it('日志展开 stack：点行显示 stack + aria-expanded 切换', async () => {
+    // gmErrors echo：refresh() 冷读会拉这份，避免竞态清空 setState 的种子
+    const seeded: Record<string, GmErrorItem[]> = { s1: [{ at: 1, message: 'boom', stack: 'Error: boom\n at x' }] };
+    mockBackend(mkScript(), { gmErrors: seeded });
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    useScripts.setState({ errors: seeded });
+    fireEvent.click(screen.getByText(/日志/));
+    const row = await screen.findByRole('button', { name: /boom/ });
+    expect(row.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(row);
+    expect(row.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByText(/at x/)).toBeTruthy();
+    fireEvent.click(row);
+    expect(row.getAttribute('aria-expanded')).toBe('false');
   });
 });

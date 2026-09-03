@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { sendScriptsRequest, useScripts } from '../../stores/scripts';
+import { sendScriptsRequest } from '../../stores/scripts';
 import type { UserScript } from '../../shared/types';
 import { useScriptDetail } from './useScriptDetail';
 import { DetailInfoTab } from './DetailInfoTab';
@@ -93,7 +93,7 @@ export function DetailApp({ id }: { id: string }) {
         <div className="detail__content">
           {message && <div className="scripts-warnline" role="status">{message}</div>}
           {tab === 'info' && <DetailInfoTab script={script} />}
-          {tab === 'code' && <DetailCodeTab script={script} onSaved={async () => { await useScripts.getState().refresh(); }} />}
+          {tab === 'code' && <DetailCodeTab script={script} onSaved={(s) => setScript(s)} />}
           {tab === 'settings' && <DetailSettingsTab id={script.id} />}
           {tab === 'logs' && <DetailLogsTab id={script.id} errors={errors} />}
         </div>

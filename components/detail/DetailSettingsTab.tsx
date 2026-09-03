@@ -8,6 +8,7 @@ import { sendScriptsRequest } from '../../stores/scripts';
 export function DetailSettingsTab({ id }: { id: string }) {
   const [hosts, setHosts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState('');
 
   async function pull(): Promise<void> {
     setLoading(true);
@@ -26,8 +27,14 @@ export function DetailSettingsTab({ id }: { id: string }) {
   useEffect(() => { void pull(); }, [id]);
 
   async function revoke(host: string): Promise<void> {
-    await sendScriptsRequest({ type: 'SCRIPTS_REVOKE_PERMISSION', id, host });
-    await pull();
+    setMessage('');
+    try {
+      const resp = await sendScriptsRequest<{ ok: boolean; error?: string }>({ type: 'SCRIPTS_REVOKE_PERMISSION', id, host });
+      if (resp.ok) await pull();
+      else setMessage(resp.error ?? `撤销 ${host} 失败`);
+    } catch {
+      setMessage(`撤销 ${host} 失败`);
+    }
   }
 
   return (
@@ -36,6 +43,7 @@ export function DetailSettingsTab({ id }: { id: string }) {
       <p className="detail__hint">
         这些域名已获得该脚本的跨域请求授权（在确认卡点「总是允许」时记录）。撤销后，脚本再请求这些域名会重新弹确认。
       </p>
+      {message && <div className="scripts-warnline" role="status">{message}</div>}
       {loading ? (
         <div className="chat__empty">加载中…</div>
       ) : hosts.length === 0 ? (
