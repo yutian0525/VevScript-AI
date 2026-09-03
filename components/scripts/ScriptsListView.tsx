@@ -121,6 +121,7 @@ export function ScriptsListView() {
             tabIndex={0}
             onClick={() => openScriptTab(s.id)}
             onKeyDown={(e) => {
+              if (e.currentTarget !== e.target) return; // 子元素（switch）冒泡上来的按键不接管
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 openScriptTab(s.id);

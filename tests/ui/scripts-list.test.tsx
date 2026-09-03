@@ -50,6 +50,7 @@ describe('ScriptsListView', () => {
   it('点击 switch 调 SCRIPTS_SET_ENABLED 且不触发卡片导航；tabs.create 未被调', async () => {
     const createSpy = vi.fn();
     (browser.tabs as unknown as { create: typeof createSpy }).create = createSpy;
+    const sendSpy = vi.spyOn(browser.runtime, 'sendMessage');
     browser.runtime.onMessage.addListener((msg: { type: string }, _s, sendResponse) => {
       if (msg.type === 'SCRIPTS_LIST') { sendResponse({ ok: true, data: { scripts: [mkSummary()], engineAvailable: true } }); return true; }
       if (msg.type === 'SCRIPTS_GET_RUNTIME') { sendResponse({ ok: true, data: { entries: [] } }); return true; }
@@ -60,6 +61,25 @@ describe('ScriptsListView', () => {
     render(<ScriptsListView />);
     const sw = await screen.findByRole('switch');
     fireEvent.click(sw);
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'SCRIPTS_SET_ENABLED', enabled: false }),
+    );
+  });
+
+  it('键盘焦点在 switch 上按 Enter 不冒泡触发卡片导航', async () => {
+    const createSpy = vi.fn().mockResolvedValue({});
+    (browser.tabs as unknown as { create: typeof createSpy }).create = createSpy;
+    browser.runtime.onMessage.addListener((msg: { type: string }, _s, sendResponse) => {
+      if (msg.type === 'SCRIPTS_LIST') { sendResponse({ ok: true, data: { scripts: [mkSummary()], engineAvailable: true } }); return true; }
+      if (msg.type === 'SCRIPTS_GET_RUNTIME') { sendResponse({ ok: true, data: { entries: [] } }); return true; }
+      if (msg.type === 'SCRIPTS_GET_GM_STATE') { sendResponse({ ok: true, data: { menus: [], errors: {}, confirms: [] } }); return true; }
+      if (msg.type === 'SCRIPTS_SET_ENABLED') { sendResponse({ ok: true, data: { script: mkSummary({ enabled: false }) } }); return true; }
+      sendResponse({ ok: false, error: 'unexpected' }); return true;
+    });
+    render(<ScriptsListView />);
+    const sw = await screen.findByRole('switch');
+    fireEvent.keyDown(sw, { key: 'Enter' });
     expect(createSpy).not.toHaveBeenCalled();
   });
 
