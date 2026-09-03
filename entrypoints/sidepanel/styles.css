@@ -611,8 +611,10 @@ body {
   margin-left: auto;
   flex-shrink: 0;
 }
-.chip--cs { color: var(--signal-ink); border-color: #c3c5e0; background: var(--signal-wash); }
-.chip--api { color: var(--ink-2); background: var(--sunken); }
+.chip--page { color: var(--signal-ink); border-color: #c3c5e0; background: var(--signal-wash); }
+.chip--tabs { color: var(--ink-2); background: var(--sunken); }
+.chip--net { color: var(--ok); border-color: #bfe0cb; background: var(--ok-wash); }
+.chip--script { color: var(--warn); border-color: #e4c169; background: var(--warn-wash); }
 
 .param { display: flex; gap: 7px; font-size: 11.5px; line-height: 1.5; padding: 2px 0; }
 .param__key { font-family: var(--mono); font-weight: 600; color: var(--ink); flex-shrink: 0; }
@@ -626,6 +628,32 @@ body {
 .result-verdict--err { color: var(--err); }
 .result-ms { font-family: var(--mono); font-size: 10px; color: var(--ink-3); margin-left: auto; }
 .divider { height: 1px; background: var(--line); border: none; margin: 12px 0; }
+
+/* ============ 调试台分组标题 ============ */
+.toolgroup__head { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: var(--ink-2); margin: 4px 0 2px; }
+.toolgroup__hint { font-size: 11px; color: var(--ink-3); margin-bottom: 8px; }
+
+/* ============ 设置枢纽入口卡 ============ */
+.setting-card {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  padding: 12px 14px; margin-bottom: 8px; cursor: pointer; text-align: left; width: 100%;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.setting-card:hover { border-color: var(--line-strong); background: var(--paper); }
+.setting-card:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+.setting-card__icon { color: var(--signal-ink); flex-shrink: 0; display: flex; }
+.setting-card__body { min-width: 0; }
+.setting-card__title { font-size: 13px; font-weight: 600; color: var(--ink); }
+.setting-card__desc { font-size: 11.5px; color: var(--ink-3); line-height: 1.5; }
+.setting-card__chev { color: var(--ink-3); flex-shrink: 0; margin-left: auto; }
+
+/* ============ 脚本运行时调试台 GM API 行 ============ */
+.gm-api-row.is-disabled { opacity: 0.5; }
+.gm-api-row.is-disabled .tool-row { cursor: not-allowed; }
+.gm-api-note { font-size: 11px; color: var(--ink-3); margin: 2px 0 0 21px; }
+.gm-whitelist { font-family: var(--mono); font-size: 11.5px; color: var(--ink); line-height: 1.6; }
+.gm-whitelist__row { display: flex; align-items: center; gap: 5px; padding: 1px 0; }
 
 .toolcard__shot {
   display: block;
