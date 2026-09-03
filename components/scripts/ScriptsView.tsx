@@ -1,16 +1,12 @@
 // components/scripts/ScriptsView.tsx
-// 脚本池路由壳：ui.scriptId 非空 = 详情页；挂载时拉数据 + 订阅运行态广播（spec §7）。
+// 脚本池路由壳：纯列表（详情页已迁全屏新标签页）；挂载时拉数据 + 订阅运行态/菜单/错误/确认广播。
 import { useEffect } from 'react';
 import { ScriptsListView } from './ScriptsListView';
-import { ScriptDetailView } from './ScriptDetailView';
 import { useScripts } from '../../stores/scripts';
 import type { GmConfirmItem, GmErrorItem, GmMenuEntry } from '../../stores/scripts';
-import { useUi } from '../../stores/ui';
 import type { ScriptsRuntimeEvent } from '../../shared/messages';
 
 export function ScriptsView() {
-  const scriptId = useUi((s) => s.scriptId);
-
   useEffect(() => {
     void useScripts.getState().refresh();
     const onMessage = (msg: unknown) => {
@@ -35,7 +31,6 @@ export function ScriptsView() {
       }
     };
     browser.runtime.onMessage.addListener(onMessage);
-    // 切换浏览器标签页 → 更新 activeTabId；该 tab 无运行态条目（SW 重启丢失）时重拉兜底
     const onActivated = ({ tabId }: { tabId: number }) => {
       useScripts.getState().setActiveTab(tabId);
       if (useScripts.getState().runtimeEntries[tabId] == null) void useScripts.getState().refresh();
@@ -47,5 +42,5 @@ export function ScriptsView() {
     };
   }, []);
 
-  return scriptId ? <ScriptDetailView id={scriptId} /> : <ScriptsListView />;
+  return <ScriptsListView />;
 }

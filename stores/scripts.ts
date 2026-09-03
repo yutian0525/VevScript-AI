@@ -10,6 +10,14 @@ export async function sendScriptsRequest<T = unknown>(req: ScriptsRequest): Prom
   return (await browser.runtime.sendMessage(req)) as T;
 }
 
+/** 全屏详情页入口（侧边栏卡片 / popup 编辑按钮共用）：新标签打开扩展自有页面。
+ * 页面文件由 Task 5 建（script-detail.html）。此处经 getURL('/') 拼路径，
+ * 编译不依赖该 entrypoint 已注册（WXT 的 getURL 只对已存在 entrypoint 做类型收窄）。 */
+export function openScriptTab(id: string): void {
+  const url = browser.runtime.getURL('/') + `script-detail.html?id=${encodeURIComponent(id)}`;
+  void browser.tabs.create({ url });
+}
+
 export interface GmMenuEntry { scriptId: string; commands: Array<{ key: string; name: string }> }
 export interface GmErrorItem { at: number; message: string; stack?: string; line?: number }
 export interface GmConfirmItem { confirmId: string; scriptId: string; host: string; url: string; createdAt: number }

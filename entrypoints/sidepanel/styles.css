@@ -768,17 +768,37 @@ body {
 .scripts-toolbar { display: flex; gap: 6px; margin-bottom: 10px; }
 .scripts-toolbar .input { flex: 1; }
 
-.scripts-row {
-  display: flex; align-items: center; gap: 8px;
-  border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
-  padding: 8px 10px; margin-bottom: 6px; cursor: pointer; text-align: left; width: 100%;
+/* 脚本卡片（2026-09-03 重设计：switch 启停 + 整卡进全屏详情） */
+.scripts-list { display: grid; gap: 8px; }
+.scripts-card {
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 9px 11px; cursor: pointer; background: var(--surface);
+  transition: border-color 120ms ease;
 }
-.scripts-row:hover { border-color: var(--line-strong); }
-.scripts-row.is-off { opacity: 0.55; }
-.scripts-row__name { font-weight: 600; color: var(--ink); font-size: 13px; white-space: nowrap; }
-.scripts-row__match {
-  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;
+.scripts-card:hover { border-color: var(--line-strong); }
+.scripts-card--off { opacity: 0.55; }
+.scripts-card__top { display: flex; align-items: center; gap: 8px; }
+.scripts-card__name { flex: 1; min-width: 0; font-weight: 600; color: var(--ink); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scripts-card__meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.scripts-card__match { flex: 1; min-width: 0; font-size: 10.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scripts-card__badges { display: inline-flex; gap: 4px; flex-shrink: 0; }
+
+/* switch 组件：40×22 轨道滑块，选中 signal 底白滑块 */
+.switch {
+  position: relative; width: 40px; height: 22px; flex-shrink: 0;
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  background: var(--sunken); cursor: pointer; padding: 0;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.switch__thumb {
+  position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+  border-radius: 50%; background: var(--surface); border: 1px solid var(--line-strong);
+  transition: transform 150ms ease;
+}
+.switch--on { background: var(--signal); border-color: var(--signal); }
+.switch--on .switch__thumb { transform: translateX(18px); border-color: var(--signal); }
+@media (prefers-reduced-motion: reduce) {
+  .switch, .switch__thumb { transition: none; }
 }
 .scripts-badge {
   font-size: 10px; padding: 1px 6px; border-radius: 999px;

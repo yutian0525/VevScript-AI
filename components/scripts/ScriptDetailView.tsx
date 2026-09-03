@@ -7,7 +7,6 @@ import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { sendScriptsRequest, useScripts } from '../../stores/scripts';
 import type { GmErrorItem } from '../../stores/scripts';
-import { useUi } from '../../stores/ui';
 import { parseUserScript } from '../../shared/userscript-meta';
 import { classifyGrants } from '../../shared/gm-apis';
 import type { UserScript } from '../../shared/types';
@@ -15,7 +14,8 @@ import type { UserScript } from '../../shared/types';
 const EMPTY_ERRORS: GmErrorItem[] = [];
 
 export function ScriptDetailView({ id }: { id: string }) {
-  const openScript = useUi((s) => s.openScript);
+  // 详情页已迁全屏新标签页（Task 5 建页面），返回动作 = 关闭标签页；旧的侧边栏路由 openScript 已移除。
+  const goBack = () => window.close();
   // 选择器不得新建引用：zustand v5 用原生 useSyncExternalStore，getSnapshot 必须稳定，
   // 否则 React 判定快照一直在变 → 无限重渲染（错误 #185）。`?? []` 挪到选择器外部。
   const errorsRecord = useScripts((s) => s.errors[id]);
@@ -93,7 +93,7 @@ export function ScriptDetailView({ id }: { id: string }) {
     if (!script || !window.confirm(`删除脚本「${script.name}」？不可恢复。`)) return;
     const resp = await sendScriptsRequest<{ ok: boolean; error?: string }>({ type: 'SCRIPTS_DELETE', id: script.id });
     if (resp.ok) {
-      openScript(null);
+      goBack();
       await useScripts.getState().refresh();
     } else {
       setMessage(resp.error ?? '删除失败');
@@ -118,7 +118,7 @@ export function ScriptDetailView({ id }: { id: string }) {
   }
   if (notFound) {
     return (
-      <PageShell title="脚本详情" eyebrow="SCRIPT" actions={<Button onClick={() => openScript(null)}><ArrowLeft size={14} /> 返回</Button>}>
+      <PageShell title="脚本详情" eyebrow="SCRIPT" actions={<Button onClick={() => goBack()}><ArrowLeft size={14} /> 返回</Button>}>
         <div className="chat__empty">脚本不存在或已被删除</div>
       </PageShell>
     );
@@ -130,7 +130,7 @@ export function ScriptDetailView({ id }: { id: string }) {
       title={f.name || script.name || '未命名脚本'}
       eyebrow="SCRIPT"
       actions={
-        <Button variant="ghost" onClick={() => openScript(null)} aria-label="返回">
+        <Button variant="ghost" onClick={() => goBack()} aria-label="返回">
           <ArrowLeft size={14} />
         </Button>
       }
