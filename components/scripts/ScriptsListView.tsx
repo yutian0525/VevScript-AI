@@ -5,8 +5,9 @@ import { CircleAlert, Plus, Power, Search, Upload } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { filterSummaries, sendScriptsRequest, useScripts } from '../../stores/scripts';
+import { filterSummaries, selectMenuCommands, sendScriptsRequest, useScripts } from '../../stores/scripts';
 import { useUi } from '../../stores/ui';
+import { ScriptsConfirmCard } from './ScriptsConfirmCard';
 import type { ScriptsRuntimeEntry } from '../../shared/messages';
 import type { ScriptSummary } from '../../shared/types';
 
@@ -30,13 +31,14 @@ const NEW_SCRIPT_TEMPLATE = [
 ].join('\n');
 
 export function ScriptsListView() {
-  const { summaries, runtimeEntries, activeTabId, query, engineWarning, setQuery } = useScripts();
+  const { summaries, runtimeEntries, activeTabId, query, engineWarning, menus, confirms, setQuery } = useScripts();
   const openScript = useUi((s) => s.openScript);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const runtime: ScriptsRuntimeEntry | undefined = activeTabId != null ? runtimeEntries[activeTabId] : undefined;
   const visible = filterSummaries(summaries, query);
+  const menuCommands = selectMenuCommands(runtime, menus);
 
   async function createNew(): Promise<void> {
     const resp = await sendScriptsRequest<{ ok: boolean; data?: { script: { id: string } }; error?: string }>({
@@ -79,6 +81,23 @@ export function ScriptsListView() {
         <div className="scripts-notice" role="alert">
           <CircleAlert size={14} style={{ flexShrink: 0, marginTop: 1 }} />
           <span>{engineWarning}</span>
+        </div>
+      )}
+
+      {confirms.map((c) => <ScriptsConfirmCard key={c.confirmId} confirm={c} />)}
+
+      {menuCommands.length > 0 && (
+        <div className="scripts-run">
+          <div className="scripts-run__head mono">MENU · {menuCommands.length}</div>
+          {menuCommands.map((c) => (
+            <button
+              key={`${c.scriptId}:${c.key}`}
+              className="scripts-menubtn"
+              onClick={() => void sendScriptsRequest({ type: 'SCRIPTS_MENU_INVOKE', scriptId: c.scriptId, key: c.key })}
+            >
+              {c.name}
+            </button>
+          ))}
         </div>
       )}
 
@@ -130,10 +149,16 @@ export function ScriptsListView() {
             <span className={`scripts-badge scripts-badge--signal`} aria-hidden>
               {SOURCE_LABEL[s.source]}
             </span>
-            {s.hasGrants && (
-              <span className="scripts-badge scripts-badge--warn" title="脚本使用了 GM_* API（本扩展不支持，调用会报错）">
-                GM
+            {(s.grantSupported.length > 0 || s.grantUnsupported.length > 0) && (
+              <span
+                className={`scripts-badge ${s.grantUnsupported.length > 0 ? 'scripts-badge--warn' : 'scripts-badge--signal'}`}
+                title={`可用：${s.grantSupported.join(', ') || '无'}${s.grantUnsupported.length > 0 ? `；不支持：${s.grantUnsupported.join(', ')}` : ''}`}
+              >
+                GM {s.grantSupported.length}{s.grantUnsupported.length > 0 ? `/${s.grantUnsupported.length}!` : ''}
               </span>
+            )}
+            {s.errorCount > 0 && (
+              <span className="scripts-badge scripts-badge--warn" title="脚本运行报错（进详情页查看）">{s.errorCount} errors</span>
             )}
             <Button
               variant="ghost"

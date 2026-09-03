@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { ScriptsListView } from './ScriptsListView';
 import { ScriptDetailView } from './ScriptDetailView';
 import { useScripts } from '../../stores/scripts';
+import type { GmConfirmItem, GmErrorItem, GmMenuEntry } from '../../stores/scripts';
 import { useUi } from '../../stores/ui';
 import type { ScriptsRuntimeEvent } from '../../shared/messages';
 
@@ -16,6 +17,21 @@ export function ScriptsView() {
       const m = msg as { type?: string };
       if (m?.type === 'SCRIPTS_RUNTIME') {
         useScripts.getState().applyRuntimeEvent(msg as ScriptsRuntimeEvent);
+      }
+      if (m?.type === 'SCRIPTS_MENUS') {
+        useScripts.getState().applyMenusEvent(msg as { type: string; entries: GmMenuEntry[] });
+      }
+      if (m?.type === 'SCRIPTS_ERROR') {
+        useScripts.getState().applyErrorEvent(msg as { type: string; scriptId: string; error: GmErrorItem });
+      }
+      if (m?.type === 'SCRIPTS_ERROR_CLEARED') {
+        useScripts.getState().applyErrorCleared((msg as { scriptId: string }).scriptId);
+      }
+      if (m?.type === 'GM_CONFIRM_PENDING') {
+        useScripts.getState().applyConfirmEvent(msg as { type: string; confirm: GmConfirmItem });
+      }
+      if (m?.type === 'GM_CONFIRM_RESOLVED') {
+        useScripts.getState().applyConfirmResolved((msg as { confirmId: string }).confirmId);
       }
     };
     browser.runtime.onMessage.addListener(onMessage);

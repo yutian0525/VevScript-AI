@@ -10,6 +10,23 @@ export async function sendScriptsRequest<T = unknown>(req: ScriptsRequest): Prom
   return (await browser.runtime.sendMessage(req)) as T;
 }
 
+export interface GmMenuEntry { scriptId: string; commands: Array<{ key: string; name: string }> }
+export interface GmErrorItem { at: number; message: string; stack?: string; line?: number }
+export interface GmConfirmItem { confirmId: string; scriptId: string; host: string; url: string; createdAt: number }
+
+/** 当前 tab 运行集内脚本的菜单命令展开（纯函数，组件与 store 共用，spec §9.3） */
+export function selectMenuCommands(
+  entry: ScriptsRuntimeEntry | undefined, menus: GmMenuEntry[],
+): Array<{ scriptId: string; key: string; name: string }> {
+  if (!entry) return [];
+  const out: Array<{ scriptId: string; key: string; name: string }> = [];
+  for (const m of menus) {
+    if (!entry.scriptIds.includes(m.scriptId)) continue;
+    for (const c of m.commands) out.push({ scriptId: m.scriptId, key: c.key, name: c.name });
+  }
+  return out;
+}
+
 /** 列表搜索：name/description/matches 大小写不敏感子串（纯函数，spec §9.1） */
 export function filterSummaries(summaries: ScriptSummary[], query: string): ScriptSummary[] {
   const q = query.trim().toLowerCase();
@@ -30,10 +47,21 @@ interface ScriptsState {
   loading: boolean;
   /** 引擎不可用文案（null = 可用） */
   engineWarning: string | null;
+  /** GM_registerMenuCommand 菜单快照（全量替换，spec §11） */
+  menus: GmMenuEntry[];
+  /** 脚本运行错误环形缓冲（按 scriptId，上限 20） */
+  errors: Record<string, GmErrorItem[]>;
+  /** GM_xmlhttpRequest 跨域批准队列（spec §11） */
+  confirms: GmConfirmItem[];
   setQuery: (q: string) => void;
   setActiveTab: (id: number | null) => void;
   applyRuntimeEvent: (e: ScriptsRuntimeEvent) => void;
   setEngineWarning: (w: string | null) => void;
+  applyMenusEvent: (e: { entries: GmMenuEntry[] }) => void;
+  applyErrorEvent: (e: { scriptId: string; error: GmErrorItem }) => void;
+  applyErrorCleared: (scriptId: string) => void;
+  applyConfirmEvent: (e: { confirm: GmConfirmItem }) => void;
+  applyConfirmResolved: (confirmId: string) => void;
   refresh: () => Promise<void>;
 }
 
@@ -46,6 +74,9 @@ export const useScripts = create<ScriptsState>((set) => ({
   query: '',
   loading: false,
   engineWarning: null,
+  menus: [],
+  errors: {},
+  confirms: [],
 
   setQuery: (query) => set({ query }),
   setActiveTab: (activeTabId) => set({ activeTabId }),
@@ -54,6 +85,17 @@ export const useScripts = create<ScriptsState>((set) => ({
     set((s) => ({ runtimeEntries: { ...s.runtimeEntries, [e.payload.tabId]: e.payload } })),
 
   setEngineWarning: (engineWarning) => set({ engineWarning }),
+
+  applyMenusEvent: (e) => set({ menus: e.entries }),
+  applyErrorEvent: (e) => set((s) => {
+    const cur = s.errors[e.scriptId] ?? [];
+    return { errors: { ...s.errors, [e.scriptId]: [...cur, e.error].slice(-20) } };
+  }),
+  applyErrorCleared: (scriptId) => set((s) => {
+    const next = { ...s.errors }; delete next[scriptId]; return { errors: next };
+  }),
+  applyConfirmEvent: (e) => set((s) => ({ confirms: [...s.confirms, e.confirm] })),
+  applyConfirmResolved: (confirmId) => set((s) => ({ confirms: s.confirms.filter((c) => c.confirmId !== confirmId) })),
 
   refresh: async () => {
     set({ loading: true });

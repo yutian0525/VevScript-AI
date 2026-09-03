@@ -72,4 +72,8 @@ export interface ScriptSummary {
   errorCount: number;
   /** 有 @require（资源缺失时详情页提示，spec §9.4） */
   hasRequires: boolean;
+  /** 已支持的 grant（classifyGrants，spec §9.2） */
+  grantSupported: string[];
+  /** 不支持的 grant（列表页黄色警示） */
+  grantUnsupported: string[];
 }

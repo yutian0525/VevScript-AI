@@ -1,14 +1,15 @@
 // tests/stores/scripts.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { useScripts, filterSummaries } from '../../stores/scripts';
+import { useScripts, filterSummaries, selectMenuCommands } from '../../stores/scripts';
 import type { ScriptSummary } from '../../shared/types';
 
 function mkSummary(over: Partial<ScriptSummary> = {}): ScriptSummary {
   return {
     id: 's1', name: '去广告', matches: ['https://a.com/*'], enabled: true,
     source: 'user', runAt: 'document_idle', world: 'USER_SCRIPT',
-    updatedAt: 1, hasGrants: false, errorCount: 0, hasRequires: false, ...over,
+    updatedAt: 1, hasGrants: false, errorCount: 0, hasRequires: false,
+    grantSupported: [], grantUnsupported: [], ...over,
   };
 }
 
@@ -84,5 +85,48 @@ describe('scripts store', () => {
     });
     await useScripts.getState().refresh();
     expect(useScripts.getState().engineWarning).toContain('不可用');
+  });
+});
+
+describe('Phase 5：menus/errors/confirms', () => {
+  beforeEach(() => {
+    fakeBrowser.reset();
+    vi.restoreAllMocks();
+    useScripts.setState({ summaries: [], runtimeEntries: {}, activeTabId: null, query: '', loading: false, engineWarning: null, menus: [], errors: {}, confirms: [] });
+  });
+
+  it('applyMenusEvent 全量替换', () => {
+    useScripts.getState().applyMenusEvent({ entries: [{ scriptId: 's1', commands: [{ key: 'm1', name: '抓取' }] }] });
+    expect(useScripts.getState().menus).toHaveLength(1);
+  });
+
+  it('applyErrorEvent 追加 + 环形上限 20', () => {
+    for (let i = 0; i < 25; i++) useScripts.getState().applyErrorEvent({ scriptId: 's1', error: { at: i, message: `e${i}` } });
+    const errs = useScripts.getState().errors['s1']!;
+    expect(errs).toHaveLength(20);
+    expect(errs[0]!.message).toBe('e5');
+  });
+
+  it('applyConfirmEvent 入列 / applyConfirmResolved 出列', () => {
+    useScripts.getState().applyConfirmEvent({ confirm: { confirmId: 'c1', scriptId: 's1', host: 'x.com', url: 'https://x.com/', createdAt: 1 } });
+    expect(useScripts.getState().confirms).toHaveLength(1);
+    useScripts.getState().applyConfirmResolved('c1');
+    expect(useScripts.getState().confirms).toHaveLength(0);
+  });
+
+  it('applyErrorCleared 清某脚本错误', () => {
+    useScripts.getState().applyErrorEvent({ scriptId: 's1', error: { at: 1, message: 'e' } });
+    useScripts.getState().applyErrorCleared('s1');
+    expect(useScripts.getState().errors['s1']).toBeUndefined();
+  });
+
+  it('selectMenuCommands：仅展开当前 tab 运行集内脚本的命令', () => {
+    const entry = { tabId: 1, url: 'https://a.com/', scriptIds: ['s1'] };
+    const menus = [
+      { scriptId: 's1', commands: [{ key: 'm1', name: '抓取' }] },
+      { scriptId: 's2', commands: [{ key: 'm2', name: '别的' }] },
+    ];
+    expect(selectMenuCommands(entry, menus)).toEqual([{ scriptId: 's1', key: 'm1', name: '抓取' }]);
+    expect(selectMenuCommands(undefined, menus)).toEqual([]);
   });
 });
