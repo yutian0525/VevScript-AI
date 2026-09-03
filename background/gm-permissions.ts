@@ -18,6 +18,12 @@ export async function getAlwaysAllow(scriptId: string, host: string): Promise<bo
   return all[scriptId]?.cors?.[host] === 'allow';
 }
 
+/** 某脚本已「始终允许」的全部跨域主机（白名单视图，spec §3.①）。 */
+export async function listAlwaysAllow(scriptId: string): Promise<string[]> {
+  const all = await readAll();
+  return Object.keys(all[scriptId]?.cors ?? {});
+}
+
 export async function setAlwaysAllow(scriptId: string, host: string): Promise<void> {
   const all = await readAll();
   const entry = all[scriptId] ?? { cors: {} };
