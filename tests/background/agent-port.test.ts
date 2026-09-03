@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { vi } from 'vitest';
-import { buildProviderFromSettings, notifyCsReady, waitForCsReady, stopConv, resolveOpenedTab } from '../../background/agent-port';
+import { buildProviderFromSettings, notifyCsReady, waitForCsReady, stopConv, resolveOpenedTab, buildAttachEvents } from '../../background/agent-port';
 import { saveSettings } from '../../storage/settings';
+import { createConversation, appendMessage, setStatus, getConversation } from '../../storage/conversations';
+import { emptyTail } from '../../background/agent-tail';
 
 describe('agent-port 辅助', () => {
   beforeEach(() => fakeBrowser.reset());
@@ -78,6 +80,50 @@ describe('agent-port 辅助', () => {
       fakeBrowser.tabs.query = vi.fn().mockRejectedValue(new Error('boom')) as never;
       const id = await resolveOpenedTab(50, vi.fn());
       expect(id).toBeUndefined();
+    });
+  });
+
+  describe('buildAttachEvents（面板重挂载时的权威回包）', () => {
+    it('后台有活 loop → 回 running 并补发未落库的尾巴', async () => {
+      const c = await createConversation();
+      await appendMessage(c.id, { role: 'user', content: '跑起来' });
+      const events = await buildAttachEvents(c.id, true, { reasoning: '想到一半', text: '说到一半', compacting: false });
+      expect(events).toEqual([
+        { type: 'state', status: 'running', messageCount: 1 },
+        { type: 'reasoning-delta', text: '想到一半' },
+        { type: 'text-delta', text: '说到一半' },
+      ]);
+    });
+
+    it('有活 loop 但尾巴为空（刚落库、下一轮未开口）→ 只回 state', async () => {
+      const c = await createConversation();
+      await appendMessage(c.id, { role: 'user', content: 'x' });
+      const events = await buildAttachEvents(c.id, true, emptyTail());
+      expect(events).toEqual([{ type: 'state', status: 'running', messageCount: 1 }]);
+    });
+
+    it('storage 假 running（SW 曾被杀）→ 回 idle 并把 storage 一起修正', async () => {
+      const c = await createConversation();
+      await appendMessage(c.id, { role: 'user', content: 'x' });
+      await setStatus(c.id, 'running');
+      const events = await buildAttachEvents(c.id, false, emptyTail());
+      expect(events).toEqual([{ type: 'state', status: 'idle', messageCount: 1 }]);
+      expect((await getConversation(c.id)).status).toBe('idle');
+    });
+
+    it('paused 会话原样回 paused（不被当成假 running 抹掉）', async () => {
+      const c = await createConversation();
+      await appendMessage(c.id, { role: 'user', content: 'x' });
+      await setStatus(c.id, 'paused');
+      const events = await buildAttachEvents(c.id, false, emptyTail());
+      expect(events).toEqual([{ type: 'state', status: 'paused', messageCount: 1 }]);
+      expect((await getConversation(c.id)).status).toBe('paused');
+    });
+
+    it('未落库的草稿会话 → idle / 0 条，且不因附着被建档', async () => {
+      const events = await buildAttachEvents('draft-xyz', false, emptyTail());
+      expect(events).toEqual([{ type: 'state', status: 'idle', messageCount: 0 }]);
+      expect(await fakeBrowser.storage.local.get('conv-index')).toEqual({});
     });
   });
 });

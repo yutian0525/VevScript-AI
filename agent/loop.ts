@@ -2,7 +2,7 @@
 // Agent 主循环状态机（设计 §2）：convId 存储 + tabId 操作目标 + usage 计量 + 自动压缩 + 熔断阀。
 import type { Provider, ChatMessage, ToolCall, ContentPart } from './provider/types';
 import type { ToolResult } from '../shared/types';
-import type { PortMsgToPanel } from '../shared/messages';
+import type { AgentEvent } from '../shared/messages';
 import { runTurn } from './run-turn';
 import { buildContext, type PageInfo } from './context';
 import { getToolSchemas } from './tools/registry';
@@ -14,7 +14,7 @@ export interface LoopDeps {
   provider: Provider;
   executeTool: (name: string, args: Record<string, unknown>, tabId: number, signal: AbortSignal) => Promise<ToolResult>;
   getPageInfo: (tabId: number) => Promise<PageInfo>;
-  emit: (msg: PortMsgToPanel) => void;
+  emit: (msg: AgentEvent) => void;
   resolveOpenedTab?: (toolName: string, openerTabId: number, signal: AbortSignal) => Promise<number | undefined>;
   /** 上下文窗口（token）。缺省则不做自动压缩（便于测试）。 */
   getContextWindow?: () => Promise<number>;

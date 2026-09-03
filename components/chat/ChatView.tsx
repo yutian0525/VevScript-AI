@@ -1,58 +1,82 @@
 // components/chat/ChatView.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Paperclip, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, ChevronDown, Brain, SquarePen, ArrowUp, ArrowDown, Square } from 'lucide-react';
+import { Paperclip, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, ChevronDown, Brain, SquarePen, ArrowUp, ArrowDown, Square, ArrowDownToLine } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Gauge } from '../ui/Gauge';
 import { ContextRing } from './ContextRing';
 import { Markdown } from './Markdown';
 import { ConversationMenu } from './ConversationMenu';
+import { nextFollow } from './follow';
 import { useChat, type ChatItem } from '../../stores/chat';
 import { useConversations } from '../../stores/conversations';
+import { attachConv, postToAgent } from '../../stores/agent-port-client';
 import { getSettings } from '../../storage/settings';
 import { resolveContextWindow, DEFAULT_CONTEXT_WINDOW } from '../../agent/model-windows';
-import type { PortMsgFromPanel, PortMsgToPanel } from '../../shared/messages';
+import type { PortMsgFromPanel } from '../../shared/messages';
+
+function prefersReducedMotion(): boolean {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 
 export function ChatView() {
   const { messages, status, pauseReason, applyEvent, promptTokens, compacting } = useChat();
   const { currentId, list, menuOpen, setMenuOpen } = useConversations();
   const [input, setInput] = useState('');
   const [contextWindow, setContextWindow] = useState(DEFAULT_CONTEXT_WINDOW);
-  const portRef = useRef<ReturnType<typeof browser.runtime.connect> | null>(null);
-  const endRef = useRef<HTMLDivElement>(null);
+  const [follow, setFollow] = useState(true);
+  const logRef = useRef<HTMLDivElement>(null);
+  // 上一次的 scrollTop：用来判滚动方向（见 ./follow.ts）
+  const prevTopRef = useRef(0);
 
-  const ensurePort = useCallback(() => {
-    if (portRef.current) return portRef.current;
-    const port = browser.runtime.connect({ name: 'agent' });
-    port.onMessage.addListener((m) => applyEvent(m as PortMsgToPanel));
-    port.onDisconnect.addListener(() => {
-      void browser.runtime.lastError;
-      portRef.current = null;
-    });
-    portRef.current = port;
-    return port;
-  }, [applyEvent]);
-
+  // 挂载：恢复上次会话（浏览器重启后 session 指针已失效 → init 内自动开新会话）+ 读上下文窗口。
   useEffect(() => {
-    ensurePort();
-    return () => { portRef.current?.disconnect(); portRef.current = null; };
-  }, [ensurePort]);
-
-  const last = messages[messages.length - 1];
-  const scrollKey = `${messages.length}:${last?.text?.length ?? 0}:${last?.reasoning?.length ?? 0}:${last?.status ?? ''}`;
-  const firstScroll = useRef(true);
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: firstScroll.current ? 'auto' : 'smooth' });
-    firstScroll.current = false;
-  }, [scrollKey]);
-
-  // 挂载：默认开一个新会话（草稿，不落库）+ 载入会话列表 + 读上下文窗口。
-  useEffect(() => {
-    void useConversations.getState().refreshList();
-    void useConversations.getState().newConversation();
+    void useConversations.getState().init();
     void getSettings().then((s) => setContextWindow(resolveContextWindow(s.provider.model, s.provider.contextWindow)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 会话变化（含挂载后 init 落定）→ 附着到后台：拿权威运行态 + 补发未落库的流式尾巴。
+  // 端口不可用（扩展刚重载等）时把 running 落回 idle，避免输入框永久禁用。
+  useEffect(() => {
+    if (!currentId) return;
+    if (!attachConv(currentId)) useChat.getState().setStatus('idle');
+  }, [currentId]);
+
+  // 切会话：重置跟随（新会话的内容一律先贴底）
+  useEffect(() => { setFollow(true); prevTopRef.current = 0; }, [currentId]);
+
+  // 直接滚容器而非 sentinel.scrollIntoView：落点精确到底、不牵动外层滚动祖先。
+  const scrollToBottom = useCallback((smooth: boolean) => {
+    const el = logRef.current;
+    if (!el) return;
+    const top = el.scrollHeight;
+    if (smooth && !prefersReducedMotion() && typeof el.scrollTo === 'function') {
+      el.scrollTo({ top, behavior: 'smooth' });
+    } else {
+      el.scrollTop = top;
+    }
+  }, []);
+
+  // 用户上滚 → 关跟随（露出「回到底部」悬浮钮）；滚回底部 → 自动重开。
+  // 判定按方向而非绝对位置，否则程序化滚动的中间帧会把跟随自己关掉（见 ./follow.ts）。
+  const onLogScroll = useCallback(() => {
+    const el = logRef.current;
+    if (!el) return;
+    const m = { scrollTop: el.scrollTop, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight };
+    setFollow((f) => nextFollow(prevTopRef.current, m, f));
+    prevTopRef.current = el.scrollTop;
+  }, []);
+
+  const last = messages[messages.length - 1];
+  const scrollKey = `${messages.length}:${last?.text?.length ?? 0}:${last?.reasoning?.length ?? 0}:${last?.status ?? ''}`;
+  useEffect(() => {
+    // 跟随中才自动贴底。流式期间一律瞬时滚动：smooth 的中间态会被 scroll 监听误判成用户上滚。
+    if (!follow) return;
+    scrollToBottom(false);
+    // follow 不入依赖：重开跟随的那一刻不补滚（用户可能还在惯性滚动中），等下一次内容变化再贴底
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollKey, scrollToBottom]);
 
   async function activeTabId(): Promise<number | undefined> {
     let [tab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -61,12 +85,9 @@ export function ChatView() {
   }
 
   const postToPort = (msg: PortMsgFromPanel): boolean => {
-    try { ensurePort().postMessage(msg); return true; }
-    catch {
-      portRef.current = null;
-      applyEvent({ type: 'error', message: '与后台的连接已断开，请重试（若持续，请重新加载扩展）' });
-      return false;
-    }
+    if (postToAgent(msg)) return true;
+    applyEvent({ type: 'error', message: '与后台的连接已断开，请重试（若持续，请重新加载扩展）' });
+    return false;
   };
 
   const send = async () => {
@@ -130,26 +151,39 @@ export function ChatView() {
     >
       <div className="chat">
         <ConversationMenu />
-        <div className="chat__log">
-          {messages.length === 0 && (
-            <div className="chat__empty">
-              输入指令，让 AI 操作当前页面。
-              <br />
-              例如“帮我点掉 cookie 弹窗”。
-            </div>
-          )}
-          {messages.map((m, i) => (
-            <MessageRow key={i} index={i} item={m} streaming={status === 'running' && i === lastIdx} />
-          ))}
-          {status === 'paused' && (
-            <div className="pausebar rise">
-              <div style={{ marginBottom: 8 }}>
-                <span className="token" style={{ color: 'var(--warn)' }}>PAUSED</span> {pauseReason}
+        <div className="chat__stage">
+          <div className="chat__log" ref={logRef} onScroll={onLogScroll}>
+            {messages.length === 0 && (
+              <div className="chat__empty">
+                输入指令，让 AI 操作当前页面。
+                <br />
+                例如“帮我点掉 cookie 弹窗”。
               </div>
-              <Button variant="signal" onClick={resume}>继续</Button>
-            </div>
+            )}
+            {messages.map((m, i) => (
+              <MessageRow key={i} index={i} item={m} streaming={status === 'running' && i === lastIdx} />
+            ))}
+            {status === 'paused' && (
+              <div className="pausebar rise">
+                <div style={{ marginBottom: 8 }}>
+                  <span className="token" style={{ color: 'var(--warn)' }}>PAUSED</span> {pauseReason || '已暂停'}
+                </div>
+                <Button variant="signal" onClick={resume}>继续</Button>
+              </div>
+            )}
+          </div>
+          {!follow && messages.length > 0 && (
+            <button
+              type="button"
+              className="chat__tobottom"
+              // 流式中用瞬时：smooth 的下落会被下一次增量的瞬时贴底截断，不如一步到位
+              onClick={() => { setFollow(true); scrollToBottom(status !== 'running'); }}
+              aria-label="滚动到底部"
+              title="滚动到底部"
+            >
+              <ArrowDownToLine size={15} />
+            </button>
           )}
-          <div ref={endRef} />
         </div>
         <div className="composer">
           <textarea

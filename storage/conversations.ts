@@ -29,6 +29,9 @@ const MAX_TITLE_LEN = 30;
 const DEFAULT_TITLE = '新会话';
 const key = (id: string) => `local:conv:${id}` as const;
 const INDEX_KEY = 'local:conv-index';
+// 当前会话指针放 session 区：浏览器关闭时由浏览器自动清空 →
+// 「同一次浏览器会话内切标签/重开面板」保持原会话，「浏览器重启后首次打开」才开新会话。
+const CURRENT_KEY = 'session:currentConvId';
 
 async function readIndex(): Promise<ConversationMeta[]> {
   return (await storage.getItem<ConversationMeta[]>(INDEX_KEY)) ?? [];
@@ -109,4 +112,14 @@ export async function setLastPromptTokens(id: string, tokens: number): Promise<v
 export async function setSummary(id: string, summary: { text: string; coversUpTo: number }): Promise<void> {
   const conv = await getConversation(id);
   await saveConversation({ ...conv, summary });
+}
+
+// ---------- 当前会话指针（session 区，浏览器重启自动失效）----------
+
+export async function getCurrentConvId(): Promise<string | null> {
+  return (await storage.getItem<string>(CURRENT_KEY)) ?? null;
+}
+
+export async function setCurrentConvId(id: string): Promise<void> {
+  await storage.setItem(CURRENT_KEY, id);
 }

@@ -1,6 +1,6 @@
 // background/agent-port.ts
 // sidepanel ↔ background Port 管理 + agent loop 生命周期挂载（设计 §7 / §1.4）。
-import type { PortMsgFromPanel, PortMsgToPanel } from '../shared/messages';
+import type { AgentEvent, PortMsgFromPanel } from '../shared/messages';
 import type { Provider } from '../agent/provider/types';
 import { OpenAICompatProvider } from '../agent/provider/openai-compat';
 import { getSettings } from '../storage/settings';
@@ -8,7 +8,8 @@ import { runAgentLoop, resumeAgentLoop, type LoopDeps } from '../agent/loop';
 import { executeTool } from '../agent/tools/registry';
 import { compactConversation } from '../agent/compact';
 import { resolveContextWindow } from '../agent/model-windows';
-import { setLastPromptTokens } from '../storage/conversations';
+import { getConversation, setLastPromptTokens, setStatus } from '../storage/conversations';
+import { emptyTail, reduceTail, replayTail, type AgentTail } from './agent-tail';
 
 export async function buildProviderFromSettings(): Promise<Provider | null> {
   const { provider } = await getSettings();
@@ -64,11 +65,29 @@ export async function resolveOpenedTab(
   return id;
 }
 
-function makeDeps(
-  provider: Provider,
-  convId: string,
-  port: Pick<Browser.runtime.Port, 'postMessage'>,
-): LoopDeps {
+// ---------- 面板端口集合 + 事件广播 ----------
+// 面板会在切标签/切视图时销毁重建（端口随之断开重连），因此 loop 不能捏着建立时的那一个 port。
+// 改为：SW 维护当前所有活着的面板端口，事件广播给所有端口并盖上 convId，面板按当前会话过滤。
+const panelPorts = new Set<Browser.runtime.Port>();
+
+// per-conv 未落库的流式尾巴（供重新附着的面板补齐当前轮输出）
+const tails = new Map<string, AgentTail>();
+
+function postTo(port: Pick<Browser.runtime.Port, 'postMessage'>, convId: string, e: AgentEvent): void {
+  try {
+    port.postMessage({ ...e, convId });
+  } catch {
+    /* port 已断开：忽略 */
+  }
+}
+
+/** 广播 agent 事件到所有活着的面板（并推进该会话的流式尾巴）。 */
+function broadcast(convId: string, e: AgentEvent): void {
+  tails.set(convId, reduceTail(tails.get(convId) ?? emptyTail(), e));
+  for (const p of panelPorts) postTo(p, convId, e);
+}
+
+function makeDeps(provider: Provider, convId: string): LoopDeps {
   return {
     provider,
     executeTool: (name, args, tabId, signal) =>
@@ -80,18 +99,32 @@ function makeDeps(
       return resolveContextWindow(p.model, p.contextWindow);
     },
     compact: (id) => compactConversation(id, { provider }),
-    emit: (m: PortMsgToPanel) => {
-      try {
-        port.postMessage(m);
-      } catch {
-        /* port 已断开：loop 继续 */
-      }
-    },
+    // 断开的端口在 postTo 内被吞掉：loop 不受面板生死影响，继续跑到底
+    emit: (m) => broadcast(convId, m),
   };
 }
 
 // 同 conv 单 loop 闸门 + 中断句柄：每个运行中的会话挂一个 AbortController。
 const runningConvs = new Map<string, AbortController>();
+
+/** 算出附着时该补发给面板的事件序列（权威运行态 + 未落库的流式尾巴）。
+ *  running 与否只认后台有没有活着的 loop，不认 storage：SW 被杀会在 storage 里留下假 running，
+ *  此处顺手改回 idle，避免面板输入框永久禁用。 */
+export async function buildAttachEvents(convId: string, running: boolean, tail: AgentTail): Promise<AgentEvent[]> {
+  const conv = await getConversation(convId);
+  if (running) {
+    return [{ type: 'state', status: 'running', messageCount: conv.messages.length }, ...replayTail(tail)];
+  }
+  if (conv.status === 'running') await setStatus(convId, 'idle');
+  const status = conv.status === 'running' ? 'idle' : conv.status;
+  return [{ type: 'state', status, messageCount: conv.messages.length }];
+}
+
+async function handleAttach(port: Browser.runtime.Port, convId: string): Promise<void> {
+  const running = runningConvs.has(convId);
+  const events = await buildAttachEvents(convId, running, tails.get(convId) ?? emptyTail());
+  for (const e of events) postTo(port, convId, e);
+}
 
 /** 中断指定会话的运行中 loop（agent:stop）。loop 在下个检查点干净退出。 */
 export function stopConv(convId: string): void {
@@ -102,12 +135,21 @@ export function stopConv(convId: string): void {
 export function attachAgentPort(): void {
   browser.runtime.onConnect.addListener((port) => {
     if (port.name !== 'agent') return;
-    const safePost = (m: PortMsgToPanel) => {
-      try { port.postMessage(m); } catch { /* port 已断开：忽略 */ }
-    };
+    panelPorts.add(port);
+    port.onDisconnect.addListener(() => {
+      void browser.runtime.lastError;
+      panelPorts.delete(port);
+    });
     port.onMessage.addListener(async (raw) => {
       const msg = raw as PortMsgFromPanel;
-      console.log('[agent-port] 收到消息', msg.type, (msg as { convId?: string }).convId);
+      console.log('[agent-port] 收到消息', msg.type, msg.convId);
+      // 只回本端口的一问一答（错误提示等）；loop 事件走 broadcast
+      const safePost = (m: AgentEvent) => postTo(port, msg.convId, m);
+
+      if (msg.type === 'agent:attach') {
+        await handleAttach(port, msg.convId);
+        return;
+      }
 
       if (msg.type === 'agent:stop') {
         stopConv(msg.convId);
@@ -125,14 +167,14 @@ export function attachAgentPort(): void {
           safePost({ type: 'error', message: '请先在设置页配置 AI 服务（Base URL + 模型）' });
           return;
         }
-        safePost({ type: 'compact-start' });
+        broadcast(msg.convId, { type: 'compact-start' });
         const r = await compactConversation(msg.convId, { provider }).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
         if (r.ok && r.newPromptTokens != null) {
           await setLastPromptTokens(msg.convId, r.newPromptTokens);
-          safePost({ type: 'usage', promptTokens: r.newPromptTokens });
+          broadcast(msg.convId, { type: 'usage', promptTokens: r.newPromptTokens });
         }
         if (!r.ok) safePost({ type: 'error', message: `压缩失败：${r.error ?? '未知错误'}` });
-        safePost({ type: 'compact-done', newPromptTokens: r.ok ? r.newPromptTokens : undefined });
+        broadcast(msg.convId, { type: 'compact-done', newPromptTokens: r.ok ? r.newPromptTokens : undefined });
         return;
       }
 
@@ -149,9 +191,10 @@ export function attachAgentPort(): void {
         safePost({ type: 'error', message: '请先在设置页配置 AI 服务（Base URL + 模型）' });
         return;
       }
-      const deps = makeDeps(provider, msg.convId, port);
+      const deps = makeDeps(provider, msg.convId);
       const ac = new AbortController();
       runningConvs.set(msg.convId, ac);
+      tails.set(msg.convId, emptyTail());
       try {
         if (msg.type === 'agent:start') {
           await runAgentLoop({ convId: msg.convId, tabId: msg.tabId, userMessage: msg.userMessage }, deps, ac.signal);
@@ -160,9 +203,10 @@ export function attachAgentPort(): void {
         }
       } catch (err) {
         console.error('[agent-port] loop 抛错', err);
-        safePost({ type: 'error', message: err instanceof Error ? err.message : String(err) });
+        broadcast(msg.convId, { type: 'error', message: err instanceof Error ? err.message : String(err) });
       } finally {
         runningConvs.delete(msg.convId);
+        tails.delete(msg.convId);
       }
     });
   });

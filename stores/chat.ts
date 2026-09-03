@@ -1,6 +1,6 @@
 // stores/chat.ts
 import { create } from 'zustand';
-import type { PortMsgToPanel } from '../shared/messages';
+import type { AgentEvent } from '../shared/messages';
 import type { ChatMessage } from '../agent/provider/types';
 
 export type ChatStatus = 'idle' | 'running' | 'paused';
@@ -11,6 +11,7 @@ export interface ChatItem {
   reasoning?: string;        // 思考文本
   thinking?: boolean;        // 是否处于「思考中」（控制默认展开）
   expanded?: boolean;        // 用户手动展开/收起（思考块 & 工具卡片共用）
+  sealed?: boolean;          // 由 storage 载入的历史项：流式增量不得再往它上面追加
   name?: string; args?: string; callId?: string;
   status?: 'running' | 'done'; ok?: boolean; summary?: string;
   output?: string;           // 工具完整输出（供展开）
@@ -25,7 +26,7 @@ interface ChatState {
   promptTokens?: number;   // 当前会话最近一轮真实发出的 token（环形指示器分子）
   compacting: boolean;     // 是否正在压缩
   addUserMessage: (text: string) => void;
-  applyEvent: (e: PortMsgToPanel) => void;
+  applyEvent: (e: AgentEvent) => void;
   setStatus: (s: ChatStatus) => void;
   toggleExpand: (index: number) => void;
   loadFromStorage: (messages: ChatMessage[]) => void;
@@ -87,13 +88,20 @@ export const useChat = create<ChatState>((set) => ({
       } else if (m.role === 'assistant') {
         const text = contentText(m.content);
         // 历史思考块：thinking=false（默认收起，可点开）
+        // sealed：后续流式增量必须新起一条 assistant，不能续写这条已落库的历史
         if (text || m.reasoning) {
-          items.push({ role: 'assistant', text: text || undefined, reasoning: m.reasoning, thinking: false });
+          items.push({ role: 'assistant', text: text || undefined, reasoning: m.reasoning, thinking: false, sealed: true });
         }
         for (const tc of m.toolCalls ?? []) {
           const res = toolResults.get(tc.id);
           const output = res?.content;
-          const ok = output != null ? !output.startsWith('错误：') : true;
+          if (output == null) {
+            // 有调用无结果 = 该工具尚未回来（切标签重挂载时正在执行，或 SW 中途被杀）。
+            // 渲染成 running，后台的 tool-end 到达后按 callId 更新为终态。
+            items.push({ role: 'tool', name: tc.name, args: tc.arguments, callId: tc.id, status: 'running' });
+            continue;
+          }
+          const ok = !output.startsWith('错误：');
           items.push({
             role: 'tool', name: tc.name, args: tc.arguments, callId: tc.id,
             status: 'done', ok, summary: ok ? '成功' : '失败', output,
@@ -111,7 +119,7 @@ export const useChat = create<ChatState>((set) => ({
     switch (e.type) {
       case 'reasoning-delta': {
         const last = messages[messages.length - 1];
-        if (last?.role === 'assistant' && last.status == null && last.thinking) {
+        if (last?.role === 'assistant' && !last.sealed && last.status == null && last.thinking) {
           messages[messages.length - 1] = { ...last, reasoning: (last.reasoning ?? '') + e.text };
         } else {
           messages.push({ role: 'assistant', reasoning: e.text, thinking: true });
@@ -120,7 +128,7 @@ export const useChat = create<ChatState>((set) => ({
       }
       case 'text-delta': {
         const last = messages[messages.length - 1];
-        if (last?.role === 'assistant' && last.status == null) {
+        if (last?.role === 'assistant' && !last.sealed && last.status == null) {
           // 首个正文增量：自动收起思考块（thinking→false）
           messages[messages.length - 1] = { ...last, text: (last.text ?? '') + e.text, thinking: false };
         } else {

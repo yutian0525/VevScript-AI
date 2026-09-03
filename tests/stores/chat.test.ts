@@ -244,3 +244,71 @@ describe('chat store 新分支', () => {
     expect(useChat.getState().messages).toEqual([]);
   });
 });
+
+describe('chat store：重挂载后接住流式尾巴', () => {
+  beforeEach(() => useChat.getState().reset());
+
+  it('历史 assistant 项被封存：补发的增量另起一条，不追加到历史尾巴上', () => {
+    useChat.getState().loadFromStorage([{ role: 'assistant', content: '上一轮的结论' }]);
+    useChat.getState().applyEvent({ type: 'text-delta', text: '这一轮' });
+    const items = useChat.getState().messages;
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({ text: '上一轮的结论', sealed: true });
+    expect(items[1]).toMatchObject({ role: 'assistant', text: '这一轮' });
+  });
+
+  it('封存同样拦 reasoning-delta：不会把新思考塞进历史的思考块', () => {
+    useChat.getState().loadFromStorage([{ role: 'assistant', content: '', reasoning: '旧的思考' }]);
+    useChat.getState().applyEvent({ type: 'reasoning-delta', text: '新的思考' });
+    const items = useChat.getState().messages;
+    expect(items).toHaveLength(2);
+    expect(items[0]!.reasoning).toBe('旧的思考');
+    expect(items[1]).toMatchObject({ reasoning: '新的思考', thinking: true });
+  });
+
+  it('补发的尾巴按 reasoning → text 顺序回放，合成一条完整 assistant 项', () => {
+    useChat.getState().loadFromStorage([{ role: 'user', content: '问题' }]);
+    // 后台 replayTail 的输出
+    useChat.getState().applyEvent({ type: 'reasoning-delta', text: '想到一半' });
+    useChat.getState().applyEvent({ type: 'text-delta', text: '说到一半' });
+    const items = useChat.getState().messages;
+    expect(items).toHaveLength(2);
+    expect(items[1]).toMatchObject({ role: 'assistant', reasoning: '想到一半', text: '说到一半', thinking: false });
+  });
+
+  it('有调用无结果的 toolCall 载入为 running：切标签回来时该工具仍在执行', () => {
+    useChat.getState().loadFromStorage([
+      { role: 'assistant', content: '', toolCalls: [{ id: 'c1', name: 'take_snapshot', arguments: '{}' }] },
+    ]);
+    const toolItem = useChat.getState().messages.find((m) => m.callId === 'c1')!;
+    expect(toolItem).toMatchObject({ role: 'tool', name: 'take_snapshot', status: 'running' });
+    expect(toolItem.ok).toBeUndefined();
+  });
+
+  it('running 卡片被随后到达的 tool-end 收口（callId 幂等，不产生第二张卡）', () => {
+    useChat.getState().loadFromStorage([
+      { role: 'assistant', content: '', toolCalls: [{ id: 'c1', name: 'click', arguments: '{"uid":3}' }] },
+    ]);
+    useChat.getState().applyEvent({ type: 'tool-end', name: 'click', callId: 'c1', ok: true, summary: '成功', output: 'done' });
+    const cards = useChat.getState().messages.filter((m) => m.callId === 'c1');
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({ status: 'done', ok: true, output: 'done' });
+  });
+
+  it('多个 toolCall 只回来一个结果时，另一个仍是 running', () => {
+    useChat.getState().loadFromStorage([
+      {
+        role: 'assistant',
+        content: '',
+        toolCalls: [
+          { id: 'c1', name: 'take_snapshot', arguments: '{}' },
+          { id: 'c2', name: 'click', arguments: '{"uid":1}' },
+        ],
+      },
+      { role: 'tool', toolCallId: 'c1', name: 'take_snapshot', content: '[1] button' },
+    ]);
+    const items = useChat.getState().messages;
+    expect(items.find((m) => m.callId === 'c1')).toMatchObject({ status: 'done', ok: true });
+    expect(items.find((m) => m.callId === 'c2')).toMatchObject({ status: 'running' });
+  });
+});
