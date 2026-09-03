@@ -7,11 +7,17 @@ import { Button } from '../ui/Button';
 import { classifyGrants } from '../../shared/gm-apis';
 import type { UserScript } from '../../shared/types';
 
-/** 全屏页语境：active tab 就是详情页自己，要找的是最近的普通网页标签（过滤扩展自有页面）。 */
+/** 详情页自身是 active tab，不能只查 active——要找最近的普通网页标签。 */
 async function findReloadTarget(): Promise<number | null> {
+  // 先试当前窗口的非扩展页（用户大概率想刷的就是刚操作过的页），没有再全量找最近访问的
   const tabs = await browser.tabs.query({ active: true, lastFocusedWindow: true });
-  const target = tabs.find((t) => t.url != null && !t.url.startsWith('chrome-extension://')) ?? null;
-  return target?.id ?? null;
+  const inWindow = tabs.find((t) => t.url != null && !t.url.startsWith('chrome-extension://'));
+  if (inWindow?.id != null) return inWindow.id;
+  const all = await browser.tabs.query({ url: ['http://*/*', 'https://*/*'] });
+  const recent = all
+    .filter((t) => t.id != null)
+    .sort((a, b) => (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0))[0];
+  return recent?.id ?? null;
 }
 
 export function DetailInfoTab({ script }: { script: UserScript }) {

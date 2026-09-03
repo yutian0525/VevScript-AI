@@ -106,6 +106,31 @@ describe('DetailApp', () => {
     });
   });
 
+  it('有 http 标签时「重载当前页」可用，点击发 tabs.reload', async () => {
+    mockBackend(mkScript());
+    fakeBrowser.tabs.query = vi.fn().mockResolvedValue([{ id: 42, url: 'https://a.com', active: true, lastAccessed: 100 }]) as never;
+    const reload = vi.spyOn(browser.tabs, 'reload').mockResolvedValue();
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    const btn = await screen.findByRole('button', { name: '重载当前页' });
+    await vi.waitFor(() => expect(btn.hasAttribute('disabled')).toBe(false));
+    fireEvent.click(btn);
+    await vi.waitFor(() => {
+      expect(reload).toHaveBeenCalled();
+      expect(reload.mock.calls[0]?.[0]).toBe(42);
+    });
+  });
+
+  it('无 http 标签时「重载当前页」禁用（降级路径）', async () => {
+    mockBackend(mkScript());
+    fakeBrowser.tabs.query = vi.fn().mockResolvedValue([]) as never; // 当前窗口 + 全量 http 查询都空
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    const btn = await screen.findByRole('button', { name: '重载当前页' });
+    await vi.waitFor(() => expect(btn.hasAttribute('disabled')).toBe(true));
+    expect(btn.getAttribute('title')).toBe('无可重载的网页');
+  });
+
   it('dirty 保存流：编辑源码 → 保存 → 顶栏显示新名字 + patch.text 正确（钉住 #2）', async () => {
     const newText = '// ==UserScript==\n// @name 新名字\n// @match *://*/*\n// ==/UserScript==\nconsole.log(2);';
     mockBackend(mkScript(), { updated: mkScript({ name: '新名字', text: newText, updatedAt: 2 }) });
