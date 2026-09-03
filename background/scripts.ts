@@ -9,7 +9,11 @@ import type { ScriptRunAt, ScriptSource, ScriptWorld, UserScript } from '../shar
 import { deleteScript, getScript, listScripts, saveScript, toSummary, MAX_CODE_LENGTH, MAX_TEXT_LENGTH } from '../storage/scripts';
 import { isValidMatchPattern, matchUrl } from '../shared/match-pattern';
 import { parseUserScript } from '../shared/userscript-meta';
-import { gmErrorCounts } from './gm-api'; // Task 7 提供：Record<scriptId, number>
+import { gmErrorCounts, readValuesForSnapshot, cleanupScriptState } from './gm-api'; // Task 7 提供：Record<scriptId, number>
+import { buildWrappedCode } from '../shared/gm-wrapper';
+import { getBridgeToken } from './gm-token';
+import { prefetchResources, getResourceBundle } from './gm-resources';
+import { removeScriptPermissions } from './gm-permissions';
 
 export const ENGINE_UNAVAILABLE_MSG = '脚本注入引擎不可用：请在 chrome://extensions 开启开发者模式或升级 Chrome 120+';
 
@@ -120,21 +124,40 @@ export function validateScriptFields(fields: {
 
 // ---------- 注册同步（spec §6.1：期望注册集 vs getScripts diff）----------
 
-function toRegisterDetails(s: UserScript): RegisterUserScript {
-  return {
-    id: s.id,
-    matches: s.matches,
-    js: [{ code: s.code }],
-    runAt: s.runAt,
-    world: s.world,
-    persistAcrossSessions: true,
-  };
+/** 扩展版本号（wrapper GM_info 用）；SW 下取 manifest，测试环境 getManifest 未实现抛错 → 兜底 0.0.0。 */
+function extensionVersion(): string {
+  try {
+    return browser.runtime.getManifest().version ?? '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
 }
 
-function sameRegistration(r: RegisterUserScript, s: UserScript): boolean {
-  return r.runAt === s.runAt && r.world === s.world
-    && JSON.stringify(r.matches) === JSON.stringify(s.matches)
-    && r.js?.[0]?.code === s.code;
+/** 期望注册详情：带 grant 或 @require 的脚本走 wrapper（buildWrappedCode），否则裸 code（零开销）。 */
+async function toRegisterDetailsAsync(s: UserScript): Promise<RegisterUserScript> {
+  const base = { id: s.id, matches: s.matches, runAt: s.runAt, world: s.world, persistAcrossSessions: true };
+  const realGrants = (s.meta?.grants ?? []).filter((g) => g !== 'none');
+  const hasRequires = (s.meta?.requires?.length ?? 0) > 0;
+  if (realGrants.length === 0 && !hasRequires) {
+    return { ...base, js: [{ code: s.code }] };
+  }
+  const [token, values, bundle] = await Promise.all([
+    getBridgeToken(s.id),
+    readValuesForSnapshot(s.id),
+    getResourceBundle(s),
+  ]);
+  const code = buildWrappedCode(s, {
+    token, values, resources: bundle.resources, requireCodes: bundle.requireCodes,
+    extensionVersion: extensionVersion(),
+  });
+  return { ...base, js: [{ code }] };
+}
+
+/** drift 检测：比对已注册与构建后的注册详情（js[0].code 已是最终 wrapped/bare 码）。 */
+function sameRegistration(r: RegisterUserScript, b: RegisterUserScript): boolean {
+  return r.runAt === b.runAt && r.world === b.world
+    && JSON.stringify(r.matches) === JSON.stringify(b.matches)
+    && r.js?.[0]?.code === b.js?.[0]?.code;
 }
 
 export async function syncRegistrations(): Promise<void> {
@@ -152,23 +175,26 @@ export async function syncRegistrations(): Promise<void> {
   }
   const registeredMap = new Map(registered.map((r) => [r.id, r]));
 
-  const missing = desired.filter((s) => !registeredMap.has(s.id));
-  if (missing.length > 0) await api.register(missing.map(toRegisterDetails));
+  // 先构建全部期望注册（含 wrapper code）——drift 检测比对构建后的码，避免包裹脚本被误判 drift
+  const built = await Promise.all(desired.map(toRegisterDetailsAsync));
+
+  const missing = built.filter((b) => !registeredMap.has(b.id));
+  if (missing.length > 0) await api.register(missing);
 
   const stale = registered.filter((r) => !desiredIds.has(r.id)).map((r) => r.id);
   if (stale.length > 0) await api.unregister(stale);
 
-  const drifted = desired.filter((s) => {
-    const r = registeredMap.get(s.id);
-    return r != null && !sameRegistration(r, s);
+  const drifted = built.filter((b) => {
+    const r = registeredMap.get(b.id);
+    return r != null && !sameRegistration(r, b);
   });
-  for (const s of drifted) {
+  for (const b of drifted) {
     try {
-      await api.update([toRegisterDetails(s)]);
+      await api.update([b]);
     } catch {
       // update 打在未注册 id 上（极端漂移）→ 降级为先注销再注册
-      await api.unregister([s.id]);
-      await api.register([toRegisterDetails(s)]);
+      await api.unregister([b.id]);
+      await api.register([b]);
     }
   }
 }
@@ -243,9 +269,10 @@ export async function handleCreate(input: ScriptInput): Promise<{ script: UserSc
     source: input.source ?? 'user', createdAt: Date.now(),
   });
   await saveScript(script);
+  const resWarnings = await prefetchResources(script);
   const syncWarnings = await syncBestEffort();
   await recomputeAllTabs().catch(() => {});
-  return { script, warnings: [...warnings, ...syncWarnings] };
+  return { script, warnings: [...warnings, ...resWarnings, ...syncWarnings] };
 }
 
 export async function handleUpdate(id: string, patch: ScriptPatch): Promise<UserScript> {
@@ -275,6 +302,8 @@ export async function handleUpdate(id: string, patch: ScriptPatch): Promise<User
     next = { ...existing, enabled: patch.enabled as boolean, updatedAt: Date.now() };
   }
   await saveScript(next);
+  const resWarnings = await prefetchResources(next);
+  if (resWarnings.length > 0) console.warn('[scripts] 依赖预取:', ...resWarnings);
   await syncRegistrations();
   await recomputeAllTabs().catch(() => {});
   return next;
@@ -300,6 +329,8 @@ export async function handleGet(id: string, offset?: number, limit?: number): Pr
 export async function handleDelete(id: string): Promise<void> {
   await requireEngine();
   await deleteScript(id);
+  await cleanupScriptState(id);
+  await removeScriptPermissions(id).catch(() => {});
   await syncRegistrations();
   await recomputeAllTabs().catch(() => {});
 }
@@ -320,9 +351,10 @@ export async function handleImport(text: string, filename?: string): Promise<{ s
     text, id: newId(), enabled: true, source: 'import', createdAt: Date.now(), fallbackName: filename,
   });
   await saveScript(script);
+  const resWarnings = await prefetchResources(script);
   const syncWarnings = await syncBestEffort();
   await recomputeAllTabs().catch(() => {});
-  return { script, warnings: [...warnings, ...syncWarnings] };
+  return { script, warnings: [...warnings, ...resWarnings, ...syncWarnings] };
 }
 
 // ---------- 消息接线（spec §7）：8 个 handler + tabs 监听 + 启动自愈 ----------

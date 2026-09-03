@@ -7,6 +7,7 @@ import { HOOK_MSG, RELAY_READY, type HookWindowMsg } from '../shared/hook-bridge
 import { buildSnapshot } from '../content/snapshot/build';
 import { doClick, doFill, doFillForm, doHover, doScroll, doPressKey } from '../content/interact';
 import { waitForText } from '../content/wait';
+import { initBridgeHost, handleGmEvent } from '../content/gm-bridge-host';
 
 /** 纯处理逻辑（可单测）：一条 BgToCsRequest → CsResponse。 */
 export async function handleCsRequest(req: BgToCsRequest): Promise<CsResponse> {
@@ -67,6 +68,14 @@ export default defineContentScript({
     // 告诉 hook「中继已就绪」→ hook flush 掉 document_idle 之前缓冲的早期观测。
     // 先加上面的 listener 再发，保证 flush 出来的消息被接住。
     window.postMessage({ source: RELAY_READY }, '*');
+    // GM 桥宿主（Phase 5 spec §6）：拉 token 表 + 转发 gmreq/gmevt
+    initBridgeHost();
+    // SW 下行 GM_EVENT → 页面 gmevt（与上面 CS 请求 listener 并存，各自按 type 过滤）
+    browser.runtime.onMessage.addListener((msg: unknown) => {
+      const m = msg as { type?: string };
+      if (m?.type === 'GM_EVENT') handleGmEvent(m as Parameters<typeof handleGmEvent>[0]);
+      return false; // 非 GM_EVENT 不处理，交给其它 listener
+    });
     // 加载完成通知（navigate 后 background 等待此信号）
     const ready: CsReadyNotification = { type: 'CS_READY', payload: { url: location.href } };
     browser.runtime.sendMessage(ready).catch(() => {});

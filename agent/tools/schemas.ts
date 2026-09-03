@@ -262,7 +262,7 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'list_scripts',
       description:
-        '列出脚本库中的用户脚本摘要（不含代码体）。enabled 按启用状态过滤；urlContains 按匹配模式子串过滤（大小写不敏感）。需要完整代码时用 get_script。',
+        '列出脚本库中的用户脚本摘要（不含代码体）。enabled 按启用状态过滤；urlContains 按匹配模式子串过滤（大小写不敏感）。summary 含 errorCount（脚本运行报错条数，>0 时可主动向用户提议排查）与 grantSupported/grantUnsupported（GM API 支持状态）。需要完整代码时用 get_script。',
       parameters: obj({
         enabled: { type: 'boolean', description: '按启用状态过滤' },
         urlContains: { type: 'string', description: '匹配模式包含该子串（大小写不敏感）' },

@@ -6,6 +6,7 @@
 import { storage } from 'wxt/utils/storage';
 import type { ScriptSummary, UserScript } from '../shared/types';
 import { stringifyUserScript } from '../shared/userscript-meta';
+import { classifyGrants } from '../shared/gm-apis';
 
 const KEY = 'local:scripts:index' as const;
 
@@ -58,6 +59,7 @@ export async function deleteScript(id: string): Promise<void> {
 
 // storage/scripts.ts —— toSummary 签名改为接收错误计数（SW 内存态由编排层持有）
 export function toSummary(s: UserScript, errorCount = 0): ScriptSummary {
+  const { supported, unsupported } = classifyGrants(s.meta?.grants ?? []);
   return {
     id: s.id,
     name: s.name,
@@ -71,5 +73,7 @@ export function toSummary(s: UserScript, errorCount = 0): ScriptSummary {
     hasGrants: (s.meta?.grants?.length ?? 0) > 0,
     errorCount,
     hasRequires: (s.meta?.requires?.length ?? 0) > 0,
+    grantSupported: supported,
+    grantUnsupported: unsupported,
   };
 }

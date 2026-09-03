@@ -2,16 +2,18 @@
 // 脚本详情页（spec §9.2 修订：文本为源）——源码 textarea + 实时解析面板 + 保存/启停/删除/导出/重载当前页。
 // text（.user.js 原文）是唯一真源：头部 @字段 即配置，解析面板随输入实时重算，保存 patch { text }。
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Download, Power, RotateCw, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, Download, Power, RotateCw, Save, Trash2, X } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { sendScriptsRequest, useScripts } from '../../stores/scripts';
 import { useUi } from '../../stores/ui';
 import { parseUserScript } from '../../shared/userscript-meta';
+import { classifyGrants } from '../../shared/gm-apis';
 import type { UserScript } from '../../shared/types';
 
 export function ScriptDetailView({ id }: { id: string }) {
   const openScript = useUi((s) => s.openScript);
+  const errors = useScripts((s) => s.errors[id] ?? []);
   const [script, setScript] = useState<UserScript | null>(null);
   const [text, setText] = useState('');
   const [notFound, setNotFound] = useState(false);
@@ -138,8 +140,15 @@ export function ScriptDetailView({ id }: { id: string }) {
             <div className="mono">match: {f.matches.length > 0 ? f.matches.join('  ') : '（无——脚本不会运行）'}</div>
             <div className="mono">run-at: {f.runAt} · world: {f.world}</div>
             {f.meta.grants && f.meta.grants.length > 0 && (
-              <div className="scripts-warnline">
-                需要 GM_* API（{f.meta.grants.join(', ')}）——本扩展不支持，脚本调用会报错
+              <div style={{ fontSize: 11 }}>
+                {f.meta.grants.map((g) => {
+                  const ok = classifyGrants([g]).supported.length > 0;
+                  return (
+                    <div key={g} className="mono" style={{ display: 'flex', alignItems: 'center', gap: 4, color: ok ? 'var(--ink-2)' : 'var(--warn)' }}>
+                      {ok ? <Check size={11} aria-hidden /> : <X size={11} aria-hidden />} {g}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -179,6 +188,20 @@ export function ScriptDetailView({ id }: { id: string }) {
             }}
           />
         </div>
+
+        {errors.length > 0 && (
+          <div className="scripts-run">
+            <div className="scripts-run__head mono" style={{ display: 'flex', alignItems: 'center' }}>
+              <span>ERRORS · {errors.length}</span>
+              <Button variant="ghost" style={{ marginLeft: 'auto' }} onClick={() => void sendScriptsRequest({ type: 'SCRIPTS_CLEAR_ERRORS', scriptId: id })}>清空</Button>
+            </div>
+            {errors.slice(-10).reverse().map((e, i) => (
+              <div key={i} className="scripts-run__item" style={{ color: 'var(--warn)' }}>
+                {new Date(e.at).toLocaleTimeString()} · line {e.line ?? '?'} · {e.message}
+              </div>
+            ))}
+          </div>
+        )}
 
         {message && (
           <div className="scripts-warnline" role="status">

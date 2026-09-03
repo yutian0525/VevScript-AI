@@ -788,6 +788,12 @@ body {
 .scripts-badge--signal { color: var(--signal-ink); border-color: var(--signal); background: var(--signal-wash); }
 .scripts-warnline { font-size: 11px; color: var(--warn); margin: 2px 0 8px; }
 .scripts-footer { display: flex; gap: 6px; margin-top: 10px; }
+.scripts-menubtn {
+  font: inherit; font-size: 12px; text-align: left; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: 8px; padding: 4px 8px; margin: 2px 0; display: block; width: 100%;
+}
+.scripts-menubtn:hover { border-color: var(--line-strong); }
 .script-editor {
   font-family: var(--mono);
   font-size: 12px;

@@ -51,10 +51,16 @@ const API_TO_GRANT: Record<string, string> = {
 // SW 只当存储；错误上报是框架自身调用（spec §8）。
 const GRANT_EXEMPT = new Set(['ReportError', 'SetValue', 'GetValue', 'DeleteValue', 'ListValues']);
 
+// GM_notification 兜底图标（Chrome basic 通知要求非空 iconUrl；public 无图标资产时用内嵌 data URL）
+const NOTIF_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
 // ---- SW 内存态（重启丢失、可自重建，spec §4.1）----
 const errorBuffers = new Map<string, GmErrorEntry[]>();
 const ERROR_BUFFER_MAX = 20;
 const menuTable = new Map<string, Map<string, GmMenuCommand>>();
+// notifId → 回发目标（GM_notification 的 onClicked/onClosed 路由回注册来源 tab，spec §8）。
+// SW 内存态，重启丢失可接受——通知本身也随 SW 失效。
+const notifTargets = new Map<string, { scriptId: string; tabId: number }>();
 
 export function gmErrorCounts(): Record<string, number> {
   const out: Record<string, number> = {};
@@ -64,6 +70,13 @@ export function gmErrorCounts(): Record<string, number> {
 
 export function getErrorBuffer(scriptId: string): GmErrorEntry[] {
   return [...(errorBuffers.get(scriptId) ?? [])];
+}
+
+/** 全部脚本的错误缓冲快照（面板复水用）。 */
+export function getAllErrors(): Record<string, GmErrorEntry[]> {
+  const out: Record<string, GmErrorEntry[]> = {};
+  for (const [id, buf] of errorBuffers) if (buf.length > 0) out[id] = [...buf];
+  return out;
 }
 
 function broadcastToPanel(msg: Record<string, unknown>): void {
@@ -132,6 +145,7 @@ export async function readValuesForSnapshot(scriptId: string): Promise<Record<st
 export async function cleanupScriptState(scriptId: string): Promise<void> {
   errorBuffers.delete(scriptId);
   menuTable.delete(scriptId);
+  for (const [id, t] of notifTargets) if (t.scriptId === scriptId) notifTargets.delete(id);
   await storage.removeItem(valuesKey(scriptId));
   broadcastMenus();
 }
@@ -143,11 +157,9 @@ async function grantAllowed(scriptId: string, api: string): Promise<boolean> {
   const script = await getScript(scriptId);
   if (!script) return false;
   const grants = script.meta?.grants ?? [];
+  // bridge 只发短 api 名（映射到 GM_ 全名）或已是 GM_ 全名，从不产生点形式，故直接精确匹配。
   const required = API_TO_GRANT[api] ?? api;
-  if (grants.includes(required)) return true;
-  // 点形式别名：GM.notification 归 GM_notification
-  const under = required.replace(/^GM\./, 'GM_');
-  return grants.includes(under);
+  return grants.includes(required);
 }
 
 async function broadcastValueChange(
@@ -167,6 +179,148 @@ async function broadcastValueChange(
   if (sender?.tab?.id != null) targets.set(sender.tab.id, false);
   for (const [tabId, remote] of targets) {
     void sendGmEvent(tabId, scriptId, 'VALUE_CHANGE', { key, oldValue, newValue, remote });
+  }
+}
+
+// ---- @connect 校验（spec §8.1）----
+
+export const ConnectDecision = { ALLOW: 0, DENY: 1, CONFIRM: 2 } as const;
+export type ConnectDecision = (typeof ConnectDecision)[keyof typeof ConnectDecision];
+
+function hostOf(url: string): string {
+  try { return new URL(url).hostname; } catch { return ''; }
+}
+
+/** 纯函数三分支（spec §8.1）：self/子域或 @connect 命中→ALLOW；列了不中→DENY；未列→查 alwaysAllowedHosts，命中 ALLOW 否则 CONFIRM。 */
+export function matchConnect(
+  connects: string[], reqUrl: string, pageUrl: string, alwaysAllowedHosts: string[],
+): ConnectDecision {
+  const reqHost = hostOf(reqUrl);
+  const pageHost = hostOf(pageUrl);
+  if (!reqHost) return ConnectDecision.DENY;
+  // self：同 host / 请求是页面的子域
+  if (reqHost === pageHost || (pageHost && reqHost.endsWith(`.${pageHost}`))) return ConnectDecision.ALLOW;
+  if (connects.includes('*')) return ConnectDecision.ALLOW;
+  for (const c of connects) {
+    const cc = c.toLowerCase();
+    if (cc.startsWith('*.')) {
+      const base = cc.slice(2);
+      if (reqHost === base || reqHost.endsWith(`.${base}`)) return ConnectDecision.ALLOW;
+    } else if (cc === reqHost) return ConnectDecision.ALLOW;
+  }
+  if (connects.some((c) => c && c !== 'none')) return ConnectDecision.DENY;
+  if (alwaysAllowedHosts.includes(reqHost)) return ConnectDecision.ALLOW;
+  return ConnectDecision.CONFIRM;
+}
+
+/** 异步版：查 always 授权库（Task 8 gm-permissions）。 */
+export async function matchConnectWithPermissions(
+  connects: string[], reqUrl: string, pageUrl: string, scriptId: string,
+): Promise<ConnectDecision> {
+  const { getAlwaysAllow } = await import('./gm-permissions');
+  const allowed = await getAlwaysAllow(scriptId, hostOf(reqUrl));
+  return matchConnect(connects, reqUrl, pageUrl, allowed ? [hostOf(reqUrl)] : []);
+}
+
+// ---- 确认队列（spec §8.1，60s 超时拒绝）----
+
+export interface GmConfirm {
+  confirmId: string;
+  scriptId: string;
+  host: string;
+  url: string;
+  createdAt: number;
+}
+
+const pendingConfirms = new Map<string, { confirm: GmConfirm; resolve: (v: 'allow-once' | 'always' | 'deny') => void }>();
+const CONFIRM_TIMEOUT_MS = 60_000;
+
+export function getPendingConfirms(): GmConfirm[] {
+  return [...pendingConfirms.values()].map((p) => p.confirm);
+}
+
+function queueConfirm(scriptId: string, url: string): Promise<'allow-once' | 'always' | 'deny'> {
+  return new Promise((resolve) => {
+    const confirmId = crypto.randomUUID();
+    const confirm: GmConfirm = { confirmId, scriptId, host: hostOf(url), url, createdAt: Date.now() };
+    pendingConfirms.set(confirmId, { confirm, resolve });
+    broadcastToPanel({ type: 'GM_CONFIRM_PENDING', confirm });
+    setTimeout(() => {
+      if (pendingConfirms.has(confirmId)) {
+        pendingConfirms.delete(confirmId);
+        resolve('deny');
+        broadcastToPanel({ type: 'GM_CONFIRM_RESOLVED', confirmId });
+      }
+    }, CONFIRM_TIMEOUT_MS);
+  });
+}
+
+export async function resolveConfirm(confirmId: string, decision: 'allow-once' | 'always' | 'deny'): Promise<void> {
+  const entry = pendingConfirms.get(confirmId);
+  if (!entry) return;
+  pendingConfirms.delete(confirmId);
+  if (decision === 'always') {
+    const { setAlwaysAllow } = await import('./gm-permissions');
+    await setAlwaysAllow(entry.confirm.scriptId, entry.confirm.host);
+  }
+  entry.resolve(decision);
+  broadcastToPanel({ type: 'GM_CONFIRM_RESOLVED', confirmId });
+}
+
+// ---- GM_xmlhttpRequest 实现（替换占位 case）----
+
+const XHR_MAX_BODY = 1024 * 1024;
+const HEADER_ALLOW = new Set(['content-type', 'content-length', 'server', 'date', 'cache-control', 'last-modified', 'etag']);
+
+async function doXmlHttpRequest(
+  scriptId: string, params: unknown[], sender: Sender,
+): Promise<{ ok: true; data?: unknown } | { ok: false; error: string }> {
+  const details = (params[0] ?? {}) as { url?: string; method?: string; headers?: Record<string, string>; body?: string; timeout?: number };
+  if (!details.url) return { ok: false, error: 'GM_xmlhttpRequest 缺少 url' };
+  const script = await getScript(scriptId);
+  if (!script) return { ok: false, error: '脚本不存在' };
+  const pageUrl = sender?.tab?.url ?? '';
+  const decision = await matchConnectWithPermissions(script.meta?.connects ?? [], details.url, pageUrl, scriptId);
+  if (decision === ConnectDecision.CONFIRM) {
+    const choice = await queueConfirm(scriptId, details.url);
+    if (choice === 'deny') return { ok: false, error: 'permission denied（用户拒绝或确认超时；可加 @connect 或在侧边栏批准）' };
+  } else if (decision === ConnectDecision.DENY) {
+    return { ok: false, error: `Refused to connect to "${hostOf(details.url)}"：不在 @connect 列表（请补 @connect）` };
+  }
+  // unsafe header 忽略 + 记 warning（无 DNR，spec §8.1 差异声明）
+  const headers: Record<string, string> = {};
+  const dropped: string[] = [];
+  for (const [k, v] of Object.entries(details.headers ?? {})) {
+    if (/^(user-agent|referer|cookie|origin|host|cookie2)$/i.test(k)) dropped.push(k);
+    else headers[k] = v;
+  }
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(new Error('timeout')), details.timeout ?? 30_000);
+  try {
+    const resp = await fetch(details.url, {
+      method: details.method ?? 'GET',
+      headers,
+      body: details.body,
+      signal: ac.signal,
+      credentials: 'include',
+    });
+    const text = await resp.text();
+    const outHeaders: Record<string, string> = {};
+    resp.headers.forEach((v, k) => { if (HEADER_ALLOW.has(k.toLowerCase())) outHeaders[k.toLowerCase()] = v; });
+    const data: Record<string, unknown> = {
+      status: resp.status,
+      statusText: resp.statusText,
+      headers: outHeaders,
+      body: text.length > XHR_MAX_BODY ? text.slice(0, XHR_MAX_BODY) : text,
+      finalUrl: resp.url,
+    };
+    if (text.length > XHR_MAX_BODY) data.truncated = true;
+    if (dropped.length > 0) data.droppedHeaders = dropped;
+    return { ok: true, data };
+  } catch (e) {
+    return { ok: false, error: `GM_xmlhttpRequest 失败：${e instanceof Error ? e.message : String(e)}` };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -234,10 +388,13 @@ export async function handleGmCall(
     }
     case 'Notification': {
       const [details, notifId] = params as [{ title?: string; text?: string }, string];
+      const tabId = sender?.tab?.id;
       try {
         await browser.notifications.create(notifId, {
-          type: 'basic', iconUrl: '', title: details?.title ?? scriptId, message: details?.text ?? '',
+          type: 'basic', iconUrl: NOTIF_ICON, title: details?.title ?? scriptId, message: details?.text ?? '',
         });
+        // 记映射：onClicked/onClosed 时回发 NOTIF_CLICK 到注册来源 tab（spec §8）
+        if (tabId != null) notifTargets.set(notifId, { scriptId, tabId });
         return { ok: true, data: null };
       } catch (e) {
         return { ok: false, error: `通知失败：${e instanceof Error ? e.message : String(e)}` };
@@ -263,8 +420,9 @@ export async function handleGmCall(
       catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
     }
     case 'XmlHttpRequest':
+      return doXmlHttpRequest(scriptId, params, sender);
     case 'AbortRequest':
-      return { ok: false, error: 'GM_xmlhttpRequest 尚未接入（Task 10 实现跨域确认流）' };
+      return { ok: true, data: null }; // 一次性请求模型：abort 后到的响应由 content 宿主/wrapper 侧忽略（简化语义，文档明示）
     default:
       return { ok: false, error: `未知 GM API：${api}` };
   }
@@ -298,6 +456,31 @@ export function initGmApi(router: RouterLike): void {
     const { scriptId } = msg as unknown as { scriptId: string };
     await clearErrors(scriptId);
     return { ok: true };
+  });
+
+  router.on('GM_CONFIRM_RESOLVE', async (msg) => {
+    const { confirmId, decision } = msg as unknown as { confirmId: string; decision: 'allow-once' | 'always' | 'deny' };
+    await resolveConfirm(confirmId, decision);
+    return { ok: true };
+  });
+
+  // 面板重开复水：一次拉齐 menus/errors/confirms（广播只补增量，冷启动/重开靠此）
+  router.on('SCRIPTS_GET_GM_STATE', async () => ({
+    ok: true,
+    data: { menus: getMenuSnapshot(), errors: getAllErrors(), confirms: getPendingConfirms() },
+  }));
+
+  // GM_notification 点击/关闭 → NOTIF_CLICK 下行到注册来源 tab（wrapper 的 ondone 回调，spec §8）
+  // 可选链保护：fakeBrowser 等环境可能无 notifications.onClicked/onClosed
+  browser.notifications?.onClicked?.addListener((notifId) => {
+    const t = notifTargets.get(notifId);
+    if (t) void sendGmEvent(t.tabId, t.scriptId, 'NOTIF_CLICK', { id: notifId, byUser: true });
+  });
+  browser.notifications?.onClosed?.addListener((notifId) => {
+    const t = notifTargets.get(notifId);
+    if (!t) return;
+    notifTargets.delete(notifId); // 关闭即清映射
+    void sendGmEvent(t.tabId, t.scriptId, 'NOTIF_CLICK', { id: notifId, byUser: false });
   });
 }
 
