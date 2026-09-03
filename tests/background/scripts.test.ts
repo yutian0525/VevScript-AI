@@ -316,3 +316,61 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     expect(sliced.data!.script.text).toBe('h1');
   });
 });
+
+describe('wrapper 接线（Phase 5）', () => {
+  beforeEach(() => {
+    fakeBrowser.reset();
+    vi.restoreAllMocks();
+    getRuntimeSnapshot().forEach((e) => dropTab(e.tabId));
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({} as never);
+  });
+
+  it('grant 脚本经 syncRegistrations 注册的是 wrapped code（含 preamble 标记）', async () => {
+    const api = installFakeUserScripts();
+    await saveScript(mkScript({ meta: { grants: ['GM_setValue'] }, code: 'userCode();' }));
+    await syncRegistrations();
+    const reg = api.register.mock.calls[0]![0] as Array<{ js: Array<{ code: string }> }>;
+    expect(reg[0]!.js[0]!.code).toContain('__GM_PREAMBLE__');
+  });
+
+  it('无 grant 脚本注册裸 code（零开销）', async () => {
+    const api = installFakeUserScripts();
+    await saveScript(mkScript({ meta: undefined, code: 'x();' }));
+    await syncRegistrations();
+    const reg = api.register.mock.calls[0]![0] as Array<{ js: Array<{ code: string }> }>;
+    expect(reg[0]!.js[0]!.code).toBe('x();');
+  });
+
+  it('drift 检测：无变化时不重复 update（wrapped code 与已注册一致）', async () => {
+    const api = installFakeUserScripts();
+    await saveScript(mkScript({ meta: { grants: ['GM_setValue'] }, code: 'userCode();' }));
+    await syncRegistrations(); // 首次 register
+    // 模拟已注册集 = 首次构建的产物
+    const registered = api.register.mock.calls[0]![0] as Array<{ id: string; js: Array<{ code: string }>; matches: string[]; runAt: string; world: string }>;
+    api.getScripts.mockResolvedValue(registered);
+    api.update.mockClear();
+    await syncRegistrations(); // 第二次：应无 drift
+    expect(api.update).not.toHaveBeenCalled();
+  });
+
+  it('handleCreate 后预取 @require（fetch mock 落缓存，getResourceBundle 可取）', async () => {
+    installFakeUserScripts();
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, headers: new Map(), text: async () => 'lib();' })));
+    const src = '// ==UserScript==\n// @name t\n// @match https://a.com/*\n// @grant GM_getValue\n// @require https://cdn/lib.js\n// ==/UserScript==\nx();';
+    const { script } = await handleCreate({ text: src });
+    expect(script.meta?.requires).toEqual(['https://cdn/lib.js']);
+    const { getResourceBundle } = await import('../../background/gm-resources');
+    const bundle = await getResourceBundle(script);
+    expect(bundle.requireCodes).toEqual(['lib();']);
+    vi.unstubAllGlobals();
+  });
+
+  it('handleDelete 清理值域（cleanupScriptState）', async () => {
+    installFakeUserScripts();
+    await saveScript(mkScript());
+    const { storage } = await import('wxt/utils/storage');
+    await storage.setItem('local:script-values:s1', { k: 1 });
+    await handleDelete('s1');
+    expect(await storage.getItem('local:script-values:s1')).toBeNull();
+  });
+});
