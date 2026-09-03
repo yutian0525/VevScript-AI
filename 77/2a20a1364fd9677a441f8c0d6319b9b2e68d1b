@@ -1,0 +1,34 @@
+tests/ui/use-truncated.test.ts
+  s_7852414883df95::t_e459effa820def 1-26
+entrypoints/sidepanel/styles.css
+  s_7852414883df95::t_d3585fa20d66e2 201-205
+components/ui/PageShell.tsx
+  s_5acdc8bbc45473::t_d287709022e1e6 3
+  s_7852414883df95::t_f862ff64a8c7a8 21-22,28
+components/ui/useTruncated.ts
+  s_7852414883df95::t_1c8286cbe721e8 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "772a20a1364fd9677a441f8c0d6319b9b2e68d1b",
+  "prompts": {},
+  "sessions": {
+    "s_5acdc8bbc45473": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b74cc937-d353-45e9-904d-631075ccdd75",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    },
+    "s_7852414883df95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b441830-79d5-4104-a599-d42b6e004130",
+        "model": "claude-opus-5"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
