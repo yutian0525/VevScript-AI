@@ -1,0 +1,22 @@
+components/scripts/ScriptsListView.tsx
+  s_2b19cd6f0d1a64::t_746d5109a97b84 124
+tests/ui/scripts-list.test.tsx
+  s_2b19cd6f0d1a64::t_7aac9ee9130b2d 53,65-82
+  s_2b19cd6f0d1a64::t_c7a72519bd0bd6 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4079211f3233de78f8b8f4a34e55d0300cd3871c",
+  "prompts": {},
+  "sessions": {
+    "s_2b19cd6f0d1a64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ddeffbdf-2d36-4398-b172-bdf044461ded",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
