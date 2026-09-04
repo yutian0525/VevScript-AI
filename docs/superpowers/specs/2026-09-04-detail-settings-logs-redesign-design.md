@@ -29,7 +29,7 @@
 新建（`components/detail/`）：
 
 - **`DetailTabHeader.tsx`**：`{ title: string; suffix?: string; hint: string }`
-  - `<h2>` 主标题 15px/600 `--ink`；`suffix` 有值时跟在标题右侧（mono 11px `--ink-3`，基线对齐）；
+  - `<h2 className="detail__thead-title">` 主标题 15px/600 `--ink`（类名带 thead 前缀，避免与顶栏 `.detail__title` 冲突）；`suffix` 有值时跟在标题右侧（mono 11px `--ink-3`，基线对齐）；
   - `<p>` 副题 12px `--ink-3`，`line-height: 1.6`。
 - **`DetailEmptyCard.tsx`**：`{ icon: LucideIcon; title: string; hint: string }`
   - 浅底圆角卡（`background: var(--paper)`、1px `--line` 边、`--r-md`），内 padding 14px 16px；
@@ -83,7 +83,7 @@
 
 ```css
 .detail__thead { display: grid; gap: 4px; }
-.detail__title { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); display: flex; align-items: baseline; gap: 8px; }
+.detail__thead-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); display: flex; align-items: baseline; gap: 8px; }
 .detail__suffix { font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--ink-3); }
 .detail__hint { margin: 0; font-size: 12px; color: var(--ink-3); line-height: 1.6; }  /* 重定义现有类 */
 .detail__toolbar { display: flex; gap: 8px; }

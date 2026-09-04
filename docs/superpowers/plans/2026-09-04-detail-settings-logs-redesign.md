@@ -73,7 +73,7 @@ Expected: FAIL，`Failed to resolve import "../../components/detail/DetailTabHea
 export function DetailTabHeader({ title, suffix, hint }: { title: string; suffix?: string; hint: string }) {
   return (
     <div className="detail__thead">
-      <h2 className="detail__title">
+      <h2 className="detail__thead-title">
         {title}
         {suffix != null && <span className="detail__suffix mono">{suffix}</span>}
       </h2>
@@ -106,7 +106,7 @@ export function DetailEmptyCard({ icon: Icon, title, hint }: { icon: LucideIcon;
 ```css
 /* Tab 节头（2026-09-04 重设计：主标题+灰副题，全左对齐） */
 .detail__thead { display: grid; gap: 4px; }
-.detail__title { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); display: flex; align-items: baseline; gap: 8px; }
+.detail__thead-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); display: flex; align-items: baseline; gap: 8px; }
 .detail__suffix { font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--ink-3); }
 .detail__hint { margin: 0; font-size: 12px; color: var(--ink-3); line-height: 1.6; }
 .detail__toolbar { display: flex; gap: 8px; }
