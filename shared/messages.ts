@@ -3,7 +3,7 @@
 // 设计决策：request/response 模式 + correlation id（设计 §4.4）；
 // 例外：cs→bg 的 fire-and-forget 通知（见 HookConsoleNotification / HookNetworkNotification）。
 
-import type { ScriptSource, ScriptSummary, ToolResult, Uid, UserScript } from './types';
+import type { ScriptSource, ScriptSummary, ScriptUpdateState, ToolResult, Uid, UserScript } from './types';
 import type { ConsoleEntry, HookNetEntry } from './hook-bridge';
 
 export interface BgToCsRequestMap {
@@ -177,7 +177,10 @@ export type ScriptsRequest =
   | { type: 'SCRIPTS_REVOKE_PERMISSION'; id: string; host: string }
   | { type: 'GM_CONFIRM_RESOLVE'; confirmId: string; decision: 'allow-once' | 'always' | 'deny' }
   | { type: 'GM_DEBUG_CALL'; scriptId: string; api: string; params: unknown[]; tabId?: number }
-  | { type: 'GM_DEBUG_INFO'; scriptId: string; tabId?: number };
+  | { type: 'GM_DEBUG_INFO'; scriptId: string; tabId?: number }
+  | { type: 'SCRIPTS_IMPORT_URL'; url: string }
+  | { type: 'SCRIPTS_CHECK_UPDATE'; id: string }
+  | { type: 'SCRIPTS_APPLY_UPDATE'; id: string };
 
 /** GM_DEBUG_INFO 响应 data：脚本运行时调试台白名单视图（spec §3.①）。 */
 export interface GmDebugInfoData {
@@ -196,6 +199,12 @@ export interface GmDebugInfoData {
 export interface ScriptsRuntimeEvent {
   type: 'SCRIPTS_RUNTIME';
   payload: ScriptsRuntimeEntry;
+}
+
+/** bg → 扩展页面广播：更新检查后的全量更新状态 map（fire-and-forget；spec §2） */
+export interface ScriptsUpdatesEvent {
+  type: 'SCRIPTS_UPDATES';
+  updates: Record<string, ScriptUpdateState>;
 }
 
 /** popup/侧边栏跨面导航通知（popup → sidepanel，fire-and-forget；sidepanel 未开时由 pendingView 兜底） */
