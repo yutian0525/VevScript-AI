@@ -88,4 +88,19 @@ describe('buildWrappedCode', () => {
     });
     expect(code).toContain(JSON.stringify('userCode();').slice(1, -1));
   });
+
+  it('全局错误钩子：error/unhandledrejection 均上报 __GM_report（后继异步异常链路）', () => {
+    const code = buildWrappedCode(mkScript(), {
+      token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0',
+    });
+    // window 'error' 监听：调 __GM_report 且跳过资源加载错误（target 非全局对象）
+    expect(code).toContain("window.addEventListener('error', function (e) {");
+    expect(code).toContain('if (e.target && e.target !== window) return;');
+    // window 'unhandledrejection' 监听：reason 归一化后经 __GM_report 上报
+    expect(code).toContain("window.addEventListener('unhandledrejection', function (e) {");
+    // 两处钩子都汇入 __GM_report（ReportError 内部通道的页面侧入口）
+    expect(code.match(/__GM_report\(/g)?.length).toBeGreaterThanOrEqual(4);
+    // 钩子定义在 preamble 内（先于用户代码执行体注册，保证首帧后的异步异常已被覆盖）
+    expect(code.indexOf("window.addEventListener('error'")).toBeLessThan(code.indexOf('userCode();'));
+  });
 });

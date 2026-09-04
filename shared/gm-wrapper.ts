@@ -103,6 +103,17 @@ function preamble(scriptId: string): string {
     GM[name] = fn;
     return fn;
   }
+  // 全局错误钩子（spec §4 组 9）：tail 的 try/catch 只包住初次同步执行，脚本生命周期内
+  // 的后继未捕获异常（事件回调 / setTimeout 等异步路径）经此上报进 SW 错误缓冲。
+  // 资源加载错误（target 非全局对象）不是脚本异常，跳过防误报。
+  window.addEventListener('error', function (e) {
+    if (e.target && e.target !== window) return;
+    __GM_report(String(e.message || 'Unknown error'), (e.error && String(e.error.stack)) || '', e.lineno || 0);
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e.reason;
+    __GM_report('UnhandledRejection: ' + ((r && r.message) || String(r)), (r && String(r.stack)) || '', 0);
+  });
 `;
 }
 
