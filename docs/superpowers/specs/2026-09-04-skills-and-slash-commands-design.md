@@ -85,7 +85,8 @@ export type SkillsRequest =
 
 - 无 CREATE/UPDATE：skill 只能来自 `.md` 导入（覆盖更新也走 import 通道）。
 - 导入走 background（写 storage）；**导出在面板侧生成文件**（Blob + a[download]），`SKILLS_EXPORT` 只取数据。
-- 编排层 `background/skills.ts`：handler 注册进 `router.ts`，内部调 `storage/skills.ts` + `shared/skill-md.ts`。导入返回 `{ ok, data: { imported: number, overwritten: number, warnings: string[] } }`。
+- 编排层 `background/skills.ts`：handler 注册进 `router.ts`，内部调 `storage/skills.ts` + `shared/skill-md.ts`。导入返回 `{ ok, data: { imported: number, overwritten: number, warnings: string[] } }`（单次调用内多文档聚合）。
+- 多选文件导入：面板逐文件发 `SKILLS_IMPORT`，前端汇总各响应的 imported/overwritten/warnings 展示。
 - 无新 Port 事件：skill 变更不影响运行中 loop（下轮 buildContext 现读现用）。
 
 ### 2.2 上下文注入（`agent/context.ts`）
@@ -123,7 +124,7 @@ export function buildSkillsPrompt(briefs: SkillBrief[]): string {
 ### 3.1 触发与过滤
 
 - textarea `onChange` 检测：光标前文本匹配 `/^\/(\S*)$/`（整条输入以 `/` 开头且尚未出现空格）→ 弹浮层；`/` 后已有空格 → 浮层关闭（附加文本阶段）。
-- 候选 = 启用 skill 中 command/name/description 对查询的子串匹配（大小写不敏感），最多 8 条，command 前缀匹配优先。空匹配显示「没有匹配的技能」。
+- 候选 = 启用 skill 中 command/name/description 对查询的子串匹配（大小写不敏感），最多 8 条，command 前缀匹配优先；无启用 skill 或输入为空查询时输入 `/` 也弹全量列表。空匹配显示「没有匹配的技能」。
 - 候选行：`/command`（mono）+ name（sans）+ description（弱化色）。
 - 过滤逻辑抽纯函数 `filterSkills(list, query)`（可测）。
 
