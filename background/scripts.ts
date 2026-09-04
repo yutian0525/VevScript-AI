@@ -78,6 +78,7 @@ interface UserScriptsApi {
   update(scripts: RegisterUserScript[]): Promise<void>;
   unregister(ids?: string[]): Promise<void>;
   getScripts(): Promise<RegisterUserScript[]>;
+  configureWorld?(properties: { csp?: string; messaging?: boolean }): Promise<void>;
 }
 
 function userScripts(): UserScriptsApi | undefined {
@@ -163,8 +164,19 @@ function sameRegistration(r: RegisterUserScript, b: RegisterUserScript): boolean
     && r.js?.[0]?.code === b.js?.[0]?.code;
 }
 
+// USER_SCRIPT world 默认 CSP = ISOLATED world CSP（script-src 'self'）——禁 eval，wrapper 的
+// new Function（语法预探测 + 执行体构造）会被 CSP 拦截（"Evaluating a string as JavaScript
+// violates ... 'unsafe-eval' is not an allowed source"），脚本第一行就失败。放行 unsafe-eval。
+const WORLD_CSP = "script-src 'self' 'unsafe-eval'";
+
+export async function configureWorldCsp(api: UserScriptsApi): Promise<void> {
+  if (!api.configureWorld) return; // 旧 Chrome 无此 API——脚本若不用 eval 类构造照常可跑
+  await api.configureWorld({ csp: WORLD_CSP });
+}
+
 export async function syncRegistrations(): Promise<void> {
   const api = await requireEngine();
+  await configureWorldCsp(api);
   const all = await listScripts();
   // 空 matches 的脚本永不注册（无匹配规则 = 不运行，spec §5.1）
   const desired = all.filter((s) => s.enabled && s.matches.length > 0);

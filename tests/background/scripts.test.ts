@@ -84,6 +84,7 @@ interface FakeUserScriptsApi {
   update: ReturnType<typeof vi.fn>;
   unregister: ReturnType<typeof vi.fn>;
   getScripts: ReturnType<typeof vi.fn>;
+  configureWorld?: ReturnType<typeof vi.fn>;
 }
 
 /** 往 fakeBrowser 挂 userScripts stub（WXT fakeBrowser 未内置该 API）。 */
@@ -93,6 +94,7 @@ function installFakeUserScripts(over: Partial<FakeUserScriptsApi> = {}): FakeUse
     update: vi.fn(async () => {}),
     unregister: vi.fn(async () => {}),
     getScripts: vi.fn(async () => [] as Array<Record<string, unknown>>),
+    configureWorld: vi.fn(async () => {}),
     ...over,
   };
   (browser as unknown as Record<string, unknown>).userScripts = api;
@@ -325,6 +327,21 @@ describe('wrapper 接线（Phase 5）', () => {
     vi.restoreAllMocks();
     getRuntimeSnapshot().forEach((e) => dropTab(e.tabId));
     vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({} as never);
+  });
+
+  it('syncRegistrations：先 configureWorld 放行 unsafe-eval（USER_SCRIPT world 默认 CSP 禁 eval，wrapper 的 new Function 会被拦）', async () => {
+    const configureWorld = vi.fn(async () => {});
+    const api = installFakeUserScripts({ configureWorld });
+    await saveScript(mkScript({ meta: { grants: ['GM_setValue'] }, code: 'userCode();' }));
+    await syncRegistrations();
+    expect(configureWorld).toHaveBeenCalledWith({ csp: expect.stringContaining("'unsafe-eval'") });
+    expect(api.register).toHaveBeenCalledTimes(1); // configureWorld 在 register 之前完成（await 顺序）
+  });
+
+  it('无 configureWorld 的引擎（旧 Chrome）跳过配置不抛错', async () => {
+    installFakeUserScripts(); // stub 无 configureWorld 字段
+    await saveScript(mkScript({ meta: { grants: ['GM_setValue'] }, code: 'userCode();' }));
+    await expect(syncRegistrations()).resolves.toBeUndefined();
   });
 
   it('grant 脚本经 syncRegistrations 注册的是 wrapped code（含 preamble 标记）', async () => {
