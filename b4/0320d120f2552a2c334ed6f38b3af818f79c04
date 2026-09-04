@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-09-04-code-tab-editor-upgrade.md
+  s_5826c9ae21829e::t_2cad4ea2eeaa0f 1-602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b40320d120f2552a2c334ed6f38b3af818f79c04",
+  "prompts": {},
+  "sessions": {
+    "s_5826c9ae21829e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c9e4c65-8d9f-4313-a46c-5c2b6d2c7043",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
