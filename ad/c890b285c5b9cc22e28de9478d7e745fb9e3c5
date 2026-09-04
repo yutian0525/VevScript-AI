@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-09-04-script-detail-page-polish.md
+  s_5826c9ae21829e::t_1b996045fffb95 1-666
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "adc890b285c5b9cc22e28de9478d7e745fb9e3c5",
+  "prompts": {},
+  "sessions": {
+    "s_5826c9ae21829e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c9e4c65-8d9f-4313-a46c-5c2b6d2c7043",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
