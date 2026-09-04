@@ -166,7 +166,8 @@ describe('DetailApp', () => {
     expect(await screen.findByText('x.com')).toBeTruthy();
     expect(screen.getByRole('button', { name: /撤销/ })).toBeTruthy();
     fireEvent.click(screen.getByText(/日志/));
-    expect(screen.getByText(/暂无错误/)).toBeTruthy();
+    expect(screen.getByText('暂无错误')).toBeTruthy();
+    expect(screen.getByText('脚本运行正常')).toBeTruthy();
   });
 
   it('脚本不存在时空态 + 关闭按钮', async () => {
@@ -290,5 +291,30 @@ describe('DetailApp', () => {
     expect(screen.getByText(/at x/)).toBeTruthy();
     fireEvent.click(row);
     expect(row.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('设置 Tab：主标题「XHR 安全」+ 副题渲染；授权列表与撤销不受影响', async () => {
+    mockBackend(mkScript());
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    fireEvent.click(screen.getByText('设置'));
+    expect(screen.getByRole('heading', { level: 2, name: 'XHR 安全' })).toBeTruthy();
+    expect(screen.getByText(/这些域名已获得该脚本的跨域请求授权/)).toBeTruthy();
+    expect(await screen.findByText('x.com')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /撤销/ })).toBeTruthy();
+  });
+
+  it('日志 Tab：标题「错误日志」+ 计数后缀；空态卡；清空按钮在工具行', async () => {
+    mockBackend(mkScript());
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    fireEvent.click(screen.getByText(/日志/));
+    expect(screen.getByRole('heading', { level: 2, name: /错误日志/ })).toBeTruthy();
+    expect(screen.getByText('0 条')).toBeTruthy();
+    expect(screen.getByText(/脚本运行抛错将记录在此/)).toBeTruthy();
+    expect(screen.getByText('暂无错误')).toBeTruthy();
+    expect(screen.getByText('脚本运行正常')).toBeTruthy();
+    const clear = screen.getByRole('button', { name: '清空' });
+    expect(clear.hasAttribute('disabled')).toBe(true); // 0 条时禁用（原语义保留）
   });
 });
