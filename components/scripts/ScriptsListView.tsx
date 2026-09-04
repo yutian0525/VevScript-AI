@@ -2,7 +2,7 @@
 // 脚本池列表页（2026-09-03 重设计）：纯管理器——警告 + 确认卡 + 搜索 + 脚本卡片（switch 启停）。
 // 运行观测/菜单触发归 popup；详情页 = 全屏新标签页（openScriptTab）。
 import { useRef, useState } from 'react';
-import { CircleAlert, Plus, Search, Upload } from 'lucide-react';
+import { CircleAlert, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -59,6 +59,16 @@ export function ScriptsListView() {
 
   async function setEnabled(id: string, enabled: boolean): Promise<void> {
     await sendScriptsRequest({ type: 'SCRIPTS_SET_ENABLED', id, enabled });
+    await useScripts.getState().refresh();
+  }
+
+  async function remove(id: string, name: string): Promise<void> {
+    if (!window.confirm(`删除脚本「${name}」？不可恢复。`)) return;
+    const resp = await sendScriptsRequest<{ ok: boolean; error?: string }>({ type: 'SCRIPTS_DELETE', id });
+    if (!resp.ok) {
+      setImportWarnings([resp.error ?? '删除失败']);
+      return;
+    }
     await useScripts.getState().refresh();
   }
 
@@ -124,6 +134,19 @@ export function ScriptsListView() {
           >
             <div className="scripts-card__top">
               <span className="scripts-card__name">{s.name}</span>
+              <button
+                type="button"
+                className="scripts-card__delbtn"
+                aria-label={`删除 ${s.name}`}
+                title="删除脚本"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void remove(s.id, s.name);
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
+                <Trash2 size={14} aria-hidden />
+              </button>
               <button
                 type="button"
                 role="switch"

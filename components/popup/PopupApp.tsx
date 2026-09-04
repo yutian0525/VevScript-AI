@@ -128,6 +128,15 @@ export function PopupApp() {
                 <span className="popup__runname">{row.name}</span>
                 <button
                   type="button"
+                  className="popup__editbtn"
+                  aria-label={`编辑 ${row.name}`}
+                  title="编辑脚本"
+                  onClick={(e) => { e.stopPropagation(); openScriptTab(row.scriptId); }}
+                >
+                  <SquarePen size={13} aria-hidden />
+                </button>
+                <button
+                  type="button"
                   role="switch"
                   aria-checked={enabledIds.get(row.scriptId) ?? true}
                   aria-label={`${enabledIds.get(row.scriptId) ?? true ? '禁用' : '启用'} ${row.name}`}
@@ -140,15 +149,6 @@ export function PopupApp() {
                   }}
                 >
                   <span className="switch__thumb" aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  className="popup__editbtn"
-                  aria-label={`编辑 ${row.name}`}
-                  title="编辑脚本"
-                  onClick={(e) => { e.stopPropagation(); openScriptTab(row.scriptId); }}
-                >
-                  <SquarePen size={13} aria-hidden />
                 </button>
               </div>
               {expanded === row.scriptId && row.commands.length > 1 && (
