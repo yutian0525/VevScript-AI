@@ -10,6 +10,7 @@ import { compactConversation } from '../agent/compact';
 import { resolveContextWindow } from '../agent/model-windows';
 import { getConversation, setLastPromptTokens, setStatus } from '../storage/conversations';
 import { listSkills } from '../storage/skills';
+import type { Skill } from '../shared/types';
 import { emptyTail, reduceTail, replayTail, type AgentTail } from './agent-tail';
 
 export async function buildProviderFromSettings(): Promise<Provider | null> {
@@ -101,7 +102,9 @@ function makeDeps(provider: Provider, convId: string): LoopDeps {
     },
     compact: (id) => compactConversation(id, { provider }),
     getSkills: async () =>
-      (await listSkills()).filter((s) => s.enabled).map((s) => ({ name: s.name, command: s.command, description: s.description })),
+      (await listSkills().catch(() => [] as Skill[]))
+        .filter((s) => s.enabled)
+        .map((s) => ({ name: s.name, command: s.command, description: s.description })),
     // 断开的端口在 postTo 内被吞掉：loop 不受面板生死影响，继续跑到底
     emit: (m) => broadcast(convId, m),
   };

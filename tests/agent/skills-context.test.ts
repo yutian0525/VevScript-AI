@@ -173,4 +173,40 @@ describe('loop 斜杠触发与常驻注入', () => {
     expect(captured[0]!.messages.some((m) => m.role === 'system' && String(m.content).includes('技能正文标记XYZ'))).toBe(true);
     expect(captured[1]!.messages.some((m) => m.role === 'system' && String(m.content).includes('技能正文标记XYZ'))).toBe(false);
   });
+
+  it('常驻简述第二轮仍在（每轮 buildContext 都注入）', async () => {
+    const captured: ChatParams[] = [];
+    const scripts: StreamEvent[][] = [
+      [
+        { type: 'tool-call-delta', index: 0, id: 't1', name: 'take_snapshot', argsDelta: '{}' },
+        { type: 'message-done', finishReason: 'tool_calls' },
+      ],
+      [
+        { type: 'text-delta', text: '完成' },
+        { type: 'message-done', finishReason: 'stop' },
+      ],
+    ];
+    let turn = 0;
+    const provider: Provider = {
+      streamChat(p, onEvent) {
+        captured.push(p);
+        const cur = scripts[turn] ?? [];
+        turn += 1;
+        queueMicrotask(() => { for (const e of cur) onEvent(e); });
+        return { cancel: vi.fn() };
+      },
+    };
+    await runAgentLoop(
+      { convId: 'c7', tabId: 1, userMessage: '看页面再说' },
+      {
+        ...minimalDeps(provider),
+        getSkills: async () => [{ name: '翻译', command: 'translate', description: '常驻标记DEF' }],
+        executeTool: async () => ({ ok: true, data: { result: 'snapshot' } }),
+      },
+    );
+    expect(captured.length).toBe(2);
+    for (const p of captured) {
+      expect(String(p.messages[0]!.content)).toContain('常驻标记DEF');
+    }
+  });
 });
