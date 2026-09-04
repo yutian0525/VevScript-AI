@@ -94,10 +94,49 @@ describe('parseUserScript', () => {
   });
 
   it('其它不支持的键汇总为一条 ignored 警告', () => {
-    const src = '// ==UserScript==\n// @icon a.png\n// @updateURL https://u\n// @downloadURL https://d\n// ==/UserScript==\n';
+    const src = '// ==UserScript==\n// @foobar x\n// @noframes2 y\n// ==/UserScript==\n';
     const { warnings } = parseUserScript(src);
     expect(warnings.filter((w) => w.includes('已忽略'))).toHaveLength(1);
-    expect(warnings.join('\n')).toContain('@icon');
+    expect(warnings.join('\n')).toContain('@foobar');
+  });
+
+  it('外链键解析进 meta：homepage/supportURL/icon/downloadURL/updateURL', () => {
+    const src = [
+      '// ==UserScript==',
+      '// @name        t',
+      '// @match       https://a.com/*',
+      '// @homepage    https://home.a.com/',
+      '// @supportURL  https://support.a.com/',
+      '// @icon        https://a.com/icon.png',
+      '// @downloadURL https://a.com/s.user.js',
+      '// @updateURL   https://a.com/u.meta.js',
+      '// ==/UserScript==',
+    ].join('\n');
+    const { fields, warnings } = parseUserScript(src);
+    expect(fields.meta).toMatchObject({
+      homepage: 'https://home.a.com/',
+      supportURL: 'https://support.a.com/',
+      iconURL: 'https://a.com/icon.png',
+      downloadURL: 'https://a.com/s.user.js',
+      updateURL: 'https://a.com/u.meta.js',
+    });
+    // 新键不产生任何解析警告
+    expect(warnings).toHaveLength(0);
+  });
+
+  it('@homepageURL 与 @iconURL 别名同字段，后写覆盖；不进 ignored 警告', () => {
+    const src = [
+      '// ==UserScript==',
+      '// @match       https://a.com/*',
+      '// @homepage    https://first.a.com/',
+      '// @homepageURL https://second.a.com/',
+      '// @iconURL     https://a.com/icon2.png',
+      '// ==/UserScript==',
+    ].join('\n');
+    const { fields, warnings } = parseUserScript(src);
+    expect(fields.meta.homepage).toBe('https://second.a.com/');
+    expect(fields.meta.iconURL).toBe('https://a.com/icon2.png');
+    expect(warnings.join('\n')).not.toContain('已忽略');
   });
 
   it('@grant none 不产生警告', () => {
@@ -157,6 +196,29 @@ describe('stringifyUserScript / parse 往返', () => {
     expect(back.fields.runAt).toBe('document_start');
     expect(back.fields.world).toBe('USER_SCRIPT');
     expect(back.fields.code).toBe('\nconsole.log("x");');
+    expect(back.fields.meta).toEqual(s.meta);
+  });
+
+  it('外链 meta 往返无损（规范键名输出）', () => {
+    const s: UserScript = {
+      id: 's3', text: '', name: '外链', enabled: true, matches: ['https://a.com/*'],
+      code: 'x();', runAt: 'document_idle', world: 'USER_SCRIPT', source: 'user',
+      meta: {
+        homepage: 'https://home.a.com/',
+        supportURL: 'https://support.a.com/',
+        iconURL: 'https://a.com/icon.png',
+        downloadURL: 'https://a.com/s.user.js',
+        updateURL: 'https://a.com/u.meta.js',
+      },
+      createdAt: 0, updatedAt: 0,
+    };
+    const text = stringifyUserScript(s);
+    expect(text).toContain('// @homepage     https://home.a.com/');
+    expect(text).toContain('// @supportURL   https://support.a.com/');
+    expect(text).toContain('// @iconURL      https://a.com/icon.png');
+    expect(text).toContain('// @downloadURL  https://a.com/s.user.js');
+    expect(text).toContain('// @updateURL    https://a.com/u.meta.js');
+    const back = parseUserScript(text);
     expect(back.fields.meta).toEqual(s.meta);
   });
 

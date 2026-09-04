@@ -68,6 +68,11 @@ export function parseUserScript(source: string, fallbackName?: string): ParsedUs
       case 'version': meta.version = value; break;
       case 'author': meta.author = value; break;
       case 'description': meta.description = value; break;
+      case 'homepage': case 'homepageURL': if (value) meta.homepage = value; break;
+      case 'supportURL': if (value) meta.supportURL = value; break;
+      case 'icon': case 'iconURL': if (value) meta.iconURL = value; break;
+      case 'downloadURL': if (value) meta.downloadURL = value; break;
+      case 'updateURL': if (value) meta.updateURL = value; break;
       case 'match': {
         // 修订 2026-09-02：@match 容错——合法并入（去重），非法警告并跳过（TM 更宽松，Chrome match pattern 更严；不因一条坏规则整条拒绝导入）
         if (value && isValidMatchPattern(value)) {
@@ -149,6 +154,11 @@ export function stringifyUserScript(script: UserScript): string {
   if (meta.version) lines.push(`// @version     ${meta.version}`);
   if (meta.author) lines.push(`// @author      ${meta.author}`);
   if (meta.description) lines.push(`// @description ${meta.description}`);
+  if (meta.homepage) lines.push(`// @homepage     ${meta.homepage}`);
+  if (meta.supportURL) lines.push(`// @supportURL   ${meta.supportURL}`);
+  if (meta.iconURL) lines.push(`// @iconURL      ${meta.iconURL}`);
+  if (meta.downloadURL) lines.push(`// @downloadURL  ${meta.downloadURL}`);
+  if (meta.updateURL) lines.push(`// @updateURL    ${meta.updateURL}`);
   for (const m of script.matches) lines.push(`// @match       ${m}`);
   lines.push(`// @run-at      ${RUN_AT_OUT[script.runAt]}`);
   if (script.world === 'MAIN') lines.push('// @world       MAIN');
