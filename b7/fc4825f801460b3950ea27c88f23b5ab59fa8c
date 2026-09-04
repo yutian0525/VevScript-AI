@@ -1,0 +1,29 @@
+components/skills/SkillsPage.tsx
+  s_79c9460fb7e7ef::t_5bd3006550290d 67-68
+  s_79c9460fb7e7ef::t_d8d6ef397a7320 57
+  s_79c9460fb7e7ef::t_e791863b567ee0 62-65
+  s_79c9460fb7e7ef::t_c260bd56731b6e 1-56,58-61,66,69-256
+components/settings/SettingsHome.tsx
+  s_79c9460fb7e7ef::t_9d60de370cf853 2-3,6,12
+components/settings/SettingsView.tsx
+  s_79c9460fb7e7ef::t_96f9d0a739a6f2 17
+  s_79c9460fb7e7ef::t_b8d2a80a66ab32 8
+entrypoints/sidepanel/styles.css
+  s_79c9460fb7e7ef::t_54bf42f5dc84a9 1019-1024
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b7fc4825f801460b3950ea27c88f23b5ab59fa8c",
+  "prompts": {},
+  "sessions": {
+    "s_79c9460fb7e7ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "878753d3-737c-46dc-86af-f5de7430b4d1",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
