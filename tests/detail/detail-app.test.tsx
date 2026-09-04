@@ -49,6 +49,7 @@ function mockBackend(
     if (msg.type === 'SCRIPTS_SET_ENABLED') { sendResponse({ ok: true, data: { script: mkScript({ enabled: false }) } }); return true; }
     if (msg.type === 'SCRIPTS_UPDATE') { sendResponse({ ok: true, data: { script: opts.updated ?? script } }); return true; }
     if (msg.type === 'SCRIPTS_REVOKE_PERMISSION') { sendResponse({ ok: true }); return true; }
+    if (msg.type === 'SCRIPTS_DELETE') { sendResponse({ ok: true }); return true; }
     sendResponse({ ok: false, error: 'unexpected' }); return true;
   });
 }
@@ -71,6 +72,58 @@ describe('DetailApp', () => {
     expect(screen.getByText('设置')).toBeTruthy();
     expect(screen.getByText(/日志/)).toBeTruthy();
     expect(screen.queryByRole('switch')).toBeNull(); // 顶栏无启停 switch
+    expect(screen.getByRole('button', { name: '禁用脚本' })).toBeTruthy(); // 默认 enabled → 显示反向操作
+    expect(screen.getByRole('button', { name: '删除脚本' })).toBeTruthy();
+  });
+
+  it('详情 Tab：中文字段标签 + title tooltip 保留原键名', async () => {
+    mockBackend(mkScript({ meta: { version: '1.0', grants: ['GM_getValue'] } }));
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    expect(screen.getByText('版本')).toBeTruthy();
+    expect(screen.getByText('匹配规则')).toBeTruthy();
+    expect(screen.getByText('权限申请')).toBeTruthy();
+    expect(screen.getByTitle('version')).toBeTruthy();
+    expect(screen.getByTitle('match')).toBeTruthy();
+  });
+
+  it('详情 Tab 操作区：启停按钮显示反向操作，点击调 SCRIPTS_SET_ENABLED', async () => {
+    mockBackend(mkScript());
+    const sendSpy = vi.spyOn(browser.runtime, 'sendMessage');
+    render(<DetailApp id="s1" />);
+    const btn = await screen.findByRole('button', { name: '禁用脚本' }); // 当前启用 → 显示禁用
+    fireEvent.click(btn);
+    await vi.waitFor(() => {
+      const calls = sendSpy.mock.calls.filter((c) => (c[0] as unknown as { type: string }).type === 'SCRIPTS_SET_ENABLED');
+      expect(calls.length).toBeGreaterThan(0);
+      expect((calls[0]?.[0] as unknown as { enabled: boolean }).enabled).toBe(false);
+    });
+    // 成功后按钮文案切换（mock 返回 enabled=false 的脚本）
+    expect(await screen.findByRole('button', { name: '启用脚本' })).toBeTruthy();
+  });
+
+  it('详情 Tab 删除按钮：confirm 确认后调 SCRIPTS_DELETE 并关窗', async () => {
+    mockBackend(mkScript());
+    const close = vi.spyOn(window, 'close').mockReturnValue();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const sendSpy = vi.spyOn(browser.runtime, 'sendMessage');
+    render(<DetailApp id="s1" />);
+    fireEvent.click(await screen.findByRole('button', { name: '删除脚本' }));
+    await vi.waitFor(() => {
+      const calls = sendSpy.mock.calls.filter((c) => (c[0] as unknown as { type: string }).type === 'SCRIPTS_DELETE');
+      expect(calls.length).toBeGreaterThan(0);
+      expect(close).toHaveBeenCalled();
+    });
+  });
+
+  it('详情 Tab URL 字段渲染为链接按钮：namespace 可点击新标签打开', async () => {
+    mockBackend(mkScript({ meta: { namespace: 'https://example.org/' } }));
+    const create = vi.spyOn(browser.tabs, 'create').mockResolvedValue(null as never);
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    const link = screen.getByRole('button', { name: 'https://example.org/' });
+    fireEvent.click(link);
+    expect(create).toHaveBeenCalledWith({ url: 'https://example.org/' });
   });
 
   it('有外链 meta 时 header 渲染对应 icon 按钮，点击 tabs.create 新标签打开', async () => {

@@ -9,7 +9,7 @@ export function DetailLogsTab({ id, errors }: { id: string; errors: GmErrorItem[
   const [openIdx, setOpenIdx] = useState<number | null>(null);
 
   return (
-    <div className="detail__tabcard">
+    <div className="detail__info">
       <div className="detail-code__bar">
         <span className="mono detail-code__status">{errors.length} 条记录</span>
         <Button

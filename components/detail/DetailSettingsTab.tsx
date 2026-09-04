@@ -38,8 +38,8 @@ export function DetailSettingsTab({ id }: { id: string }) {
   }
 
   return (
-    <div className="detail__tabcard">
-      <div className="detail__sectiontitle mono">XHR 安全 · 总是允许名单</div>
+    <div className="detail__info">
+      <div className="detail__sectiontitle">跨域授权名单</div>
       <p className="detail__hint">
         这些域名已获得该脚本的跨域请求授权（在确认卡点「总是允许」时记录）。撤销后，脚本再请求这些域名会重新弹确认。
       </p>
