@@ -1,0 +1,33 @@
+tests/popup/popup-app.test.tsx
+  s_a33cc13679744e::t_f4fcbb8e9c5fbd 106,108-109,113,116-137
+  s_a33cc13679744e::t_27ea5e33e6c807 29-34
+tests/ui/scripts-list.test.tsx
+  s_a33cc13679744e::t_fa03d7ef0c41ac 34-40,42,49,54-57
+components/popup/PopupApp.tsx
+  s_a33cc13679744e::t_0fc8e00be0a9b1 44,49-52
+  s_a33cc13679744e::t_acf2b780521f42 28-29
+  s_a33cc13679744e::t_e9769586aad9b3 132-134
+  s_a33cc13679744e::t_bc77dc53091912 137
+  s_a33cc13679744e::t_eefb09d51161c3 129-131,135-136,138-143
+  s_a33cc13679744e::t_815bda85584a34 86-90,93
+entrypoints/sidepanel/styles.css
+  s_a33cc13679744e::t_5316ddde199ae0 762
+  s_a33cc13679744e::t_6cfb525c864267 774
+  s_a33cc13679744e::t_24a039531f1f3a 207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6670445395d8a00948dfdf73d1796b362c8668b8",
+  "prompts": {},
+  "sessions": {
+    "s_a33cc13679744e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8af61090-3bb8-4782-9ea2-16f7ffe2551c",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
