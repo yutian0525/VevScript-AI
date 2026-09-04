@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-09-04-gm-env-selftest-userscript-design.md
+  s_b24d2b355b9859::t_7a534caa195d61 150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a402d7ae48ca342ebc2bc64b6581b6057d631195",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
