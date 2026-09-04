@@ -1,0 +1,25 @@
+components/scripts/ScriptsListView.tsx
+  s_5aed632b1b3dc5::t_476ebdb715c1fc 112
+  s_5aed632b1b3dc5::t_94fcbd1c4b2b61 65
+  s_5aed632b1b3dc5::t_3afce198fb702a 62-64,66-83
+  s_5aed632b1b3dc5::t_2aa926030764cc 113-114
+  s_5aed632b1b3dc5::t_4909c5aedfa402 139-153
+  s_5aed632b1b3dc5::t_f4636cfb8797e5 5
+  s_5aed632b1b3dc5::t_6b32488f282e37 29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f22c97e15b8873adc8a0c5d0dcfa55feb736ea70",
+  "prompts": {},
+  "sessions": {
+    "s_5aed632b1b3dc5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9034a654-d6db-4470-a4bd-0855d45e79e0",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": null
+    }
+  }
+}
