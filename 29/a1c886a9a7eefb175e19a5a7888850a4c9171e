@@ -1,0 +1,23 @@
+docs/superpowers/plans/2026-09-04-detail-settings-logs-redesign.md
+  s_a33cc13679744e::t_ab1bc15e73a484 109
+  s_a33cc13679744e::t_f34b40c9936efb 76
+docs/superpowers/specs/2026-09-04-detail-settings-logs-redesign-design.md
+  s_a33cc13679744e::t_e3c12adf8b722c 86
+  s_a33cc13679744e::t_deef111d7bd1f9 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "29a1c886a9a7eefb175e19a5a7888850a4c9171e",
+  "prompts": {},
+  "sessions": {
+    "s_a33cc13679744e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8af61090-3bb8-4782-9ea2-16f7ffe2551c",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
