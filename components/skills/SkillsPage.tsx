@@ -37,6 +37,7 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<ImportAggregate | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
   const [detail, setDetail] = useState<Skill | null>(null);
 
@@ -83,9 +84,10 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
     await refresh();
   }
 
-  async function exportMd(): Promise<void> {
+  async function exportMd(ids?: string[]): Promise<void> {
     const resp = await sendSkillsRequest<{ ok: boolean; data?: { text: string; count: number }; error?: string }>({
       type: 'SKILLS_EXPORT',
+      ids,
     });
     if (!resp.ok || !resp.data) {
       setResult({ kind: 'export', imported: 0, overwritten: 0, warnings: [resp.error ?? '导出失败'] });
@@ -100,6 +102,15 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
     a.download = name;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  function toggleSelected(id: string): void {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   async function setEnabled(id: string, enabled: boolean): Promise<void> {
@@ -120,6 +131,12 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
         warnings: [`删除「${name}」失败：${e instanceof Error ? e.message : String(e)}`],
       });
     }
+    setSelectedIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     await refresh();
   }
 
@@ -165,6 +182,13 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
 
   // ---------- 列表页 ----------
   const visible = filterAll(list, query);
+  // 勾选导出：只导当前列表里仍存在的勾选项（refresh 后已消失的 id 自动失效）
+  const exportIds = selectedIds.size > 0
+    ? list.filter((s) => selectedIds.has(s.id)).map((s) => s.id)
+    : undefined;
+  const exportLabel = exportIds
+    ? `导出选中的 ${exportIds.length} 个技能`
+    : '导出全部技能';
 
   return (
     <PageShell
@@ -175,7 +199,13 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
           <Button variant="ghost" className="btn--icon" aria-label="导入技能" onClick={() => fileRef.current?.click()}>
             <Upload size={16} />
           </Button>
-          <Button variant="ghost" className="btn--icon" aria-label="导出全部技能" onClick={() => void exportMd()}>
+          <Button
+            variant="ghost"
+            className="btn--icon"
+            aria-label={exportLabel}
+            title={exportLabel}
+            onClick={() => void exportMd(exportIds)}
+          >
             <Download size={16} />
           </Button>
           <Button variant="ghost" className="btn--icon" aria-label="返回设置" onClick={onBack}>
@@ -225,6 +255,15 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
             }}
           >
             <div className="scripts-card__top">
+              <input
+                type="checkbox"
+                className="skills-card__check"
+                aria-label={`选择 ${s.name}`}
+                checked={selectedIds.has(s.id)}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()} // 键盘空格勾选不触发卡片进详情
+                onChange={() => toggleSelected(s.id)}
+              />
               <span className="scripts-card__name">{s.name}</span>
               <button
                 type="button"

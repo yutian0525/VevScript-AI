@@ -1,7 +1,7 @@
 // agent/loop.ts
 // Agent 主循环状态机（设计 §2）：convId 存储 + tabId 操作目标 + usage 计量 + 自动压缩 + 熔断阀。
 import type { Provider, ChatMessage, ToolCall, ContentPart } from './provider/types';
-import type { ToolResult } from '../shared/types';
+import type { ToolResult, Skill } from '../shared/types';
 import type { AgentEvent } from '../shared/messages';
 import { runTurn } from './run-turn';
 import { buildContext, type PageInfo, type SkillBrief } from './context';
@@ -93,7 +93,9 @@ async function drive(
     const triggerSlash = pendingSlash;
     pendingSlash = undefined; // 仅触发轮注入；后续轮不再重复
     if (triggerSlash) {
-      const hit = (await listSkills()).find((s) => s.command === triggerSlash.command && s.enabled);
+      // storage 故障按「未命中」处理（原样普通文本跑），与 port 侧 getSkills 降级对称
+      const all = await listSkills().catch(() => [] as Skill[]);
+      const hit = all.find((s) => s.command === triggerSlash.command && s.enabled);
       if (hit) {
         messages.splice(1, 0, {
           role: 'system',
