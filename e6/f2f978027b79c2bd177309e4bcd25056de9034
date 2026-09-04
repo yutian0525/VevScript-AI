@@ -1,0 +1,27 @@
+tests/detail/code-editor.test.tsx
+  s_5826c9ae21829e::t_edf7d1d063846a 1-36
+package.json
+  s_5826c9ae21829e::t_4beb9868b3c11d 26
+  s_5826c9ae21829e::t_2c8aed9d988192 27-31
+components/detail/CodeEditor.tsx
+  s_5826c9ae21829e::t_ddcd834c1ed9f7 1-52,54-83
+  s_5826c9ae21829e::t_dd323543b8d453 53
+package-lock.json
+  s_5826c9ae21829e::t_20271c98a13d44 12-17,232-327,536-576,1825-1839,1894-1899,4678-4683,5308-5313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e6f2f978027b79c2bd177309e4bcd25056de9034",
+  "prompts": {},
+  "sessions": {
+    "s_5826c9ae21829e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c9e4c65-8d9f-4313-a46c-5c2b6d2c7043",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
