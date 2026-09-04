@@ -1,0 +1,23 @@
+components/detail/DetailLogsTab.tsx
+  s_9bdd42bdb4338c::t_5383e66f72d9f6 4,8-9,16-21,31
+components/detail/DetailSettingsTab.tsx
+  s_9bdd42bdb4338c::t_3d510425dfb7ab 4,7-8,44-47,52
+entrypoints/sidepanel/styles.css
+  s_9bdd42bdb4338c::t_7fde5cb5e350d4 887-899
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "fcc46aae7a11f820846a35cda4f1d009ebdc94c6",
+  "prompts": {},
+  "sessions": {
+    "s_9bdd42bdb4338c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbe95f26-e36e-451c-afa3-be735de632d1",
+        "model": "unknown"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
