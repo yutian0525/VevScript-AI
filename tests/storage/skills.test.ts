@@ -35,6 +35,15 @@ describe('storage/skills', () => {
     await expect(saveSkill(mkSkill({ id: 'sk2' }))).rejects.toThrow('command');
   });
 
+  it('更新路径改 command 撞他人 → throw，列表不变', async () => {
+    await saveSkill(mkSkill({ id: 'sk1', command: 'a' }));
+    await saveSkill(mkSkill({ id: 'sk2', command: 'b' }));
+    await expect(saveSkill(mkSkill({ id: 'sk1', command: 'b' }))).rejects.toThrow('command');
+    const all = await listSkills();
+    expect(all).toHaveLength(2);
+    expect(all.map((s) => s.command).sort()).toEqual(['a', 'b']);
+  });
+
   it('save 同 id 覆盖（upsert）不触发 command 撞名校验', async () => {
     await saveSkill(mkSkill());
     await saveSkill(mkSkill({ name: '改名' }));
@@ -56,6 +65,13 @@ describe('storage/skills', () => {
   it('数量上限：超过 MAX_SKILLS 抛错', async () => {
     for (let i = 0; i < MAX_SKILLS; i++) await saveSkill(mkSkill({ id: `k${i}`, command: `c-${i}` }));
     await expect(saveSkill(mkSkill({ id: 'extra', command: 'extra' }))).rejects.toThrow('上限');
+  });
+
+  it('满员时更新既有技能仍成功', async () => {
+    for (let i = 0; i < MAX_SKILLS; i++) await saveSkill(mkSkill({ id: `k${i}`, command: `c-${i}` }));
+    await saveSkill(mkSkill({ id: 'k0', name: '改名' }));
+    expect(await listSkills()).toHaveLength(MAX_SKILLS);
+    expect((await getSkill('k0'))!.name).toBe('改名');
   });
 
   it('content 超长抛错', async () => {

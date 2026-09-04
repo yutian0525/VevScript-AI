@@ -30,7 +30,8 @@ export async function saveSkill(skill: Skill): Promise<void> {
   if (!SKILL_COMMAND_RE.test(skill.command)) {
     throw new Error(`command 格式非法（需 kebab-case 小写字母/数字/连字符）：${skill.command}`);
   }
-  if (!exists && all.some((s) => s.command === skill.command)) {
+  const owner = all.find((s) => s.command === skill.command);
+  if (owner && owner.id !== skill.id) {
     throw new Error(`command「${skill.command}」已被其他技能使用`);
   }
   if (skill.content.length > MAX_CONTENT_LENGTH) {
