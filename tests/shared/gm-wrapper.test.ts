@@ -54,6 +54,14 @@ describe('buildWrappedCode', () => {
     expect(code).toContain('var unsafeWindow = window;');
   });
 
+  it('openInTab 句柄：OpenInTab 未 resolve 前 close() 不发 CloseTab（防 undefined tabId），resolve 后补发', () => {
+    const s = mkScript({ meta: { grants: ['GM_openInTab'] } });
+    const code = buildWrappedCode(s, { token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0' });
+    // __closePending 惰性补发语义：close 早于 tabId 到达时先记账，OpenInTab resolve 后再发
+    expect(code).toContain('__closePending');
+    expect(code).toContain('if (h.__tabId != null)');
+  });
+
   it('@require 内容在用户代码之前、preamble 之后', () => {
     const code = buildWrappedCode(mkScript(), {
       token: 't', values: {}, resources: {}, requireCodes: ['libBody();'], extensionVersion: '1.0.0',
