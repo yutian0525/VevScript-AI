@@ -1,17 +1,24 @@
 // components/detail/DetailLogsTab.tsx
 // 日志 Tab：脚本错误环形缓冲（时间 · line · 消息 + 可展开 stack）+ 清空；.well 井视觉。
 import { useState } from 'react';
+import { CircleCheck } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { sendScriptsRequest } from '../../stores/scripts';
 import type { GmErrorItem } from '../../stores/scripts';
+import { DetailTabHeader } from './DetailTabHeader';
+import { DetailEmptyCard } from './DetailEmptyCard';
 
 export function DetailLogsTab({ id, errors }: { id: string; errors: GmErrorItem[] }) {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
 
   return (
     <div className="detail__tabcard">
-      <div className="detail-code__bar">
-        <span className="mono detail-code__status">{errors.length} 条记录</span>
+      <DetailTabHeader
+        title="错误日志"
+        suffix={`${errors.length} 条`}
+        hint="脚本运行抛错将记录在此（环形缓冲，最近 20 条）。"
+      />
+      <div className="detail__toolbar">
         <Button
           variant="ghost"
           disabled={errors.length === 0}
@@ -21,7 +28,7 @@ export function DetailLogsTab({ id, errors }: { id: string; errors: GmErrorItem[
         </Button>
       </div>
       {errors.length === 0 ? (
-        <div className="chat__empty">暂无错误——脚本运行正常</div>
+        <DetailEmptyCard icon={CircleCheck} title="暂无错误" hint="脚本运行正常" />
       ) : (
         <div className="well detail__logs">
           {[...errors].reverse().map((e, i) => (
