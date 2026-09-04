@@ -204,7 +204,7 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .shell__actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-.shell__body { flex: 1; overflow: auto; padding: 16px; min-height: 0; }
+.shell__body { flex: 1; overflow: auto; padding: 16px; min-height: 0; min-width: 0; }
 
 /* ============ Live 仪表条（签名元素） ============ */
 .gauge {
@@ -759,7 +759,7 @@ body {
 .scripts-toolbar .input { flex: 1; }
 
 /* 脚本卡片（2026-09-03 重设计：switch 启停 + 整卡进全屏详情） */
-.scripts-list { display: grid; gap: 8px; }
+.scripts-list { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
 .scripts-card {
   border: 1px solid var(--line); border-radius: var(--r-md);
   padding: 9px 11px; cursor: pointer; background: var(--surface);
@@ -771,7 +771,7 @@ body {
 .scripts-card__name { flex: 1; min-width: 0; font-weight: 600; color: var(--ink); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scripts-card__meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
 .scripts-card__match { flex: 1; min-width: 0; font-size: 10.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.scripts-card__badges { display: inline-flex; gap: 4px; flex-shrink: 0; }
+.scripts-card__badges { display: inline-flex; gap: 4px; flex-shrink: 0; max-width: 100%; }
 
 /* switch 组件：40×22 轨道滑块，选中 signal 底白滑块 */
 .switch {
@@ -889,7 +889,6 @@ body {
   display: flex; align-items: center; gap: 6px; padding: 8px 10px; cursor: pointer;
   border-radius: var(--r-md); font-size: 12.5px;
 }
-.popup__runrow[aria-disabled="true"] { opacity: 0.55; cursor: default; }
 .popup__runrow:hover { background: var(--sunken); }
 .popup__runname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .popup__editbtn {

@@ -31,20 +31,30 @@ describe('ScriptsListView', () => {
     });
   });
 
-  it('渲染脚本卡片：名称、匹配规则、switch；无 RUNNING/MENU 区', async () => {
+  it('渲染脚本卡片：名称、匹配规则、switch；无 RUNNING/MENU 区、无来源徽标', async () => {
+    const summaries = [
+      mkSummary(),
+      mkSummary({ id: 's2', name: 'AI 建的脚本', source: 'agent' as const }),
+      mkSummary({ id: 's3', name: 'TM 导入脚本', source: 'import' as const, grantSupported: ['GM_xmlhttpRequest'], grantUnsupported: ['GM_cookie'] }),
+    ];
+    useScripts.setState({ summaries });
     browser.runtime.onMessage.addListener((msg: { type: string }, _s, sendResponse) => {
-      if (msg.type === 'SCRIPTS_LIST') { sendResponse({ ok: true, data: { scripts: [mkSummary()], engineAvailable: true } }); return true; }
+      if (msg.type === 'SCRIPTS_LIST') { sendResponse({ ok: true, data: { scripts: summaries, engineAvailable: true } }); return true; }
       if (msg.type === 'SCRIPTS_GET_RUNTIME') { sendResponse({ ok: true, data: { entries: [] } }); return true; }
       if (msg.type === 'SCRIPTS_GET_GM_STATE') { sendResponse({ ok: true, data: { menus: [], errors: {}, confirms: [] } }); return true; }
       sendResponse({ ok: false, error: 'unexpected' }); return true;
     });
     render(<ScriptsListView />);
     expect(await screen.findByText('脚本一')).toBeTruthy();
-    expect(screen.getByRole('switch')).toBeTruthy();
+    expect(screen.getAllByRole('switch')).toHaveLength(3);
     expect(screen.queryByText(/RUNNING/)).toBeNull();
     expect(screen.queryByText(/MENU ·/)).toBeNull();
     expect(screen.getByRole('button', { name: '新建脚本' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '导入脚本' })).toBeTruthy();
+    // 来源徽标（user/agent/TM）不再渲染——来源对列表信息量低，窄栏挤空间
+    expect(screen.queryByText(/^user$/)).toBeNull();
+    expect(screen.queryByText(/^agent$/)).toBeNull();
+    expect(screen.queryByText(/^TM$/)).toBeNull();
   });
 
   it('点击 switch 调 SCRIPTS_SET_ENABLED 且不触发卡片导航；tabs.create 未被调', async () => {
