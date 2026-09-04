@@ -1,0 +1,30 @@
+components/chat/ChatView.tsx
+  s_79c9460fb7e7ef::t_e75d993ca64d36 145-156
+  s_79c9460fb7e7ef::t_46ae38f70bf7d1 294
+  s_79c9460fb7e7ef::t_b26aa90d077777 210-244
+  s_79c9460fb7e7ef::t_3abe74e06ff02f 32-36
+  s_79c9460fb7e7ef::t_fead73fc80faa8 292-293,296-297
+  s_79c9460fb7e7ef::t_f98355140608c3 290-291,295
+  s_79c9460fb7e7ef::t_255d4f8f8ed5bc 40,44
+  s_79c9460fb7e7ef::t_6f0546d5da272d 10-12
+entrypoints/sidepanel/styles.css
+  s_79c9460fb7e7ef::t_2772bfe47b98d4 964-1018
+components/chat/SlashMenu.tsx
+  s_79c9460fb7e7ef::t_83b3a672ae8c5a 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "fde4fd98603593e4853ef869c0c649e3d16efe05",
+  "prompts": {},
+  "sessions": {
+    "s_79c9460fb7e7ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "878753d3-737c-46dc-86af-f5de7430b4d1",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
