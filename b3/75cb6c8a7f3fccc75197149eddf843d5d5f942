@@ -1,0 +1,23 @@
+shared/version.ts
+  s_5aed632b1b3dc5::t_a968be7562d9d9 14,20
+  s_5aed632b1b3dc5::t_19d69b11b48943 1-13,15-19,21-23
+tests/shared/version.test.ts
+  s_5aed632b1b3dc5::t_b285f42799a89b 1-18,20-24
+  s_5aed632b1b3dc5::t_980c940bf32498 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b375cb6c8a7f3fccc75197149eddf843d5d5f942",
+  "prompts": {},
+  "sessions": {
+    "s_5aed632b1b3dc5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9034a654-d6db-4470-a4bd-0855d45e79e0",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": null
+    }
+  }
+}
