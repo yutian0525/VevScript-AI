@@ -1,0 +1,27 @@
+components/detail/DetailInfoTab.tsx
+  s_5aed632b1b3dc5::t_43493fe57cf3f4 106
+  s_5aed632b1b3dc5::t_864c2bed7c8a1e 169-174,176
+  s_5aed632b1b3dc5::t_b4b73f636a91d5 4-5,9
+  s_5aed632b1b3dc5::t_bc2c50fb3b16ed 41
+  s_5aed632b1b3dc5::t_0e76a5ab9d1aeb 175
+  s_5aed632b1b3dc5::t_9a653065d6f817 31-40,42-44
+  s_5aed632b1b3dc5::t_daf7a8bbe53f67 62-88
+  s_5aed632b1b3dc5::t_5d01e22ca11636 100
+  s_5aed632b1b3dc5::t_57e42c4889ffaf 97-99,101-105,107-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d2cf1d6c5d0c6040df285e3324dc612051d0df76",
+  "prompts": {},
+  "sessions": {
+    "s_5aed632b1b3dc5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9034a654-d6db-4470-a4bd-0855d45e79e0",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": null
+    }
+  }
+}
