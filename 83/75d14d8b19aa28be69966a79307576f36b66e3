@@ -1,0 +1,26 @@
+stores/skills.ts
+  s_79c9460fb7e7ef::t_86e72bf52e0a26 1-43
+components/chat/slash.ts
+  s_79c9460fb7e7ef::t_38f09be3258ae8 1-33
+tests/chat/slash.test.ts
+  s_79c9460fb7e7ef::t_ecdeb69a50ea49 1-46
+tests/stores/skills.test.ts
+  s_79c9460fb7e7ef::t_e9268ceda7ec09 1-39,41-49
+  s_79c9460fb7e7ef::t_9f8277721f3edb 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8375d14d8b19aa28be69966a79307576f36b66e3",
+  "prompts": {},
+  "sessions": {
+    "s_79c9460fb7e7ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "878753d3-737c-46dc-86af-f5de7430b4d1",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
