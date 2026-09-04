@@ -1,0 +1,21 @@
+background/skills.ts
+  s_79c9460fb7e7ef::t_4da0cef01439e5 18-19,23,29,32,44,50
+tests/background/skills.test.ts
+  s_79c9460fb7e7ef::t_813714404a5f49 98-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d7869ca963bbc335423fd894209f4cc4858d9c46",
+  "prompts": {},
+  "sessions": {
+    "s_79c9460fb7e7ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "878753d3-737c-46dc-86af-f5de7430b4d1",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
