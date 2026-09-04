@@ -10,12 +10,6 @@ import { filterSummaries, openScriptTab, sendScriptsRequest, useScripts } from '
 import { ScriptsConfirmCard } from './ScriptsConfirmCard';
 import type { ScriptSummary } from '../../shared/types';
 
-const SOURCE_LABEL: Record<ScriptSummary['source'], string> = {
-  user: 'user',
-  agent: 'agent',
-  import: 'TM',
-};
-
 // 新建模板：body 需非空占位（解析后 code 不能为空）
 const NEW_SCRIPT_TEMPLATE = [
   '// ==UserScript==',
@@ -147,7 +141,6 @@ export function ScriptsListView() {
             <div className="scripts-card__meta">
               <span className="scripts-card__match mono">{s.matches.join(' ') || '（无匹配规则）'}</span>
               <span className="scripts-card__badges">
-                <span className="scripts-badge scripts-badge--signal">{SOURCE_LABEL[s.source]}</span>
                 {(s.grantSupported.length > 0 || s.grantUnsupported.length > 0) && (
                   <span
                     className={`scripts-badge ${s.grantUnsupported.length > 0 ? 'scripts-badge--warn' : 'scripts-badge--signal'}`}

@@ -26,6 +26,12 @@ function mockBackend(opts: {
       return true;
     }
     if (msg.type === 'SCRIPTS_MENU_INVOKE') { sendResponse({ ok: true }); return true; }
+    if (msg.type === 'SCRIPTS_SET_ENABLED') {
+      const enabled = (msg as { enabled?: boolean }).enabled ?? true;
+      const ids = opts.entry?.scriptIds ?? [];
+      sendResponse({ ok: true, data: { script: { id: ids[0] ?? 'r1', enabled } } });
+      return true;
+    }
     sendResponse({ ok: false, error: 'unexpected' }); return true;
   });
 }
@@ -97,14 +103,38 @@ describe('PopupApp', () => {
     await vi.waitFor(() => expect(screen.queryByText('命令二')).toBeNull()); // 再点行收起
   });
 
-  it('零菜单命令：行呈禁用观感（aria-disabled），点击不触发不关闭', async () => {
+  it('零菜单命令：行可正常 hover 进详情，点击行本体不触发不关闭（无禁用观感）', async () => {
     mockBackend({ entry: { tabId: 11, url: 'https://a.com/', scriptIds: ['r1'] }, commands: [] });
+    const createSpy = vi.fn().mockResolvedValue({});
+    (browser.tabs as unknown as { create: typeof createSpy }).create = createSpy;
     const closeSpy = vi.spyOn(window, 'close').mockImplementation(() => {});
     render(<PopupApp />);
     const row = await screen.findByText('脚本r1');
-    expect(row.closest('[aria-disabled="true"]')).toBeTruthy();
+    expect(row.closest('[aria-disabled="true"]')).toBeNull();
     fireEvent.click(row);
     expect(closeSpy).not.toHaveBeenCalled();
+    // 行内启停开关仍可用，且不触发卡片导航
+    fireEvent.click(screen.getByRole('switch', { name: /脚本r1/ }));
+    await vi.waitFor(() => {
+      expect(closeSpy).not.toHaveBeenCalled();
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  it('运行中脚本行内启停开关：调 SET_ENABLED 且不触发卡片导航不关窗', async () => {
+    mockBackend({ entry: { tabId: 11, url: 'https://a.com/', scriptIds: ['r1'] } });
+    const createSpy = vi.fn().mockResolvedValue({});
+    (browser.tabs as unknown as { create: typeof createSpy }).create = createSpy;
+    const closeSpy = vi.spyOn(window, 'close').mockImplementation(() => {});
+    const sendSpy = vi.spyOn(browser.runtime, 'sendMessage');
+    render(<PopupApp />);
+    const sw = await screen.findByRole('switch', { name: /脚本r1/ });
+    fireEvent.click(sw);
+    expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'SCRIPTS_SET_ENABLED', id: 'r1', enabled: false }));
+    await vi.waitFor(() => {
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(closeSpy).not.toHaveBeenCalled();
+    });
   });
 
   it('脚本管理按钮：写 pendingView + 发 UI_NAV + 调 sidePanel.open', async () => {
