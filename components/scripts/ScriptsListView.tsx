@@ -23,7 +23,7 @@ const NEW_SCRIPT_TEMPLATE = [
 ].join('\n');
 
 export function ScriptsListView() {
-  const { summaries, query, engineWarning, confirms, setQuery } = useScripts();
+  const { summaries, query, engineWarning, confirms, updates, dismissed, setQuery } = useScripts();
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const [urlBarOpen, setUrlBarOpen] = useState(false);
@@ -84,6 +84,16 @@ export function ScriptsListView() {
 
   async function setEnabled(id: string, enabled: boolean): Promise<void> {
     await sendScriptsRequest({ type: 'SCRIPTS_SET_ENABLED', id, enabled });
+    await useScripts.getState().refresh();
+  }
+
+  async function applyUpdate(id: string, name: string, version: string): Promise<void> {
+    if (!window.confirm(`将下载新版本并覆盖本地修改（含代码与设置），确认更新「${name}」到 v${version}？`)) return;
+    const resp = await sendScriptsRequest<{ ok: boolean; error?: string }>({ type: 'SCRIPTS_APPLY_UPDATE', id });
+    if (!resp.ok) {
+      setImportWarnings([resp.error ?? '更新失败']);
+      return;
+    }
     await useScripts.getState().refresh();
   }
 
@@ -160,7 +170,10 @@ export function ScriptsListView() {
       )}
 
       <div className="scripts-list">
-        {visible.map((s) => (
+        {visible.map((s) => {
+          const upd = updates[s.id];
+          const hasUpdate = upd?.status === 'available' && !dismissed.has(s.id);
+          return (
           <div
             key={s.id}
             className={`scripts-card${s.enabled ? '' : ' scripts-card--off'}`}
@@ -218,10 +231,34 @@ export function ScriptsListView() {
                 {s.errorCount > 0 && (
                   <span className="scripts-badge scripts-badge--warn" title="脚本运行报错（进详情页查看）">{s.errorCount} errors</span>
                 )}
+                {hasUpdate && (
+                  <span className="scripts-badge scripts-badge--signal mono" title="有可用更新，确认后从更新源下载">
+                    ↑ v{upd!.remoteVersion}
+                  </span>
+                )}
               </span>
             </div>
+            {hasUpdate && (
+              <div className="scripts-card__updatebar">
+                <Button
+                  variant="signal"
+                  aria-label={`更新 ${s.name} 到 v${upd!.remoteVersion}`}
+                  onClick={(e) => { e.stopPropagation(); void applyUpdate(s.id, s.name, upd!.remoteVersion); }}
+                >
+                  更新到 v{upd!.remoteVersion}
+                </Button>
+                <Button
+                  variant="ghost"
+                  aria-label={`忽略 ${s.name} 的更新提醒`}
+                  onClick={(e) => { e.stopPropagation(); useScripts.getState().dismissUpdate(s.id); }}
+                >
+                  忽略
+                </Button>
+              </div>
+            )}
           </div>
-        ))}
+          );
+        })}
         {visible.length === 0 && <div className="chat__empty">没有匹配的脚本</div>}
       </div>
 
