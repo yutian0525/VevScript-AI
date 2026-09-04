@@ -2,7 +2,7 @@
 // 脚本池列表页（2026-09-03 重设计）：纯管理器——警告 + 确认卡 + 搜索 + 脚本卡片（switch 启停）。
 // 运行观测/菜单触发归 popup；详情页 = 全屏新标签页（openScriptTab）。
 import { useRef, useState } from 'react';
-import { CircleAlert, Plus, Search, Trash2, Upload } from 'lucide-react';
+import { CircleAlert, Link, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -26,6 +26,9 @@ export function ScriptsListView() {
   const { summaries, query, engineWarning, confirms, setQuery } = useScripts();
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [urlBarOpen, setUrlBarOpen] = useState(false);
+  const [urlValue, setUrlValue] = useState('');
+  const [urlBusy, setUrlBusy] = useState(false);
 
   const visible = filterSummaries(summaries, query);
 
@@ -56,6 +59,28 @@ export function ScriptsListView() {
       setImportWarnings([resp.error ?? '导入失败']);
     }
   }
+  async function importUrl(): Promise<void> {
+    const url = urlValue.trim();
+    if (!url) return;
+    if (urlBusy) return;
+    setUrlBusy(true);
+    try {
+      const resp = await sendScriptsRequest<{ ok: boolean; data?: { script: { id: string }; warnings: string[] }; error?: string }>({
+        type: 'SCRIPTS_IMPORT_URL', url,
+      });
+      if (resp.ok && resp.data) {
+        setUrlBarOpen(false);
+        setUrlValue('');
+        setImportWarnings(resp.data.warnings);
+        await useScripts.getState().refresh();
+        openScriptTab(resp.data.script.id);
+      } else {
+        setImportWarnings([resp.error ?? 'URL 导入失败']);
+      }
+    } finally {
+      setUrlBusy(false);
+    }
+  }
 
   async function setEnabled(id: string, enabled: boolean): Promise<void> {
     await sendScriptsRequest({ type: 'SCRIPTS_SET_ENABLED', id, enabled });
@@ -84,6 +109,9 @@ export function ScriptsListView() {
           <Button variant="ghost" className="btn--icon" aria-label="导入脚本" onClick={() => fileRef.current?.click()}>
             <Upload size={16} />
           </Button>
+          <Button variant="ghost" className="btn--icon" aria-label="从 URL 导入" aria-expanded={urlBarOpen} onClick={() => setUrlBarOpen((v) => !v)}>
+            <Link size={16} />
+          </Button>
         </>
       }
     >
@@ -108,6 +136,21 @@ export function ScriptsListView() {
           />
         </div>
       </div>
+      {urlBarOpen && (
+        <div className="scripts-toolbar" role="form" aria-label="从 URL 导入脚本">
+          <Input
+            aria-label="脚本 URL"
+            placeholder="https://…/script.user.js"
+            value={urlValue}
+            onChange={(e) => setUrlValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') void importUrl(); }}
+            disabled={urlBusy}
+          />
+          <Button variant="signal" disabled={urlBusy || !urlValue.trim()} onClick={() => void importUrl()}>
+            {urlBusy ? '导入中…' : '导入'}
+          </Button>
+        </div>
+      )}
       {importWarnings.length > 0 && (
         <div className="scripts-warnline" role="status">
           {importWarnings.map((w, i) => (
