@@ -1,9 +1,10 @@
 // stores/skills.ts
 // 技能池前端状态：与 stores/scripts.ts 同构但极简（无运行态/广播）。
 import { create } from 'zustand';
+import type { SkillsRequest } from '../shared/messages';
 import type { SkillSummary } from '../shared/types';
 
-export async function sendSkillsRequest<T = unknown>(req: unknown): Promise<T> {
+export async function sendSkillsRequest<T = unknown>(req: SkillsRequest): Promise<T> {
   return (await browser.runtime.sendMessage(req)) as T;
 }
 
@@ -35,7 +36,8 @@ export const useSkills = create<SkillsState>((set) => ({
     set({ loading: true });
     try {
       const resp = await sendSkillsRequest<{ ok: boolean; data?: { skills: SkillSummary[] } }>({ type: 'SKILLS_LIST' });
-      set({ list: resp.data?.skills ?? [], loading: false });
+      // ok:false（后台业务失败）不清空已加载列表，仅停 loading
+      set((s) => ({ list: resp.ok ? (resp.data?.skills ?? []) : s.list, loading: false }));
     } catch {
       set({ loading: false });
     }

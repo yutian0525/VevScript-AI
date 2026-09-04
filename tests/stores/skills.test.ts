@@ -31,9 +31,13 @@ describe('filterSkills（纯函数）', () => {
 });
 
 describe('useSkills store', () => {
-  beforeEach(() => fakeBrowser.reset());
+  beforeEach(() => {
+    fakeBrowser.reset();
+    vi.restoreAllMocks();
+    useSkills.setState({ list: [], loading: false });
+  });
 
-  it('refresh 拉列表；失败静默置 loading:false', async () => {
+  it('refresh 拉列表', async () => {
     vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({
       ok: true,
       data: { skills: LIST },
@@ -41,9 +45,23 @@ describe('useSkills store', () => {
     await useSkills.getState().refresh();
     expect(useSkills.getState().list).toHaveLength(3);
     expect(useSkills.getState().loading).toBe(false);
+  });
 
+  it('refresh 失败静默置 loading:false', async () => {
+    useSkills.setState({ list: LIST });
     vi.spyOn(browser.runtime, 'sendMessage').mockRejectedValue(new Error('port gone'));
+    await expect(useSkills.getState().refresh()).resolves.toBeUndefined();
+    expect(useSkills.getState().loading).toBe(false);
+  });
+
+  it('refresh 返回 ok:false 时保留已加载列表', async () => {
+    vi.spyOn(browser.runtime, 'sendMessage')
+      .mockResolvedValueOnce({ ok: true, data: { skills: LIST } } as never)
+      .mockResolvedValueOnce({ ok: false, error: 'x' } as never);
     await useSkills.getState().refresh();
+    expect(useSkills.getState().list).toHaveLength(3);
+    await useSkills.getState().refresh();
+    expect(useSkills.getState().list).toHaveLength(3);
     expect(useSkills.getState().loading).toBe(false);
   });
 });
