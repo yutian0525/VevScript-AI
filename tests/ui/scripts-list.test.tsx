@@ -109,4 +109,30 @@ describe('ScriptsListView', () => {
       expect.objectContaining({ url: expect.stringContaining('script-detail.html?id=s1') }),
     );
   });
+
+  it('删除按钮：确认后调 SCRIPTS_DELETE，取消不动；不触发卡片导航', async () => {
+    const createSpy = vi.fn().mockResolvedValue({});
+    (browser.tabs as unknown as { create: typeof createSpy }).create = createSpy;
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const sendSpy = vi.spyOn(browser.runtime, 'sendMessage');
+    browser.runtime.onMessage.addListener((msg: { type: string }, _s, sendResponse) => {
+      if (msg.type === 'SCRIPTS_LIST') { sendResponse({ ok: true, data: { scripts: [mkSummary()], engineAvailable: true } }); return true; }
+      if (msg.type === 'SCRIPTS_GET_RUNTIME') { sendResponse({ ok: true, data: { entries: [] } }); return true; }
+      if (msg.type === 'SCRIPTS_GET_GM_STATE') { sendResponse({ ok: true, data: { menus: [], errors: {}, confirms: [] } }); return true; }
+      if (msg.type === 'SCRIPTS_DELETE') { sendResponse({ ok: true, data: {} }); return true; }
+      sendResponse({ ok: false, error: 'unexpected' }); return true;
+    });
+    render(<ScriptsListView />);
+    fireEvent.click(await screen.findByRole('button', { name: '删除 脚本一' }));
+    await vi.waitFor(() => {
+      expect(confirmSpy).toHaveBeenCalled();
+      expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'SCRIPTS_DELETE', id: 's1' }));
+    });
+    expect(createSpy).not.toHaveBeenCalled();
+    // 取消 confirm：不发 SCRIPTS_DELETE
+    confirmSpy.mockReturnValueOnce(false);
+    fireEvent.click(screen.getByRole('button', { name: '删除 脚本一' }));
+    const deleteCalls = sendSpy.mock.calls.filter(([m]) => (m as unknown as { type: string }).type === 'SCRIPTS_DELETE');
+    expect(deleteCalls).toHaveLength(1); // 取消的第二次不发
+  });
 });

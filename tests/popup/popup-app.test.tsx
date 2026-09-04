@@ -59,14 +59,17 @@ describe('PopupApp', () => {
     await vi.waitFor(() => expect(openSpy).toHaveBeenCalledWith({ tabId: 9 }));
   });
 
-  it('运行中脚本行渲染名称；hover 编辑按钮调 tabs.create 开详情页且不关窗', async () => {
+  it('运行中脚本行渲染名称；编辑按钮常驻，调 tabs.create 开详情页且不关窗', async () => {
     mockBackend({ entry: { tabId: 11, url: 'https://a.com/', scriptIds: ['r1'] } });
     const createSpy = vi.fn().mockResolvedValue({});
     (browser.tabs as unknown as { create: typeof createSpy }).create = createSpy;
     const closeSpy = vi.spyOn(window, 'close').mockImplementation(() => {});
     render(<PopupApp />);
     expect(await screen.findByText('脚本r1')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: /编辑 脚本r1/ }));
+    const edit = screen.getByRole('button', { name: /编辑 脚本r1/ });
+    // 常驻：不依赖 hover，无 opacity 隐藏
+    expect(getComputedStyle(edit).opacity).toBe('1');
+    fireEvent.click(edit);
     expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ url: expect.stringContaining('script-detail.html?id=r1') }));
     expect(closeSpy).not.toHaveBeenCalled(); // 编辑跳转不关浮窗（仅菜单触发路径关）
   });
@@ -135,6 +138,15 @@ describe('PopupApp', () => {
       expect(createSpy).not.toHaveBeenCalled();
       expect(closeSpy).not.toHaveBeenCalled();
     });
+  });
+
+  it('运行行控件次序：编辑按钮在开关左侧', async () => {
+    mockBackend({ entry: { tabId: 11, url: 'https://a.com/', scriptIds: ['r1'] } });
+    render(<PopupApp />);
+    const sw = await screen.findByRole('switch', { name: /脚本r1/ });
+    const edit = screen.getByRole('button', { name: /编辑 脚本r1/ });
+    // sw→edit 返回 PRECEDING(2) ⇔ edit 位于 sw 之前（换位后：编辑在左、开关在右）
+    expect(sw.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
   });
 
   it('脚本管理按钮：写 pendingView + 发 UI_NAV + 调 sidePanel.open', async () => {

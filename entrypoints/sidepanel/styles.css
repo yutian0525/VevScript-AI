@@ -772,6 +772,11 @@ body {
 .scripts-card__meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
 .scripts-card__match { flex: 1; min-width: 0; font-size: 10.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scripts-card__badges { display: inline-flex; gap: 4px; flex-shrink: 0; max-width: 100%; }
+.scripts-card__delbtn {
+  border: none; background: transparent; color: var(--ink-3); cursor: pointer;
+  padding: 4px; border-radius: var(--r-sm); display: inline-flex; flex-shrink: 0;
+}
+.scripts-card__delbtn:hover { background: var(--line-strong); color: var(--warn); }
 
 /* switch 组件：40×22 轨道滑块，选中 signal 底白滑块 */
 .switch {
@@ -894,9 +899,7 @@ body {
 .popup__editbtn {
   border: none; background: transparent; color: var(--ink-3); cursor: pointer;
   padding: 4px; border-radius: var(--r-sm); display: inline-flex; flex-shrink: 0;
-  opacity: 0; transition: opacity 120ms ease;
 }
-.popup__runrow:hover .popup__editbtn, .popup__editbtn:focus-visible { opacity: 1; }
 .popup__editbtn:hover { background: var(--line-strong); color: var(--ink); }
 .popup__cmdlist { display: grid; gap: 2px; padding: 0 6px 6px; }
 .popup__cmdbtn {
@@ -904,6 +907,3 @@ body {
   background: var(--sunken); color: var(--ink); cursor: pointer; font-size: 12px; font-family: var(--sans);
 }
 .popup__cmdbtn:hover { background: var(--line-strong); }
-@media (prefers-reduced-motion: reduce) {
-  .popup__editbtn { transition: none; }
-}
