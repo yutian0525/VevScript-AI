@@ -840,8 +840,19 @@ body {
 .detail__grant { display: flex; align-items: center; gap: 4px; color: var(--ink-2); }
 .detail__grant--bad { color: var(--warn); }
 .detail__actions { display: flex; gap: 6px; margin-top: 6px; }
-.detail__sectiontitle { font-size: 11px; color: var(--ink-2); }
-.detail__hint { font-size: 12px; color: var(--ink-3); margin: 0; line-height: 1.6; }
+/* Tab 节头（2026-09-04 重设计：主标题+灰副题，全左对齐） */
+.detail__thead { display: grid; gap: 4px; }
+.detail__title { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); display: flex; align-items: baseline; gap: 8px; }
+.detail__suffix { font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--ink-3); }
+.detail__hint { margin: 0; font-size: 12px; color: var(--ink-3); line-height: 1.6; }
+.detail__toolbar { display: flex; gap: 8px; }
+.detail__empty {
+  display: grid; gap: 3px; padding: 14px 16px; justify-items: start;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-md);
+}
+.detail__empty-icon { color: var(--ink-3); display: inline-flex; }
+.detail__empty-title { font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.detail__empty-hint { font-size: 12px; color: var(--ink-3); }
 .detail__hostlist { display: grid; gap: 6px; }
 .detail__hostrow {
   display: flex; align-items: center; justify-content: space-between;
