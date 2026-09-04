@@ -1,0 +1,25 @@
+tests/storage/skills.test.ts
+  s_79c9460fb7e7ef::t_8a88d8999fee2a 1-100
+storage/skills.ts
+  s_79c9460fb7e7ef::t_4a7bb46f26aae1 1-69
+shared/messages.ts
+  s_79c9460fb7e7ef::t_b8a76361ed4898 182-191
+shared/types.ts
+  s_79c9460fb7e7ef::t_0c52e7bae86550 90-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "86c45b7922bf3e4d6ad27a302da41e6cc5aa180b",
+  "prompts": {},
+  "sessions": {
+    "s_79c9460fb7e7ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "878753d3-737c-46dc-86af-f5de7430b4d1",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
