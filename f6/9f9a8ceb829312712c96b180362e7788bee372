@@ -1,0 +1,28 @@
+tests/background/scripts.test.ts
+  s_5aed632b1b3dc5::t_be98f4a27e9ba0 15-17
+  s_5aed632b1b3dc5::t_b4bfd59b03138a 423-456
+entrypoints/background.ts
+  s_5aed632b1b3dc5::t_91dfc14d8e9af9 18
+  s_5aed632b1b3dc5::t_a1d2ba4f0aa54b 91-95
+background/scripts.ts
+  s_5aed632b1b3dc5::t_90621e89198106 337
+  s_5aed632b1b3dc5::t_e8bf32a18d7ec6 304
+  s_5aed632b1b3dc5::t_62ffa57a01db5d 429-447
+  s_5aed632b1b3dc5::t_7fb3e291537747 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f69f9a8ceb829312712c96b180362e7788bee372",
+  "prompts": {},
+  "sessions": {
+    "s_5aed632b1b3dc5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9034a654-d6db-4470-a4bd-0855d45e79e0",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
