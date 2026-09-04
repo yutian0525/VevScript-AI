@@ -53,8 +53,9 @@ const API_TO_GRANT: Record<string, string> = {
 // SW 只当存储；错误上报是框架自身调用（spec §8）。
 const GRANT_EXEMPT = new Set(['ReportError', 'SetValue', 'GetValue', 'DeleteValue', 'ListValues']);
 
-// GM_notification 兜底图标（Chrome basic 通知要求非空 iconUrl；public 无图标资产时用内嵌 data URL）
-const NOTIF_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+// GM_notification 兜底图标（Chrome basic 通知要求非空 iconUrl，且只认扩展内真实文件路径——
+// data: URI 会报 "Unable to download all specified images"，资产由 public/gm-notif.png 提供）
+const NOTIF_ICON = '/gm-notif.png';
 
 // ---- SW 内存态（重启丢失、可自重建，spec §4.1）----
 const errorBuffers = new Map<string, GmErrorEntry[]>();
@@ -418,6 +419,11 @@ export async function handleGmCall(
     }
     case 'CloseTab': {
       const [tabId] = params as [number];
+      // 防御：OpenInTab 未 resolve 前句柄 close() 会带 undefined tabId——直接回可读错误，
+      // 不喂给 tabs.remove（No matching signature）
+      if (typeof tabId !== 'number' || !Number.isInteger(tabId)) {
+        return { ok: false, error: `CloseTab：非法 tabId（${JSON.stringify(tabId) ?? 'undefined'}）——标签页可能尚未创建完成` };
+      }
       try { await browser.tabs.remove(tabId); return { ok: true, data: null }; }
       catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
     }

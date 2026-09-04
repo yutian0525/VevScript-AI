@@ -115,6 +115,25 @@ describe('gm-api 简单 API', () => {
     expect(remove).toHaveBeenCalledWith(42);
   });
 
+  it('CloseTab：非法 tabId（undefined/非整数）直接回可读错误，不调 tabs.remove', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_openInTab'] } }));
+    const remove = vi.spyOn(browser.tabs, 'remove').mockResolvedValue(undefined as never);
+    const r1 = await call('CloseTab', [undefined]);
+    expect(r1).toMatchObject({ ok: false, error: expect.stringContaining('非法 tabId') });
+    const r2 = await call('CloseTab', ['n1' as unknown as number]); // 通知 id 误传等
+    expect(r2).toMatchObject({ ok: false });
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('Notification：iconUrl 用扩展内文件路径（data: URI 会报 Unable to download all specified images）', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_notification'] } }));
+    const create = vi.spyOn(browser.notifications, 'create').mockResolvedValue('n1' as never);
+    await call('Notification', [{ title: 't', text: 'm' }, 'n1']);
+    expect(create).toHaveBeenCalledWith('n1', expect.objectContaining({
+      type: 'basic', iconUrl: '/gm-notif.png',
+    }));
+  });
+
   it('SetClipboard 失败返回可读错误', async () => {
     await saveScript(mkScript({ meta: { grants: ['GM_setClipboard'] } }));
     vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn(async () => { throw new Error('denied'); }) } });
