@@ -1,0 +1,20 @@
+components/chat/ChatView.tsx
+  s_79c9460fb7e7ef::t_b4e53c612b9d97 146,149
+  s_79c9460fb7e7ef::t_1910b464eb357d 214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b7a0a1ef1adee706425a3dae8f2a86bb50ebe871",
+  "prompts": {},
+  "sessions": {
+    "s_79c9460fb7e7ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "878753d3-737c-46dc-86af-f5de7430b4d1",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
