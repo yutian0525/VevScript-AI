@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-09-04-detail-settings-logs-redesign.md
+  s_a33cc13679744e::t_7ed0d25a0ea12a 1-346
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f58757bc9905ac1f3922a6215cfddc83230f08bc",
+  "prompts": {},
+  "sessions": {
+    "s_a33cc13679744e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8af61090-3bb8-4782-9ea2-16f7ffe2551c",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
