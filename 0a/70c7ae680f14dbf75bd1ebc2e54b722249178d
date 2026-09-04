@@ -1,0 +1,23 @@
+components/detail/DetailSettingsTab.tsx
+  s_a33cc13679744e::t_128d297f86cbba 44-47
+  s_a33cc13679744e::t_5fe7f327ed3e00 52
+  s_a33cc13679744e::t_04fed4e9e71e6c 4,7-8
+tests/detail/detail-app.test.tsx
+  s_a33cc13679744e::t_a2e27832449796 180-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0a70c7ae680f14dbf75bd1ebc2e54b722249178d",
+  "prompts": {},
+  "sessions": {
+    "s_a33cc13679744e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8af61090-3bb8-4782-9ea2-16f7ffe2551c",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
