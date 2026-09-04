@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-09-04-script-update-design.md
+  s_5aed632b1b3dc5::t_e0216ccb8f93bf 1-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a16efe17cf478ac37b4fb45c0a1483a347d6e2de",
+  "prompts": {},
+  "sessions": {
+    "s_5aed632b1b3dc5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9034a654-d6db-4470-a4bd-0855d45e79e0",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
