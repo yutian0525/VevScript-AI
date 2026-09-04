@@ -172,14 +172,18 @@ async function broadcastValueChange(
   // 但仍下行（remote=false）以覆盖同脚本的其它同源框架/标签场景（spec §8）。
   const script = await getScript(scriptId);
   if (!script || script.matches.length === 0) return;
+  // sender.url 实测可能缺失（Chrome 不总填）——缺失时用 tabs.get 兜底，拿不到 URL 按「不匹配」处理
+  let senderTabId = sender?.tab?.id ?? null;
+  let senderUrl = sender?.tab?.url ?? (senderTabId != null ? (await browser.tabs.get(senderTabId).catch(() => undefined))?.url : undefined);
+  if (senderUrl == null && senderTabId != null) senderTabId = null;
   const tabs = await browser.tabs.query({}).catch(() => []);
   const targets = new Map<number, boolean>(); // tabId → remote
   for (const t of tabs) {
     if (t.id == null || !t.url || !matchUrl(script.matches, t.url)) continue;
-    targets.set(t.id, t.id !== sender?.tab?.id);
+    targets.set(t.id, t.id !== senderTabId);
   }
   // 发起 tab（sender）必然匹配（脚本正在其内运行），确保它也收到本地事件
-  if (sender?.tab?.id != null) targets.set(sender.tab.id, false);
+  if (senderTabId != null) targets.set(senderTabId, false);
   for (const [tabId, remote] of targets) {
     void sendGmEvent(tabId, scriptId, 'VALUE_CHANGE', { key, oldValue, newValue, remote });
   }

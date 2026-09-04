@@ -39,6 +39,36 @@ describe('gm-api 值存储', () => {
     expect(spy).toHaveBeenCalled();
   });
 
+  it('SetValue：sender.url 缺失时 tabs.get 兜底，本地 VALUE_CHANGE 事件不丢', async () => {
+    await saveScript(mkScript());
+    // 模拟 Chrome 实测行为：sender 只有 tab.id，url 未填；tabs.get 能查到 url
+    vi.spyOn(browser.tabs, 'get').mockResolvedValue({ id: 1, url: 'https://a.com/' } as never);
+    const spy = vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(undefined as never);
+    await handleGmCall(
+      { scriptId: 's1', api: 'SetValue', reqId: 1, params: ['k3', 'x'] },
+      { tab: { id: 1 } } as never,
+    );
+    const local = spy.mock.calls.find((c) => c[0] === 1);
+    expect(local).toBeDefined();
+    const payload = local![1] as { type: string; kind: string; data: { remote: boolean } };
+    expect(payload).toMatchObject({ type: 'GM_EVENT', kind: 'VALUE_CHANGE' });
+    expect(payload.data.remote).toBe(false); // 发起 tab 自己收到的必须是本地事件
+  });
+
+  it('SetValue：sender.url 与 tabs.get 都拿不到 → 仍广播到其它匹配 tab（发起 tab 不进 targets）', async () => {
+    await saveScript(mkScript({ id: 's2', matches: ['https://b.com/*'] }));
+    vi.spyOn(browser.tabs, 'get').mockRejectedValue(new Error('no tab'));
+    await fakeBrowser.tabs.create({ url: 'https://b.com/page' });
+    const spy = vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(undefined as never);
+    await handleGmCall(
+      { scriptId: 's2', api: 'SetValue', reqId: 1, params: ['k', 1] },
+      { tab: { id: 99 } } as never,
+    );
+    // 匹配的 b.com tab 收到 remote=true 事件；不匹配的发起 tab（99）不收
+    expect(spy.mock.calls.some((c) => c[0] !== 99)).toBe(true);
+    expect(spy.mock.calls.every((c) => c[0] !== 99)).toBe(true);
+  });
+
   it('GetValue 读库（桥侧兜底——正常路径走快照）', async () => {
     await storage.setItem('local:script-values:s1', { k: 'v' });
     const r = await call('GetValue', ['k']);
