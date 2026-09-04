@@ -86,9 +86,9 @@ fire-and-forget：不 await、不阻塞 SW 空闲回收。检查中途 SW 被杀
 
 **校验规则**：
 
-- `IMPORT_URL`：仅接受 `https?:` 协议（防 `file:`/`chrome-extension:`）；非 .user.js 后缀照收（有的直链无后缀，交给解析器判断）；脚本头无更新源时注入导入 URL（§1.4）
+- `IMPORT_URL`：仅接受 `https?:` 协议（防 `file:`/`chrome-extension:`）；非 .user.js 后缀照收（有的直链无后缀），但**文本必须含 `==UserScript==` 头**，缺失报错「下载内容不是有效脚本」（文件导入保持现有宽松警告行为不变）；脚本头无更新源时注入导入 URL（§1.4）
 - `CHECK_UPDATE`：无更新源 → 直接返回 `{ status: 'error', message: '无更新源（@updateURL/@downloadURL）' }`，不落 storage
-- `APPLY_UPDATE`：无源报错；下载文本超 `MAX_TEXT_LENGTH` 报错；解析后 code 为空报错（拒绝空码覆盖）
+- `APPLY_UPDATE`：无源报错；下载文本超 `MAX_TEXT_LENGTH` 报错；**文本无 `==UserScript==` 头报错**（拦住远端返回 HTML 页的情况）；解析后 code 为空报错（拒绝空码覆盖）
 
 **store**（stores/scripts.ts）：加 `updates: ScriptUpdateMap` 状态；`ScriptsView` 挂载时读 storage 一次 + 监听 `SCRIPTS_UPDATES` 广播。
 
@@ -104,7 +104,7 @@ fire-and-forget：不 await、不阻塞 SW 空闲回收。检查中途 SW 被杀
 ### 3.2 详情页 DetailInfoTab
 
 - 「检查更新」按钮进底部操作区（启用/禁用、删除同行）；无更新源 → 置灰（title 说明）；有源 → 点击转 busy
-- 结果以一行 `detail__inforow` 插在「版本」行下：`更新检查 · <时间>` + 结果文案（已是最新 vX.Y / 有新版本 v1.2.3 / 错误信息），行内直接给「更新」按钮（confirm → APPLY_UPDATE → `onChanged` 刷 header 副标题版本号）
+- 结果以一行 `detail__inforow` 插在「版本」行下：`更新检查 · HH:mm`（短时间）+ 结果文案（已是最新 vX.Y / 有新版本 v1.2.3 / 错误信息），行内直接给「更新」按钮（confirm → APPLY_UPDATE → `onChanged` 刷 header 副标题版本号）
 - 上次启动检查已有结果 → 进详情页直接显示该行，不用再点
 
 ## 4. 错误处理
@@ -119,8 +119,8 @@ fire-and-forget：不 await、不阻塞 SW 空闲回收。检查中途 SW 被杀
 - **纯函数**（`tests/shared/version.test.ts`）：compareVersions 进位/补零/字符串段/降级不提示；头部注入函数：无源注入、已有两键不覆盖、无头不注入
 - **编排层**（`tests/background/scripts-update.test.ts`，mock `fakeBrowser` + fetch）：
   - 检查流程四 status 落 storage 正确（up-to-date / available / HTTP 错误 / 版本缺失）
-  - `IMPORT_URL`：协议校验拒绝 / 成功路径（fetch→注入→handleImport）/ 更新源保留
-  - `APPLY_UPDATE`：无源报错 / 超长拒绝 / 空码拒绝 / 成功清 update-state
+  - `IMPORT_URL`：协议校验拒绝 / 无 `==UserScript==` 头拒绝 / 成功路径（fetch→注入→handleImport）/ 更新源保留
+  - `APPLY_UPDATE`：无源报错 / 超长拒绝 / 无头拒绝 / 空码拒绝 / 成功清 update-state
   - 不变量：handleUpdate 文本路径 / handleDelete 清 update-state
 
 ## 6. 涉及文件清单
