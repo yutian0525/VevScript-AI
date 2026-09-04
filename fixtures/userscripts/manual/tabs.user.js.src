@@ -1,0 +1,21 @@
+// ==UserScript==
+// @name         GM 手测·标签页
+// @namespace    ai-browser-extend/gmt-manual
+// @version      1.0.0
+// @description  GM 标签页模块人工测试：说明 + 步骤 + 人工标记
+// @match        *://*/*
+// @run-at       document-end
+// @grant        GM_openInTab
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_addStyle
+// @grant        GM_deleteValue
+// @noframes
+// ==/UserScript==
+
+GMT.render({
+  module: 'tabs',
+  title: 'GM 手测·标签页',
+  cards: [],
+  probe: { mark: '__gmt_probe=1', key: '__gmt_manual_probe_tabs' }
+});
