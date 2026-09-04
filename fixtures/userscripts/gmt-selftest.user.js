@@ -96,13 +96,16 @@
   }
   function fmtError(e) { return e instanceof Error ? (e.message || String(e)) : String(e); }
 
-  // ---- 断言执行器：fn 返回 true → pass；返回字符串 → fail（附详情）；throw → fail；返回 'wait' 保持待人工 ----
+  // ---- 断言执行器：fn 返回 true → pass；返回字符串 → fail（字符串为详情）；返回 false/falsy → fail；返回 'wait' 保持待人工；throw → fail ----
   async function runTest(item) {
     if (!item.fn) return; // 人工行无 fn
     try {
       var r = await item.fn(item);
       if (r === 'wait') return; // 保持 wait（人工指引中）
-      setState(item.id, r === false ? 'fail' : 'pass', (r === true || r == null) ? undefined : r);
+      // 只有布尔 true 算通过——`assert || '详情'` 习语的失败详情字符串必须落 fail 分支
+      var failed = r !== true;
+      setState(item.id, failed ? 'fail' : 'pass',
+        failed ? (typeof r === 'string' ? r : '断言返回 ' + (r === false ? 'false' : JSON.stringify(r))) : undefined);
     } catch (e) {
       setState(item.id, 'fail', fmtError(e));
     }
