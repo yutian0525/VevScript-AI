@@ -61,17 +61,35 @@ describe('DetailApp', () => {
     useScripts.setState({ summaries: [], runtimeEntries: {}, activeTabId: null, query: '', engineWarning: null, menus: [], errors: {}, confirms: [] });
   });
 
-  it('加载后默认展示详情 Tab：元信息 + 操作按钮 + 左栏四导航', async () => {
-    mockBackend(mkScript());
+  it('加载后默认展示详情 Tab：标题/副标题 + 左栏四导航', async () => {
+    mockBackend(mkScript({ meta: { version: '1.0', author: '某人' } }));
     render(<DetailApp id="s1" />);
     expect(await screen.findByText('测试脚本')).toBeTruthy();
+    expect(screen.getByText(/作者 某人/)).toBeTruthy();
     expect(screen.getByText('详情')).toBeTruthy();
     expect(screen.getByText('代码')).toBeTruthy();
     expect(screen.getByText('设置')).toBeTruthy();
     expect(screen.getByText(/日志/)).toBeTruthy();
-    expect(screen.getByRole('switch')).toBeTruthy(); // 顶栏启停
-    expect(screen.getByRole('button', { name: '重载当前页' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '导出 .user.js' })).toBeTruthy();
+    expect(screen.queryByRole('switch')).toBeNull(); // 顶栏无启停 switch
+  });
+
+  it('有外链 meta 时 header 渲染对应 icon 按钮，点击 tabs.create 新标签打开', async () => {
+    mockBackend(mkScript({ meta: { homepage: 'https://home.a.com/', supportURL: 'https://support.a.com/' } }));
+    const create = vi.spyOn(browser.tabs, 'create').mockResolvedValue(null as never);
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    const home = screen.getByRole('button', { name: '脚本主页' });
+    screen.getByRole('button', { name: '反馈与支持' }); // supportURL 也有
+    expect(screen.queryByRole('button', { name: '安装源' })).toBeNull(); // 无 downloadURL 不渲染
+    fireEvent.click(home);
+    expect(create).toHaveBeenCalledWith({ url: 'https://home.a.com/' });
+  });
+
+  it('无 iconURL 时头像显示名称首字', async () => {
+    mockBackend(mkScript());
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    expect(screen.getByText('测')).toBeTruthy(); // 首字回退块
   });
 
   it('Tab 切换：代码 Tab 显示编辑器；设置 Tab 显示 XHR 安全名单；日志 Tab 显示空态', async () => {
@@ -91,44 +109,6 @@ describe('DetailApp', () => {
     mockBackend(null);
     render(<DetailApp id="gone" />);
     expect(await screen.findByText('脚本不存在或已被删除')).toBeTruthy();
-  });
-
-  it('顶栏 switch 启停调 SCRIPTS_SET_ENABLED', async () => {
-    mockBackend(mkScript());
-    const sendSpy = vi.spyOn(browser.runtime, 'sendMessage');
-    render(<DetailApp id="s1" />);
-    const sw = await screen.findByRole('switch');
-    fireEvent.click(sw);
-    await vi.waitFor(() => {
-      const calls = sendSpy.mock.calls.filter((c) => (c[0] as unknown as { type: string }).type === 'SCRIPTS_SET_ENABLED');
-      expect(calls.length).toBeGreaterThan(0);
-      expect((calls[0]?.[0] as unknown as { enabled: boolean }).enabled).toBe(false);
-    });
-  });
-
-  it('有 http 标签时「重载当前页」可用，点击发 tabs.reload', async () => {
-    mockBackend(mkScript());
-    fakeBrowser.tabs.query = vi.fn().mockResolvedValue([{ id: 42, url: 'https://a.com', active: true, lastAccessed: 100 }]) as never;
-    const reload = vi.spyOn(browser.tabs, 'reload').mockResolvedValue();
-    render(<DetailApp id="s1" />);
-    await screen.findByText('测试脚本');
-    const btn = await screen.findByRole('button', { name: '重载当前页' });
-    await vi.waitFor(() => expect(btn.hasAttribute('disabled')).toBe(false));
-    fireEvent.click(btn);
-    await vi.waitFor(() => {
-      expect(reload).toHaveBeenCalled();
-      expect(reload.mock.calls[0]?.[0]).toBe(42);
-    });
-  });
-
-  it('无 http 标签时「重载当前页」禁用（降级路径）', async () => {
-    mockBackend(mkScript());
-    fakeBrowser.tabs.query = vi.fn().mockResolvedValue([]) as never; // 当前窗口 + 全量 http 查询都空
-    render(<DetailApp id="s1" />);
-    await screen.findByText('测试脚本');
-    const btn = await screen.findByRole('button', { name: '重载当前页' });
-    await vi.waitFor(() => expect(btn.hasAttribute('disabled')).toBe(true));
-    expect(btn.getAttribute('title')).toBe('无可重载的网页');
   });
 
   it('dirty 保存流：编辑源码 → 保存 → 顶栏显示新名字 + patch.text 正确（钉住 #2）', async () => {

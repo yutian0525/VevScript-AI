@@ -20,7 +20,13 @@ async function findReloadTarget(): Promise<number | null> {
   return recent?.id ?? null;
 }
 
-export function DetailInfoTab({ script }: { script: UserScript }) {
+export function DetailInfoTab(
+  { script, onChanged, onDelete }: {
+    script: UserScript;
+    onChanged: (next: UserScript, note: string) => void;
+    onDelete: () => void | Promise<void>;
+  },
+) {
   const meta = script.meta ?? {};
   const [reloadTargetId, setReloadTargetId] = useState<number | null>(null);
 

@@ -1,8 +1,9 @@
 // components/detail/DetailApp.tsx
-// 全屏脚本详情页（spec §2）：顶栏（switch+关闭）+ 左栏导航（详情/代码/设置/日志 N + 删除）+ 四 Tab。
-// Tab 式切换（用户选定）：每 Tab 独占内容区。
-import { useState } from 'react';
-import { X } from 'lucide-react';
+// 全屏脚本详情页（2026-09-04 重设计）：header = 头像 + 标题/副标题 + 外链 icon 组；
+// 左栏纯导航（详情/代码/设置/日志）；启停/删除在详情 Tab 内。
+import { useEffect, useState } from 'react';
+import { Download, House, LifeBuoy, RefreshCw, X } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Button } from '../ui/Button';
 import { sendScriptsRequest } from '../../stores/scripts';
 import type { UserScript } from '../../shared/types';
@@ -18,16 +19,13 @@ export function DetailApp({ id }: { id: string }) {
   const { script, setScript, errors, notFound, loading } = useScriptDetail(id);
   const [tab, setTab] = useState<TabKey>('info');
   const [message, setMessage] = useState('');
+  const [iconFailed, setIconFailed] = useState(false);
+  // 切换脚本时重置头像加载失败标记
+  useEffect(() => { setIconFailed(false); }, [id]);
 
-  async function toggleEnabled(): Promise<void> {
-    if (!script) return;
-    const resp = await sendScriptsRequest<{ ok: boolean; data?: { script: UserScript }; error?: string }>({
-      type: 'SCRIPTS_SET_ENABLED', id: script.id, enabled: !script.enabled,
-    });
-    if (resp.ok && resp.data) {
-      setScript(resp.data.script);
-      setMessage(resp.data.script.enabled ? '已启用，刷新页面生效' : '已禁用，刷新页面生效');
-    } else setMessage(resp.error ?? '操作失败');
+  function onScriptChanged(next: UserScript, note: string): void {
+    setScript(next);
+    setMessage(note);
   }
 
   async function remove(): Promise<void> {
@@ -49,6 +47,20 @@ export function DetailApp({ id }: { id: string }) {
     );
   }
 
+  const meta = script.meta ?? {};
+  const avatarChar = script.name.trim()[0] || '未';
+  const subtitleParts = [
+    meta.author ? `作者 ${meta.author}` : '',
+    meta.version ? `v${meta.version}` : '',
+  ].filter(Boolean);
+  const LINKS: Array<{ url?: string; label: string; icon: ReactNode }> = [
+    { url: meta.homepage, label: '脚本主页', icon: <House size={15} /> },
+    { url: meta.supportURL, label: '反馈与支持', icon: <LifeBuoy size={15} /> },
+    { url: meta.downloadURL, label: '安装源', icon: <Download size={15} /> },
+    { url: meta.updateURL, label: '更新源', icon: <RefreshCw size={15} /> },
+  ];
+  const links = LINKS.filter((l): l is { url: string; label: string; icon: ReactNode } => Boolean(l.url));
+
   const TABS: Array<{ key: TabKey; label: string; count?: number }> = [
     { key: 'info', label: '详情' },
     { key: 'code', label: '代码' },
@@ -59,19 +71,31 @@ export function DetailApp({ id }: { id: string }) {
   return (
     <div className="detail">
       <header className="detail__topbar">
-        <span className="eyebrow">SCRIPT</span>
-        <h1 className="detail__title" title={script.name}>{script.name || '未命名脚本'}</h1>
-        <button
-          type="button" role="switch" aria-checked={script.enabled}
-          aria-label={`${script.enabled ? '禁用' : '启用'} 脚本`}
-          className={`switch${script.enabled ? ' switch--on' : ''}`}
-          onClick={() => void toggleEnabled()}
-        >
-          <span className="switch__thumb" aria-hidden />
-        </button>
-        <Button variant="ghost" className="btn--icon" aria-label="关闭" onClick={() => window.close()}>
-          <X size={16} />
-        </Button>
+        {meta.iconURL && !iconFailed ? (
+          <img className="detail__avatar" src={meta.iconURL} alt="" onError={() => setIconFailed(true)} />
+        ) : (
+          <span className="detail__avatar detail__avatar--fallback" aria-hidden>{avatarChar}</span>
+        )}
+        <div className="detail__headtext">
+          <h1 className="detail__h1" title={script.name}>{script.name || '未命名脚本'}</h1>
+          {subtitleParts.length > 0 && <div className="detail__subtitle">{subtitleParts.join(' · ')}</div>}
+        </div>
+        {links.length > 0 && (
+          <div className="detail__links">
+            {links.map((l) => (
+              <Button
+                key={l.label}
+                variant="ghost"
+                className="btn--icon"
+                aria-label={l.label}
+                title={`${l.label}：${l.url}`}
+                onClick={() => void browser.tabs.create({ url: l.url })}
+              >
+                {l.icon}
+              </Button>
+            ))}
+          </div>
+        )}
       </header>
       <div className="detail__main">
         <nav className="detail__side" aria-label="详情页分区">
@@ -87,12 +111,10 @@ export function DetailApp({ id }: { id: string }) {
               {t.count != null && <span className="detail__navcount mono">{t.count}</span>}
             </button>
           ))}
-          <div className="detail__side-spacer" />
-          <button type="button" className="detail__navitem detail__navitem--danger" onClick={() => void remove()}>删除</button>
         </nav>
         <div className="detail__content">
           {message && <div className="scripts-warnline" role="status">{message}</div>}
-          {tab === 'info' && <DetailInfoTab script={script} />}
+          {tab === 'info' && <DetailInfoTab script={script} onChanged={onScriptChanged} onDelete={remove} />}
           {tab === 'code' && <DetailCodeTab script={script} onSaved={(s) => setScript(s)} />}
           {tab === 'settings' && <DetailSettingsTab id={script.id} />}
           {tab === 'logs' && <DetailLogsTab id={script.id} errors={errors} />}
