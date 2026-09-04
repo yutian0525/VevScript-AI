@@ -143,9 +143,10 @@ export function ChatView() {
   const hasInput = input.trim().length > 0;
 
   // 斜杠浮层候选与可见性（spec §3）：/ 开头且尚无空白时触发，Esc 临时关闭（slashDismissed）。
+  // 候选在计算处统一截断 8 条——浮层渲染与键盘导航（count）共用同一数组，防高亮索引逃出可见窗口。
   const slashCandidates = slashDismissed
     ? []
-    : filterSkills(skillList, input.startsWith('/') ? input.slice(1) : '');
+    : filterSkills(skillList, input.startsWith('/') ? input.slice(1) : '').slice(0, 8);
   const slashVisible = !slashDismissed && shouldOpenSlash(input) && slashCandidates.length > 0;
   const slashHiSafe = Math.min(slashHi, Math.max(0, slashCandidates.length - 1));
   const selectSlash = (cmd: string) => {
@@ -210,7 +211,7 @@ export function ChatView() {
           <div className="composer__wrap">
             {slashVisible && (
               <SlashMenu
-                candidates={slashCandidates.slice(0, 8)}
+                candidates={slashCandidates}
                 hi={slashHiSafe}
                 onSelect={selectSlash}
               />
