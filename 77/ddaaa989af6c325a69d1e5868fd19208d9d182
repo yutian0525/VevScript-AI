@@ -1,0 +1,19 @@
+CLAUDE.md
+  s_79c9460fb7e7ef::t_5f513eea7e2654 110-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "77ddaaa989af6c325a69d1e5868fd19208d9d182",
+  "prompts": {},
+  "sessions": {
+    "s_79c9460fb7e7ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "878753d3-737c-46dc-86af-f5de7430b4d1",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
