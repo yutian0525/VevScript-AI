@@ -795,6 +795,10 @@ body {
 }
 .scripts-card:hover { border-color: var(--line-strong); }
 .scripts-card--off { opacity: 0.55; }
+.scripts-card__updatebar {
+  display: flex; gap: 8px; align-items: center; margin-top: 7px; padding-top: 7px;
+  border-top: 1px dashed var(--line);
+}
 .scripts-card__top { display: flex; align-items: center; gap: 8px; }
 .scripts-card__name { flex: 1; min-width: 0; font-weight: 600; color: var(--ink); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scripts-card__meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
