@@ -1,0 +1,21 @@
+shared/gm-wrapper.ts
+  s_b24d2b355b9859::t_2fee16860a1194 134
+tests/shared/gm-wrapper.test.ts
+  s_b24d2b355b9859::t_0f4a06e828487f 57-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0fa06fdc9ff4af16e0abc43eeddf59d61a142464",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
