@@ -1,0 +1,27 @@
+components/detail/DetailCodeTab.tsx
+  s_5826c9ae21829e::t_3ee92beecd11a4 2-4,9-11,17,37-58,65-71,79-95
+entrypoints/sidepanel/styles.css
+  s_5826c9ae21829e::t_1390f73fae6050 898-903,906-907
+tests/detail/detail-app.test.tsx
+  s_5826c9ae21829e::t_012867a15e7ba4 2,4,13-21
+  s_5826c9ae21829e::t_1297c0ae73f5bb 178,181-209,211-244,246-247
+  s_5826c9ae21829e::t_be5bda3a1411df 179-180
+  s_5826c9ae21829e::t_523d2f2b000339 210,245
+  s_5826c9ae21829e::t_67174aea0b0c0c 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "24700c1031cf0409eb626612bc02ef9bd035bef3",
+  "prompts": {},
+  "sessions": {
+    "s_5826c9ae21829e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c9e4c65-8d9f-4313-a46c-5c2b6d2c7043",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
