@@ -80,20 +80,27 @@ function looksLikeFrontmatterDoc(chunk: string): boolean {
 
 /** 多文档解析（导入用）：先按文档间分隔符（\n---\n\n）拆开，再启发式合并不像 frontmatter
  *  开头的段（视为正文水平线），最后逐个 parseSkillMd。拆分前归一化 CRLF，避免 Windows
- *  行尾文件静默合并成单个坏文档。 */
+ *  行尾文件静默合并成单个坏文档；被并入的段会在该文档 warnings 里留痕，坏文档不静默丢失。 */
 export function parseSkillMdDocument(text: string, filename?: string): ParseSkillResult[] {
   const normalized = text.replace(/\r\n/g, '\n');
   const SEP = '\n---\n\n';
   return normalized
     .split(SEP)
-    .reduce<string[]>((acc, chunk) => {
+    .reduce<{ chunk: string; absorbed: number }[]>((acc, item) => {
       const prev = acc[acc.length - 1];
-      if (prev !== undefined && !looksLikeFrontmatterDoc(chunk)) {
-        acc[acc.length - 1] = prev + SEP + chunk;
+      if (prev !== undefined && !looksLikeFrontmatterDoc(item)) {
+        prev.chunk = prev.chunk + SEP + item;
+        prev.absorbed += 1;
       } else {
-        acc.push(chunk);
+        acc.push({ chunk: item, absorbed: 0 });
       }
       return acc;
     }, [])
-    .map((d) => parseSkillMd(d, filename));
+    .map(({ chunk, absorbed }) => {
+      const r = parseSkillMd(chunk, filename);
+      if (r.ok && absorbed > 0) {
+        r.warnings.push(`正文后另有 ${absorbed} 段非 frontmatter 内容，已并入正文（可能为水平线或损坏的文档）`);
+      }
+      return r;
+    });
 }

@@ -119,6 +119,38 @@ describe('serializeSkillMd / serializeSkillsMd / parseSkillMdDocument', () => {
     if (parsed[0]!.ok) expect(parsed[0]!.skill.content).toBe('step1\n\n---\n\nstep2');
   });
 
+  it('无 frontmatter 的坏文档并入前段时留下 absorbed warning', () => {
+    const docs = [
+      serializeSkillMd({ name: 'A', description: 'd', command: 'a', content: 'CA' }),
+      '没有 frontmatter 的坏文档',
+      serializeSkillMd({ name: 'B', description: 'd', command: 'b', content: 'CB' }),
+    ].join('\n---\n\n');
+    const parsed = parseSkillMdDocument(docs);
+    expect(parsed).toHaveLength(2);
+    expect(parsed[0]!.ok).toBe(true);
+    expect(parsed[1]!.ok).toBe(true);
+    if (parsed[0]!.ok) {
+      expect(parsed[0]!.skill.content).toContain('没有 frontmatter 的坏文档');
+      expect(parsed[0]!.warnings.some((w) => w.includes('已并入'))).toBe(true);
+    }
+  });
+
+  it('被并段出现在第二个文档后时 warning 落在最后一个文档上', () => {
+    const docs = [
+      serializeSkillMd({ name: 'A', description: 'd', command: 'a', content: 'CA' }),
+      serializeSkillMd({ name: 'B', description: 'd', command: 'b', content: 'CB' }),
+      '没有 frontmatter 的坏文档',
+    ].join('\n---\n\n');
+    const parsed = parseSkillMdDocument(docs);
+    expect(parsed).toHaveLength(2);
+    expect(parsed[1]!.ok).toBe(true);
+    if (parsed[1]!.ok) {
+      expect(parsed[1]!.skill.content).toContain('没有 frontmatter 的坏文档');
+      expect(parsed[1]!.warnings.some((w) => w.includes('已并入'))).toBe(true);
+    }
+    if (parsed[0]!.ok) expect(parsed[0]!.warnings).toHaveLength(0);
+  });
+
   it('serializeSkillMd 对 name/description 换行做防御（round-trip 无条件成立）', () => {
     const out = serializeSkillMd({ name: '多\n行名', description: 'desc\nription', command: 'x', content: 'C' });
     const r = parseSkillMd(out, 'x.md');
