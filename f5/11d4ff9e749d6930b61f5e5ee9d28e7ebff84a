@@ -1,0 +1,32 @@
+tests/agent/skills-context.test.ts
+  s_79c9460fb7e7ef::t_b7b70bfb4f4da5 1-176
+agent/loop.ts
+  s_79c9460fb7e7ef::t_0217aa4b34261b 89-92,97-99,101-103
+  s_79c9460fb7e7ef::t_5663b8cad28e29 61
+  s_79c9460fb7e7ef::t_f045ed942171fb 39-41,50-57
+  s_79c9460fb7e7ef::t_37a5552c15db9f 24-25
+  s_79c9460fb7e7ef::t_4cb5bf9f7424fc 93-96,100
+  s_79c9460fb7e7ef::t_64548ad0cf1f25 7,11
+background/agent-port.ts
+  s_79c9460fb7e7ef::t_54368d8f5d5a60 103-104
+  s_79c9460fb7e7ef::t_7922f8ff536662 12
+agent/context.ts
+  s_79c9460fb7e7ef::t_780758dba681a5 68,73-74
+  s_79c9460fb7e7ef::t_4cf134682747e9 17-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f511d4ff9e749d6930b61f5e5ee9d28e7ebff84a",
+  "prompts": {},
+  "sessions": {
+    "s_79c9460fb7e7ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "878753d3-737c-46dc-86af-f5de7430b4d1",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
