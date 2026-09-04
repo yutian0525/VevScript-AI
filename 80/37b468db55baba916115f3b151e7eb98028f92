@@ -1,0 +1,22 @@
+tests/shared/userscript-meta.test.ts
+  s_5aed632b1b3dc5::t_2ad98e4bde450d 3
+  s_5aed632b1b3dc5::t_73edb7935b482a 239-265
+shared/userscript-meta.ts
+  s_5aed632b1b3dc5::t_6b0f06a7c8f0ec 173-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8037b468db55baba916115f3b151e7eb98028f92",
+  "prompts": {},
+  "sessions": {
+    "s_5aed632b1b3dc5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9034a654-d6db-4470-a4bd-0855d45e79e0",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
