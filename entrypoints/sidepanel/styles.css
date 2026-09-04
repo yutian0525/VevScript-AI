@@ -900,17 +900,16 @@ body {
 .detail__logmain:hover { color: var(--signal-ink); }
 .detail__logstack { margin: 4px 0 6px; padding: 8px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-sm); white-space: pre-wrap; word-break: break-all; max-height: 240px; overflow: auto; font-size: 11px; color: var(--warn); }
 
-/* 代码 Tab：编辑器全宽破格（不受 tabcard 840px 限制） */
-.detail-code { display: grid; gap: 8px; max-width: none; width: 100%; }
-.detail-code__bar { display: flex; align-items: center; gap: 8px; max-width: 840px; margin: 0 auto; width: 100%; }
-.detail-code__status { flex: 1; font-size: 11px; color: var(--ink-3); }
-.detail-code__editor {
-  width: 100%; min-height: calc(100vh - 200px); resize: vertical;
-  font-size: 12.5px; line-height: 1.6; tab-size: 2;
+/* 代码 Tab：CM6 编辑器顶满剩余高度（不可拖拽 resize），工具栏按钮左/状态右 */
+.detail-code { display: flex; flex-direction: column; gap: 8px; height: 100%; width: 100%; }
+.detail-code__bar { display: flex; align-items: center; gap: 8px; flex-shrink: 0; width: 100%; }
+.detail-code__status { margin-left: auto; font-size: 11px; color: var(--ink-3); flex-shrink: 0; }
+.detail-code__editor-host {
+  flex: 1; min-height: 0; overflow: hidden;
   background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-md);
-  padding: 12px; color: var(--ink); outline: none;
 }
-.detail-code__editor:focus { border-color: var(--signal); }
+.detail-code__editor-host .cm-editor { height: 100%; }
+.detail-code__editor-host .cm-editor.cm-focused { outline: none; }
 
 @media (max-width: 720px) {
   .detail__main { flex-direction: column; }

@@ -1,6 +1,7 @@
 // tests/detail/detail-app.test.tsx
-// 全屏详情页：四 Tab 切换、顶栏 switch 启停、不存在脚本空态。
+// 全屏详情页：四 Tab 切换、header 外链/头像、详情 Tab 中文化/启停删除、代码 Tab 导入导出、不存在脚本空态。
 // @vitest-environment jsdom
+import React from 'react';
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
@@ -8,6 +9,16 @@ import { DetailApp } from '../../components/detail/DetailApp';
 import { useScripts } from '../../stores/scripts';
 import type { GmErrorItem } from '../../stores/scripts';
 import type { UserScript } from '../../shared/types';
+
+// CM6 在 jsdom 无布局——CodeEditor mock 为受控 textarea，保住 textbox 语义与 change 交互用例
+vi.mock('../../components/detail/CodeEditor', () => ({
+  CodeEditor: (props: { value: string; onChange: (v: string) => void; ariaLabel: string }) =>
+    React.createElement('textarea', {
+      'aria-label': props.ariaLabel,
+      value: props.value,
+      onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => props.onChange(e.target.value),
+    }),
+}));
 
 afterEach(cleanup);
 
@@ -162,6 +173,76 @@ describe('DetailApp', () => {
     mockBackend(null);
     render(<DetailApp id="gone" />);
     expect(await screen.findByText('脚本不存在或已被删除')).toBeTruthy();
+  });
+
+  it('代码 Tab 工具栏：保存/导入/导出按钮在状态字左侧（DOM 顺序）', async () => {
+    // meta.grants 覆盖掉 fixture 默认值（NO_SUCH_API 会触发解析警告）→ 状态字为「已同步」
+    mockBackend(mkScript({ text: '// ==UserScript==\n// @name 测试脚本\n// @match *://*/*\n// ==/UserScript==\nconsole.log(1);', meta: {} }));
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    fireEvent.click(screen.getByText('代码'));
+    const bar = screen.getByText('已同步').parentElement!;
+    const idx = (el: Element) => Array.prototype.indexOf.call(bar.children, el);
+    const idxSave = idx(screen.getByRole('button', { name: /保存/ }));
+    const idxImport = idx(screen.getByRole('button', { name: /导入/ }));
+    const idxExport = idx(screen.getByRole('button', { name: /导出/ }));
+    const idxStatus = idx(screen.getByText('已同步'));
+    expect(idxSave).toBeLessThan(idxStatus);
+    expect(idxImport).toBeLessThan(idxStatus);
+    expect(idxExport).toBeLessThan(idxStatus);
+  });
+
+  it('导出：点击导出按钮触发 .user.js 下载', async () => {
+    mockBackend(mkScript({ name: '我的脚本' }));
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    const revoke = vi.spyOn(URL, 'revokeObjectURL').mockReturnValue();
+    const clickSpy = vi.fn();
+    const realCreate = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      if (tag === 'a') {
+        const a = realCreate('a');
+        a.click = clickSpy;
+        return a;
+      }
+      return realCreate(tag);
+    });
+    render(<DetailApp id="s1" />);
+    await screen.findByText('我的脚本');
+    fireEvent.click(screen.getByText('代码'));
+    fireEvent.click(screen.getByRole('button', { name: /导出/ }));
+    expect(createObjectURL).toHaveBeenCalled();
+    expect(clickSpy).toHaveBeenCalled();
+    const a = clickSpy.mock.instances[0] as unknown as HTMLAnchorElement;
+    expect(a.download).toBe('我的脚本.user.js');
+    expect(revoke).toHaveBeenCalledWith('blob:mock');
+    vi.restoreAllMocks();
+  });
+
+  it('导入：选文件替换内容并标记未保存', async () => {
+    mockBackend(mkScript());
+    const fileText = '// ==UserScript==\n// @name 导入的\n// @match *://*/*\n// ==/UserScript==\n';
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    fireEvent.click(screen.getByText('代码'));
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File([fileText], 'imported.user.js', { type: 'text/javascript' });
+    Object.defineProperty(file, 'text', { value: async () => fileText });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(await screen.findByText('● 未保存')).toBeTruthy();
+  });
+
+  it('导入超限：>280KB 报错且不替换内容', async () => {
+    mockBackend(mkScript());
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    fireEvent.click(screen.getByText('代码'));
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const big = new Array(280 * 1024 + 1).fill('a').join('');
+    const file = new File([big], 'big.js', { type: 'text/javascript' });
+    Object.defineProperty(file, 'text', { value: async () => big });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(await screen.findByText('文件过大（上限 280KB）')).toBeTruthy();
+    expect(screen.queryByText('● 未保存')).toBeNull(); // 未标记 dirty（fixture 有警告，状态字为「N 条解析警告」）
   });
 
   it('dirty 保存流：编辑源码 → 保存 → 顶栏显示新名字 + patch.text 正确（钉住 #2）', async () => {
