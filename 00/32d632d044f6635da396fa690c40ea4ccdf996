@@ -1,0 +1,30 @@
+package.json
+  s_b24d2b355b9859::t_bab7d6632f4545 10
+fixtures/userscripts/manual/gmt-manual-tabs.user.js
+  s_b24d2b355b9859::t_9c609067a0b62b 1-10,13-98,102-209
+  s_b24d2b355b9859::t_e180039844d07e 11-12,99-101
+fixtures/userscripts/manual/tabs.user.js.src
+  s_b24d2b355b9859::t_e2eb6ea3b970f6 1-21
+fixtures/userscripts/manual/_panel-core.js
+  s_b24d2b355b9859::t_b2c89c4b001e9c 1-2,4-81,85-184
+  s_b24d2b355b9859::t_e9cdaecacc3676 3
+  s_b24d2b355b9859::t_a9f29f42e6f50b 82-84
+scripts/build-manual.mjs
+  s_b24d2b355b9859::t_71e65e4c5108a8 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0032d632d044f6635da396fa690c40ea4ccdf996",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": null
+    }
+  }
+}
