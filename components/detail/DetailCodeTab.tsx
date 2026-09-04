@@ -1,16 +1,20 @@
 // components/detail/DetailCodeTab.tsx
-// 代码 Tab：源码编辑器（全宽破格）+ dirty 指示 + 保存（patch {text} 整文替换）。
-import { useEffect, useMemo, useState } from 'react';
-import { Save } from 'lucide-react';
+// 代码 Tab（2026-09-04 重写）：CM6 编辑器顶满 + 工具栏（保存/导入/导出 左，状态字 右）。
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Download, Save, Upload } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { sendScriptsRequest } from '../../stores/scripts';
 import { parseUserScript } from '../../shared/userscript-meta';
 import type { UserScript } from '../../shared/types';
+import { CodeEditor } from './CodeEditor';
+
+const MAX_IMPORT_BYTES = 280 * 1024; // 与 UserScript.text 后端上限对齐
 
 export function DetailCodeTab({ script, onSaved }: { script: UserScript; onSaved: (saved: UserScript) => Promise<void> | void }) {
   const [text, setText] = useState(script.text);
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
   // 脚本切换/保存后同步基线
   useEffect(() => { setText(script.text); setDirty(false); }, [script.id, script.updatedAt]);
 
@@ -30,15 +34,41 @@ export function DetailCodeTab({ script, onSaved }: { script: UserScript; onSaved
     }
   }
 
+  function exportFile(): void {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(script.name || 'script').replace(/[\\/:*?"<>|]/g, '_')}.user.js`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function onImportFile(file: File): Promise<void> {
+    const content = await file.text();
+    if (content.length > MAX_IMPORT_BYTES) {
+      setMessage('文件过大（上限 280KB）');
+      return;
+    }
+    setMessage('');
+    setText(content);
+    setDirty(true);
+  }
+
+  const status = dirty ? '● 未保存' : parsed.warnings.length > 0 ? `${parsed.warnings.length} 条解析警告` : '已同步';
+
   return (
     <div className="detail-code">
       <div className="detail-code__bar">
-        <span className="mono detail-code__status">
-          {dirty ? '● 未保存' : parsed.warnings.length > 0 ? `${parsed.warnings.length} 条解析警告` : '已同步'}
-        </span>
         <Button variant="primary" disabled={!dirty} onClick={() => void save()}>
           <Save size={14} /> 保存
         </Button>
+        <Button variant="ghost" onClick={() => fileRef.current?.click()}>
+          <Upload size={14} /> 导入
+        </Button>
+        <Button variant="ghost" onClick={exportFile}>
+          <Download size={14} /> 导出
+        </Button>
+        <span className="detail-code__status mono">{status}</span>
       </div>
       {message && <div className="scripts-warnline" role="status">{message}</div>}
       {parsed.warnings.length > 0 && (
@@ -46,23 +76,23 @@ export function DetailCodeTab({ script, onSaved }: { script: UserScript; onSaved
           {parsed.warnings.map((w, i) => <div key={i}>{w}</div>)}
         </div>
       )}
-      <textarea
-        aria-label="脚本源码"
-        className="detail-code__editor mono"
-        spellCheck={false}
-        value={text}
-        onChange={(e) => { setText(e.target.value); setDirty(true); }}
-        onKeyDown={(e) => {
-          // Tab 键插入两空格（轻量编辑器约定，不做 CodeMirror）
-          if (e.key === 'Tab') {
-            e.preventDefault();
-            const el = e.currentTarget;
-            const { selectionStart, selectionEnd, value } = el;
-            el.value = `${value.slice(0, selectionStart)}  ${value.slice(selectionEnd)}`;
-            el.selectionStart = el.selectionEnd = selectionStart + 2;
-            setText(el.value);
-            setDirty(true);
-          }
+      <div className="detail-code__editor-host">
+        <CodeEditor
+          value={text}
+          onChange={(v) => { setText(v); setDirty(true); }}
+          onSave={() => { if (dirty) void save(); }}
+          ariaLabel="脚本源码"
+        />
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".user.js,.js"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void onImportFile(f);
+          e.target.value = '';
         }}
       />
     </div>
