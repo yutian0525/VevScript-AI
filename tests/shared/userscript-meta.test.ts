@@ -1,6 +1,6 @@
 // tests/shared/userscript-meta.test.ts
 import { describe, it, expect } from 'vitest';
-import { parseUserScript, stringifyUserScript } from '../../shared/userscript-meta';
+import { parseUserScript, stringifyUserScript, injectMetaLines } from '../../shared/userscript-meta';
 import type { UserScript } from '../../shared/types';
 
 const fixture = `// ==UserScript==
@@ -234,5 +234,32 @@ describe('stringifyUserScript / parse 往返', () => {
     expect(back.fields.world).toBe('MAIN');
     expect(back.fields.name).toBe('主世界');
     expect(back.fields.code).toBe('\nx();');
+  });
+});
+
+describe('injectMetaLines（spec §1.4：URL 导入/应用更新时保留更新源）', () => {
+  it('无更新源脚本在头块内注入 @updateURL', () => {
+    const src = '// ==UserScript==\n// @name t\n// @match https://a.com/*\n// ==/UserScript==\ncode();';
+    const out = injectMetaLines(src, { updateURL: 'https://x/s.user.js' });
+    expect(out).toContain('// @updateURL    https://x/s.user.js');
+    expect(out.indexOf('@updateURL')).toBeGreaterThan(out.indexOf('==UserScript=='));
+    expect(out.indexOf('@updateURL')).toBeLessThan(out.indexOf('==/UserScript=='));
+  });
+
+  it('downloadURL 与 updateURL 可同时注入', () => {
+    const src = '// ==UserScript==\n// @name t\n// ==/UserScript==\ncode();';
+    const out = injectMetaLines(src, { updateURL: 'https://x/u', downloadURL: 'https://x/d' });
+    expect(out).toContain('// @updateURL    https://x/u');
+    expect(out).toContain('// @downloadURL  https://x/d');
+  });
+
+  it('空对象原样返回', () => {
+    const src = '// ==UserScript==\n// @name t\n// ==/UserScript==\ncode();';
+    expect(injectMetaLines(src, {})).toBe(src);
+  });
+
+  it('头不在首行 / 无头文本原样返回', () => {
+    expect(injectMetaLines('alert(1);', { updateURL: 'https://x/s.user.js' })).toBe('alert(1);');
+    expect(injectMetaLines('// 注释\n// ==UserScript==\n// ==/UserScript==\nc();', { updateURL: 'https://x' })).not.toContain('@updateURL');
   });
 });
