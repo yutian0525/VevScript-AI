@@ -1,0 +1,33 @@
+components/skills/SkillsPage.tsx
+  s_79c9460fb7e7ef::t_c21948eb124ea2 91
+  s_79c9460fb7e7ef::t_bedd03d0ab94d7 112-122
+  s_79c9460fb7e7ef::t_3645f31b68e836 192
+  s_79c9460fb7e7ef::t_7077d3a0e0f11a 23-24,30-32
+  s_79c9460fb7e7ef::t_f0ffee99359afb 60,62-68
+  s_79c9460fb7e7ef::t_0430ea62e953ed 69
+  s_b24d2b355b9859::t_d293bcac9a68be 33-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "600c5956048389aaab263fb6934472afa0cd2447",
+  "prompts": {},
+  "sessions": {
+    "s_79c9460fb7e7ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "878753d3-737c-46dc-86af-f5de7430b4d1",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    },
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
