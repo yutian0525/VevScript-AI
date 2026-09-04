@@ -1,0 +1,23 @@
+tests/background/scripts.test.ts
+  s_b24d2b355b9859::t_a40ea8c74413a5 332-346
+  s_b24d2b355b9859::t_02dae33eecfba8 87,97
+background/scripts.ts
+  s_b24d2b355b9859::t_a55a1215b221e1 81
+  s_b24d2b355b9859::t_f282a249f4ce09 167-176,179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "16d86e888ed0264795d5f60867a1b4273d929dc9",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
