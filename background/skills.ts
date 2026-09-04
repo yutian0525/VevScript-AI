@@ -15,19 +15,21 @@ export interface SkillsImportResult {
 }
 
 /** 导入一份 .md 文本（可能含多文档）。逐文档解析：坏文档跳过 + warning；
- *  command 撞车 → 覆盖更新（保留原 id/enabled/createdAt）；超限等 saveSkill 抛错 → 跳过该条 + warning。 */
+ *  command 撞车 → 覆盖更新（保留原 id/enabled/createdAt）；超限等 saveSkill 抛错 → 跳过该条 + warning。
+ *  所有 warning 统一带「[filename ]文档N：」归属前缀——面板逐文件导入聚合后仍可定位来源。 */
 export async function importSkillsText(text: string, filename?: string): Promise<SkillsImportResult> {
   const docs = parseSkillMdDocument(text, filename);
   const warnings: string[] = [];
+  const tag = (i: number) => `${filename ? `${filename} ` : ''}文档${i + 1}`;
   let imported = 0;
   let overwritten = 0;
   for (let i = 0; i < docs.length; i += 1) {
     const r = docs[i]!;
     if (!r.ok) {
-      warnings.push(r.error);
+      warnings.push(`${tag(i)}：${r.error}`);
       continue;
     }
-    for (const w of r.warnings) warnings.push(`文档${i + 1}：${w}`);
+    for (const w of r.warnings) warnings.push(`${tag(i)}：${w}`);
     try {
       const existing = (await listSkills()).find((s) => s.command === r.skill.command);
       if (existing) {
@@ -39,13 +41,13 @@ export async function importSkillsText(text: string, filename?: string): Promise
           updatedAt: Date.now(),
         });
         overwritten += 1;
-        warnings.push(`「${r.skill.name}」已存在同 command「${r.skill.command}」，已覆盖更新`);
+        warnings.push(`${tag(i)}：「${r.skill.name}」已存在同 command「${r.skill.command}」，已覆盖更新`);
       } else {
         await saveSkill(newSkill(r.skill));
         imported += 1;
       }
     } catch (e) {
-      warnings.push(`文档${i + 1}（${r.skill.command}）：${e instanceof Error ? e.message : String(e)}`);
+      warnings.push(`${tag(i)}：${e instanceof Error ? e.message : String(e)}`);
     }
   }
   return { imported, overwritten, warnings };

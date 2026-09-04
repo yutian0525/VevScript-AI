@@ -95,4 +95,26 @@ describe('background/skills handlers', () => {
     const one = await dispatch('SKILLS_EXPORT', { ids: [(await listSkills())[0]!.id] });
     expect(one.data.count).toBe(1);
   });
+
+  it('多文档含解析失败文档 → 该条 warning 带文档序号前缀', async () => {
+    const md = [
+      '---\nname: A\ndescription: d\ncommand: a\n---\nCA',
+      '---\nname: B\ndescription: d\n---\nCB', // 缺 command → 解析失败
+    ].join('\n---\n\n');
+    const resp = await dispatch('SKILLS_IMPORT', { text: md });
+    expect(resp.data.imported).toBe(1);
+    expect(resp.data.warnings.length).toBeGreaterThanOrEqual(1);
+    expect(resp.data.warnings.some((w: string) => w.startsWith('文档2：'))).toBe(true);
+  });
+
+  it('带 filename 导入 → warning 前缀含 filename', async () => {
+    const md = [
+      '---\nname: A\ndescription: d\ncommand: a\n---\nCA',
+      '没有 frontmatter 的坏文档',
+    ].join('\n---\n\n');
+    const resp = await dispatch('SKILLS_IMPORT', { text: md, filename: 'a.md' });
+    expect(resp.data.imported).toBe(1);
+    expect(resp.data.warnings.length).toBeGreaterThanOrEqual(1);
+    expect(resp.data.warnings.some((w: string) => w.includes('a.md'))).toBe(true);
+  });
 });
