@@ -3,7 +3,7 @@
 export function DetailTabHeader({ title, suffix, hint }: { title: string; suffix?: string; hint: string }) {
   return (
     <div className="detail__thead">
-      <h2 className="detail__title">
+      <h2 className="detail__thead-title">
         {title}
         {suffix != null && <span className="detail__suffix mono">{suffix}</span>}
       </h2>

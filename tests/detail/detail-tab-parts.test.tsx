@@ -28,6 +28,6 @@ describe('DetailEmptyCard', () => {
     render(<DetailEmptyCard icon={ShieldOff} title="无已授权域名" hint="脚本请求跨域时将逐次询问" />);
     expect(screen.getByText('无已授权域名')).toBeTruthy();
     expect(screen.getByText('脚本请求跨域时将逐次询问')).toBeTruthy();
-    expect(document.querySelector('svg')).toBeTruthy(); // lucide 图标已渲染
+    expect(document.querySelector('.detail__empty-icon svg')).toBeTruthy(); // lucide 图标已渲染
   });
 });
