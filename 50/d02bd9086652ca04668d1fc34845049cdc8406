@@ -1,0 +1,21 @@
+tests/shared/skill-md.test.ts
+  s_79c9460fb7e7ef::t_ef6fc270a6b11c 122-153
+shared/skill-md.ts
+  s_79c9460fb7e7ef::t_42dbd1b590e694 83,89,91-93,95,99-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "50d02bd9086652ca04668d1fc34845049cdc8406",
+  "prompts": {},
+  "sessions": {
+    "s_79c9460fb7e7ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "878753d3-737c-46dc-86af-f5de7430b4d1",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
