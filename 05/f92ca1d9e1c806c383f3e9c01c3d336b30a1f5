@@ -1,0 +1,26 @@
+fixtures/userscripts/gmt-selftest.user.js
+  s_b24d2b355b9859::t_5ec106f0f98f04 495-496,499-510
+  s_b24d2b355b9859::t_ff496cd99e8d33 399,403
+  s_b24d2b355b9859::t_5840dfde4fb94d 76
+  s_b24d2b355b9859::t_feb80762bc8b37 67-69
+  s_b24d2b355b9859::t_7a3ffdb4cec26d 306-307,310-311,315,318,322,325-326,328-330,337,343,345,350,353
+  s_b24d2b355b9859::t_8a656e2be29ce5 409,412
+  s_b24d2b355b9859::t_75f7789f270d09 481-482
+  s_b24d2b355b9859::t_3bb1b8882fc1cc 37,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "05f92ca1d9e1c806c383f3e9c01c3d336b30a1f5",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
