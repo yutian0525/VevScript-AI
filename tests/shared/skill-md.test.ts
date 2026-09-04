@@ -99,4 +99,34 @@ describe('serializeSkillMd / serializeSkillsMd / parseSkillMdDocument', () => {
     expect(parsed[0]!.ok && parsed[0]!.skill.command).toBe('a');
     expect(parsed[1]!.ok && parsed[1]!.skill.command).toBe('b');
   });
+
+  it('CRLF 行尾的多文档串联仍正确拆分（不静默合并）', () => {
+    const crlf = serializeSkillsMd([
+      { name: 'A', description: '', command: 'a', content: 'CA' },
+      { name: 'B', description: '', command: 'b', content: 'CB' },
+    ]).replace(/\n/g, '\r\n');
+    const parsed = parseSkillMdDocument(crlf);
+    expect(parsed).toHaveLength(2);
+    expect(parsed[0]!.ok && parsed[0]!.skill.command).toBe('a');
+    expect(parsed[1]!.ok && parsed[1]!.skill.command).toBe('b');
+  });
+
+  it('正文含 --- 水平线的单文档不被误拆', () => {
+    const src = serializeSkillMd({ name: 'A', description: 'd', command: 'a', content: 'step1\n\n---\n\nstep2' });
+    const parsed = parseSkillMdDocument(src);
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]!.ok).toBe(true);
+    if (parsed[0]!.ok) expect(parsed[0]!.skill.content).toBe('step1\n\n---\n\nstep2');
+  });
+
+  it('serializeSkillMd 对 name/description 换行做防御（round-trip 无条件成立）', () => {
+    const out = serializeSkillMd({ name: '多\n行名', description: 'desc\nription', command: 'x', content: 'C' });
+    const r = parseSkillMd(out, 'x.md');
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.skill.name).toBe('多 行名');
+      expect(r.skill.description).toBe('desc ription');
+      expect(r.warnings).toHaveLength(0);
+    }
+  });
 });
