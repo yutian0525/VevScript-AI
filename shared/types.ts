@@ -29,6 +29,16 @@ export interface UserScriptMeta {
   version?: string;
   author?: string;
   description?: string;
+  /** @homepage / @homepageURL（主页，TM 兼容双键名；纯展示不参与注入） */
+  homepage?: string;
+  /** @supportURL（反馈/支持页） */
+  supportURL?: string;
+  /** @icon / @iconURL（图标图片 URL，详情页头像） */
+  iconURL?: string;
+  /** @downloadURL（安装源） */
+  downloadURL?: string;
+  /** @updateURL（更新源） */
+  updateURL?: string;
   /** @grant 记录；仅用于「需要 GM_*（本扩展不支持）」警告徽标 */
   grants?: string[];
   /** @connect 域名白名单（GM_xmlhttpRequest 跨域放行表，spec §8.1） */
