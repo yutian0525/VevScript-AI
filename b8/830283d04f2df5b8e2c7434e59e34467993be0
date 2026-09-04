@@ -1,0 +1,31 @@
+components/detail/DetailSettingsTab.tsx
+  s_5826c9ae21829e::t_09bed55593af42 41-42
+components/detail/DetailLogsTab.tsx
+  s_5826c9ae21829e::t_3a387d8f24b3b4 12
+tests/detail/detail-app.test.tsx
+  s_5826c9ae21829e::t_a13e79258a16a2 114
+  s_5826c9ae21829e::t_28dc65e3a99f84 80
+  s_5826c9ae21829e::t_af1023a23c098e 52
+  s_5826c9ae21829e::t_41c1d1068112e0 115
+  s_5826c9ae21829e::t_d0194d95b6a9a8 75-79,81-113,116-126
+components/detail/DetailInfoTab.tsx
+  s_5826c9ae21829e::t_436b67c15016aa 2-5,7,11-16,19-26,28-30,32-45,49-93,96,110-111,113
+entrypoints/sidepanel/styles.css
+  s_5826c9ae21829e::t_88b3e875ca4559 868-877,882
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b8830283d04f2df5b8e2c7434e59e34467993be0",
+  "prompts": {},
+  "sessions": {
+    "s_5826c9ae21829e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c9e4c65-8d9f-4313-a46c-5c2b6d2c7043",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
