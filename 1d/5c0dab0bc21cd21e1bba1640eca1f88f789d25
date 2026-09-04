@@ -1,0 +1,22 @@
+shared/messages.ts
+  s_9bdd42bdb4338c::t_bbf9b59795b48b 204
+  s_9bdd42bdb4338c::t_1731626d1d4829 19-20,178-193
+entrypoints/sidepanel/App.tsx
+  s_9bdd42bdb4338c::t_ef67a63100a6bc 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1d5c0dab0bc21cd21e1bba1640eca1f88f789d25",
+  "prompts": {},
+  "sessions": {
+    "s_9bdd42bdb4338c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbe95f26-e36e-451c-afa3-be735de632d1",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
