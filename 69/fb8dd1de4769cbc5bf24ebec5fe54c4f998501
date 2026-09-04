@@ -1,0 +1,20 @@
+docs/superpowers/specs/2026-09-04-skills-and-slash-commands-design.md
+  s_79c9460fb7e7ef::t_6702f15fffdee7 127
+  s_79c9460fb7e7ef::t_1d9e385efd4e86 88-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "69fb8dd1de4769cbc5bf24ebec5fe54c4f998501",
+  "prompts": {},
+  "sessions": {
+    "s_79c9460fb7e7ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "878753d3-737c-46dc-86af-f5de7430b4d1",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
