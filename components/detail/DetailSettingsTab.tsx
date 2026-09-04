@@ -1,9 +1,11 @@
 // components/detail/DetailSettingsTab.tsx
 // 设置 Tab：XHR 安全 = 「总是允许」域名名单查看 + 逐条撤销（校验语义不动）。
 import { useEffect, useState } from 'react';
-import { Undo2 } from 'lucide-react';
+import { Undo2, ShieldOff } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { sendScriptsRequest } from '../../stores/scripts';
+import { DetailTabHeader } from './DetailTabHeader';
+import { DetailEmptyCard } from './DetailEmptyCard';
 
 export function DetailSettingsTab({ id }: { id: string }) {
   const [hosts, setHosts] = useState<string[]>([]);
@@ -39,15 +41,15 @@ export function DetailSettingsTab({ id }: { id: string }) {
 
   return (
     <div className="detail__tabcard">
-      <div className="detail__sectiontitle mono">XHR 安全 · 总是允许名单</div>
-      <p className="detail__hint">
-        这些域名已获得该脚本的跨域请求授权（在确认卡点「总是允许」时记录）。撤销后，脚本再请求这些域名会重新弹确认。
-      </p>
+      <DetailTabHeader
+        title="XHR 安全"
+        hint="这些域名已获得该脚本的跨域请求授权（在确认卡点「总是允许」时记录）；撤销后，脚本再请求这些域名会重新弹确认。"
+      />
       {message && <div className="scripts-warnline" role="status">{message}</div>}
       {loading ? (
         <div className="chat__empty">加载中…</div>
       ) : hosts.length === 0 ? (
-        <div className="chat__empty">无已授权域名——脚本请求跨域时将逐次询问</div>
+        <DetailEmptyCard icon={ShieldOff} title="无已授权域名" hint="脚本请求跨域时将逐次询问" />
       ) : (
         <div className="detail__hostlist">
           {hosts.map((h) => (

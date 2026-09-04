@@ -177,4 +177,15 @@ describe('DetailApp', () => {
     fireEvent.click(row);
     expect(row.getAttribute('aria-expanded')).toBe('false');
   });
+
+  it('设置 Tab：主标题「XHR 安全」+ 副题渲染；授权列表与撤销不受影响', async () => {
+    mockBackend(mkScript());
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    fireEvent.click(screen.getByText('设置'));
+    expect(screen.getByRole('heading', { level: 2, name: 'XHR 安全' })).toBeTruthy();
+    expect(screen.getByText(/这些域名已获得该脚本的跨域请求授权/)).toBeTruthy();
+    expect(await screen.findByText('x.com')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /撤销/ })).toBeTruthy();
+  });
 });
