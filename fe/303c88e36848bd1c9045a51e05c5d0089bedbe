@@ -1,0 +1,27 @@
+background/scripts-update.ts
+  s_5aed632b1b3dc5::t_755a21e0a40b53 1-48
+  s_5aed632b1b3dc5::t_7d068351026516 49-108
+  s_5aed632b1b3dc5::t_a3026831e1d832 109-150
+tests/background/scripts-update.test.ts
+  s_5aed632b1b3dc5::t_e7458ab27f9a10 187-228
+  s_5aed632b1b3dc5::t_5f28b9e3b0cf99 124-141,158-186
+  s_5aed632b1b3dc5::t_19e4c199c1e805 1-53
+  s_5aed632b1b3dc5::t_e7a51dec80de32 54-123
+  s_5aed632b1b3dc5::t_7f596b1cd94d3e 142-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "fe303c88e36848bd1c9045a51e05c5d0089bedbe",
+  "prompts": {},
+  "sessions": {
+    "s_5aed632b1b3dc5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9034a654-d6db-4470-a4bd-0855d45e79e0",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": null
+    }
+  }
+}
