@@ -179,6 +179,16 @@ export type ScriptsRequest =
   | { type: 'GM_DEBUG_CALL'; scriptId: string; api: string; params: unknown[]; tabId?: number }
   | { type: 'GM_DEBUG_INFO'; scriptId: string; tabId?: number };
 
+// ---------- Skill 管理（sidepanel → bg request/response，走 MessageRouter）----------
+
+export type SkillsRequest =
+  | { type: 'SKILLS_LIST' }
+  | { type: 'SKILLS_GET'; id: string }
+  | { type: 'SKILLS_DELETE'; id: string }
+  | { type: 'SKILLS_SET_ENABLED'; id: string; enabled: boolean }
+  | { type: 'SKILLS_IMPORT'; text: string; filename?: string }
+  | { type: 'SKILLS_EXPORT'; ids?: string[] };   // 缺省 = 全部
+
 /** GM_DEBUG_INFO 响应 data：脚本运行时调试台白名单视图（spec §3.①）。 */
 export interface GmDebugInfoData {
   connects: string[];
