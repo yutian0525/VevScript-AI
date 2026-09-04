@@ -437,8 +437,9 @@
         GM_xmlhttpRequest({
           method: 'GET', url: pkgUrl, timeout: 15000,
           onload: function (resp) {
+            // 布尔化三元：成功链终止于 headers['content-type'] 字符串，须显式 resolve(true) 否则被 runTest 判 fail
             resolve((resp.status === 200 && resp.body && resp.body.length > 0 &&
-              resp.finalUrl && resp.headers && resp.headers['content-type']) ||
+              resp.finalUrl && resp.headers && resp.headers['content-type']) ? true :
               'status=' + resp.status + ' bodyLen=' + (resp.body || '').length);
           },
           onerror: function (resp) { resolve('请求失败：' + ((resp && resp.error) || 'onerror')); },
