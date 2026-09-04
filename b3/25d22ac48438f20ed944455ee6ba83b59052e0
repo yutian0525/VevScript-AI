@@ -1,0 +1,23 @@
+components/detail/DetailTabHeader.tsx
+  s_a33cc13679744e::t_46040ca28c3ce3 6
+entrypoints/sidepanel/styles.css
+  s_a33cc13679744e::t_0e1c2bae4feb65 845
+tests/detail/detail-tab-parts.test.tsx
+  s_a33cc13679744e::t_39c6eab0c4742b 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b325d22ac48438f20ed944455ee6ba83b59052e0",
+  "prompts": {},
+  "sessions": {
+    "s_a33cc13679744e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8af61090-3bb8-4782-9ea2-16f7ffe2551c",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
