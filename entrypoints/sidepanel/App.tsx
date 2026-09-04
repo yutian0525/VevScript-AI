@@ -1,11 +1,10 @@
 // entrypoints/sidepanel/App.tsx
 import { useEffect } from 'react';
 import { storage } from 'wxt/utils/storage';
-import { MessageSquare, Puzzle, SquareTerminal, Settings as SettingsIcon } from 'lucide-react';
+import { MessageSquare, Puzzle, Settings as SettingsIcon } from 'lucide-react';
 import { useUi, type Page } from '../../stores/ui';
 import { ChatView } from '../../components/chat/ChatView';
 import { ScriptsView } from '../../components/scripts/ScriptsView';
-import { DebugView } from '../../components/debug/DebugView';
 import { SettingsView } from '../../components/settings/SettingsView';
 import type { UiNavNotification } from '../../shared/messages';
 
@@ -21,7 +20,6 @@ async function consumePendingView(): Promise<void> {
 const NAV: Array<{ page: Page; label: string; Icon: typeof MessageSquare }> = [
   { page: 'chat', label: '会话', Icon: MessageSquare },
   { page: 'scripts', label: '脚本池', Icon: Puzzle },
-  { page: 'debug', label: '调试台', Icon: SquareTerminal },
   { page: 'settings', label: '设置', Icon: SettingsIcon },
 ];
 
@@ -69,7 +67,6 @@ export default function App() {
       <main style={{ flex: 1, minWidth: 0, height: '100%' }}>
         {page === 'chat' && <ChatView />}
         {page === 'scripts' && <ScriptsView />}
-        {page === 'debug' && <DebugView />}
         {page === 'settings' && <SettingsView />}
       </main>
     </div>

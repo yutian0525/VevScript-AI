@@ -16,6 +16,8 @@ export interface BgToCsRequestMap {
   PRESS_KEY: { key: string; modifiers?: string[] };
   WAIT_TEXT: { texts: string[]; timeoutMs?: number };
   PAGE_META: Record<string, never>;
+  /** 脚本运行时调试台直调：SW→CS，宿主 debugCall 经真实桥链路发 GM_API_CALL（spec §3） */
+  GM_DEBUG_INVOKE: { scriptId: string; api: string; params: unknown[] };
 }
 
 export type BgToCsRequest = {
@@ -173,7 +175,22 @@ export type ScriptsRequest =
   | { type: 'SCRIPTS_GET_RUNTIME_FOR_TAB'; tabId: number }
   | { type: 'SCRIPTS_GET_PERMISSIONS'; id: string }
   | { type: 'SCRIPTS_REVOKE_PERMISSION'; id: string; host: string }
-  | { type: 'GM_CONFIRM_RESOLVE'; confirmId: string; decision: 'allow-once' | 'always' | 'deny' };
+  | { type: 'GM_CONFIRM_RESOLVE'; confirmId: string; decision: 'allow-once' | 'always' | 'deny' }
+  | { type: 'GM_DEBUG_CALL'; scriptId: string; api: string; params: unknown[]; tabId?: number }
+  | { type: 'GM_DEBUG_INFO'; scriptId: string; tabId?: number };
+
+/** GM_DEBUG_INFO 响应 data：脚本运行时调试台白名单视图（spec §3.①）。 */
+export interface GmDebugInfoData {
+  connects: string[];
+  grantSupported: string[];
+  grantUnsupported: string[];
+  /** 已「始终允许」的跨域主机（background/gm-permissions） */
+  alwaysAllow: string[];
+  /** 该脚本当前是否注入目标页（bridgeTokensForUrl 命中） */
+  injected: boolean;
+  /** 目标页 URL（host 仪表条 + @connect self 判定展示） */
+  tabUrl: string;
+}
 
 /** bg → 扩展页面广播（fire-and-forget）：某 tab 运行集变化（spec §6.2「预期注入」语义） */
 export interface ScriptsRuntimeEvent {
@@ -184,7 +201,7 @@ export interface ScriptsRuntimeEvent {
 /** popup/侧边栏跨面导航通知（popup → sidepanel，fire-and-forget；sidepanel 未开时由 pendingView 兜底） */
 export interface UiNavNotification {
   type: 'UI_NAV';
-  view: 'chat' | 'scripts' | 'debug' | 'settings';
+  view: 'chat' | 'scripts' | 'settings';
 }
 
 /** SCRIPTS_LIST 响应 data 形状 */

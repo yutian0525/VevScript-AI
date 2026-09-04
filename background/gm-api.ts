@@ -8,6 +8,8 @@ import { storage } from 'wxt/utils/storage';
 import { getScript } from '../storage/scripts';
 import { matchUrl } from '../shared/match-pattern';
 import { bridgeTokensForUrl } from './gm-token';
+import { classifyGrants } from '../shared/gm-apis';
+import { createRequest, type CsResponse, type GmDebugInfoData } from '../shared/messages';
 
 export interface GmErrorEntry {
   at: number;
@@ -428,6 +430,63 @@ export async function handleGmCall(
   }
 }
 
+// ---- 面板直调（脚本运行时调试台，spec §3）----
+
+async function resolveTab(tabId?: number): Promise<{ id: number; url: string } | null> {
+  let id = tabId;
+  if (id == null) {
+    let [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tab) [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true });
+    id = tab?.id;
+  }
+  if (id == null) return null;
+  const tab = await browser.tabs.get(id).catch(() => undefined);
+  return tab?.id != null ? { id: tab.id, url: tab.url ?? '' } : null;
+}
+
+/** GM_DEBUG_CALL：查 token（=脚本是否注入目标页）→ tabs.sendMessage 下发 GM_DEBUG_INVOKE。 */
+async function handleDebugCall(
+  scriptId: string, api: string, params: unknown[], tabId: number | undefined,
+): Promise<{ dispatched: boolean; result?: { ok: boolean; data?: unknown; error?: string }; ms: number; error?: string }> {
+  const started = Date.now();
+  const tab = await resolveTab(tabId);
+  if (!tab) return { dispatched: false, ms: Date.now() - started, error: '无法获取目标标签页（请切到普通网页）' };
+  const entries = await bridgeTokensForUrl(tab.url);
+  if (!entries.some((e) => e.scriptId === scriptId)) {
+    return { dispatched: false, ms: Date.now() - started, error: '脚本未注入目标页（@match 未命中或未启用），无法直调' };
+  }
+  try {
+    const req = createRequest('GM_DEBUG_INVOKE', { scriptId, api, params });
+    // frameId: 0 钉主帧——content script allFrames 注册，不钉会广播到所有帧（iframe 重复执行 debugCall，抢答）
+    const resp = (await browser.tabs.sendMessage(tab.id, req, { frameId: 0 })) as CsResponse | undefined;
+    return { dispatched: true, result: resp?.result, ms: Date.now() - started };
+  } catch (e) {
+    return { dispatched: false, ms: Date.now() - started, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** GM_DEBUG_INFO：白名单视图数据（grant 二分 + connects + alwaysAllow + 注入态）。 */
+async function handleDebugInfo(scriptId: string, tabId: number | undefined): Promise<{ ok: boolean; data?: GmDebugInfoData; error?: string }> {
+  const script = await getScript(scriptId);
+  if (!script) return { ok: false, error: '脚本不存在' };
+  const tab = await resolveTab(tabId);
+  const tabUrl = tab?.url ?? '';
+  const { supported, unsupported } = classifyGrants(script.meta?.grants ?? []);
+  const { listAlwaysAllow } = await import('./gm-permissions');
+  const entries = tabUrl ? await bridgeTokensForUrl(tabUrl) : [];
+  return {
+    ok: true,
+    data: {
+      connects: script.meta?.connects ?? [],
+      grantSupported: supported,
+      grantUnsupported: unsupported,
+      alwaysAllow: await listAlwaysAllow(scriptId),
+      injected: entries.some((e) => e.scriptId === scriptId),
+      tabUrl,
+    },
+  };
+}
+
 // ---- 消息接线 ----
 
 interface RouterLike {
@@ -469,6 +528,16 @@ export function initGmApi(router: RouterLike): void {
     ok: true,
     data: { menus: getMenuSnapshot(), errors: getAllErrors(), confirms: getPendingConfirms() },
   }));
+
+  router.on('GM_DEBUG_CALL', async (msg) => {
+    const { scriptId, api, params, tabId } = msg as unknown as { scriptId: string; api: string; params: unknown[]; tabId?: number };
+    return handleDebugCall(scriptId, api, params, tabId);
+  });
+
+  router.on('GM_DEBUG_INFO', async (msg) => {
+    const { scriptId, tabId } = msg as unknown as { scriptId: string; tabId?: number };
+    return handleDebugInfo(scriptId, tabId);
+  });
 
   // GM_notification 点击/关闭 → NOTIF_CLICK 下行到注册来源 tab（wrapper 的 ondone 回调，spec §8）
   // 可选链保护：fakeBrowser 等环境可能无 notifications.onClicked/onClosed

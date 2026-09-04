@@ -1,16 +1,15 @@
-// components/debug/DebugView.tsx
-// 调试台：列出 agent 可用的全部工具，绕过 LLM 直接对当前标签页发起调用测试。
-// 走后台 DEBUG_EXEC_TOOL → handleDebugExec → executeTool（与真实链路完全一致）。
+// components/debug/ToolBenchPage.tsx
+// 工具调试台（设置二级页）：按能力域分组列出 25 个工具，绕过 LLM 直接对当前标签页调用。
+// 走后台 DEBUG_EXEC_TOOL → handleDebugExec → executeTool（与真实链路一致）。
 import { useEffect, useState } from 'react';
-import { ChevronRight, Play, Loader2, Globe } from 'lucide-react';
+import { ChevronRight, Play, Loader2, Globe, ArrowLeft } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { TOOL_SCHEMAS } from '../../agent/tools/schemas';
 import type { ToolSchema } from '../../agent/provider/types';
 import type { DebugExecResponse } from '../../shared/messages';
-
-// 走 content script 的工具（其余走 chrome tabs API）——与 registry.CS_TOOL_MAP 对齐
-const CS_TOOLS = new Set(['take_snapshot', 'click', 'fill', 'fill_form', 'hover', 'scroll', 'press_key', 'wait_for']);
+import { GROUPS, getTag, CHIP_CLASS, type ToolTag } from './tool-tags';
+import { ResultPanel, type Outcome } from './ResultPanel';
 
 interface JsonSchema {
   type?: string;
@@ -46,7 +45,7 @@ async function activeTabId(): Promise<number | undefined> {
   return tab?.id;
 }
 
-export function DebugView() {
+export function ToolBenchPage({ onBack }: { onBack: () => void }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [targetHost, setTargetHost] = useState<string>('—');
 
@@ -71,9 +70,16 @@ export function DebugView() {
     };
   }, []);
 
+  // 按能力域分组（组内保持 TOOL_SCHEMAS 原序）
+  const byTag = new Map<ToolTag, ToolSchema[]>();
+  for (const t of TOOL_SCHEMAS) {
+    const tag = getTag(t.function.name);
+    (byTag.get(tag) ?? byTag.set(tag, []).get(tag)!).push(t);
+  }
+
   return (
     <PageShell
-      title="调试台"
+      title="工具调试台"
       eyebrow="TOOLBENCH"
       right={
         <span className="gauge" title={targetHost}>
@@ -83,35 +89,41 @@ export function DebugView() {
           </span>
         </span>
       }
+      actions={<Button variant="ghost" onClick={onBack} aria-label="返回"><ArrowLeft size={14} /></Button>}
     >
       <div className="hint" style={{ marginBottom: 14 }}>
         直接对当前标签页调用工具，不经模型。共 {TOOL_SCHEMAS.length} 个工具。
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {TOOL_SCHEMAS.map((tool) => (
-          <ToolItem
-            key={tool.function.name}
-            tool={tool}
-            open={expanded === tool.function.name}
-            onToggle={() => setExpanded((cur) => (cur === tool.function.name ? null : tool.function.name))}
-          />
-        ))}
-      </div>
+      {GROUPS.map((g) => {
+        const tools = byTag.get(g.key) ?? [];
+        if (tools.length === 0) return null;
+        return (
+          <section key={g.key} style={{ marginBottom: 18 }}>
+            <div className="toolgroup__head mono">── {g.label} {g.key} · {tools.length} ──</div>
+            <div className="toolgroup__hint">{g.hint}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {tools.map((tool) => (
+                <ToolItem
+                  key={tool.function.name}
+                  tool={tool}
+                  open={expanded === tool.function.name}
+                  onToggle={() => setExpanded((cur) => (cur === tool.function.name ? null : tool.function.name))}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </PageShell>
   );
 }
-
-type Outcome =
-  | { kind: 'bad-args'; message: string }
-  | { kind: 'link-error'; message: string }
-  | { kind: 'result'; resp: DebugExecResponse };
 
 function ToolItem({ tool, open, onToggle }: { tool: ToolSchema; open: boolean; onToggle: () => void }) {
   const params = tool.function.parameters as JsonSchema;
   const props = params.properties ?? {};
   const required = new Set(params.required ?? []);
   const keys = Object.keys(props);
-  const isCs = CS_TOOLS.has(tool.function.name);
+  const tag = getTag(tool.function.name);
 
   const [argsText, setArgsText] = useState(() => skeletonOf(params));
   const [running, setRunning] = useState(false);
@@ -139,10 +151,7 @@ function ToolItem({ tool, open, onToggle }: { tool: ToolSchema; open: boolean; o
     }
     try {
       const resp = (await browser.runtime.sendMessage({
-        type: 'DEBUG_EXEC_TOOL',
-        tabId,
-        name: tool.function.name,
-        args,
+        type: 'DEBUG_EXEC_TOOL', tabId, name: tool.function.name, args,
       })) as DebugExecResponse;
       setOutcome({ kind: 'result', resp });
     } catch (e) {
@@ -162,7 +171,7 @@ function ToolItem({ tool, open, onToggle }: { tool: ToolSchema; open: boolean; o
             style={{ transition: 'transform var(--t-fast) var(--ease)', transform: open ? 'rotate(90deg)' : 'none' }}
           />
           <span className="tool-row__name">{tool.function.name}</span>
-          <span className={`chip ${isCs ? 'chip--cs' : 'chip--api'}`}>{isCs ? 'PAGE' : 'TABS'}</span>
+          <span className={`chip ${CHIP_CLASS[tag]}`}>{tag}</span>
         </span>
         {!open && <span className="tool-row__desc" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tool.function.description}</span>}
       </button>
@@ -170,7 +179,6 @@ function ToolItem({ tool, open, onToggle }: { tool: ToolSchema; open: boolean; o
       {open && (
         <div className="rise" style={{ padding: '10px 2px 4px' }}>
           <p className="tool-row__desc" style={{ margin: '0 0 10px' }}>{tool.function.description}</p>
-
           {keys.length > 0 && (
             <div style={{ marginBottom: 10 }}>
               <div className="token" style={{ marginBottom: 5 }}>PARAMS</div>
@@ -184,7 +192,6 @@ function ToolItem({ tool, open, onToggle }: { tool: ToolSchema; open: boolean; o
               ))}
             </div>
           )}
-
           <div className="token" style={{ marginBottom: 5 }}>ARGS · JSON</div>
           <textarea
             className="textarea mono-input"
@@ -198,56 +205,9 @@ function ToolItem({ tool, open, onToggle }: { tool: ToolSchema; open: boolean; o
             {running ? <Loader2 size={14} className="spin" /> : <Play size={14} />}
             {running ? '执行中…' : '运行'}
           </Button>
-
           {outcome && <ResultPanel outcome={outcome} />}
         </div>
       )}
-    </div>
-  );
-}
-
-function formatData(data: unknown): string {
-  if (data == null) return '(无返回数据)';
-  if (typeof data === 'string') return data; // 快照树等长文本直接展示
-  try {
-    return JSON.stringify(data, null, 2);
-  } catch {
-    return String(data);
-  }
-}
-
-function ResultPanel({ outcome }: { outcome: Outcome }) {
-  let ok = false;
-  let ms: number | null = null;
-  let body: string;
-
-  if (outcome.kind === 'bad-args') {
-    body = `参数解析失败：${outcome.message}`;
-  } else if (outcome.kind === 'link-error') {
-    body = `链路异常：${outcome.message}`;
-  } else {
-    const { resp } = outcome;
-    ms = resp.ms;
-    if (!resp.dispatched) {
-      body = `链路异常：${resp.error ?? '未知错误'}`;
-    } else if (resp.result?.ok) {
-      ok = true;
-      body = formatData(resp.result.data);
-    } else {
-      body = resp.result?.error ?? '工具返回失败（无错误信息）';
-    }
-  }
-
-  return (
-    <div className="rise" style={{ marginTop: 12 }}>
-      <div className="result-head">
-        <span className={`dot dot--${ok ? 'ok' : 'err'}`} />
-        <span className={`result-verdict ${ok ? 'result-verdict--ok' : 'result-verdict--err'}`}>
-          {ok ? 'OK' : 'ERR'}
-        </span>
-        {ms != null && <span className="result-ms">{ms} ms</span>}
-      </div>
-      <div className="well" style={{ maxHeight: 260 }}>{body}</div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 // stores/ui.ts
 import { create } from 'zustand';
 
-export type Page = 'chat' | 'scripts' | 'debug' | 'settings';
+export type Page = 'chat' | 'scripts' | 'settings';
 
 interface UiState {
   page: Page;
