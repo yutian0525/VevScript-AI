@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-09-04-script-detail-page-polish-design.md
+  s_5826c9ae21829e::t_67db769ce9ae52 1-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1b199c5c9a742d9f3d7ac9f122d8cdf89b662fdf",
+  "prompts": {},
+  "sessions": {
+    "s_5826c9ae21829e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c9e4c65-8d9f-4313-a46c-5c2b6d2c7043",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
