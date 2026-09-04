@@ -34,13 +34,14 @@
 
 (function gmtRunner() {
   'use strict';
+  // ES5 风格（var/function）仅为风格取向，非运行环境兼容约束（userScripts world 支持 ES2020+）。
   var PREFIX = '__gmt_';
   var PROBE_MARK = '__gmt_probe=1';
 
   // ---- 探针页休眠模式（spec §6.1）：GM_openInTab 开的页再次命中 @match，
   // 带 ?__gmt_probe=1 的第二实例只写一个键供第一实例验证跨 tab 广播，不建面板。 ----
   if (location.search.indexOf(PROBE_MARK) !== -1) {
-    try { GM_setValue('remote_probe', { at: Date.now(), from: location.host }); } catch (e) { /* 静默 */ }
+    try { GM_setValue(PREFIX + 'remote_probe', { at: Date.now(), from: location.host }); } catch (e) { /* 静默 */ }
     return;
   }
 
@@ -63,13 +64,16 @@
       }
     }
     var row = findRow(id);
-    if (row) renderRow(row, results.find(function (r) { return r.id === id; }));
+    for (var j = 0; j < results.length; j++) {
+      if (results[j].id === id) { renderRow(row, results[j]); break; }
+    }
     updateSummary();
   }
 
   function addRow(group, name, fn, opts) {
     var id = 't' + (results.length + 1);
     var item = { id: id, group: group, name: name, state: 'wait', fn: fn, manual: opts && opts.manual };
+    if (opts && opts.hint) item.hint = opts.hint; // 人工指引定义期写入——renderAll 先于 fn 执行，fn 内再设来不及渲染
     results.push(item);
     return id;
   }
@@ -80,7 +84,6 @@
   }
 
   // ---- 等待原语（spec §6.2）----
-  function sleep(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
   function waitFor(cond, timeoutMs, pollMs) {
     timeoutMs = timeoutMs || 10000; pollMs = pollMs || 100;
     var deadline = Date.now() + timeoutMs;
@@ -300,53 +303,54 @@
       } catch (e) { return fmtError(e); }
     });
     addRow('3 值存储', 'set + get 字符串往返', function () {
-      GM_setValue('k1', 'v1');
-      return GM_getValue('k1') === 'v1' || 'get=' + JSON.stringify(GM_getValue('k1'));
+      GM_setValue(PREFIX + 'k1', 'v1');
+      return GM_getValue(PREFIX + 'k1') === 'v1' || 'get=' + JSON.stringify(GM_getValue(PREFIX + 'k1'));
     });
     addRow('3 值存储', '对象值往返', function () {
-      GM_setValue('k2', { obj: true });
-      var v = GM_getValue('k2');
+      GM_setValue(PREFIX + 'k2', { obj: true });
+      var v = GM_getValue(PREFIX + 'k2');
       return (v && v.obj === true) || 'get=' + JSON.stringify(v);
     });
     addRow('3 值存储', 'get 缺失键返回默认值', function () {
-      return GM_getValue('missing', 'def') === 'def' || 'get=' + JSON.stringify(GM_getValue('missing', 'def'));
+      return GM_getValue(PREFIX + 'missing', 'def') === 'def' || 'get=' + JSON.stringify(GM_getValue(PREFIX + 'missing', 'def'));
     });
     addRow('3 值存储', 'get 未设键返回 undefined', function () {
-      return GM_getValue('never-set') === undefined || 'get=' + JSON.stringify(GM_getValue('never-set'));
+      return GM_getValue(PREFIX + 'never-set') === undefined || 'get=' + JSON.stringify(GM_getValue(PREFIX + 'never-set'));
     });
     addRow('3 值存储', 'listValues 含 k1/k2', function () {
       var ks = GM_listValues();
-      return (ks.indexOf('k1') !== -1 && ks.indexOf('k2') !== -1) || 'list=' + JSON.stringify(ks);
+      return (ks.indexOf(PREFIX + 'k1') !== -1 && ks.indexOf(PREFIX + 'k2') !== -1) || 'list=' + JSON.stringify(ks);
     });
     addRow('3 值存储', 'deleteValue 后不可见', function () {
-      GM_deleteValue('k2');
-      return (GM_getValue('k2') === undefined && GM_listValues().indexOf('k2') === -1) || 'delete 未生效';
+      GM_deleteValue(PREFIX + 'k2');
+      return (GM_getValue(PREFIX + 'k2') === undefined && GM_listValues().indexOf(PREFIX + 'k2') === -1) || 'delete 未生效';
     });
-    addRow('3 值存储', '点形式 GM.getValue 返回 Promise', function () {
-      return GM.getValue('k1') && typeof GM.getValue('k1').then === 'function' || '非 Promise';
+    addRow('3 值存储', '点形式 GM.getValue 返回 Promise', async function () {
+      var p = GM.getValue(PREFIX + 'k1'); // 单次调用：既断言 Promise 形状，也让 await 走真实桥链路
+      return (p && typeof p.then === 'function' && (await p) === 'v1') || '非 Promise 或 resolve 值不符';
     });
   }
 
   function group4() { // 值变更监听（3 项）
     var localEvent = null;
     addRow('4 值监听', 'addValueChangeListener 返回 id', function () {
-      var id = GM_addValueChangeListener('k3', function (key, oldV, newV, remote) {
+      var id = GM_addValueChangeListener(PREFIX + 'k3', function (key, oldV, newV, remote) {
         localEvent = { key: key, oldV: oldV, newV: newV, remote: remote };
       });
       return (typeof id === 'string' && id.length > 0) || 'id=' + JSON.stringify(id);
     });
     addRow('4 值监听', '本地事件 remote=false', async function () {
-      GM_setValue('k3', 'x');
+      GM_setValue(PREFIX + 'k3', 'x');
       var ok = await waitFor(function () { return localEvent; }, 5000);
-      return (ok && localEvent.key === 'k3' && localEvent.remote === false && localEvent.newV === 'x') ||
+      return (ok && localEvent.key === PREFIX + 'k3' && localEvent.remote === false && localEvent.newV === 'x') ||
         'event=' + JSON.stringify(localEvent);
     });
     addRow('4 值监听', '跨 tab 事件 remote=true（探针页）', async function () {
       var remoteEvent = null;
-      GM_addValueChangeListener('remote_probe', function (key, oldV, newV, remote) {
+      GM_addValueChangeListener(PREFIX + 'remote_probe', function (key, oldV, newV, remote) {
         if (remote) remoteEvent = { key: key, remote: remote };
       });
-      var handle = GM_openInTab(location.origin + location.pathname + '?__gmt_probe=1', { active: false });
+      var handle = GM_openInTab(location.origin + location.pathname + '?' + PROBE_MARK, { active: false });
       var ok = await waitFor(function () { return remoteEvent; }, 10000);
       try { handle.close(); } catch (e) { /* 已关 */ }
       return (ok && remoteEvent && remoteEvent.remote === true) ? true : 'wait';
@@ -392,24 +396,20 @@
       });
       return true;
     });
-    addRow('6 剪贴板/通知/菜单', '通知点击/关闭 → ondone 触发', async function (item) {
-      item.manual = true;
-      item.hint = '人工：点掉系统通知（Chrome 通知中心）';
+    addRow('6 剪贴板/通知/菜单', '通知点击/关闭 → ondone 触发', async function () {
       var ok = await waitFor(function () { return notifDone; }, 60000);
       if (!ok) return 'wait';
       return (notifDone === 'click' || notifDone === 'close') || 'why=' + JSON.stringify(notifDone);
-    });
+    }, { manual: true, hint: '人工：点掉系统通知（Chrome 通知中心）' });
     var menuKey = null, menuClicked = false;
     addRow('6 剪贴板/通知/菜单', 'registerMenuCommand 返回 key', function () {
       menuKey = GM_registerMenuCommand('GMT 自检：点我', function () { menuClicked = true; });
       return (typeof menuKey === 'string' && menuKey.length > 0) || 'key=' + JSON.stringify(menuKey);
     });
-    addRow('6 剪贴板/通知/菜单', '菜单命令点击回环', async function (item) {
-      item.manual = true;
-      item.hint = '人工：侧边栏 → 脚本池 → 菜单命令 → 点击「GMT 自检：点我」';
+    addRow('6 剪贴板/通知/菜单', '菜单命令点击回环', async function () {
       var ok = await waitFor(function () { return menuClicked; }, 120000);
       return ok || 'wait';
-    });
+    }, { manual: true, hint: '人工：侧边栏 → 脚本池 → 菜单命令 → 点击「GMT 自检：点我」' });
   }
 
   function group7() { // 标签页（2 项）
@@ -478,9 +478,8 @@
   }
 
   function group9() { // 人工引导（1 项）
-    addRow('9 错误上报', '错误上报链路（throw → 徽标）', null, { manual: true });
-    var row = results[results.length - 1];
-    row.hint = '人工：点面板「测试错误上报」→ 侧边栏脚本池该脚本徽标 +1，错误列表含 stack';
+    addRow('9 错误上报', '错误上报链路（throw → 徽标）', null,
+      { manual: true, hint: '人工：点面板「测试错误上报」→ 侧边栏脚本池该脚本徽标 +1，错误列表含 stack' });
   }
 
   // ---- 主流程 ----
@@ -493,10 +492,22 @@
     injectPanel();
     group1(); group2(); group3(); group4(); group5(); group6(); group7(); group8(); group9();
     renderAll();
+    // 两段式驱动：先跑全部自动项（人工项最长 60s+120s 等待会阻塞后续行，挪到最后），
+    // 再跑人工项；组内显示顺序不变（renderAll 按定义序渲染）。
     (async function () {
       for (var i = 0; i < results.length; i++) {
-        await runTest(results[i]);
-        renderStore();
+        if (!results[i].manual) {
+          try { await runTest(results[i]); }
+          catch (e) { try { setState(results[i].id, 'fail', fmtError(e)); } catch (e2) { /* 面板异常兜底 */ } }
+          renderStore();
+        }
+      }
+      for (var k = 0; k < results.length; k++) {
+        if (results[k].manual) {
+          try { await runTest(results[k]); }
+          catch (e) { try { setState(results[k].id, 'fail', fmtError(e)); } catch (e2) { /* 面板异常兜底 */ } }
+          renderStore();
+        }
       }
     })();
   }
