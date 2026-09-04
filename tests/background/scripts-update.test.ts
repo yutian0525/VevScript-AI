@@ -60,6 +60,20 @@ describe('update-state 存取', () => {
   });
 });
 
+describe('update-state 物理键对称（防 WXT local: 前缀回归）', () => {
+  it('WXT storage 写入后，裸 API 按 WXT 剥前缀后的键可读到', async () => {
+    const { UPDATE_STATE_KEY } = await import('../../shared/types');
+    const { storage } = await import('wxt/utils/storage');
+    await storage.setItem(UPDATE_STATE_KEY, { s1: { remoteVersion: '2', checkedAt: 1, status: 'available' } });
+    // WXT 将 'local:scripts:update-state' 剥前缀为物理键 'scripts:update-state'
+    const raw = await browser.storage.local.get('scripts:update-state');
+    expect(raw['scripts:update-state']).toBeDefined();
+    // 且裸 API 用带前缀键读不到（历史上 UI 读方踩过的坑）
+    const wrong = await browser.storage.local.get(UPDATE_STATE_KEY);
+    expect(wrong[UPDATE_STATE_KEY]).toBeUndefined();
+  });
+});
+
 describe('updateCheckUrl / updateDownloadUrl（TM 回退链）', () => {
   it('检查 = updateURL ?? downloadURL；下载 = downloadURL ?? updateURL', () => {
     const both = mkScript({ meta: { updateURL: 'u', downloadURL: 'd' } });

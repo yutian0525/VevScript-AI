@@ -3,6 +3,7 @@
 // 双声道：标签 sans 人话；match/grant/run-at 等机器值 mono。
 import { useEffect, useState } from 'react';
 import { Check, RefreshCw, X } from 'lucide-react';
+import { storage } from 'wxt/utils/storage';
 import { Button } from '../ui/Button';
 import { sendScriptsRequest } from '../../stores/scripts';
 import { classifyGrants } from '../../shared/gm-apis';
@@ -37,7 +38,7 @@ export function DetailInfoTab({ script, onChanged, onDelete }: Props) {
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const stored = (await browser.storage.local.get(UPDATE_STATE_KEY))[UPDATE_STATE_KEY] as Record<string, ScriptUpdateState> | undefined;
+      const stored = await storage.getItem<Record<string, ScriptUpdateState>>(UPDATE_STATE_KEY);
       if (alive) setCheckState(stored?.[script.id] ?? null);
     })();
     return () => { alive = false; };

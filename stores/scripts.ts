@@ -3,6 +3,7 @@
 // 运行区 = runtimeEntries[activeTabId]（组件侧取值）；广播按 tabId 全落，取值时按 activeTabId 过滤。
 
 import { create } from 'zustand';
+import { storage } from 'wxt/utils/storage';
 import type { ScriptsRequest, ScriptsRuntimeEntry, ScriptsRuntimeEvent, ScriptsListData, ScriptsUpdatesEvent } from '../shared/messages';
 import type { ScriptSummary } from '../shared/types';
 import { UPDATE_STATE_KEY, type ScriptUpdateState } from '../shared/types';
@@ -129,8 +130,8 @@ export const useScripts = create<ScriptsState>((set) => ({
       const rtResp = await sendScriptsRequest<{ ok: boolean; data?: { entries: ScriptsRuntimeEntry[] } }>({ type: 'SCRIPTS_GET_RUNTIME' });
       // GM 状态复水（面板重开而 SW 存活时，广播不补量——冷读一次；GmErrorEntry 形状与 GmErrorItem 一致）
       const gmResp = await sendScriptsRequest<{ ok: boolean; data?: { menus: GmMenuEntry[]; errors: Record<string, GmErrorItem[]>; confirms: GmConfirmItem[] } }>({ type: 'SCRIPTS_GET_GM_STATE' });
-      // 侧边栏冷开错过 SCRIPTS_UPDATES 广播；storage 直读，面板与 SW 共享同一键
-      const storedUpdates = (await browser.storage.local.get(UPDATE_STATE_KEY))[UPDATE_STATE_KEY] as Record<string, ScriptUpdateState> | undefined;
+      // 复水更新状态（侧边栏冷开错过 SCRIPTS_UPDATES 广播；WXT storage 读写对称，UPDATE_STATE_KEY 的 local: 前缀由 WXT 处理）
+      const storedUpdates = await storage.getItem<Record<string, ScriptUpdateState>>(UPDATE_STATE_KEY);
       const entries = rtResp.data?.entries ?? [];
       set({
         summaries: listResp.data?.scripts ?? [],

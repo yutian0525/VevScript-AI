@@ -75,7 +75,8 @@ export interface ScriptUpdateState {
   message?: string;
 }
 
-/** chrome.storage.local 键：脚本更新检查结果 map（scriptId → ScriptUpdateState，spec §1.2） */
+/** chrome.storage.local 键：脚本更新检查结果 map（scriptId → ScriptUpdateState，spec §1.2）。
+ * 读写必须都走 WXT storage（它把 local: 当区域前缀剥离）——裸 browser.storage.local 会按字面量键查找，永远读不到。 */
 export const UPDATE_STATE_KEY = 'local:scripts:update-state';
 
 /** 列表/摘要形状（无 code） */
