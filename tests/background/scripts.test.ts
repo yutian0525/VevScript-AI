@@ -12,6 +12,9 @@ import { MessageRouter } from '../../background/router';
 import { setAlwaysAllow } from '../../background/gm-permissions';
 import type { UserScript } from '../../shared/types';
 import type { ScriptsRuntimeEntry } from '../../shared/messages';
+import { storage } from 'wxt/utils/storage';
+import { UPDATE_STATE_KEY, type ScriptUpdateState } from '../../shared/types';
+import { readUpdateStates } from '../../background/scripts-update';
 
 function mkScript(over: Partial<UserScript> = {}): UserScript {
   return {
@@ -415,5 +418,44 @@ describe('permissions & popup runtime handlers', () => {
       ok: boolean; data?: { entry: ScriptsRuntimeEntry | null };
     };
     expect(none.data?.entry).toBeNull();
+  });
+});
+
+describe('更新接线（spec §2）', () => {
+  beforeEach(() => {
+    fakeBrowser.reset();
+    vi.restoreAllMocks();
+  });
+
+  async function setState(id: string): Promise<void> {
+    await storage.setItem(UPDATE_STATE_KEY, {
+      [id]: { remoteVersion: '9', checkedAt: 1, status: 'available' } satisfies ScriptUpdateState,
+    });
+  }
+
+  it('SCRIPTS_IMPORT_URL / CHECK_UPDATE / APPLY_UPDATE 三个 handler 已挂', async () => {
+    installFakeUserScripts();
+    const router = new MessageRouter();
+    initScriptsModule(router);
+    for (const type of ['SCRIPTS_IMPORT_URL', 'SCRIPTS_CHECK_UPDATE', 'SCRIPTS_APPLY_UPDATE']) {
+      const r = await router.dispatch({ type } as { type: string });
+      expect(r).not.toMatchObject({ error: expect.stringContaining('no handler') });
+    }
+  });
+
+  it('不变量：handleUpdate 文本路径清 update-state', async () => {
+    installFakeUserScripts();
+    const { script } = await handleImport('// ==UserScript==\n// @name t\n// @match https://a.com/*\n// ==/UserScript==\ncode();');
+    await setState(script.id);
+    await handleUpdate(script.id, { text: '// ==UserScript==\n// @name t2\n// @match https://a.com/*\n// ==/UserScript==\ncode2();' });
+    expect((await readUpdateStates())[script.id]).toBeUndefined();
+  });
+
+  it('不变量：handleDelete 清 update-state', async () => {
+    installFakeUserScripts();
+    const { script } = await handleImport('// ==UserScript==\n// @name t\n// @match https://a.com/*\n// ==/UserScript==\ncode();');
+    await setState(script.id);
+    await handleDelete(script.id);
+    expect((await readUpdateStates())[script.id]).toBeUndefined();
   });
 });

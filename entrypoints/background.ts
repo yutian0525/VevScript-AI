@@ -15,6 +15,7 @@ import {
 import type { ConsoleEntry, HookNetEntry } from '../shared/hook-bridge';
 import { initScriptsModule } from '../background/scripts';
 import { initGmApi } from '../background/gm-api';
+import { runStartupUpdateCheck } from '../background/scripts-update';
 
 export default defineBackground(() => {
   const router = new MessageRouter();
@@ -87,6 +88,11 @@ export default defineBackground(() => {
   attachObservers();
   initScriptsModule(router);
   initGmApi(router);
+
+  // 浏览器启动 / 扩展安装更新时批量检查脚本更新（spec §1.6；fire-and-forget 不阻塞）
+  browser.runtime.onStartup.addListener(() => { void runStartupUpdateCheck().catch(() => {}); });
+  browser.runtime.onInstalled.addListener(() => { void runStartupUpdateCheck().catch(() => {}); });
+
   router.attach();
   console.log('[ai-browser-ext] background started');
 });
