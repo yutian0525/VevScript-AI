@@ -20,10 +20,16 @@ function filterAll(list: SkillSummary[], q: string): SkillSummary[] {
   );
 }
 
-interface ImportAggregate {
+/** SKILLS_IMPORT 响应 data（后台 SkillsImportResult 线格式） */
+interface SkillsImportData {
   imported: number;
   overwritten: number;
   warnings: string[];
+}
+
+/** 面板聚合结果；kind 仅 'import' 时渲染计数行（导出/删除失败只显 warnings） */
+interface ImportAggregate extends SkillsImportData {
+  kind: 'import' | 'export';
 }
 
 export function SkillsPage({ onBack }: { onBack: () => void }) {
@@ -51,10 +57,16 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
   }, [detailId]);
 
   async function importFiles(files: FileList): Promise<void> {
-    const agg: ImportAggregate = { imported: 0, overwritten: 0, warnings: [] };
+    const agg: ImportAggregate = { kind: 'import', imported: 0, overwritten: 0, warnings: [] };
     for (const f of Array.from(files)) {
-      const text = await f.text();
-      const resp = await sendSkillsRequest<{ ok: boolean; data?: ImportAggregate; error?: string }>({
+      let text: string;
+      try {
+        text = await f.text();
+      } catch {
+        agg.warnings.push(`${f.name}：读取失败`);
+        continue;
+      }
+      const resp = await sendSkillsRequest<{ ok: boolean; data?: SkillsImportData; error?: string }>({
         type: 'SKILLS_IMPORT',
         text,
         filename: f.name,
@@ -76,7 +88,7 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
       type: 'SKILLS_EXPORT',
     });
     if (!resp.ok || !resp.data) {
-      setResult({ imported: 0, overwritten: 0, warnings: [resp.error ?? '导出失败'] });
+      setResult({ kind: 'export', imported: 0, overwritten: 0, warnings: [resp.error ?? '导出失败'] });
       return;
     }
     // 单条文件名用其 command；多条用日期
@@ -97,7 +109,17 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
 
   async function remove(id: string, name: string): Promise<void> {
     if (!window.confirm(`删除技能「${name}」？不可恢复。`)) return;
-    await sendSkillsRequest({ type: 'SKILLS_DELETE', id });
+    try {
+      await sendSkillsRequest({ type: 'SKILLS_DELETE', id });
+    } catch (e) {
+      // channel 断开等 reject：显式提示而非未处理 rejection
+      setResult({
+        kind: 'export',
+        imported: 0,
+        overwritten: 0,
+        warnings: [`删除「${name}」失败：${e instanceof Error ? e.message : String(e)}`],
+      });
+    }
     await refresh();
   }
 
@@ -167,7 +189,7 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
           {result.warnings.map((w, i) => (<div key={i}>{w}</div>))}
         </div>
       )}
-      {result && (
+      {result && result.kind === 'import' && (
         <div className="scripts-warnline" role="status">
           导入 {result.imported} 个，覆盖 {result.overwritten} 个
         </div>
