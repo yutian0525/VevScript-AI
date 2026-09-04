@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { ScriptsListView } from './ScriptsListView';
 import { useScripts } from '../../stores/scripts';
 import type { GmConfirmItem, GmErrorItem, GmMenuEntry } from '../../stores/scripts';
-import type { ScriptsRuntimeEvent } from '../../shared/messages';
+import type { ScriptsRuntimeEvent, ScriptsUpdatesEvent } from '../../shared/messages';
 
 export function ScriptsView() {
   useEffect(() => {
@@ -28,6 +28,9 @@ export function ScriptsView() {
       }
       if (m?.type === 'GM_CONFIRM_RESOLVED') {
         useScripts.getState().applyConfirmResolved((msg as { confirmId: string }).confirmId);
+      }
+      if (m?.type === 'SCRIPTS_UPDATES') {
+        useScripts.getState().applyUpdatesEvent(msg as ScriptsUpdatesEvent);
       }
     };
     browser.runtime.onMessage.addListener(onMessage);
