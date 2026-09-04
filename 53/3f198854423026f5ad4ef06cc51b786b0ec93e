@@ -1,0 +1,24 @@
+docs/superpowers/plans/2026-09-04-gmt-manual-test-userscripts.md
+  s_b24d2b355b9859::t_59d38b996a1cdb 857
+  s_b24d2b355b9859::t_c00483cb6523a1 842
+  s_b24d2b355b9859::t_f0687a33e33d67 25
+  s_b24d2b355b9859::t_826a69e3b9a1d8 86
+  s_b24d2b355b9859::t_ebcf21f58c3e1d 90
+  s_b24d2b355b9859::t_88d339a2b08d15 1-24,26-85,87-89,91-841,843-856,858-912
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "533f198854423026f5ad4ef06cc51b786b0ec93e",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
