@@ -1,0 +1,24 @@
+docs/gm-api.md
+  s_b24d2b355b9859::t_aac9c2d25c4e52 17-18
+  s_b24d2b355b9859::t_1efcf053b0819b 97
+fixtures/userscripts/manual/interaction.user.js.src
+  s_b24d2b355b9859::t_1e8891c505fd97 38,49
+fixtures/userscripts/manual/gmt-manual-interaction.user.js
+  s_b24d2b355b9859::t_387a77786335e7 225,236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "70e470802c8201134b8bdd7fa9e768b07abb080d",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
