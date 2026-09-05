@@ -1,0 +1,23 @@
+agent/tools/registry.ts
+  s_9bdd42bdb4338c::t_eda4d330a553f6 16,75
+entrypoints/background.ts
+  s_9bdd42bdb4338c::t_8f85e873cb7821 19,94-102
+tests/agent/tools/schemas.test.ts
+  s_9bdd42bdb4338c::t_fe2ca48b0eb00c 23,26-27,29,33,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "492db7fd4eb6ac963f57019f86fe7d639f668739",
+  "prompts": {},
+  "sessions": {
+    "s_9bdd42bdb4338c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbe95f26-e36e-451c-afa3-be735de632d1",
+        "model": "unknown"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
