@@ -14,9 +14,13 @@ import type { Skill } from '../shared/types';
 import { emptyTail, reduceTail, replayTail, type AgentTail } from './agent-tail';
 
 export async function buildProviderFromSettings(): Promise<Provider | null> {
-  const { provider } = await getSettings();
+  const { provider, agent } = await getSettings();
   if (!provider.baseUrl || !provider.model) return null;
-  return new OpenAICompatProvider(provider);
+  // 超时与重试配置：秒 → 毫秒（0 = 关闭），传给 provider 内部实现
+  return new OpenAICompatProvider(provider, {
+    timeoutMs: agent.llmTimeoutSec > 0 ? agent.llmTimeoutSec * 1000 : 0,
+    maxRetries: agent.llmMaxRetries,
+  });
 }
 
 // ---------- CS_READY 等待（navigate 后）----------

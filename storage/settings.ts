@@ -18,6 +18,10 @@ export interface AgentConfig {
   confirmGate: boolean; // 脚本池确认门控，默认 true
   /** 网络观测头处理：redacted=敏感头脱敏（默认），full=原文返回。见设计 §4.3。 */
   networkCaptureHeaders: 'redacted' | 'full';
+  /** LLM 单轮超时（秒）：首字节与流增量间隙共用此窗口，超时即中止本轮。0 = 不限时。 */
+  llmTimeoutSec: number;
+  /** LLM 调用失败自动重试次数（仅对未产出任何 token 的失败重试；429/5xx 指数退避）。0 = 不重试。 */
+  llmMaxRetries: number;
 }
 
 export interface Settings {
@@ -27,7 +31,13 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   provider: { baseUrl: '', apiKey: '', model: '' },
-  agent: { screenshotPolicy: 'on-demand', confirmGate: true, networkCaptureHeaders: 'redacted' },
+  agent: {
+    screenshotPolicy: 'on-demand',
+    confirmGate: true,
+    networkCaptureHeaders: 'redacted',
+    llmTimeoutSec: 120,
+    llmMaxRetries: 2,
+  },
 };
 
 const KEY = 'local:settings';

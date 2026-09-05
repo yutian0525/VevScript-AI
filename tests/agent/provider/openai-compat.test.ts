@@ -396,3 +396,214 @@ describe('OpenAICompatProvider', () => {
     expect(parsed.messages[1].content).toBe('答案 42');
   });
 });
+
+describe('OpenAICompatProvider 超时与重试', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  /** 构造带超时/重试参数的 provider（retryDelayMs=1 让退避测试不等真实时钟） */
+  const makeProvider = (opts: { timeoutMs?: number; maxRetries?: number; retryDelayMs?: number } = {}) =>
+    new OpenAICompatProvider(
+      { baseUrl: 'https://api.x.com/v1', apiKey: 'sk', model: 'm' },
+      { timeoutMs: opts.timeoutMs ?? 120_000, maxRetries: opts.maxRetries ?? 2, retryDelayMs: opts.retryDelayMs ?? 1 },
+    );
+
+  const collect = (p: OpenAICompatProvider, params = baseParams()) => {
+    const events: StreamEvent[] = [];
+    const donePromise = new Promise<void>((resolve) => {
+      p.streamChat(params, (e) => {
+        events.push(e);
+        if (e.type === 'message-done') resolve();
+      });
+    });
+    return { events, donePromise };
+  };
+
+  it('默认构造（无 options）行为不变：成功流照常完成', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(sseStream([{ choices: [{ delta: { content: 'ok' } }, { delta: {}, finish_reason: 'stop' }] }]), { status: 200 }),
+    );
+    const p = new OpenAICompatProvider({ baseUrl: 'https://api.x.com/v1', apiKey: 'sk', model: 'm' });
+    const { events, donePromise } = collect(p);
+    await donePromise;
+    expect(events.filter((e) => e.type === 'text-delta')).toHaveLength(1);
+    expect(events.some((e) => e.type === 'error')).toBe(false);
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+  });
+
+  it('网络错误重试：第 2 次成功则正常完成（仅首次失败对外不可见）', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'));
+    fetchMock.mockResolvedValueOnce(
+      new Response(sseStream([{ choices: [{ delta: { content: '好' } }, { delta: {}, finish_reason: 'stop' }] }]), { status: 200 }),
+    );
+    const p = makeProvider();
+    const { events, donePromise } = collect(p);
+    await donePromise;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(events.some((e) => e.type === 'error')).toBe(false);
+    const texts = events.filter((e) => e.type === 'text-delta').map((e) => (e as { text: string }).text);
+    expect(texts.join('')).toBe('好');
+  });
+
+  it('HTTP 5xx 重试并指数退避；重试耗尽后发一次 error + message-done', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(new Response('{"error":{"message":"overloaded"}}', { status: 503 }));
+    const p = makeProvider({ maxRetries: 2 });
+    const { events, donePromise } = collect(p);
+    // 逐次推进退避时钟（1ms 基准 × 指数增长，兜底大等待避免死锁）
+    for (let i = 0; i < 10 && !donePromiseSettled(donePromise); i++) {
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+    await donePromise;
+    expect(fetchMock).toHaveBeenCalledTimes(3); // 首次 + 2 次重试
+    const errs = events.filter((e) => e.type === 'error') as Extract<StreamEvent, { type: 'error' }>[];
+    expect(errs).toHaveLength(1);
+    expect(errs[0]!.error).toContain('503');
+    expect(events.filter((e) => e.type === 'message-done')).toHaveLength(1);
+  });
+
+  it('HTTP 429 重试：耗尽后 error 指明限流', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(new Response('{"error":{"message":"rate limited"}}', { status: 429 }));
+    const p = makeProvider({ maxRetries: 1 });
+    const { events, donePromise } = collect(p);
+    for (let i = 0; i < 10 && !donePromiseSettled(donePromise); i++) {
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+    await donePromise;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const errs = events.filter((e) => e.type === 'error') as Extract<StreamEvent, { type: 'error' }>[];
+    expect(errs[0]!.error).toContain('429');
+  });
+
+  it('HTTP 401（不可重试类）不重试：一次失败立即 error', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(new Response('{"error":{"message":"bad key"}}', { status: 401 }));
+    const p = makeProvider({ maxRetries: 2 });
+    const { events, donePromise } = collect(p);
+    await donePromise;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const errs = events.filter((e) => e.type === 'error') as Extract<StreamEvent, { type: 'error' }>[];
+    expect(errs).toHaveLength(1);
+  });
+
+  it('已流出 token 后流中断：不重试（避免 UI 重复），报错收尾', async () => {
+    const fetchMock = vi.mocked(fetch);
+    // 中断流：真实定时下发出 content chunk 后报错（同步 enqueue+error 会吞掉首 chunk）
+    const brokenStream = () => {
+      const encoder = new TextEncoder();
+      return new ReadableStream<Uint8Array>({
+        async start(controller) {
+          await new Promise((r) => setTimeout(r, 10));
+          controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":"前半"}}]}\n\n'));
+          await new Promise((r) => setTimeout(r, 10));
+          controller.error(new Error('stream aborted mid-way'));
+        },
+      });
+    };
+    fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'));
+    fetchMock.mockResolvedValueOnce(new Response(brokenStream(), { status: 200 }));
+    const p = makeProvider();
+    const { events, donePromise } = collect(p);
+    await donePromise;
+    expect(fetchMock).toHaveBeenCalledTimes(2); // 首次网络错误重试了；流中断后不再重试
+    const texts = events.filter((e) => e.type === 'text-delta').map((e) => (e as { text: string }).text);
+    expect(texts.join('')).toBe('前半');
+    expect(events.some((e) => e.type === 'error')).toBe(true);
+    expect(events.filter((e) => e.type === 'message-done')).toHaveLength(1);
+  });
+
+  it('首字节超时：连接挂起超过 timeoutMs → 中止并重试；重试耗尽报超时错误', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.mocked(fetch);
+    // 永不响应的 fetch（模拟网关挂起）
+    fetchMock.mockImplementation(() => new Promise<Response>(() => {}));
+    const p = makeProvider({ timeoutMs: 5000, maxRetries: 1 });
+    const { events, donePromise } = collect(p);
+    // 5s 超时触发 → 退避（fake timers 下重试的 setTimeout 也被模拟）→ 第 2 次 5s 超时 → 耗尽
+    for (let i = 0; i < 30; i++) {
+      await vi.advanceTimersByTimeAsync(500);
+      if (fetchMock.mock.calls.length >= 2 && events.some((e) => e.type === 'message-done')) break;
+    }
+    await donePromise;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const errs = events.filter((e) => e.type === 'error') as Extract<StreamEvent, { type: 'error' }>[];
+    expect(errs).toHaveLength(1);
+    expect(errs[0]!.error).toContain('超时');
+  });
+
+  it('流增量间隙超时：流中途停顿超过 timeoutMs → 判为挂死（已出 token 不重试）', async () => {
+    vi.useFakeTimers();
+    // 缓慢流：发一个 chunk 后长时间沉默
+    const stallStream = () => {
+      const encoder = new TextEncoder();
+      return new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":"开头"}}]}\n\n'));
+          // 不 close 也不再 enqueue
+        },
+      });
+    };
+    vi.mocked(fetch).mockResolvedValue(new Response(stallStream(), { status: 200 }));
+    const p = makeProvider({ timeoutMs: 3000, maxRetries: 2 });
+    const { events, donePromise } = collect(p);
+    await vi.advanceTimersByTimeAsync(3000);
+    for (let i = 0; i < 10 && !donePromiseSettled(donePromise); i++) {
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+    await donePromise;
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1); // 已出 token，不重试
+    const texts = events.filter((e) => e.type === 'text-delta').map((e) => (e as { text: string }).text);
+    expect(texts.join('')).toBe('开头');
+    const errs = events.filter((e) => e.type === 'error') as Extract<StreamEvent, { type: 'error' }>[];
+    expect(errs[0]!.error).toContain('超时');
+    expect(events.filter((e) => e.type === 'message-done')).toHaveLength(1);
+  });
+
+  it('timeoutMs=0 不设超时（挂流不误杀）', async () => {
+    const hanging = () => new Promise<Response>(() => {});
+    vi.mocked(fetch).mockImplementation(hanging);
+    const p = makeProvider({ timeoutMs: 0, maxRetries: 0 });
+    const { donePromise } = collect(p);
+    let settled = false;
+    donePromise.then(() => { settled = true; });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(settled).toBe(false); // 未被超时杀掉
+  });
+
+  it('maxRetries=0 不重试：网络错误一次即失败', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockRejectedValue(new TypeError('fetch failed'));
+    const p = makeProvider({ maxRetries: 0 });
+    const { events, donePromise } = collect(p);
+    await donePromise;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(events.some((e) => e.type === 'error')).toBe(true);
+  });
+
+  it('调用方 signal 已 abort 时不发任何请求', async () => {
+    const fetchMock = vi.mocked(fetch);
+    const ac = new AbortController();
+    ac.abort();
+    const p = makeProvider();
+    const { donePromise } = collect(p, { ...baseParams(), signal: ac.signal });
+    await donePromise;
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+/** donePromise 是否已 settle（轮询辅助，供 fake timers 循环推进用） */
+function donePromiseSettled(p: Promise<void>): boolean {
+  let s = false;
+  // 已 settle 的 promise 同步判定：race 一个已 resolve 的占位
+  Promise.race([p.then(() => true), Promise.resolve(false)]).then((v) => { s = v as boolean; });
+  return s && s !== undefined;
+}

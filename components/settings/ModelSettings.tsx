@@ -146,6 +146,32 @@ export function ModelSettings({ onBack }: { onBack: () => void }) {
             <span className="hint">合并进请求体，用于开启各网关的思考等开关（如 enable_thinking / reasoning_effort）。核心字段受保护不被覆盖。</span>
           )}
         </div>
+        <div className="field">
+          <label className="field-label">超时时间（秒，0 = 不限时）</label>
+          <Input
+            type="number"
+            min={0}
+            value={settings.agent.llmTimeoutSec}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setSettings({ ...settings, agent: { ...settings.agent, llmTimeoutSec: Number.isFinite(v) ? Math.max(0, v) : 0 } });
+            }}
+          />
+          <span className="hint">静默窗口：连接后或流式输出中，超过该时长未收到任何数据即判定挂死并中止（0 = 关闭超时保护）。</span>
+        </div>
+        <div className="field">
+          <label className="field-label">失败重试次数（0 = 不重试）</label>
+          <Input
+            type="number"
+            min={0}
+            value={settings.agent.llmMaxRetries}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setSettings({ ...settings, agent: { ...settings.agent, llmMaxRetries: Number.isFinite(v) ? Math.max(0, v) : 0 } });
+            }}
+          />
+          <span className="hint">网络错误、HTTP 429/5xx、超时时自动重试；已开始输出内容后失败不重试（避免回复重复）。429/5xx 指数退避。</span>
+        </div>
       </section>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
