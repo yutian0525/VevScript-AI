@@ -1,0 +1,47 @@
+background/scripts.ts
+  s_6f3c5d6431fcb5::t_a86d6c79deffdb 355-359,361
+tests/agent/tools/schemas.test.ts
+  s_6f3c5d6431fcb5::t_61d4d8691f462d 16,19-20,22,26,30
+background/scripts-update.ts
+  s_6f3c5d6431fcb5::t_cf61c10491bd2f 146-149,165-166
+  s_6f3c5d6431fcb5::t_8a48728674dd35 6,16-19
+  s_6f3c5d6431fcb5::t_c92546eb29dfff 115-143
+  s_6f3c5d6431fcb5::t_36930c09a82a60 20
+tests/background/scripts-update.test.ts
+  s_6f3c5d6431fcb5::t_a426571628c5af 54
+  s_6f3c5d6431fcb5::t_d606e09c241afa 245-318
+  s_6f3c5d6431fcb5::t_eb80a41fc38ad5 7
+agent/tools/schemas.ts
+  s_6f3c5d6431fcb5::t_8928bd37fd3460 293,296-297,300
+  s_6f3c5d6431fcb5::t_9adf2c304d899f 309,315,317
+  s_6f3c5d6431fcb5::t_ab9ce53ed4c340 265
+agent/tools/registry.ts
+  s_6f3c5d6431fcb5::t_a6189eade0b6ed 15
+  s_6f3c5d6431fcb5::t_73dab5196caae4 74
+agent/tools/script-pool.ts
+  s_6f3c5d6431fcb5::t_f2a0743a08be77 5,13,17-28,31-37
+  s_6f3c5d6431fcb5::t_0eabaf5004b2b6 58,60-64,69,83-86
+tests/agent/tools/script-pool.test.ts
+  s_6f3c5d6431fcb5::t_6d78366bf51ee6 104-161
+shared/messages.ts
+  s_6f3c5d6431fcb5::t_c45320b5573eb4 147-148
+entrypoints/background.ts
+  s_6f3c5d6431fcb5::t_9072417157ef5d 92-100
+  s_6f3c5d6431fcb5::t_184c11842afc53 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4053e3c23c94f35354ade9ed5a1da7f0574b934c",
+  "prompts": {},
+  "sessions": {
+    "s_6f3c5d6431fcb5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15054960-2490-49f9-af1d-4b0d4e5d6f37",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
