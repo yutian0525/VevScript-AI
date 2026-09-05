@@ -105,6 +105,25 @@ describe('loop 斜杠触发与常驻注入', () => {
     expect(String(skillMsg!.content)).toContain('用户附加输入：把这段翻成中文');
   });
 
+  it('/command 命中 → emit skill-loaded（面板据此显示系统提示）', async () => {
+    await saveSkill({
+      id: 'k9', name: '翻译', command: 'translate', description: 'd',
+      content: 'X', enabled: true, createdAt: 1, updatedAt: 1,
+    });
+    const emit = vi.fn();
+    await runAgentLoop(
+      { convId: 'c8', tabId: 1, userMessage: '/translate 走' },
+      { ...minimalDeps(captureProvider([])), emit, getSkills: async () => [{ name: '翻译', command: 'translate', description: 'd' }] },
+    );
+    expect(emit).toHaveBeenCalledWith({ type: 'skill-loaded', command: 'translate', name: '翻译' });
+  });
+
+  it('/command 未命中 → 不 emit skill-loaded', async () => {
+    const emit = vi.fn();
+    await runAgentLoop({ convId: 'c10', tabId: 1, userMessage: '/nope x' }, { ...minimalDeps(captureProvider([])), emit });
+    expect(emit).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'skill-loaded' }));
+  });
+
   it('/command 未命中 → 原样普通文本（无额外 system 消息）', async () => {
     const captured: ChatParams[] = [];
     await runAgentLoop({ convId: 'c2', tabId: 1, userMessage: '/nope 内容' }, minimalDeps(captureProvider(captured)));

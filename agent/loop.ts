@@ -101,6 +101,7 @@ async function drive(
           role: 'system',
           content: `【技能指令 /${hit.command}】\n${hit.content}\n\n用户附加输入：${triggerSlash.rest || '（无）'}`,
         });
+        deps.emit({ type: 'skill-loaded', command: hit.command, name: hit.name });
       }
     }
 

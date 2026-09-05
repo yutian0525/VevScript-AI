@@ -1,6 +1,6 @@
 // components/chat/ChatView.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Paperclip, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, ChevronDown, Brain, SquarePen, ArrowUp, ArrowDown, Square, ArrowDownToLine } from 'lucide-react';
+import { Paperclip, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, ChevronDown, Brain, SquarePen, ArrowUp, ArrowDown, Square, ArrowDownToLine, Sparkles } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Gauge } from '../ui/Gauge';
@@ -288,12 +288,13 @@ function MessageRow({ item, index, streaming }: { item: ChatItem; index: number;
   const toggleExpand = useChat((s) => s.toggleExpand);
 
   if (item.role === 'user') {
-    const text = item.text ?? '';
-    const slash = /^\/([a-z0-9-]+)(?:\s|$)/.exec(text);
+    return <div className="msg-user rise">{item.text ?? ''}</div>;
+  }
+  if (item.role === 'notice') {
     return (
-      <div className="msg-user rise">
-        {slash && slash[1] && <span className="mono slash-chip">/{slash[1]}</span>}
-        {text}
+      <div className="msg-notice rise" role="status">
+        <Sparkles size={13} aria-hidden />
+        <span>{item.text}</span>
       </div>
     );
   }

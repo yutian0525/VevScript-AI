@@ -106,6 +106,8 @@ export type PortMsgFromPanel =
 export type AgentEvent =
   | { type: 'reasoning-delta'; text: string }
   | { type: 'text-delta'; text: string }
+  /** 斜杠触发命中并注入了某启用技能的正文（仅触发轮，不落库）：面板显示一条系统提示。 */
+  | { type: 'skill-loaded'; command: string; name: string }
   | { type: 'tool-start'; name: string; args: string; callId: string }
   | { type: 'tool-end'; name: string; callId: string; ok: boolean; summary: string; output?: string; image?: string }
   | { type: 'usage'; promptTokens?: number; completionTokens?: number }
