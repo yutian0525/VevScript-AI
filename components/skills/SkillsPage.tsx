@@ -140,6 +140,20 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
     await refresh();
   }
 
+  /** 内置技能：不可删除（后台拒删 + UI 不渲染删除钮），只可停用。 */
+  const deleteSkillEntry = (s: SkillSummary): void => {
+    if (s.builtin) {
+      setResult({
+        kind: 'export',
+        imported: 0,
+        overwritten: 0,
+        warnings: [`「${s.name}」是内置技能，不可删除，如不需要可停用`],
+      });
+      return;
+    }
+    void remove(s.id, s.name);
+  };
+
   // ---------- 详情页（仅查看）----------
   if (detailId != null) {
     return (
@@ -156,6 +170,7 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
           <div className="skills-detail">
             <div className="skills-detail__head">
               <span className="mono slash-chip">/{detail.command}</span>
+              {detail.builtin && <span className="token">内置</span>}
               <button
                 type="button"
                 role="switch"
@@ -265,19 +280,22 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
                 onChange={() => toggleSelected(s.id)}
               />
               <span className="scripts-card__name">{s.name}</span>
-              <button
-                type="button"
-                className="scripts-card__delbtn"
-                aria-label={`删除 ${s.name}`}
-                title="删除技能"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void remove(s.id, s.name);
-                }}
-                onKeyDown={(e) => e.stopPropagation()}
-              >
-                <Trash2 size={14} aria-hidden />
-              </button>
+              {s.builtin && <span className="token" title="内置技能：不可删除，可停用">内置</span>}
+              {!s.builtin && (
+                <button
+                  type="button"
+                  className="scripts-card__delbtn"
+                  aria-label={`删除 ${s.name}`}
+                  title="删除技能"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteSkillEntry(s);
+                  }}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <Trash2 size={14} aria-hidden />
+                </button>
+              )}
               <button
                 type="button"
                 role="switch"

@@ -89,6 +89,15 @@ describe('storage/skills', () => {
     expect(await listSkills()).toEqual([]);
   });
 
+  it('builtin 技能拒删（普通技能不受影响）', async () => {
+    await saveSkill(mkSkill({ builtin: true }));
+    await expect(deleteSkill('sk1')).rejects.toThrow('不可删除');
+    expect(await listSkills()).toHaveLength(1);
+    await saveSkill(mkSkill({ id: 'sk2', command: 'plain' }));
+    await deleteSkill('sk2');
+    expect(await listSkills()).toHaveLength(1);
+  });
+
   it('setSkillEnabled 翻转', async () => {
     await saveSkill(mkSkill());
     await setSkillEnabled('sk1', false);
@@ -104,6 +113,11 @@ describe('storage/skills', () => {
       id: 'sk1', name: '翻译', command: 'translate',
       description: '简述', enabled: true, updatedAt: 1,
     });
+  });
+
+  it('toSkillSummary 透传 builtin 标记', () => {
+    expect(toSkillSummary(mkSkill({ builtin: true })).builtin).toBe(true);
+    expect(toSkillSummary(mkSkill()).builtin).toBeUndefined();
   });
 
   it('newSkill 工厂：默认 enabled + 时间戳 + 随机 id', () => {
