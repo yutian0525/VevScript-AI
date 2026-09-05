@@ -1,0 +1,23 @@
+docs/superpowers/specs/2026-09-04-gmt-manual-test-userscripts-design.md
+  s_b24d2b355b9859::t_3a329ddd4ecace 159-160
+fixtures/userscripts/manual/gmt-manual-network.user.js
+  s_b24d2b355b9859::t_d4be5de27b4453 218
+fixtures/userscripts/manual/network.user.js.src
+  s_b24d2b355b9859::t_4b796eb014f62e 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "67912f3a210a1d8297d373c7dc23ce274d9e335f",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
