@@ -305,10 +305,10 @@ body {
 .chat__hello {
   margin: auto 0;
   padding: 20px 4px;
-  text-align: center;
+  text-align: left;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
 }
 .chat__hello-title {
@@ -325,7 +325,7 @@ body {
   margin-top: 14px;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
   max-width: 100%;
 }
