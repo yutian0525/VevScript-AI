@@ -96,7 +96,7 @@ export interface Skill {
   name: string;
   /** 斜杠调用名（唯一键，kebab-case ASCII） */
   command: string;
-  /** 简述（注入上下文 + 浮层副标题，≤200 字符） */
+  /** 简述（注入上下文 + 浮层副标题，≤300 字符） */
   description: string;
   /** Markdown 指令正文（≤64KB） */
   content: string;
