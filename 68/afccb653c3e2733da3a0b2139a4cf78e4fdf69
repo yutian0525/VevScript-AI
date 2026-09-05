@@ -1,0 +1,21 @@
+tests/ui/chat-hello.test.tsx
+  s_df52bcfd09b7e1::t_875281d7648da6 39,45,47-50
+components/chat/ChatView.tsx
+  s_df52bcfd09b7e1::t_529a8f2ca10fe1 25,28-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "68afccb653c3e2733da3a0b2139a4cf78e4fdf69",
+  "prompts": {},
+  "sessions": {
+    "s_df52bcfd09b7e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73f45e65-6f72-4ce2-9279-b6b1b74dde3e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
