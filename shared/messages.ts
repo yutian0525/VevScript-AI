@@ -144,6 +144,8 @@ export interface ScriptPatch {
   enabled?: boolean;
   /** 行区间替换：在当前原文上 splice 后整体重解析 */
   edit?: ScriptEditRange;
+  /** 从更新源（@updateURL/@downloadURL）拉取远端最新文本并覆盖；与 text/edit 互斥，优先生效。 */
+  applyUpdate?: boolean;
 }
 
 /** SCRIPTS_GET 响应 data 形状：传 offset/limit 时 script.text 为行切片（修订 2026-09-02） */

@@ -15,7 +15,7 @@ import {
 import type { ConsoleEntry, HookNetEntry } from '../shared/hook-bridge';
 import { initScriptsModule } from '../background/scripts';
 import { initGmApi } from '../background/gm-api';
-import { runStartupUpdateCheck } from '../background/scripts-update';
+import { maybeRunStartupUpdateCheck } from '../background/scripts-update';
 
 export default defineBackground(() => {
   const router = new MessageRouter();
@@ -89,9 +89,15 @@ export default defineBackground(() => {
   initScriptsModule(router);
   initGmApi(router);
 
-  // 浏览器启动 / 扩展安装更新时批量检查脚本更新（spec §1.6；fire-and-forget 不阻塞）
-  browser.runtime.onStartup.addListener(() => { void runStartupUpdateCheck().catch(() => {}); });
-  browser.runtime.onInstalled.addListener(() => { void runStartupUpdateCheck().catch(() => {}); });
+  // 脚本更新的批量检查（fire-and-forget，不阻塞 SW）。三条路径统一走 maybeRunStartupUpdateCheck：
+  //  1) SW 冷启动（本行）：节流兜底——onStartup 在 MV3 不可靠（unpacked 几乎不触发、SW 被唤醒不补触发），
+  //     故每次 SW 冷启动都进节流检查，距上次超 12h 才真的查，保证「浏览器开着」隔段时间自动查一次。
+  //  2) onStartup：浏览器带扩展冷启动的显式信号，force 无视节流立即查。
+  //  3) onInstalled：安装/更新时 force 立即查。
+  // 同一 SW 生命周期内 checkStarted 守卫保证只跑一次，三路径不重复。
+  void maybeRunStartupUpdateCheck().catch(() => {});
+  browser.runtime.onStartup.addListener(() => { void maybeRunStartupUpdateCheck(true).catch(() => {}); });
+  browser.runtime.onInstalled.addListener(() => { void maybeRunStartupUpdateCheck(true).catch(() => {}); });
 
   router.attach();
   console.log('[ai-browser-ext] background started');

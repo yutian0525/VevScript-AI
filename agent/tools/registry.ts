@@ -12,7 +12,7 @@ import { doListConsoleMessages, doListNetworkRequests, doGetNetworkRequest } fro
 import {
   doListScripts, doGetScript, doCreateScript, doUpdateScript, doDeleteScript, doToggleScript,
 } from './script-pool';
-import type { ScriptInput, ScriptPatch } from '../../shared/messages';
+import type { ScriptPatch } from '../../shared/messages';
 
 export interface ToolCtx {
   tabId: number;
@@ -71,7 +71,7 @@ export async function executeTool(
   // 脚本池六工具：纯 storage/注册操作，不碰页面内容，豁免受限页预检（spec §8）。
   if (name === 'list_scripts') return doListScripts(args as { enabled?: boolean; urlContains?: string });
   if (name === 'get_script') return doGetScript(args as { id: string; offset?: number; limit?: number });
-  if (name === 'create_script') return doCreateScript(args as unknown as ScriptInput);
+  if (name === 'create_script') return doCreateScript(args as { source?: string; text?: string; url?: string; enabled?: boolean });
   if (name === 'update_script') return doUpdateScript(args as { id: string; patch: ScriptPatch });
   if (name === 'delete_script') return doDeleteScript(args as { id: string });
   if (name === 'toggle_script') return doToggleScript(args as { id: string; enabled: boolean });
