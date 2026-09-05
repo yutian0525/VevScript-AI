@@ -1,0 +1,20 @@
+tests/shared/gmt-manual-fixtures.test.ts
+  s_b24d2b355b9859::t_d8cca2312a017a 136-138
+  s_b24d2b355b9859::t_0e9c16e7705a90 1-135,139-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bf38c88f56371119344c160b70153c6084332526",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
