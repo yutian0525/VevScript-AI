@@ -110,6 +110,24 @@ describe('buildWrappedCode', () => {
     expect(code).toContain(JSON.stringify('userCode();').slice(1, -1));
   });
 
+  it('握手 backlog：__GM_post 就绪直发/未就绪入队，gmhost 监听冲刷，gmhello 派发（收口早到 gmreq 竞态）', () => {
+    const code = buildWrappedCode(mkScript({ meta: { grants: ['GM_xmlhttpRequest'] } }), {
+      token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0',
+    });
+    // backlog 态 + 分流：hostReady 直发，否则入 backlog
+    expect(code).toContain('var __GM_hostReady = false;');
+    expect(code).toContain('var __GM_backlog = [];');
+    expect(code).toContain('if (__GM_hostReady) __GM_send(detail);');
+    expect(code).toContain('else __GM_backlog.push(detail);');
+    // gmhost 就绪信号：置位 + 冲刷 backlog
+    expect(code).toContain("window.addEventListener('gmhost:' + __GM_id");
+    // gmhello 问询派发（在用户代码之前的 preamble 内）
+    expect(code).toContain("window.dispatchEvent(new CustomEvent('gmhello:' + __GM_id))");
+    expect(code.indexOf("'gmhello:'")).toBeLessThan(code.indexOf('userCode();'));
+    // gmhost 监听须先于 gmhello 派发挂好（否则宿主重发的 gmhost 漏接）
+    expect(code.indexOf("addEventListener('gmhost:'")).toBeLessThan(code.indexOf("dispatchEvent(new CustomEvent('gmhello:'"));
+  });
+
   it('全局错误钩子：error/unhandledrejection 均上报 __GM_report（后继异步异常链路）', () => {
     const code = buildWrappedCode(mkScript(), {
       token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0',
