@@ -20,18 +20,21 @@ describe('工具 schema', () => {
     expect(p.properties.command!.type).toBe('string');
   });
 
-  it('create_script：source 必填；update_script patch.edit 行区间；get_script 行区间参数', () => {
+  it('create_script：source/url 二选一（均可选）；update_script patch.edit 行区间；get_script 行区间参数', () => {
     const create = TOOL_SCHEMAS.find((s) => s.function.name === 'create_script')!;
     const cp = create.function.parameters as { properties: Record<string, { type: string }>; required: string[] };
-    expect(cp.required).toEqual(['source']);
+    // source 与 url 二选一 → 均非强制必填（执行器校验「至少一个」）
+    expect(cp.required).toEqual([]);
     expect(cp.properties.source!.type).toBe('string');
+    expect(cp.properties.url!.type).toBe('string');
 
     const update = TOOL_SCHEMAS.find((s) => s.function.name === 'update_script')!;
     const up = update.function.parameters as {
-      properties: { patch: { properties: Record<string, { required?: string[] }> } };
+      properties: { patch: { properties: Record<string, { type?: string; required?: string[] }> } };
       required: string[];
     };
     expect(up.required).toEqual(['id', 'patch']);
+    expect(up.properties.patch.properties.applyUpdate!.type).toBe('boolean');
     expect(up.properties.patch.properties.edit!.required).toEqual(['startLine', 'endLine', 'text']);
 
     const get = TOOL_SCHEMAS.find((s) => s.function.name === 'get_script')!;

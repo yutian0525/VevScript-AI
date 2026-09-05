@@ -4,6 +4,7 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import {
   readUpdateStates, clearUpdateState, checkScriptUpdate, runStartupUpdateCheck,
   handleImportUrl, handleApplyUpdate, updateCheckUrl, updateDownloadUrl,
+  maybeRunStartupUpdateCheck, readLastCheckAt, resetStartupCheckGuardForTest,
 } from '../../background/scripts-update';
 import { saveScript, listScripts } from '../../storage/scripts';
 import type { UserScript } from '../../shared/types';
@@ -50,6 +51,7 @@ beforeEach(() => {
   fakeBrowser.reset();
   uninstallFakeUserScripts();
   vi.restoreAllMocks();
+  resetStartupCheckGuardForTest();
 });
 
 describe('update-state 存取', () => {
@@ -237,6 +239,80 @@ describe('handleApplyUpdate', () => {
     await saveScript(mkScript({ id: 'a3', meta: { downloadURL: 'https://x/d' } }));
     vi.stubGlobal('fetch', okFetch('// ==UserScript==\n// @name t\n// ==/UserScript==\n'));
     await expect(handleApplyUpdate('a3')).rejects.toThrow('code 不能为空');
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('handleImportUrl source 归属', () => {
+  it('默认 import；显式传 agent 覆盖', async () => {
+    const body = '// ==UserScript==\n// @name t\n// @match https://a.com/*\n// ==/UserScript==\ncode();';
+    vi.stubGlobal('fetch', okFetch(body));
+    const def = await handleImportUrl('https://cdn.example.com/a.user.js');
+    expect(def.script.source).toBe('import');
+    const ag = await handleImportUrl('https://cdn.example.com/b.user.js', 'agent');
+    expect(ag.script.source).toBe('agent');
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('maybeRunStartupUpdateCheck（冷启动节流 + 生命周期守卫）', () => {
+  function stubFetchVersion(v: string) {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, status: 200, text: async () => `// ==UserScript==\n// @version ${v}\n// ==/UserScript==\nx`,
+    })));
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(undefined);
+  }
+
+  it('无时间戳（首次冷启动）→ 执行检查并写时间戳', async () => {
+    await saveScript(mkScript({ id: 'a', meta: { updateURL: 'https://x/a' } }));
+    stubFetchVersion('9.9.9');
+    expect(await readLastCheckAt()).toBe(0);
+    await maybeRunStartupUpdateCheck();
+    expect((await readUpdateStates()).a?.status).toBe('available');
+    expect(await readLastCheckAt()).toBeGreaterThan(0);
+    vi.unstubAllGlobals();
+  });
+
+  it('节流窗口内（近期已查）且非 force → 跳过，不 fetch', async () => {
+    await saveScript(mkScript({ id: 'a', meta: { updateURL: 'https://x/a' } }));
+    const { storage } = await import('wxt/utils/storage');
+    await storage.setItem('local:scripts:last-update-check', Date.now()); // 刚查过
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    await maybeRunStartupUpdateCheck(); // 非 force
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('节流窗口内 + force（onStartup/onInstalled）→ 仍执行', async () => {
+    await saveScript(mkScript({ id: 'a', meta: { updateURL: 'https://x/a' } }));
+    const { storage } = await import('wxt/utils/storage');
+    await storage.setItem('local:scripts:last-update-check', Date.now());
+    stubFetchVersion('9.9.9');
+    await maybeRunStartupUpdateCheck(true);
+    expect((await readUpdateStates()).a?.status).toBe('available');
+    vi.unstubAllGlobals();
+  });
+
+  it('同一生命周期只跑一次（守卫）：第二次调用不再 fetch', async () => {
+    await saveScript(mkScript({ id: 'a', meta: { updateURL: 'https://x/a' } }));
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, text: async () => '// ==UserScript==\n// @version 9\n// ==/UserScript==\nx' }));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(undefined);
+    await maybeRunStartupUpdateCheck(true);
+    await maybeRunStartupUpdateCheck(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1); // 守卫拦住第二次
+    vi.unstubAllGlobals();
+  });
+
+  it('节流未到不占用守卫：跳过后 force 仍可执行', async () => {
+    await saveScript(mkScript({ id: 'a', meta: { updateURL: 'https://x/a' } }));
+    const { storage } = await import('wxt/utils/storage');
+    await storage.setItem('local:scripts:last-update-check', Date.now());
+    stubFetchVersion('9.9.9');
+    await maybeRunStartupUpdateCheck();      // 节流跳过，不设守卫
+    await maybeRunStartupUpdateCheck(true);  // force 接住执行
+    expect((await readUpdateStates()).a?.status).toBe('available');
     vi.unstubAllGlobals();
   });
 });

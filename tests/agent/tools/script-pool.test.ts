@@ -101,6 +101,64 @@ describe('script-pool 工具执行器', () => {
     expect(await listScripts()).toEqual([]);
   });
 
+  it('create_script：url 分支从直链导入（来源 agent，注入 @updateURL）', async () => {
+    installFakeUserScripts();
+    const body = mkTm('from-url', 'https://a.com/*');
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, text: async () => body })));
+    const r = (await doCreateScript({ url: 'https://cdn.example.com/s.user.js' })) as { ok: boolean; data: { script: { name: string; source: string; meta?: { updateURL?: string } } } };
+    expect(r.ok).toBe(true);
+    expect(r.data.script.name).toBe('from-url');
+    expect(r.data.script.source).toBe('agent');
+    expect(r.data.script.meta?.updateURL).toBe('https://cdn.example.com/s.user.js');
+    vi.unstubAllGlobals();
+  });
+
+  it('create_script：url 下载到非脚本（无头）→ 报错', async () => {
+    installFakeUserScripts();
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, text: async () => '<html>404</html>' })));
+    const r = await doCreateScript({ url: 'https://x/notascript' });
+    expect(r).toMatchObject({ ok: false });
+    expect((r as { error: string }).error).toContain('不是有效脚本');
+    vi.unstubAllGlobals();
+  });
+
+  it('update_script：applyUpdate 分支从更新源拉取远端最新覆盖', async () => {
+    installFakeUserScripts();
+    const created = (await doCreateScript({ source: `// ==UserScript==\n// @name n\n// @version 1.0.0\n// @updateURL https://x/u\n// @match https://a.com/*\n// ==/UserScript==\nv1;` })) as { data: { script: { id: string } } };
+    const id = created.data.script.id;
+    const remote = `// ==UserScript==\n// @name n\n// @version 2.0.0\n// @updateURL https://x/u\n// @match https://a.com/*\n// ==/UserScript==\nv2;`;
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, text: async () => remote })));
+    const r = (await doUpdateScript({ id, patch: { applyUpdate: true } })) as { ok: boolean; data: { script: { meta?: { version?: string }; code: string } } };
+    expect(r.ok).toBe(true);
+    expect(r.data.script.meta?.version).toBe('2.0.0');
+    expect((await listScripts())[0]!.meta?.version).toBe('2.0.0');
+    vi.unstubAllGlobals();
+  });
+
+  it('update_script：applyUpdate 对无更新源脚本报错', async () => {
+    installFakeUserScripts();
+    const created = (await doCreateScript({ source: mkTm('n', 'https://a.com/*') })) as { data: { script: { id: string } } };
+    const r = await doUpdateScript({ id: created.data.script.id, patch: { applyUpdate: true } });
+    expect(r).toMatchObject({ ok: false });
+    expect((r as { error: string }).error).toContain('无更新源');
+  });
+
+  it('list_scripts：附加 update 字段（读后台检查缓存，available → hasUpdate=true；无缓存 → 缺省）', async () => {
+    installFakeUserScripts();
+    const c1 = (await doCreateScript({ source: mkTm('has-upd', 'https://a.com/*') })) as { data: { script: { id: string } } };
+    await doCreateScript({ source: mkTm('no-upd', 'https://b.com/*') });
+    // 预置一条 available 更新状态到缓存
+    const { UPDATE_STATE_KEY } = await import('../../../shared/types');
+    const { storage } = await import('wxt/utils/storage');
+    await storage.setItem(UPDATE_STATE_KEY, { [c1.data.script.id]: { remoteVersion: '3.0.0', checkedAt: 123, status: 'available' } });
+
+    const all = (await doListScripts({})) as { data: { scripts: Array<{ id: string; update?: { hasUpdate: boolean; remoteVersion?: string } }> } };
+    const withUpd = all.data.scripts.find((s) => s.id === c1.data.script.id)!;
+    expect(withUpd.update).toMatchObject({ hasUpdate: true, remoteVersion: '3.0.0' });
+    const without = all.data.scripts.find((s) => s.id !== c1.data.script.id)!;
+    expect(without.update).toBeUndefined();
+  });
+
   it('registry 分发：脚本工具豁免受限页预检（chrome:// 页上照常可用）', async () => {
     installFakeUserScripts();
     const tab = await fakeBrowser.tabs.create({ url: 'chrome://extensions/' });

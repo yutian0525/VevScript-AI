@@ -3,7 +3,7 @@
 // 复用 handleImport / handleUpdate（text 为唯一真源）；meta 是解析投影 → 更新源经 injectMetaLines 注入文本。
 
 import { storage } from 'wxt/utils/storage';
-import { UPDATE_STATE_KEY, type ScriptUpdateState, type UserScript } from '../shared/types';
+import { UPDATE_STATE_KEY, type ScriptSource, type ScriptUpdateState, type UserScript } from '../shared/types';
 import { parseUserScript, injectMetaLines } from '../shared/userscript-meta';
 import { compareVersions } from '../shared/version';
 import { MAX_TEXT_LENGTH, getScript, listScripts } from '../storage/scripts';
@@ -12,6 +12,11 @@ import { handleImport, handleUpdate } from './scripts';
 const CHECK_TIMEOUT_MS = 15_000;
 const DOWNLOAD_TIMEOUT_MS = 30_000;
 const CHECK_CONCURRENCY = 4;
+
+/** 上次启动检查时间戳存储键（SW 冷启动节流用，剥前缀物理键 'scripts:last-update-check'）。 */
+const LAST_CHECK_KEY = 'local:scripts:last-update-check';
+/** SW 冷启动节流窗口：距上次检查不足此间隔则跳过（onStartup 在 MV3 不可靠，靠冷启动兜底）。 */
+const STARTUP_CHECK_THROTTLE_MS = 12 * 60 * 60 * 1000; // 12h
 
 export type ScriptUpdateMap = Record<string, ScriptUpdateState>;
 
@@ -107,9 +112,41 @@ async function broadcastUpdates(updates: ScriptUpdateMap): Promise<void> {
   void browser.runtime.sendMessage({ type: 'SCRIPTS_UPDATES', updates }).catch(() => {});
 }
 
+// ---------- 冷启动节流检查（修复：onStartup 在 MV3 不可靠，SW 冷启动兜底） ----------
+// runtime.onStartup 仅在浏览器带扩展「冷启动」那一刻触发一次；开发模式（unpacked）几乎不触发，
+// SW 因空闲被回收后被其它事件（打开侧边栏、页面导航…）唤醒时也不会补触发——于是「浏览器开着却没检查」。
+// 兜底：每次 SW 冷启动（含被任意事件唤醒）都进本函数，按上次检查时间戳节流（默认 12h）决定是否真的查。
+// 同一 SW 生命周期内只跑一次（checkStarted 守卫），避免顶层调用与 onStartup 事件重复触发。
+
+let checkStarted = false;
+
+export async function readLastCheckAt(): Promise<number> {
+  return (await storage.getItem<number>(LAST_CHECK_KEY)) ?? 0;
+}
+
+/** 启动检查入口：force=true（onInstalled/onStartup 显式信号）无视节流；否则距上次不足窗口则跳过。
+ *  同一 SW 生命周期只执行一次真正的检查（节流未到不占用守卫，留给后续 force 调用）。 */
+export async function maybeRunStartupUpdateCheck(force = false): Promise<void> {
+  if (checkStarted) return;
+  const last = await readLastCheckAt();
+  const due = force || Date.now() - last >= STARTUP_CHECK_THROTTLE_MS;
+  if (!due) return; // 节流未到：不设守卫，后续 force 调用仍可执行
+  checkStarted = true;
+  await storage.setItem(LAST_CHECK_KEY, Date.now());
+  await runStartupUpdateCheck();
+}
+
+/** 测试钩子：重置生命周期守卫（SW 重启即天然重置，测试需手动复位）。 */
+export function resetStartupCheckGuardForTest(): void {
+  checkStarted = false;
+}
+
 // ---------- URL 导入（SCRIPTS_IMPORT_URL） ----------
 
-export async function handleImportUrl(rawUrl: string): Promise<{ script: UserScript; warnings: string[] }> {
+export async function handleImportUrl(
+  rawUrl: string,
+  source: ScriptSource = 'import',
+): Promise<{ script: UserScript; warnings: string[] }> {
   let url: URL;
   try {
     url = new URL(rawUrl);
@@ -125,7 +162,8 @@ export async function handleImportUrl(rawUrl: string): Promise<{ script: UserScr
   // 头里没写更新源 → 导入 URL 记为 @updateURL（后续可自动检查更新）；已有则不注入（不覆盖、不重复行）
   const hasUpdateUrl = parseUserScript(text).fields.meta.updateURL != null;
   const withMeta = injectMetaLines(text, { updateURL: hasUpdateUrl ? undefined : url.href });
-  return handleImport(withMeta);
+  // source 决定归属：UI/SCRIPTS_IMPORT_URL 用 'import'；AI create_script 从 url 导入传 'agent'
+  return handleImport(withMeta, undefined, source);
 }
 
 // ---------- 应用更新（SCRIPTS_APPLY_UPDATE） ----------

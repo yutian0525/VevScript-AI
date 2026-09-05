@@ -262,7 +262,7 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'list_scripts',
       description:
-        '列出脚本库中的用户脚本摘要（不含代码体）。enabled 按启用状态过滤；urlContains 按匹配模式子串过滤（大小写不敏感）。summary 含 errorCount（脚本运行报错条数，>0 时可主动向用户提议排查）与 grantSupported/grantUnsupported（GM API 支持状态）。需要完整代码时用 get_script。',
+        '列出脚本库中的用户脚本摘要（不含代码体）。enabled 按启用状态过滤；urlContains 按匹配模式子串过滤（大小写不敏感）。summary 含 errorCount（脚本运行报错条数，>0 时可主动向用户提议排查）与 grantSupported/grantUnsupported（GM API 支持状态）。update 字段来自后台定期检查的缓存（不会触发新检查）：update.hasUpdate=true 表示有可用更新、update.remoteVersion 为远端版本；无 update 字段 = 该脚本无更新源或后台尚未检查过。要更新脚本用 update_script 并传 patch.applyUpdate=true（会即时拉取远端最新覆盖，无需先检查）。需要完整代码时用 get_script。',
       parameters: obj({
         enabled: { type: 'boolean', description: '按启用状态过滤' },
         urlContains: { type: 'string', description: '匹配模式包含该子串（大小写不敏感）' },
@@ -290,13 +290,14 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'create_script',
       description:
-        '创建用户脚本：以浏览器用户脚本权限在头部匹配规则命中的页面上自动运行。创建前先向用户说明脚本用途与作用范围。source 是完整的 .user.js 文本（含 ==UserScript== 元数据头）——头部 @字段 即配置（@name/@match/@include/@run-at/@world/@grant），没有独立的名称/匹配参数。代码以页面脚本方式原样执行，无 GM_* API。解析后须有匹配规则（@match 或 pattern 形式的 @include）。',
+        '创建用户脚本：以浏览器用户脚本权限在头部匹配规则命中的页面上自动运行。创建前先向用户说明脚本用途与作用范围。两种来源二选一：source=完整的 .user.js 文本（含 ==UserScript== 元数据头，头部 @字段即配置：@name/@match/@include/@run-at/@world/@grant，无独立名称/匹配参数），或 url=.user.js 直链（下载安装，自动记录为更新源以便日后检查更新）。代码以页面脚本方式原样执行，无 GM_* API。source 方式解析后须有匹配规则（@match 或 pattern 形式的 @include）。',
       parameters: obj(
         {
-          source: { type: 'string', description: '完整 .user.js 文本（含 ==UserScript== 元数据头）' },
+          source: { type: 'string', description: '完整 .user.js 文本（含 ==UserScript== 元数据头）。与 url 二选一' },
+          url: { type: 'string', description: '.user.js 脚本直链（http/https），下载后安装。与 source 二选一' },
           enabled: { type: 'boolean', description: '创建后是否立即启用，默认 true' },
         },
-        ['source'],
+        [],
       ),
     },
   },
@@ -305,14 +306,15 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'update_script',
       description:
-        '更新用户脚本。patch 至少一项：text 整文替换（完整 .user.js 原文，重新解析头部）；edit 行区间替换（1-based 含端点，越界报错，替换后整体重解析）；enabled 启停。改头部字段（名称/匹配/时机等）就是改原文，没有独立字段可改。规则/代码更新在下次页面导航后生效。',
+        '更新用户脚本。patch 至少一项：applyUpdate 从脚本更新源（@updateURL/@downloadURL）拉取远端最新文本并覆盖本地（含代码与头部设置，会覆盖本地修改；脚本无更新源则报错——常用于 list_scripts 显示 update.hasUpdate 后应用更新，也可不经检查直接拉最新）；text 整文替换（完整 .user.js 原文，重新解析头部）；edit 行区间替换（1-based 含端点，越界报错，替换后整体重解析）；enabled 启停。applyUpdate 与 text/edit 互斥且优先。改头部字段（名称/匹配/时机等）就是改原文，没有独立字段可改。规则/代码更新在下次页面导航后生效。',
       parameters: obj(
         {
           id: { type: 'string', description: '脚本 id' },
           patch: {
             type: 'object',
-            description: '至少包含 text / enabled / edit 之一',
+            description: '至少包含 applyUpdate / text / enabled / edit 之一',
             properties: {
+              applyUpdate: { type: 'boolean', description: '从更新源拉取远端最新文本覆盖本地（与 text/edit 互斥，优先生效）' },
               text: { type: 'string', description: '整文替换：完整 .user.js 原文' },
               enabled: { type: 'boolean', description: '启停' },
               edit: {

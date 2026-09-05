@@ -366,9 +366,13 @@ export async function handleSetEnabled(id: string, enabled: boolean): Promise<Us
   return next;
 }
 
-export async function handleImport(text: string, filename?: string): Promise<{ script: UserScript; warnings: string[] }> {
+export async function handleImport(
+  text: string,
+  filename?: string,
+  source: ScriptSource = 'import',
+): Promise<{ script: UserScript; warnings: string[] }> {
   const { script, warnings } = buildFromText({
-    text, id: newId(), enabled: true, source: 'import', createdAt: Date.now(), fallbackName: filename,
+    text, id: newId(), enabled: true, source, createdAt: Date.now(), fallbackName: filename,
   });
   await saveScript(script);
   const resWarnings = await prefetchResources(script);
