@@ -1,0 +1,37 @@
+shared/confirm.ts
+  s_4b16ffa8468de9::t_165866679a6504 5
+background/gm-api.ts
+  s_4b16ffa8468de9::t_9536de60d48110 466-469,475
+  s_4b16ffa8468de9::t_215799eb2e605d 55
+  s_4b16ffa8468de9::t_d40a0b624000b0 373-374
+  s_4b16ffa8468de9::t_31beabc602a20e 370
+  s_4b16ffa8468de9::t_6864f024c4e399 14-17
+  s_4b16ffa8468de9::t_46f773f94f2f5a 372,375
+  s_4b16ffa8468de9::t_4ff0dda37cd31c 429-432
+  s_4b16ffa8468de9::t_4244a58b8607e7 361-369,371,376-428,433-453,455-465,470-474,476-522
+  s_4b16ffa8468de9::t_de02a9f8c91342 454
+  s_4b16ffa8468de9::t_d156e082559382 623-624
+tests/background/gm-api.test.ts
+  s_4b16ffa8468de9::t_2c9b2ccbd944e4 8,10-11
+  s_4b16ffa8468de9::t_24d4516a87360b 14
+  s_4b16ffa8468de9::t_853b78a98a9df7 302-350,352,354,358-408
+  s_4b16ffa8468de9::t_c8bdc387a26059 351,353,355-357
+components/scriptdebug/ScriptDebugPage.tsx
+  s_4b16ffa8468de9::t_bdaecde46c89ee 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9468d31bc2272ef270a039f59a48b8589d15f386",
+  "prompts": {},
+  "sessions": {
+    "s_4b16ffa8468de9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa33a125-14e4-4ba5-8132-a2d017f9289f",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
