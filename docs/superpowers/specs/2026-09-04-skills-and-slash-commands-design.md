@@ -13,8 +13,8 @@
 |---|---|
 | Skill 形态 | 纯指令正文（name + description + content），无参数模板、无绑定脚本 |
 | 简述注入 | 全部启用项常驻注入 system prompt |
-| AI 自主调用 | 遵循式：无新机制、无新工具位（工具数 25 不变） |
-| 调用语义 | `/command 原文` 入历史，正文仅注入触发那一轮（不落库） |
+| AI 自主调用 | **新增 `load_skill` 工具（工具数 25→26）：AI 按 command 拉正文并遵循**（2026-09-05 修订，原为「无新工具位、遵循式」——但那样 AI 拿不到正文，无法自主加载） |
+| 调用语义 | **`/command 原文` 就是普通 user 文本（不再注入正文）；正文改由 AI 调 `load_skill` 拉取，结果作为 tool 消息常驻历史**（2026-09-05 修订，原为「正文仅注入触发那一轮、不落库」） |
 | 斜杠交互 | 浮层菜单 + Enter/Tab/点击均「补全而非发送」 |
 | 管理页 | 列表 + 详情（仅查看）+ 导入/导出 .md；**无新建、无编辑** |
 | md 格式 | YAML frontmatter（name/description/command）+ 正文 |
@@ -96,10 +96,10 @@ export interface SkillBrief { name: string; command: string; description: string
 
 export function buildSkillsPrompt(briefs: SkillBrief[]): string {
   // 空 → ''
-  // 非空 → 「你可以使用以下技能（用户以 /command 触发时遵循其指令执行；
-  //          如任务与某技能明显匹配，主动遵循该技能）：
+  // 非空 → 「以下是可用技能的简述（不含正文）。当用户以 /command 触发某技能，
+  //          或任务与某技能明显匹配时，先调 load_skill(command) 取正文再遵循执行，
+  //          并向用户说明在用哪个技能；不要凭简述臆测正文：
   //          - /translate 网页翻译：把当前页翻译成中文 …」
-  //          并说明技能正文由面板在触发时提供，此处只有简述。
 }
 ```
 
@@ -110,14 +110,15 @@ export function buildSkillsPrompt(briefs: SkillBrief[]): string {
 - `LoopDeps` 加 `getSkills?: () => Promise<SkillBrief[]>`；`makeDeps` 实现：读 `storage/skills.ts` 过滤 enabled → map 成 briefs。
 - `drive()` 每轮 buildContext 时调用并传入。
 
-### 2.4 斜杠触发的正文注入
+### 2.4 技能正文加载（2026-09-05 重构：斜杠不注入 → 统一走 `load_skill` 工具）
 
-- `agent:start` 的 `userMessage` 匹配 `/^\/([a-z0-9-]+)(?:\s+([\s\S]*))?$/`：
-  1. `appendMessage` 落库**原文**（`/translate 把这段翻成中文`）；
-  2. 查 command 对应 skill（存在且 enabled）→ 其正文作为**隐藏 system 消息仅注入本轮 buildContext**（不落库、不进历史），格式：`【技能指令 /translate】\n{content}\n\n用户附加输入：{附加文本或无}`；
-  3. command 不存在/已停用 → 原样当普通文本跑（AI 常驻简述里没有它，自然回应不知情），无专门报错链路。
-- 只影响触发的那一轮；后续轮次靠历史原文 + 常驻简述延续理解。每轮重注入会污染上下文且不可审计，是刻意取舍。
-- `/command` 原文消息就是普通 user 消息：`MAX_MESSAGES` 裁剪、压缩流程均无特殊处理。
+**动机**：原「斜杠触发轮注入正文」方案下，AI 手里只有常驻简述、拿不到正文，无法自主加载技能（任务匹配时也只能等用户打斜杠）。改为给 AI 一个拉正文的工具，正文进上下文只剩一条路径，issue「AI 无法自己触发加载」「加载提示单行 + 持久化」一并解决。
+
+- **`load_skill` 工具**（第 26 个，`agent/tools/skills-tool.ts`）：参数 `command`（不含 /）。读 `storage/skills.ts`，命中启用技能 → `{ ok:true, data:{ name, command, content } }`；未命中/停用/storage 故障 → `{ ok:false, error }`。纯 storage 读，`registry.ts` 豁免受限页预检。
+- **loop 处理**（`agent/loop.ts`）：删掉旧的斜杠解析 + 正文 splice 注入。`load_skill` 成功特判（仿 take_screenshot）：工具卡摘要 `已加载「{name}」`，tool 消息 content = `【技能指令 /{command}】\n{content}`（喂给模型），**落库进历史**。
+- **`/command` 就是普通 user 文本**：不再有斜杠特殊处理；模型看到系统提示的简述 + 用户消息里的 `/command`，自行决定调 `load_skill`。command 不存在/停用 → 工具返回错误，模型自然应对。
+- **常驻历史**（与旧「仅注入单轮」相反，2026-09-05 决策）：tool 结果留在历史，后续每轮重发给模型 → AI 持续遵循、可审计；代价是长正文占上下文，有压缩兜底。
+- 斜杠浮层（§3）保留作**输入补全辅助**，补全后作为普通消息发送。
 
 ## 3. 斜杠浮层 UI（`components/chat/SlashMenu.tsx`）
 
@@ -174,5 +175,5 @@ export function buildSkillsPrompt(briefs: SkillBrief[]): string {
 
 ## 7. 明确不做（划界）
 
-- 不新增 AI 工具位（无 `run_skill`/`invoke_skill`）；不做 skill 编辑/新建；不做 per-skill 匹配规则/权限；不动 `storage/settings.ts`、Port 协议、`loop-guards`、压缩流程。
+- ~~不新增 AI 工具位~~（2026-09-05 修订：新增 `load_skill`，见 §2.4——原决策导致 AI 拿不到正文无法自主加载，故推翻）；不做 skill 编辑/新建；不做 per-skill 匹配规则/权限；不动 `storage/settings.ts`、Port 协议、`loop-guards`、压缩流程。
 - 导出不做 zip/多文件打包（多选合并单 .md）。

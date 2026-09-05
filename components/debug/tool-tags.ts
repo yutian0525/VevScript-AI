@@ -2,7 +2,7 @@
 // 工具能力域四分（spec §2）：调试台分组 + tag chip 的唯一数据源。
 // 缺省兜底 'PAGE'：未来新工具忘登记时按「碰当前页」保守归类（getTag 用）。
 
-export type ToolTag = 'PAGE' | 'TABS' | 'NET' | 'SCRIPTS';
+export type ToolTag = 'PAGE' | 'TABS' | 'NET' | 'SCRIPTS' | 'SKILLS';
 
 export const TOOL_TAGS: Record<string, ToolTag> = {
   // PAGE(10)：8 个 CS 工具 + 2 个 SW 直操作当前页（截图/注入脚本）
@@ -17,6 +17,8 @@ export const TOOL_TAGS: Record<string, ToolTag> = {
   // SCRIPTS(6)：userScripts CRUD 与启停
   list_scripts: 'SCRIPTS', get_script: 'SCRIPTS', create_script: 'SCRIPTS',
   update_script: 'SCRIPTS', delete_script: 'SCRIPTS', toggle_script: 'SCRIPTS',
+  // SKILLS(1)：技能正文加载
+  load_skill: 'SKILLS',
 };
 
 /** 缺省兜底 PAGE：未登记的新工具保守归「碰当前页」。 */
@@ -29,9 +31,10 @@ export const GROUPS: ReadonlyArray<{ key: ToolTag; label: string; hint: string }
   { key: 'TABS', label: '标签页与导航', hint: 'tabs API / 导航控制' },
   { key: 'NET', label: '网络与观测', hint: '后台 fetch / console / 网络元数据' },
   { key: 'SCRIPTS', label: '脚本池管理', hint: 'userScripts CRUD 与启停' },
+  { key: 'SKILLS', label: '技能', hint: '按 command 加载技能指令正文' },
 ];
 
-/** tag → chip 修饰类（styles.css 四档）。 */
+/** tag → chip 修饰类（styles.css 五档）。 */
 export const CHIP_CLASS: Record<ToolTag, string> = {
-  PAGE: 'chip--page', TABS: 'chip--tabs', NET: 'chip--net', SCRIPTS: 'chip--script',
+  PAGE: 'chip--page', TABS: 'chip--tabs', NET: 'chip--net', SCRIPTS: 'chip--script', SKILLS: 'chip--skill',
 };

@@ -11,7 +11,7 @@ describe('工具 registry', () => {
   });
 
   it('getToolSchemas 返回全部 schema', () => {
-    expect(getToolSchemas().length).toBe(25);
+    expect(getToolSchemas().length).toBe(26);
   });
 
   it('content script 类工具经 tabs.sendMessage 分发到主帧 frameId:0', async () => {
@@ -128,5 +128,13 @@ describe('工具 registry', () => {
     expect(r.ok).toBe(false);
     if (r.ok) throw new Error('预期失败结果'); // strict 收窄
     expect(r.error).toContain('未找到'); // 不是"受限"
+  });
+
+  it('load_skill 豁免受限页预检（未知 command 走工具自身错误而非受限页错误）', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'chrome://extensions' }) as never;
+    const r = await executeTool('load_skill', { command: 'nope' }, { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error('预期失败结果');
+    expect(r.error).not.toContain('受限');
   });
 });

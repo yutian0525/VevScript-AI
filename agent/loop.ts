@@ -1,14 +1,13 @@
 // agent/loop.ts
 // Agent 主循环状态机（设计 §2）：convId 存储 + tabId 操作目标 + usage 计量 + 自动压缩 + 熔断阀。
 import type { Provider, ChatMessage, ToolCall, ContentPart } from './provider/types';
-import type { ToolResult, Skill } from '../shared/types';
+import type { ToolResult } from '../shared/types';
 import type { AgentEvent } from '../shared/messages';
 import { runTurn } from './run-turn';
 import { buildContext, type PageInfo, type SkillBrief } from './context';
 import { getToolSchemas } from './tools/registry';
 import { initGuardState, recordTurn, checkGuards, DEFAULT_GUARD_CONFIG, type GuardState } from './loop-guards';
 import { getConversation, appendMessage, setStatus, setLastPromptTokens } from '../storage/conversations';
-import { listSkills } from '../storage/skills';
 import { meterRatio, COMPACT_THRESHOLD } from './context-meter';
 
 export interface LoopDeps {
@@ -36,9 +35,9 @@ export interface LoopArgs {
 export async function runAgentLoop(args: LoopArgs, deps: LoopDeps, signal?: AbortSignal): Promise<void> {
   await appendMessage(args.convId, { role: 'user', content: args.userMessage });
   await setStatus(args.convId, 'running');
-  const m = /^\/([a-z0-9-]+)(?:\s+([\s\S]*))?$/.exec(args.userMessage.trim());
-  const slash = m ? { command: m[1]!, rest: m[2] ?? '' } : undefined;
-  await drive(args.convId, args.tabId, deps, initGuardState(), signal ?? new AbortController().signal, slash);
+  // 斜杠 /command 不再注入技能正文——它就是普通 user 文本；模型看到系统提示的技能简述后，
+  // 自行调用 load_skill 工具取正文（spec §2.4 修订 2026-09-05）。
+  await drive(args.convId, args.tabId, deps, initGuardState(), signal ?? new AbortController().signal);
 }
 
 /** 从暂停状态恢复（不追加新 user 消息）。 */
@@ -53,12 +52,10 @@ async function drive(
   deps: LoopDeps,
   guardState: GuardState,
   signal: AbortSignal,
-  slash?: { command: string; rest: string },
 ): Promise<void> {
   let guard = guardState;
   let targetTab = startTabId;
   let lastPromptTokens: number | undefined;
-  let pendingSlash = slash; // 仅首轮（触发轮）注入技能正文
 
   for (;;) {
     if (signal.aborted) return void (await finishAborted(convId, deps));
@@ -88,22 +85,6 @@ async function drive(
     const page = await deps.getPageInfo(targetTab).catch(() => ({ url: '', title: '' }));
     const skills = (await deps.getSkills?.()) ?? [];
     const messages = buildContext(conv.messages, page, 60, conv.summary, skills);
-    // 斜杠触发：查 command 对应 enabled skill，其正文作为隐藏 system 消息仅注入本轮
-    // （位于主 system 之后、user 原文之前；不落库——messages 是本轮临时数组）
-    const triggerSlash = pendingSlash;
-    pendingSlash = undefined; // 仅触发轮注入；后续轮不再重复
-    if (triggerSlash) {
-      // storage 故障按「未命中」处理（原样普通文本跑），与 port 侧 getSkills 降级对称
-      const all = await listSkills().catch(() => [] as Skill[]);
-      const hit = all.find((s) => s.command === triggerSlash.command && s.enabled);
-      if (hit) {
-        messages.splice(1, 0, {
-          role: 'system',
-          content: `【技能指令 /${hit.command}】\n${hit.content}\n\n用户附加输入：${triggerSlash.rest || '（无）'}`,
-        });
-        deps.emit({ type: 'skill-loaded', command: hit.command, name: hit.name });
-      }
-    }
 
     const result = await runTurn(deps.provider, { messages, tools: getToolSchemas(), signal }, {
       onTextDelta: (t) => deps.emit({ type: 'text-delta', text: t }),
@@ -180,6 +161,16 @@ async function drive(
       if (r.ok && deps.resolveOpenedTab && TAB_OPENING_TOOLS.has(tc.name)) {
         const opened = await deps.resolveOpenedTab(tc.name, targetTab, signal);
         if (typeof opened === 'number') targetTab = opened;
+      }
+
+      if (tc.name === 'load_skill' && r.ok) {
+        // 工具卡摘要显示「已加载「技能名」」；tool 消息 content = 正文，喂给模型遵循执行。
+        const d = r.data as { name?: string; command?: string; content?: string } | undefined;
+        const summary = d?.name ? `已加载「${d.name}」` : '已加载技能';
+        const output = `【技能指令 /${d?.command ?? ''}】\n${d?.content ?? ''}`;
+        deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: true, summary, output });
+        await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: output });
+        continue;
       }
 
       if (tc.name === 'take_screenshot' && r.ok) {

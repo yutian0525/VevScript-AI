@@ -6,7 +6,7 @@ import type { ChatMessage } from '../agent/provider/types';
 export type ChatStatus = 'idle' | 'running' | 'paused';
 
 export interface ChatItem {
-  role: 'user' | 'assistant' | 'tool' | 'error' | 'notice';
+  role: 'user' | 'assistant' | 'tool' | 'error';
   text?: string;
   reasoning?: string;        // 思考文本
   thinking?: boolean;        // 是否处于「思考中」（控制默认展开）
@@ -150,10 +150,6 @@ export const useChat = create<ChatState>((set) => ({
         if (idx >= 0) messages[idx] = { ...messages[idx]!, status: 'done', ok: e.ok, summary: e.summary, output: e.output, image: e.image };
         return { messages };
       }
-      case 'skill-loaded':
-        // 斜杠命中技能：插一条系统提示（不落库；切标签重挂载会消失，与「正文仅注入单轮」一致）
-        messages.push({ role: 'notice', text: `已加载技能「${e.name}」（/${e.command}）` });
-        return { messages };
       case 'state': return { status: e.status };
       case 'usage': {
         // 事件未带 promptTokens 时保留上一轮环值（?? 回落）

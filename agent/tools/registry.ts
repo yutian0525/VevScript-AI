@@ -12,6 +12,7 @@ import { doListConsoleMessages, doListNetworkRequests, doGetNetworkRequest } fro
 import {
   doListScripts, doGetScript, doCreateScript, doUpdateScript, doDeleteScript, doToggleScript,
 } from './script-pool';
+import { doLoadSkill } from './skills-tool';
 import type { ScriptInput, ScriptPatch } from '../../shared/messages';
 
 export interface ToolCtx {
@@ -75,6 +76,9 @@ export async function executeTool(
   if (name === 'update_script') return doUpdateScript(args as { id: string; patch: ScriptPatch });
   if (name === 'delete_script') return doDeleteScript(args as { id: string });
   if (name === 'toggle_script') return doToggleScript(args as { id: string; enabled: boolean });
+
+  // load_skill：纯 storage 读取，不碰页面，豁免受限页预检（spec §2.4）。
+  if (name === 'load_skill') return doLoadSkill((args as { command: string }).command);
 
   // ---- 以下工具操作当前目标页，需受限页预检 ----
   const tab = await browser.tabs.get(ctx.tabId).catch(() => undefined);
