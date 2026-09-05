@@ -1,0 +1,25 @@
+entrypoints/offscreen-clipboard/main.ts
+  s_b24d2b355b9859::t_5d3ae1cb62ea39 2-8,15-28,32-38
+entrypoints/offscreen-clipboard/index.html
+  s_b24d2b355b9859::t_2ce972d8268e65 3-5
+tests/background/gm-api.test.ts
+  s_b24d2b355b9859::t_485410d8970e93 15-16
+  s_b24d2b355b9859::t_d9d531b9060ada 202,206-210
+  s_b24d2b355b9859::t_9e1d36c8ba027e 203-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "230c02be7ccdd5a294e563878decb3d56f345a27",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
