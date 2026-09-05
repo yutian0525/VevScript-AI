@@ -1,0 +1,64 @@
+// ==UserScript==
+// @name         GM 手测·DOM资源日志
+// @namespace    ai-browser-extend/gmt-manual
+// @version      1.0.0
+// @description  GM DOM/资源/日志模块人工测试：说明 + 步骤 + 人工标记
+// @match        *://*/*
+// @run-at       document-end
+// @grant        GM_addStyle
+// @grant        GM_getResourceText
+// @grant        GM_log
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_deleteValue
+// @grant        unsafeWindow
+// @noframes
+// ==/UserScript==
+
+(function () {
+  var actions = {
+    'd1-style': function () {
+      GM_addStyle('#gmt-colorprobe{position:fixed;left:12px;top:12px;z-index:2147483646;width:80px;height:40px;background:#53589a;color:#fff;font:12px system-ui;display:flex;align-items:center;justify-content:center;border-radius:4px}');
+      var old = document.getElementById('gmt-colorprobe');
+      if (old) old.remove();
+      var probe = document.createElement('div');
+      probe.id = 'gmt-colorprobe';
+      probe.textContent = '色块探针';
+      (document.body || document.documentElement).appendChild(probe);
+    },
+    // 未声明 @resource：注入时快照 __resources 无该键 → undefined（真实资源内容验证归 gmt-selftest）
+    'd2-res': function (log) {
+      log('d2', 'GM_getResourceText("no-such-resource") → ' + JSON.stringify(GM_getResourceText('no-such-resource')));
+    },
+    'd3-log': function (log) {
+      GM_log('GM_log 探针行（gmt-manual-dom-resource）');
+      log('d3', '已调用 GM_log，去 F12 → Console 找 [GM 手测·DOM资源日志] 前缀行');
+    },
+    'd4-uw': function (log) {
+      log('d4', 'typeof unsafeWindow → ' + typeof unsafeWindow +
+        '；unsafeWindow.document === document → ' + (unsafeWindow.document === document));
+    },
+    // 点形式 GM.setValue/GM.getValue：注册表 promiseForm=true，wrapper 在对应 grant 下双装两种形式。
+    // 读回后 deleteValue 清探针键（GM_deleteValue 已 grant：内核 reset 需要，promiseForm 双装点形式）。
+    'd5-dot': function (log) {
+      GM.setValue('__gmt_manual_dr_dot', 'pv');
+      GM.getValue('__gmt_manual_dr_dot').then(function (v) {
+        log('d5', 'GM.getValue Promise resolve → ' + JSON.stringify(v));
+        GM.deleteValue('__gmt_manual_dr_dot');
+      });
+    }
+  };
+
+  GMT.render({
+    module: 'dom-resource',
+    title: 'GM 手测·DOM资源日志',
+    cards: [
+      { id: 'd1', api: 'GM_addStyle(css)', desc: '注入 <style> 元素。', steps: [{ id: 'd1-style', label: '注入色块样式' }, '看页面左上角是否出现紫色「色块探针」'], expect: '左上角出现 #53589a 色块' },
+      { id: 'd2', api: 'GM_getResourceText(name)', desc: '读 @resource 声明的资源文本；未声明返回 undefined（真实资源内容验证归 gmt-selftest）。', steps: [{ id: 'd2-res', label: '读未声明资源' }], expect: '日志显示 undefined' },
+      { id: 'd3', api: 'GM_log(...args)', desc: '带 [脚本名] 前缀写本地 console。', steps: [{ id: 'd3-log', label: '打一条日志' }, '开 F12 → Console，找 [GM 手测·DOM资源日志] 前缀行'], expect: 'Console 出现前缀行' },
+      { id: 'd4', api: 'unsafeWindow（特殊 grant）', desc: 'USER_SCRIPT world 下为隔离 world window（要真页面 window 需 @world MAIN）。', steps: [{ id: 'd4-uw', label: '打印 unsafeWindow 判定' }], expect: 'document === document 为 true' },
+      { id: 'd5', api: 'GM.setValue / GM.getValue（点形式）', desc: '点形式为 Promise 形态。', steps: [{ id: 'd5-dot', label: '点形式写后读' }], expect: '日志显示 "pv"' }
+    ],
+    actions: actions
+  });
+})();
