@@ -1,0 +1,23 @@
+components/confirm/ConfirmCard.tsx
+  s_9deca6d340b81c::t_6c940b2694a45a 1-52
+components/confirm/confirm-reducer.ts
+  s_9deca6d340b81c::t_d0c06a54f5b78c 1-16
+tests/confirm/confirm-hub.test.tsx
+  s_9deca6d340b81c::t_44f5ffdc0381d8 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1a443f40bcfb3ffcb5b1ddde36253621791a2149",
+  "prompts": {},
+  "sessions": {
+    "s_9deca6d340b81c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c185704a-ac04-495f-b0a7-d7674bd87f98",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
