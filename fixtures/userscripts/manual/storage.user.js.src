@@ -1,0 +1,92 @@
+// ==UserScript==
+// @name         GM 手测·值存储
+// @namespace    ai-browser-extend/gmt-manual
+// @version      1.0.0
+// @description  GM 值存储模块人工测试：说明 + 步骤 + 人工标记
+// @match        *://*/*
+// @run-at       document-end
+// @grant        GM_info
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_deleteValue
+// @grant        GM_listValues
+// @grant        GM_addValueChangeListener
+// @grant        GM_addStyle
+// @noframes
+// ==/UserScript==
+
+(function () {
+  var K = '__gmt_manual_storage_probe';
+
+  var actions = {
+    's2-set': function (log) {
+      GM_setValue(K, 'v1');
+      log('s2', 'GM_setValue 后 GM_getValue → ' + JSON.stringify(GM_getValue(K)));
+    },
+    's3-obj': function (log) {
+      GM_setValue(K + '.obj', { a: 1, b: 'x' });
+      log('s3', '读回 → ' + JSON.stringify(GM_getValue(K + '.obj')));
+    },
+    's4-def': function (log) {
+      log('s4', 'GM_getValue(' + JSON.stringify(K + '.missing') + ', "def") → ' + JSON.stringify(GM_getValue(K + '.missing', 'def')));
+    },
+    's5-del': function (log) {
+      GM_deleteValue(K);
+      log('s5', '删除后 GM_getValue → ' + JSON.stringify(GM_getValue(K)));
+    },
+    's6-list': function (log) {
+      log('s6', 'GM_listValues → ' + JSON.stringify(GM_listValues()));
+    },
+    's7-emit': function () {
+      GM_setValue(K + '.evt', 'x' + (Date.now() % 1000));
+    }
+  };
+
+  // s7 值变更监听：不接返回值——注册表无 GM_removeValueChangeListener，listenerId 无处可用。
+  // 事件在按钮点击后才可能触发，面板必已建成，GMT.log 可直接定位卡片日志区。
+  GM_addValueChangeListener(K + '.evt', function (key, oldV, newV, remote) {
+    GMT.log('s7', '事件: key=' + key + ' old=' + JSON.stringify(oldV) + ' new=' + JSON.stringify(newV) + ' remote=' + remote);
+  });
+
+  GMT.render({
+    module: 'storage',
+    title: 'GM 手测·值存储',
+    cards: [
+      { id: 's1', api: 'GM_info', desc: '脚本与扩展元数据（scriptHandler/version/script/injectInto）。', steps: ['核对下方日志里的 script.name 是否为本脚本名、scriptHandler 是否为 ai-browser-extend'], expect: '字段与本脚本元头一致' },
+      { id: 's2', api: 'GM_getValue(key, def?) / GM_setValue(key, val)', desc: '写后读往返（下划线形式同步返回，值来自注入时快照 + 桥写穿透）。', steps: [{ id: 's2-set', label: '写入 v1 并读回' }], expect: '日志显示 "v1"' },
+      { id: 's3', api: 'GM_setValue（对象值）', desc: '对象值经 JSON 往返存取。', steps: [{ id: 's3-obj', label: '存 {a:1,b:"x"} 并读回' }], expect: '日志显示 {"a":1,"b":"x"}' },
+      { id: 's4', api: 'GM_getValue 默认值分支', desc: '读不存在的键返回调用方默认值。', steps: [{ id: 's4-def', label: '读缺失键（默认 "def"）' }], expect: '日志显示 "def"' },
+      { id: 's5', api: 'GM_deleteValue(key)', desc: '删除后读回 undefined。', steps: [{ id: 's5-del', label: '删除 s2 写入的键并读回' }], expect: '日志显示 undefined' },
+      { id: 's6', api: 'GM_listValues()', desc: '列本脚本命名空间全部键。', steps: [{ id: 's6-list', label: '列出全部键' }], expect: '日志数组含 __gmt_manual_storage_probe.obj / .evt 等键' },
+      { id: 's7', api: 'GM_addValueChangeListener(key, fn)', desc: '值变更监听；本 tab 触发的事件 remote=false。', steps: [{ id: 's7-emit', label: '触发一次 setValue' }, '核对日志事件行 old/new/remote'], expect: '出现 remote=false 的事件行，old/new 值正确' }
+    ],
+    actions: actions
+  });
+
+  // s1 卡日志：GM_info 自读（面板建好后自动填充）。面板 boot 可能晚于本同步代码——
+  // readyState=loading 时等 DOMContentLoaded、body 未就绪时 50ms 重试（_panel-core.js boot），
+  // setTimeout(0) 会早于面板建成而静默丢日志（logLine 找不到元素直接 return）。
+  // 故轮询等卡片 DOM 出现再填；另在「重置本模块」后补填一次（renderAll 会清空卡片日志区）。
+  (function fillS1() {
+    var line = 'scriptHandler=' + GM_info.scriptHandler + ' extVersion=' + GM_info.version +
+      ' | script.name=' + GM_info.script.name + ' script.version=' + GM_info.script.version +
+      ' injectInto=' + GM_info.injectInto;
+    function paint() {
+      // 行幂等：快速连点重置/轮询命中并存时防重复追加（textContent 含该行即跳过）
+      var logEl = document.querySelector('#gmt-panel [data-card="s1"] .gmt-log');
+      if (logEl && logEl.textContent.indexOf(line) !== -1) return;
+      GMT.log('s1', line);
+    }
+    var tries = 0;
+    (function poll() {
+      if (!document.querySelector('#gmt-panel [data-card="s1"]')) {
+        if (++tries < 100) { setTimeout(poll, 50); return; } // 5s 上限兜底：面板理论必建，防病态页面常驻定时器
+        console.warn('gmt-manual: s1 填充放弃（页面 body 迟到）');
+        return;
+      }
+      paint();
+      var reset = document.querySelector('#gmt-panel [data-act="reset"]');
+      if (reset) reset.addEventListener('click', function () { setTimeout(paint, 0); });
+    })();
+  })();
+})();
