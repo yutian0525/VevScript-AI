@@ -22,11 +22,34 @@ const editorTheme = EditorView.theme(
     '.cm-scroller': { fontFamily: 'var(--mono)', lineHeight: '1.6', overflow: 'auto' },
     '&.cm-focused': { outline: 'none' },
     '.cm-gutters': { background: 'transparent', border: 'none', color: 'var(--ink-3)' },
-    '.cm-activeLine': { background: 'var(--paper)' },
-    '.cm-activeLineGutter': { background: 'transparent', color: 'var(--ink-2)' },
+    // 配置一·当前行整行高亮：淡信号晕染（全宽），与选中那片浓实心分层
+    '.cm-activeLine': { background: 'color-mix(in srgb, var(--signal) 8%, transparent)' },
+    '.cm-activeLineGutter': { background: 'color-mix(in srgb, var(--signal) 12%, transparent)', color: 'var(--signal-ink)' },
     '.cm-content': { caretColor: 'var(--signal)' },
-    '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': { background: 'var(--signal-wash)' },
+    // 配置二·选中背景：实心信号色（全局 ::selection 已把选中文字染白，白字须压在够深的实心底才清晰）。
+    // 失焦淡一档、聚焦全实心。行内选中与跨行选中在 CM 里共用此类，无法仅靠 CSS 区分。
+    '.cm-selectionBackground': { background: 'color-mix(in srgb, var(--signal) 62%, var(--surface))' },
+    '&.cm-focused .cm-selectionBackground': { background: 'var(--signal)' },
     '.cm-cursor': { borderLeftColor: 'var(--signal)' },
+    // 同名高亮（选中词后其他同名词）：只描边 + 极淡填充，与选中态（实心一片）视觉分离，不夺文字对比
+    '.cm-selectionMatch': {
+      background: 'color-mix(in srgb, var(--signal) 8%, transparent)',
+      outline: '1px solid color-mix(in srgb, var(--signal) 40%, transparent)',
+      borderRadius: '2px',
+    },
+    '.cm-matchingBracket, &.cm-focused .cm-matchingBracket': {
+      background: 'transparent', outline: '1px solid var(--signal)', borderRadius: '2px',
+    },
+    // 滚动条：常驻可见（覆盖全局「hover 才显形」的过淡规则）
+    '.cm-scroller::-webkit-scrollbar': { width: '12px', height: '12px' },
+    '.cm-scroller::-webkit-scrollbar-thumb': {
+      background: 'var(--line-strong)', borderRadius: '6px',
+      border: '3px solid var(--sunken)', backgroundClip: 'padding-box',
+    },
+    '.cm-scroller:hover::-webkit-scrollbar-thumb, .cm-scroller::-webkit-scrollbar-thumb:hover': {
+      background: 'var(--ink-3)', backgroundClip: 'padding-box',
+    },
+    '.cm-scroller::-webkit-scrollbar-track': { background: 'transparent' },
   },
   { dark: false },
 );

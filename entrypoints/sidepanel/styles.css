@@ -57,7 +57,9 @@ body {
 *:hover::-webkit-scrollbar-thumb { background: var(--line-strong); background-clip: padding-box; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-::selection { background: var(--signal-wash); }
+/* 文字选中：信号色底 + 白字，与「活动态」信号语义一致，选区清晰可辨 */
+::selection { background: var(--signal); color: #fff; }
+::-moz-selection { background: var(--signal); color: #fff; }
 
 /* ============ 排版声道 ============ */
 /* 机器令牌：mono + 大写字距（仅拉丁字符会受 uppercase/letter-spacing 影响，中文不受损） */
