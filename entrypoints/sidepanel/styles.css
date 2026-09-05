@@ -919,6 +919,9 @@ body {
   flex: 1; min-height: 0; overflow: hidden;
   background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-md);
 }
+/* CodeMirror 挂载点：必须有确定高度，否则 .cm-editor 的 height:100% 退化为 auto，
+   编辑器随内容无限长高、.cm-scroller 永不滚动，滚轮失效。 */
+.detail-code__host { height: 100%; min-height: 0; }
 .detail-code__editor-host .cm-editor { height: 100%; }
 .detail-code__editor-host .cm-editor.cm-focused { outline: none; }
 

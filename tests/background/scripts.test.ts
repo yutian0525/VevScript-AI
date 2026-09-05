@@ -187,7 +187,7 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
       expect.objectContaining({ id: script.id, js: [{ code: 'v2' }] }),
     ]);
     await handleSetEnabled(script.id, false);
-    expect(api.unregister).toHaveBeenCalledWith([script.id]);
+    expect(api.unregister).toHaveBeenCalledWith({ ids: [script.id] });
   });
 
   it('handleUpdate：edit 行区间替换（含重解析）+ 非法/越界报错', async () => {
@@ -236,7 +236,7 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     ]);
     await handleDelete(script.id);
     expect(await listScripts()).toEqual([]);
-    expect(api.unregister).toHaveBeenCalledWith([script.id]);
+    expect(api.unregister).toHaveBeenCalledWith({ ids: [script.id] });
   });
 
   it('update/delete/setEnabled 引擎不可用 → throw 固定文案', async () => {
@@ -260,7 +260,7 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     await syncRegistrations();
     expect(api.update).toHaveBeenCalledTimes(1); // keep: code 漂移 → update
     expect(api.update.mock.calls[0]![0]).toEqual([expect.objectContaining({ id: all[0]!.id, js: [{ code: 'c1' }] })]);
-    expect(api.unregister).toHaveBeenCalledWith(['ghost']); // 库里已无 → 注销
+    expect(api.unregister).toHaveBeenCalledWith({ ids: ['ghost'] }); // 库里已无 → 注销
   });
 
   it('handleImport：原文存 text + TM 元数据解析 + unsupported grant 警告透传', async () => {

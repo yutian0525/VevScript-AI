@@ -76,7 +76,9 @@ interface RegisterUserScript {
 interface UserScriptsApi {
   register(scripts: RegisterUserScript[]): Promise<void>;
   update(scripts: RegisterUserScript[]): Promise<void>;
-  unregister(ids?: string[]): Promise<void>;
+  // Chrome 真实签名：unregister(filter?: { ids?: string[] })——传裸数组会被参数校验拒绝
+  // （"No matching signature"），导致注销失败、陈旧脚本永不注销、错误冒泡到禁用/删除/导入 UI。
+  unregister(filter?: { ids?: string[] }): Promise<void>;
   getScripts(): Promise<RegisterUserScript[]>;
   configureWorld?(properties: { csp?: string; messaging?: boolean }): Promise<void>;
 }
@@ -197,7 +199,7 @@ export async function syncRegistrations(): Promise<void> {
   if (missing.length > 0) await api.register(missing);
 
   const stale = registered.filter((r) => !desiredIds.has(r.id)).map((r) => r.id);
-  if (stale.length > 0) await api.unregister(stale);
+  if (stale.length > 0) await api.unregister({ ids: stale });
 
   const drifted = built.filter((b) => {
     const r = registeredMap.get(b.id);
@@ -208,7 +210,7 @@ export async function syncRegistrations(): Promise<void> {
       await api.update([b]);
     } catch {
       // update 打在未注册 id 上（极端漂移）→ 降级为先注销再注册
-      await api.unregister([b.id]);
+      await api.unregister({ ids: [b.id] });
       await api.register([b]);
     }
   }
