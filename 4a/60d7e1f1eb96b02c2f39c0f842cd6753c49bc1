@@ -1,0 +1,19 @@
+shared/messages.ts
+  s_9deca6d340b81c::t_e3b4972716fbb6 178-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4a60d7e1f1eb96b02c2f39c0f842cd6753c49bc1",
+  "prompts": {},
+  "sessions": {
+    "s_9deca6d340b81c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c185704a-ac04-495f-b0a7-d7674bd87f98",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
