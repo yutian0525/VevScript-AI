@@ -96,15 +96,22 @@ describe('background/skills handlers', () => {
     expect(one.data.count).toBe(1);
   });
 
-  it('多文档含解析失败文档 → 该条 warning 带文档序号前缀', async () => {
+  it('多文档缺 command → 从 name 自动派生导入，warning 带文档序号前缀', async () => {
     const md = [
       '---\nname: A\ndescription: d\ncommand: a\n---\nCA',
-      '---\nname: B\ndescription: d\n---\nCB', // 缺 command → 解析失败
+      '---\nname: B\ndescription: d\n---\nCB', // 缺 command → 从 name 派生为 b
     ].join('\n---\n\n');
     const resp = await dispatch('SKILLS_IMPORT', { text: md });
-    expect(resp.data.imported).toBe(1);
-    expect(resp.data.warnings.length).toBeGreaterThanOrEqual(1);
-    expect(resp.data.warnings.some((w: string) => w.startsWith('文档2：'))).toBe(true);
+    expect(resp.data.imported).toBe(2);
+    expect(resp.data.warnings.some((w: string) => w.startsWith('文档2：') && w.includes('自动派生'))).toBe(true);
+    expect((await listSkills()).map((s) => s.command).sort()).toEqual(['a', 'b']);
+  });
+
+  it('缺 command 且 name 纯中文、文件名派生不出 → 仍解析失败并跳过', async () => {
+    const md = '---\nname: 网页翻译\ndescription: d\n---\nCC';
+    const resp = await dispatch('SKILLS_IMPORT', { text: md, filename: '技能.md' });
+    expect(resp.data.imported).toBe(0);
+    expect(resp.data.warnings.some((w: string) => w.includes('command'))).toBe(true);
   });
 
   it('带 filename 导入 → warning 前缀含 filename', async () => {

@@ -18,7 +18,7 @@
 | 斜杠交互 | 浮层菜单 + Enter/Tab/点击均「补全而非发送」 |
 | 管理页 | 列表 + 详情（仅查看）+ 导入/导出 .md；**无新建、无编辑** |
 | md 格式 | YAML frontmatter（name/description/command）+ 正文 |
-| 调用名 | 独立 `command` 字段（kebab-case ASCII），不自动生成 |
+| 调用名 | 独立 `command` 字段（kebab-case ASCII）；**缺失/非法时从 name → 文件名自动派生 + warning**（2026-09-05 修订，原为「不自动生成」） |
 | 重复导入 | command 相同 → 覆盖更新（保留原 id 与 enabled） |
 | 启停 | 每 skill 独立开关；启用的才注入/进浮层 |
 
@@ -63,7 +63,7 @@ command: translate
 ```
 
 - 解析：YAML frontmatter 手写最小解析（逐行 `key: value`），不引第三方 YAML 库；多余键忽略。
-- 缺 `command` 或格式非法（如 command 不合 `/^[a-z0-9][a-z0-9-]{0,31}$/`）→ 拒绝该文档并返回原因（不静默生成）。
+- 缺 `command` 或格式非法（不合 `/^[a-z0-9][a-z0-9-]{0,31}$/`）→ `deriveCommand` 自动派生（优先 name，再文件名兜底：小写化、非 `[a-z0-9]` 段折叠为连字符、去首尾连字符、截断 32）+ warning；**仅当 name 与文件名均派生不出合法值（纯中文/纯符号）才拒绝该文档**（2026-09-05 修订，原为直接拒绝不静默生成）。
 - 缺 name → 文件名（去 .md）兜底 + warning；缺 description → 空串 + warning。
 - 无 frontmatter → 拒绝。
 - 序列化：`serializeSkillMd(skill)` 按上述格式写回；多文档串联以 `\n---\n\n` 分隔。
