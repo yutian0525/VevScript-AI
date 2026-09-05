@@ -172,6 +172,31 @@ describe('gm-api 简单 API', () => {
     vi.unstubAllGlobals();
   });
 
+  it('SetClipboard 走 offscreen 文档：createDocument(Clipboard) + 委托写入成功', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_setClipboard'] } }));
+    // SW 里 navigator.clipboard 为 undefined（冒烟实测）——走 offscreen 委托
+    const createDocument = vi.fn(async () => {});
+    (browser as unknown as Record<string, unknown>).offscreen = { createDocument, hasDocument: vi.fn(async () => false) };
+    const send = vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({ ok: true } as never);
+    const r = await call('SetClipboard', ['gmt-text']);
+    expect(r).toEqual({ ok: true, data: null });
+    expect(createDocument).toHaveBeenCalledWith(expect.objectContaining({ reasons: ['CLIPBOARD'] }));
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ type: 'OFFSCREEN_WRITE_CLIPBOARD', text: 'gmt-text' }));
+    delete (browser as unknown as Record<string, unknown>).offscreen;
+  });
+
+  it('SetClipboard offscreen 页报错时透传 error', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_setClipboard'] } }));
+    (browser as unknown as Record<string, unknown>).offscreen = {
+      createDocument: vi.fn(async () => {}),
+      hasDocument: vi.fn(async () => true), // 已存在不重建
+    };
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({ ok: false, error: 'denied' } as never);
+    const r = await call('SetClipboard', ['t']);
+    expect(r).toMatchObject({ ok: false, error: expect.stringContaining('denied') });
+    delete (browser as unknown as Record<string, unknown>).offscreen;
+  });
+
   // XmlHttpRequest 由 gm-connect.test.ts 完整覆盖（@connect 三分支 + 确认队列），此处不再占位
 });
 

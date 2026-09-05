@@ -1,0 +1,13 @@
+<!doctype html>
+<!-- offscreen 剪贴板写入页（GM_setClipboard 专用）：
+     MV3 SW 里 navigator.clipboard 为 undefined，只有真实文档上下文才有 Clipboard API。
+     SW 经 runtime.sendMessage({ type: 'OFFSCREEN_WRITE_CLIPBOARD', text }) 委托本页写入。 -->
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>gm-clipboard</title>
+  </head>
+  <body>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

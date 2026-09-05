@@ -33,6 +33,9 @@ export class MessageRouter {
   /** 挂载 browser.runtime.onMessage 监听（异步响应） */
   attach(): void {
     browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+      // offscreen 页（如剪贴板写入）监听同一通道——SW 发出的 EXTENSION 内消息不再回环给 SW 自己
+      const m = msg as { type?: string };
+      if (m?.type === 'OFFSCREEN_WRITE_CLIPBOARD') return false;
       this.dispatch(msg as { type: string } & Record<string, unknown>, sender)
         .then(sendResponse)
         .catch(() => {
