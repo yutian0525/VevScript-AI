@@ -19,7 +19,7 @@ export default defineConfig({
     action: {
       default_popup: 'popup.html',
     },
-    permissions: ['tabs', 'scripting', 'storage', 'sidePanel', 'webRequest', 'userScripts', 'notifications', 'clipboardWrite'],
+    permissions: ['tabs', 'scripting', 'storage', 'sidePanel', 'webRequest', 'userScripts', 'notifications', 'clipboardWrite', 'offscreen'],
     host_permissions: ['<all_urls>'],
     side_panel: {
       default_path: 'sidepanel.html',

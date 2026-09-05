@@ -274,10 +274,54 @@ export async function resolveConfirm(confirmId: string, decision: 'allow-once' |
   broadcastToPanel({ type: 'GM_CONFIRM_RESOLVED', confirmId });
 }
 
+// ---- 剪贴板（offscreen 文档路径）----
+// MV3 SW 里 navigator.clipboard 为 undefined（实测冒烟：Cannot read properties of undefined
+// (reading 'writeText')）——Clipboard API 只存在于文档上下文。专用 offscreen 页
+// （entrypoints/offscreen-clipboard，reason CLIPBOARD）持有真文档，SW 委托写入。
+// offscreen 文档常驻（create 幂等），避免每次写入的创建/销毁开销。
+
+const OFFSCREEN_URL = '/offscreen-clipboard.html';
+
+type OffscreenApi = {
+  createDocument(parameters: { reasons: string[]; url: string; justification: string }): Promise<void>;
+  hasDocument?(): Promise<boolean>;
+};
+
+function offscreenApi(): OffscreenApi | undefined {
+  return (browser as unknown as { offscreen?: OffscreenApi }).offscreen;
+}
+
+async function ensureOffscreenDocument(): Promise<void> {
+  const api = offscreenApi();
+  if (!api) throw new Error('offscreen API 不可用（Chrome 109+）');
+  // hasDocument @150+；旧版用 createDocument 的 "Only a single offscreen document" 错误判存在
+  if (api.hasDocument) {
+    if (await api.hasDocument()) return;
+    await api.createDocument({ reasons: ['CLIPBOARD'], url: OFFSCREEN_URL, justification: 'GM_setClipboard 剪贴板写入' });
+    return;
+  }
+  try {
+    await api.createDocument({ reasons: ['CLIPBOARD'], url: OFFSCREEN_URL, justification: 'GM_setClipboard 剪贴板写入' });
+  } catch (e) {
+    if (!(e instanceof Error && /single offscreen document/i.test(e.message))) throw e;
+  }
+}
+
+async function writeClipboardOffscreen(text: string): Promise<void> {
+  await ensureOffscreenDocument();
+  const resp = (await browser.runtime.sendMessage({
+    type: 'OFFSCREEN_WRITE_CLIPBOARD', text,
+  } as Record<string, unknown>)) as { ok: boolean; error?: string } | undefined;
+  // 广播语义：扩展内所有 onMessage frame 都可能应答（侧边栏/脚本详情页有 listener 但不认识
+  // 该 type 不应答；offscreen 页应答 {ok}）。Chrome 取「最后一个非 undefined 响应」——
+  // 无 offscreen 应答时 resp 为 undefined（或 SW router 的 no handler 响应被网关排除）。
+  if (resp && resp.ok) return;
+  throw new Error(resp?.error ?? 'offscreen 剪贴板页无响应');
+}
+
 // ---- GM_xmlhttpRequest 实现（替换占位 case）----
 
-const XHR_MAX_BODY = 1024 * 1024;
-const HEADER_ALLOW = new Set(['content-type', 'content-length', 'server', 'date', 'cache-control', 'last-modified', 'etag']);
+const XHR_MAX_BODY = 1024 * 1024;const HEADER_ALLOW = new Set(['content-type', 'content-length', 'server', 'date', 'cache-control', 'last-modified', 'etag']);
 
 async function doXmlHttpRequest(
   scriptId: string, params: unknown[], sender: Sender,
@@ -387,10 +431,10 @@ export async function handleGmCall(
     case 'SetClipboard': {
       const [text] = params as [string];
       try {
-        await navigator.clipboard.writeText(String(text ?? ''));
+        await writeClipboardOffscreen(String(text ?? ''));
         return { ok: true, data: null };
       } catch (e) {
-        return { ok: false, error: `剪贴板写入失败（MV3 SW 无手势链时可能被拒）：${e instanceof Error ? e.message : String(e)}` };
+        return { ok: false, error: `剪贴板写入失败：${e instanceof Error ? e.message : String(e)}` };
       }
     }
     case 'Notification': {
