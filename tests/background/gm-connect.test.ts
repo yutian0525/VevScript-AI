@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { matchConnect, ConnectDecision, matchConnectWithPermissions, handleGmCall, resolveConfirm, getPendingConfirms } from '../../background/gm-api';
+import { matchConnect, ConnectDecision, matchConnectWithPermissions, handleGmCall } from '../../background/gm-api';
+import { resolveConfirm, getPending, __resetConfirmQueue } from '../../background/confirm-queue';
 import { setAlwaysAllow } from '../../background/gm-permissions';
 import { saveScript } from '../../storage/scripts';
 import type { UserScript } from '../../shared/types';
@@ -42,9 +43,9 @@ describe('matchConnectWithPermissions（查 always 授权库）', () => {
 });
 
 describe('GM_xmlhttpRequest 确认流', () => {
-  beforeEach(() => { fakeBrowser.reset(); vi.restoreAllMocks(); vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({} as never); });
+  beforeEach(() => { fakeBrowser.reset(); vi.restoreAllMocks(); __resetConfirmQueue(); vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({} as never); vi.spyOn(browser.tabs, 'create').mockResolvedValue({ id: 100 } as never); });
 
-  it('CONFIRM 路径：广播 GM_CONFIRM_PENDING；resolve allow-once 后 fetch', async () => {
+  it('CONFIRM 路径：入队通用确认；resolve allow-once 后 fetch', async () => {
     await saveScript(mkScript());
     const fetchMock = vi.fn(async () => ({ ok: true, status: 200, statusText: 'OK', headers: new Map(), text: async () => 'body', url: 'https://c.com/x' }));
     vi.stubGlobal('fetch', fetchMock);
@@ -54,11 +55,13 @@ describe('GM_xmlhttpRequest 确认流', () => {
       { tab: { id: 1, url: 'https://a.com/' } } as never,
     );
     await new Promise((r) => setTimeout(r, 10));
-    const confirms = getPendingConfirms();
+    const confirms = getPending();
     expect(confirms).toHaveLength(1);
-    expect(confirms[0]).toMatchObject({ scriptId: 's1', host: 'c.com' });
-
-    await resolveConfirm(confirms[0]!.confirmId, 'allow-once');
+    expect(confirms[0]).toMatchObject({ kind: 'connect' });
+    expect(confirms[0]!.rows).toEqual(expect.arrayContaining([
+      { label: '主机', value: 'c.com', mono: true },
+    ]));
+    resolveConfirm(confirms[0]!.confirmId, 'allow-once');
     const r = await pending as { ok: boolean; data?: { status: number; body: string; finalUrl: string } };
     expect(r.ok).toBe(true);
     expect(r.data).toMatchObject({ status: 200, body: 'body', finalUrl: 'https://c.com/x' });
@@ -75,8 +78,8 @@ describe('GM_xmlhttpRequest 确认流', () => {
       { tab: { id: 1, url: 'https://a.com/' } } as never,
     );
     await new Promise((r) => setTimeout(r, 10));
-    const cid = getPendingConfirms()[0]!.confirmId;
-    await resolveConfirm(cid, 'always');
+    const cid = getPending()[0]!.confirmId;
+    resolveConfirm(cid, 'always');
     expect((await pending as { ok: boolean }).ok).toBe(true);
 
     const again = await handleGmCall(
@@ -94,8 +97,8 @@ describe('GM_xmlhttpRequest 确认流', () => {
       { tab: { id: 1, url: 'https://a.com/' } } as never,
     );
     await new Promise((r) => setTimeout(r, 10));
-    const cid = getPendingConfirms()[0]!.confirmId;
-    await resolveConfirm(cid, 'deny');
+    const cid = getPending()[0]!.confirmId;
+    resolveConfirm(cid, 'deny');
     expect((await pending as { ok: boolean }).ok).toBe(false);
   });
 
@@ -106,6 +109,6 @@ describe('GM_xmlhttpRequest 确认流', () => {
       { tab: { id: 1, url: 'https://a.com/' } } as never,
     );
     expect((r as { ok: boolean }).ok).toBe(false);
-    expect(getPendingConfirms()).toHaveLength(0);
+    expect(getPending()).toHaveLength(0);
   });
 });

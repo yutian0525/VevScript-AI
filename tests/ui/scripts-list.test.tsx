@@ -27,7 +27,7 @@ describe('ScriptsListView', () => {
     useScripts.setState({
       summaries: [mkSummary()],
       runtimeEntries: {}, activeTabId: null, query: '',
-      engineWarning: null, menus: [], errors: {}, confirms: [],
+      engineWarning: null, menus: [], errors: {},
     });
   });
 

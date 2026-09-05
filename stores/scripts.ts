@@ -20,7 +20,6 @@ export function openScriptTab(id: string): void {
 
 export interface GmMenuEntry { scriptId: string; commands: Array<{ key: string; name: string }> }
 export interface GmErrorItem { at: number; message: string; stack?: string; line?: number }
-export interface GmConfirmItem { confirmId: string; scriptId: string; host: string; url: string; createdAt: number }
 
 /** 当前 tab 运行集内脚本的菜单命令展开（纯函数，组件与 store 共用，spec §9.3） */
 export function selectMenuCommands(
@@ -59,8 +58,6 @@ interface ScriptsState {
   menus: GmMenuEntry[];
   /** 脚本运行错误环形缓冲（按 scriptId，上限 20） */
   errors: Record<string, GmErrorItem[]>;
-  /** GM_xmlhttpRequest 跨域批准队列（spec §11） */
-  confirms: GmConfirmItem[];
   /** 启动/手动检查的更新状态 map（scriptId → state；spec §2） */
   updates: Record<string, ScriptUpdateState>;
   /** 本次会话忽略更新的脚本（不持久化；下轮启动重查还会提醒） */
@@ -74,8 +71,6 @@ interface ScriptsState {
   applyMenusEvent: (e: { entries: GmMenuEntry[] }) => void;
   applyErrorEvent: (e: { scriptId: string; error: GmErrorItem }) => void;
   applyErrorCleared: (scriptId: string) => void;
-  applyConfirmEvent: (e: { confirm: GmConfirmItem }) => void;
-  applyConfirmResolved: (confirmId: string) => void;
   refresh: () => Promise<void>;
 }
 
@@ -90,7 +85,6 @@ export const useScripts = create<ScriptsState>((set) => ({
   engineWarning: null,
   menus: [],
   errors: {},
-  confirms: [],
   updates: {},
   dismissed: new Set<string>(),
 
@@ -110,8 +104,6 @@ export const useScripts = create<ScriptsState>((set) => ({
   applyErrorCleared: (scriptId) => set((s) => {
     const next = { ...s.errors }; delete next[scriptId]; return { errors: next };
   }),
-  applyConfirmEvent: (e) => set((s) => ({ confirms: [...s.confirms, e.confirm] })),
-  applyConfirmResolved: (confirmId) => set((s) => ({ confirms: s.confirms.filter((c) => c.confirmId !== confirmId) })),
 
   applyUpdatesEvent: (e) => set({ updates: e.updates }),
   dismissUpdate: (scriptId) => set((s) => {
@@ -129,7 +121,8 @@ export const useScripts = create<ScriptsState>((set) => ({
       const listResp = await sendScriptsRequest<{ ok: boolean; data?: ScriptsListData }>({ type: 'SCRIPTS_LIST' });
       const rtResp = await sendScriptsRequest<{ ok: boolean; data?: { entries: ScriptsRuntimeEntry[] } }>({ type: 'SCRIPTS_GET_RUNTIME' });
       // GM 状态复水（面板重开而 SW 存活时，广播不补量——冷读一次；GmErrorEntry 形状与 GmErrorItem 一致）
-      const gmResp = await sendScriptsRequest<{ ok: boolean; data?: { menus: GmMenuEntry[]; errors: Record<string, GmErrorItem[]>; confirms: GmConfirmItem[] } }>({ type: 'SCRIPTS_GET_GM_STATE' });
+      // GM 状态复水（面板重开而 SW 存活时，广播不补量——冷读一次；GmErrorEntry 形状与 GmErrorItem 一致）
+      const gmResp = await sendScriptsRequest<{ ok: boolean; data?: { menus: GmMenuEntry[]; errors: Record<string, GmErrorItem[]> } }>({ type: 'SCRIPTS_GET_GM_STATE' });
       // 复水更新状态（侧边栏冷开错过 SCRIPTS_UPDATES 广播；WXT storage 读写对称，UPDATE_STATE_KEY 的 local: 前缀由 WXT 处理）
       const storedUpdates = await storage.getItem<Record<string, ScriptUpdateState>>(UPDATE_STATE_KEY);
       const entries = rtResp.data?.entries ?? [];
@@ -140,7 +133,6 @@ export const useScripts = create<ScriptsState>((set) => ({
         engineWarning: listResp.data?.engineAvailable === false ? `${ENGINE_WARNING_PREFIX}：请在 chrome://extensions 开启开发者模式或升级 Chrome 120+` : null,
         menus: gmResp.data?.menus ?? [],
         errors: gmResp.data?.errors ?? {},
-        confirms: gmResp.data?.confirms ?? [],
         updates: storedUpdates ?? {},
         loading: false,
       });

@@ -4,7 +4,7 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { storage } from 'wxt/utils/storage';
 import {
   gmErrorCounts, getErrorBuffer, clearErrors, getMenuSnapshot, handleGmCall,
-  initGmApi, cleanupScriptState, resolveConfirm,
+  initGmApi, cleanupScriptState,
 } from '../../background/gm-api';
 import { saveScript } from '../../storage/scripts';
 import type { UserScript } from '../../shared/types';
@@ -208,7 +208,7 @@ describe('gm-api 简单 API', () => {
     expect(src).toContain('OFFSCREEN_WRITE_CLIPBOARD');
   });
 
-  // XmlHttpRequest 由 gm-connect.test.ts 完整覆盖（@connect 三分支 + 确认队列），此处不再占位
+  // XmlHttpRequest 由 gm-connect.test.ts 完整覆盖（@connect 三分支 + 通用确认队列），此处不再占位
 });
 
 describe('gm-api Notification 点击/关闭回调（spec §8）', () => {
@@ -280,36 +280,18 @@ describe('gm-api SCRIPTS_GET_GM_STATE 复水快照', () => {
     initGmApi({ on: (type, h) => { handlers.set(type, h as (msg: Record<string, unknown>) => unknown); } });
   });
 
-  it('返回 menus/errors/confirms 三者非空且形状对', async () => {
+  it('返回 menus/errors 两者非空且形状对', async () => {
     await saveScript(mkScript({ meta: { grants: ['GM_registerMenuCommand', 'GM_xmlhttpRequest'] } }));
     await call('RegisterMenu', ['m1', '抓取']);
     await call('ReportError', ['boom', 'stack', 3]);
-    // 入确认队列：XHR 打未列 @connect 的域 → CONFIRM。queueConfirm 在数个 await 之后才同步入队，
-    // 全量套件负载下固定 sleep 不稳，改轮询直到 GM 状态里出现该确认（上限 ~1s）。
-    const pending = handleGmCall(
-      { scriptId: 's1', api: 'XmlHttpRequest', reqId: 9, params: [{ url: 'https://ext.com/x' }] },
-      { tab: { id: 1, url: 'https://a.com/' } } as never,
-    );
     const getState = handlers.get('SCRIPTS_GET_GM_STATE')!;
-    let resp!: {
+    const resp = await getState({}) as {
       ok: boolean;
-      data: { menus: Array<{ scriptId: string; commands: unknown[] }>; errors: Record<string, unknown[]>; confirms: Array<{ confirmId: string; scriptId: string; host: string }> };
+      data: { menus: Array<{ scriptId: string; commands: unknown[] }>; errors: Record<string, unknown[]> };
     };
-    for (let i = 0; i < 100; i++) {
-      resp = await getState({}) as typeof resp;
-      if (resp.data.confirms.length > 0) break;
-      await new Promise((r) => setTimeout(r, 10));
-    }
-
     expect(resp.ok).toBe(true);
     expect(resp.data.menus).toEqual([{ scriptId: 's1', commands: [{ key: 'm1', name: '抓取' }] }]);
     expect(resp.data.errors['s1']).toHaveLength(1);
     expect(resp.data.errors['s1']![0]).toMatchObject({ message: 'boom', line: 3 });
-    expect(resp.data.confirms).toHaveLength(1);
-    expect(resp.data.confirms[0]).toMatchObject({ scriptId: 's1', host: 'ext.com' });
-
-    // 收尾：解掉挂起的确认，避免 60s 定时器悬挂
-    await resolveConfirm(resp.data.confirms[0]!.confirmId, 'deny');
-    await pending;
   });
 });

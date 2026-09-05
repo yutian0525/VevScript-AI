@@ -9,6 +9,7 @@ import { getScript } from '../storage/scripts';
 import { matchUrl } from '../shared/match-pattern';
 import { bridgeTokensForUrl } from './gm-token';
 import { classifyGrants } from '../shared/gm-apis';
+import { enqueueConfirm } from './confirm-queue';
 import { createRequest, type CsResponse, type GmDebugInfoData } from '../shared/messages';
 
 export interface GmErrorEntry {
@@ -229,51 +230,6 @@ export async function matchConnectWithPermissions(
   return matchConnect(connects, reqUrl, pageUrl, allowed ? [hostOf(reqUrl)] : []);
 }
 
-// ---- 确认队列（spec §8.1，60s 超时拒绝）----
-
-export interface GmConfirm {
-  confirmId: string;
-  scriptId: string;
-  host: string;
-  url: string;
-  createdAt: number;
-}
-
-const pendingConfirms = new Map<string, { confirm: GmConfirm; resolve: (v: 'allow-once' | 'always' | 'deny') => void }>();
-const CONFIRM_TIMEOUT_MS = 60_000;
-
-export function getPendingConfirms(): GmConfirm[] {
-  return [...pendingConfirms.values()].map((p) => p.confirm);
-}
-
-function queueConfirm(scriptId: string, url: string): Promise<'allow-once' | 'always' | 'deny'> {
-  return new Promise((resolve) => {
-    const confirmId = crypto.randomUUID();
-    const confirm: GmConfirm = { confirmId, scriptId, host: hostOf(url), url, createdAt: Date.now() };
-    pendingConfirms.set(confirmId, { confirm, resolve });
-    broadcastToPanel({ type: 'GM_CONFIRM_PENDING', confirm });
-    setTimeout(() => {
-      if (pendingConfirms.has(confirmId)) {
-        pendingConfirms.delete(confirmId);
-        resolve('deny');
-        broadcastToPanel({ type: 'GM_CONFIRM_RESOLVED', confirmId });
-      }
-    }, CONFIRM_TIMEOUT_MS);
-  });
-}
-
-export async function resolveConfirm(confirmId: string, decision: 'allow-once' | 'always' | 'deny'): Promise<void> {
-  const entry = pendingConfirms.get(confirmId);
-  if (!entry) return;
-  pendingConfirms.delete(confirmId);
-  if (decision === 'always') {
-    const { setAlwaysAllow } = await import('./gm-permissions');
-    await setAlwaysAllow(entry.confirm.scriptId, entry.confirm.host);
-  }
-  entry.resolve(decision);
-  broadcastToPanel({ type: 'GM_CONFIRM_RESOLVED', confirmId });
-}
-
 // ---- 剪贴板（offscreen 文档路径）----
 // MV3 SW 里 navigator.clipboard 为 undefined（实测冒烟：Cannot read properties of undefined
 // (reading 'writeText')）——Clipboard API 只存在于文档上下文。专用 offscreen 页
@@ -333,8 +289,30 @@ async function doXmlHttpRequest(
   const pageUrl = sender?.tab?.url ?? '';
   const decision = await matchConnectWithPermissions(script.meta?.connects ?? [], details.url, pageUrl, scriptId);
   if (decision === ConnectDecision.CONFIRM) {
-    const choice = await queueConfirm(scriptId, details.url);
-    if (choice === 'deny') return { ok: false, error: 'permission denied（用户拒绝或确认超时；可加 @connect 或在侧边栏批准）' };
+    const host = hostOf(details.url);
+    const choice = await enqueueConfirm({
+      kind: 'connect',
+      title: '跨域请求确认',
+      message: `脚本「${script.name}」请求跨域访问`,
+      rows: [
+        { label: '主机', value: host, mono: true },
+        { label: '方法', value: (details.method ?? 'GET').toUpperCase(), mono: true },
+        { label: 'URL', value: details.url, mono: true },
+        { label: '来源', value: pageUrl || '（未知）', mono: true },
+      ],
+      actions: [
+        { decision: 'allow-once', label: '允许一次', variant: 'primary' },
+        { decision: 'always', label: '总是允许' },
+        { decision: 'deny', label: '拒绝', variant: 'danger', countdown: true },
+      ],
+      timeoutMs: 60_000,
+    });
+    if (choice === 'always') {
+      const { setAlwaysAllow } = await import('./gm-permissions');
+      await setAlwaysAllow(scriptId, host);
+    } else if (choice !== 'allow-once') {
+      return { ok: false, error: 'permission denied（用户拒绝或确认超时/关闭；可加 @connect 或在确认页批准）' };
+    }
   } else if (decision === ConnectDecision.DENY) {
     return { ok: false, error: `Refused to connect to "${hostOf(details.url)}"：不在 @connect 列表（请补 @connect）` };
   }
@@ -571,16 +549,10 @@ export function initGmApi(router: RouterLike): void {
     return { ok: true };
   });
 
-  router.on('GM_CONFIRM_RESOLVE', async (msg) => {
-    const { confirmId, decision } = msg as unknown as { confirmId: string; decision: 'allow-once' | 'always' | 'deny' };
-    await resolveConfirm(confirmId, decision);
-    return { ok: true };
-  });
-
-  // 面板重开复水：一次拉齐 menus/errors/confirms（广播只补增量，冷启动/重开靠此）
+  // 面板重开复水：一次拉齐 menus/errors（广播只补增量，冷启动/重开靠此）
   router.on('SCRIPTS_GET_GM_STATE', async () => ({
     ok: true,
-    data: { menus: getMenuSnapshot(), errors: getAllErrors(), confirms: getPendingConfirms() },
+    data: { menus: getMenuSnapshot(), errors: getAllErrors() },
   }));
 
   router.on('GM_DEBUG_CALL', async (msg) => {

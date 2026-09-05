@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { storage } from 'wxt/utils/storage';
 import { PanelLeft, ScrollText, SquarePen } from 'lucide-react';
 import { openScriptTab, sendScriptsRequest } from '../../stores/scripts';
-import type { GmMenuEntry, GmErrorItem, GmConfirmItem } from '../../stores/scripts';
+import type { GmMenuEntry, GmErrorItem } from '../../stores/scripts';
 import type { ScriptsRuntimeEntry } from '../../shared/messages';
 
 interface RunRow {
@@ -38,7 +38,7 @@ export function PopupApp() {
         const rtResp = await sendScriptsRequest<{ ok: boolean; data?: { entry: ScriptsRuntimeEntry | null }; error?: string }>({
           type: 'SCRIPTS_GET_RUNTIME_FOR_TAB', tabId: tabId ?? -1,
         });
-        const gmResp = await sendScriptsRequest<{ ok: boolean; data?: { menus: GmMenuEntry[]; errors: Record<string, GmErrorItem[]>; confirms: GmConfirmItem[] }; error?: string }>({
+        const gmResp = await sendScriptsRequest<{ ok: boolean; data?: { menus: GmMenuEntry[]; errors: Record<string, GmErrorItem[]> }; error?: string }>({
           type: 'SCRIPTS_GET_GM_STATE',
         });
         const listResp = await sendScriptsRequest<{ ok: boolean; data?: { scripts: Array<{ id: string; name: string; enabled: boolean }> }; error?: string }>({

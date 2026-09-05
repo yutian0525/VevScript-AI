@@ -7,7 +7,6 @@ import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { filterSummaries, openScriptTab, sendScriptsRequest, useScripts } from '../../stores/scripts';
-import { ScriptsConfirmCard } from './ScriptsConfirmCard';
 import type { ScriptSummary } from '../../shared/types';
 
 // 新建模板：body 需非空占位（解析后 code 不能为空）
@@ -23,7 +22,7 @@ const NEW_SCRIPT_TEMPLATE = [
 ].join('\n');
 
 export function ScriptsListView() {
-  const { summaries, query, engineWarning, confirms, updates, dismissed, setQuery } = useScripts();
+  const { summaries, query, engineWarning, updates, dismissed, setQuery } = useScripts();
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const [urlBarOpen, setUrlBarOpen] = useState(false);
@@ -131,8 +130,6 @@ export function ScriptsListView() {
           <span>{engineWarning}</span>
         </div>
       )}
-
-      {confirms.map((c) => <ScriptsConfirmCard key={c.confirmId} confirm={c} />)}
 
       <div className="scripts-toolbar">
         <div style={{ position: 'relative', flex: 1 }}>

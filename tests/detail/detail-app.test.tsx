@@ -70,7 +70,7 @@ describe('DetailApp', () => {
     fakeBrowser.reset();
     vi.restoreAllMocks();
     // store 是模块单例，逐用例复位避免错误缓冲跨用例串台
-    useScripts.setState({ summaries: [], runtimeEntries: {}, activeTabId: null, query: '', engineWarning: null, menus: [], errors: {}, confirms: [] });
+    useScripts.setState({ summaries: [], runtimeEntries: {}, activeTabId: null, query: '', engineWarning: null, menus: [], errors: {} });
   });
 
   it('加载后默认展示详情 Tab：标题/副标题 + 左栏四导航', async () => {

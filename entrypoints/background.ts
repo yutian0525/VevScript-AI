@@ -17,6 +17,7 @@ import { initScriptsModule } from '../background/scripts';
 import { initGmApi } from '../background/gm-api';
 import { initSkillsModule } from '../background/skills';
 import { maybeRunStartupUpdateCheck } from '../background/scripts-update';
+import { initConfirmQueue } from '../background/confirm-queue';
 
 export default defineBackground(() => {
   const router = new MessageRouter();
@@ -101,6 +102,7 @@ export default defineBackground(() => {
   browser.runtime.onStartup.addListener(() => { void maybeRunStartupUpdateCheck(true).catch(() => {}); });
   browser.runtime.onInstalled.addListener(() => { void maybeRunStartupUpdateCheck(true).catch(() => {}); });
 
+  initConfirmQueue(router);
   router.attach();
   console.log('[ai-browser-ext] background started');
 });
