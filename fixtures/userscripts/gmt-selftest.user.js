@@ -26,6 +26,7 @@
 // @grant        GM_notification
 // @grant        GM_openInTab
 // @grant        GM_xmlhttpRequest
+// @grant        GM_llmChat
 // @connect      cdn.jsdelivr.net
 // @require      https://cdn.jsdelivr.net/npm/zepto@1.2.0/dist/zepto.min.js
 // @resource     gmtPkg https://cdn.jsdelivr.net/npm/zepto@1.2.0/package.json

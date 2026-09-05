@@ -143,3 +143,38 @@ describe('buildWrappedCode', () => {
     expect(code.indexOf("window.addEventListener('error'")).toBeLessThan(code.indexOf('userCode();'));
   });
 });
+
+describe('GM_llmChat wrapper', () => {
+  const opts = { token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0' };
+
+  it('grant 精确安装：声明才安装，且带 LLM_CHUNK 通道注册/清理逻辑', () => {
+    const code = buildWrappedCode(mkScript({ meta: { grants: ['GM_llmChat'] } }), opts);
+    expect(code).toContain('install("GM_llmChat"');
+    expect(code).toContain('__GM_plain_llm');
+    expect(code).toContain('__GM_listeners.set("llmchan:" + chan');
+    expect(code).toContain('__GM_listeners.delete("llmchan:" + chan');
+    // 点形式 Promise 包装由 promiseForm 驱动
+    expect(code).toContain('install("GM.llmChat"');
+    // 未声明则不安装
+    const code2 = buildWrappedCode(mkScript(), opts);
+    expect(code2).not.toContain('install("GM_llmChat"');
+  });
+
+  it('preamble 含页实例 id（chan 前缀）+ 显式 reqId 版 __GM_post_id；__GM_post 委托它', () => {
+    const code = buildWrappedCode(mkScript({ meta: { grants: ['GM_llmChat'] } }), opts);
+    expect(code).toContain('var __GM_inst =');
+    expect(code).toContain('function __GM_post_id(api, params, reqId)');
+    expect(code).toMatch(/var reqId = \+\+__GM_reqSeq;\s*\n\s*return __GM_post_id\(api, params, reqId\);/);
+  });
+
+  it('gmevt 分发器含 LLM_CHUNK 分支（按 chan 找 llmchan: 监听）', () => {
+    const code = buildWrappedCode(mkScript(), opts);
+    expect(code).toContain("d.kind === 'LLM_CHUNK'");
+    expect(code).toContain("__GM_listeners.get('llmchan:' + d.data.chan)");
+  });
+
+  it('onChunk 摘除后过桥：payload 里无 onChunk 键（__GM_plain_llm 摘函数语义）', () => {
+    const code = buildWrappedCode(mkScript({ meta: { grants: ['GM_llmChat'] } }), opts);
+    expect(code).toMatch(/function __GM_plain_llm\(v\) \{[\s\S]*?__GM_plain\(v\)/);
+  });
+});
