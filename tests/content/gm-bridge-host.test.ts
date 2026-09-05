@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { initBridgeHost, handleGmEvent } from '../../content/gm-bridge-host';
-import { gmReqEvent, gmResEvent, gmEvtEvent } from '../../shared/gm-bridge';
+import { gmReqEvent, gmResEvent, gmEvtEvent, gmHelloEvent, gmHostEvent } from '../../shared/gm-bridge';
 
 describe('gm-bridge-host', () => {
   beforeEach(() => { fakeBrowser.reset(); vi.restoreAllMocks(); });
@@ -54,6 +54,58 @@ describe('gm-bridge-host', () => {
     await new Promise((r) => setTimeout(r, 10));
     expect(sendSpy).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'GM_API_CALL' }));
     expect(resListener).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it('握手反向时序：宿主先就绪，wrapper 后到的 gmhello 触发宿主重发 gmhost', async () => {
+    browser.runtime.onMessage.addListener((msg: { type: string }, _s, sendResponse) => {
+      if (msg.type === 'GM_BRIDGE_TOKENS') { sendResponse({ ok: true, data: { entries: [{ scriptId: 's1', token: 'tok' }] } }); return true; }
+      sendResponse({ ok: true }); return true;
+    });
+    const dispose = initBridgeHost();
+    await new Promise((r) => setTimeout(r, 10)); // attachFor 已跑（发了首个 gmhost，此刻无 wrapper 接）
+
+    // 模拟晚注入的 wrapper：挂 gmhost 监听后 dispatch gmhello
+    const hostReadySpy = vi.fn();
+    window.addEventListener(gmHostEvent('s1'), hostReadySpy);
+    window.dispatchEvent(new CustomEvent(gmHelloEvent('s1')));
+    expect(hostReadySpy).toHaveBeenCalledTimes(1); // 宿主收到 gmhello 同步重发 gmhost
+    window.removeEventListener(gmHostEvent('s1'), hostReadySpy);
+    dispose();
+  });
+
+  it('握手正向时序端到端：wrapper 先注入（gmreq 入 backlog）→ 宿主就绪冲刷 → gmreq 到达 SW', async () => {
+    const apiCalls: Array<Record<string, unknown>> = [];
+    browser.runtime.onMessage.addListener((msg: { type: string }, _s, sendResponse) => {
+      if (msg.type === 'GM_BRIDGE_TOKENS') { sendResponse({ ok: true, data: { entries: [{ scriptId: 's-race', token: 'rtok' }] } }); return true; }
+      if (msg.type === 'GM_API_CALL') { apiCalls.push(msg as Record<string, unknown>); sendResponse({ ok: true, data: null }); return true; }
+      sendResponse({ ok: false, error: 'x' }); return true;
+    });
+
+    // 迷你 wrapper 客户端（模拟 preamble 握手：宿主未就绪时 gmreq 入 backlog，收 gmhost 冲刷）
+    let hostReady = false;
+    let backlog: Array<Record<string, unknown>> = [];
+    const send = (detail: Record<string, unknown>): void => { window.dispatchEvent(new CustomEvent(gmReqEvent('s-race'), { detail })); };
+    const onHost = (): void => {
+      hostReady = true;
+      const pend = backlog; backlog = [];
+      for (const d of pend) send(d);
+    };
+    window.addEventListener(gmHostEvent('s-race'), onHost);
+    window.dispatchEvent(new CustomEvent(gmHelloEvent('s-race'))); // wrapper 问询（宿主未 init，无人接）
+    // 用户代码同步调 API：宿主未就绪 → 入 backlog（这正是真实脚本 @run-at document-end 的现场）
+    const detail = { token: 'rtok', reqId: 1, api: 'XmlHttpRequest', params: [{ url: 'https://x.test/a' }] };
+    if (hostReady) send(detail); else backlog.push(detail);
+    expect(apiCalls).toHaveLength(0); // 尚未到达 SW（宿主未就绪）
+
+    // 宿主就绪（document_idle + 拉 token）：attachFor 发 gmhost → 迷你 wrapper 冲刷 → gmreq 被接住
+    const dispose = initBridgeHost();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(hostReady).toBe(true);
+    expect(apiCalls).toHaveLength(1);
+    expect(apiCalls[0]).toMatchObject({ type: 'GM_API_CALL', scriptId: 's-race', api: 'XmlHttpRequest' });
+
+    window.removeEventListener(gmHostEvent('s-race'), onHost);
     dispose();
   });
 
