@@ -1,0 +1,29 @@
+fixtures/userscripts/gmt-selftest.user.js
+  s_4b16ffa8468de9::t_b89e17fb5dcb41 29
+tests/shared/gm-wrapper.test.ts
+  s_4b16ffa8468de9::t_e043de67eacf08 146-180
+shared/gm-wrapper.ts
+  s_4b16ffa8468de9::t_7c4bf6a5bfe7ba 81,145-151
+  s_4b16ffa8468de9::t_532b8f679fb250 50
+  s_4b16ffa8468de9::t_126d899d8bf8eb 115-117
+  s_4b16ffa8468de9::t_08256f0149215c 68-70,78-80
+  s_4b16ffa8468de9::t_aaa077429c800e 197-200
+shared/gm-bridge.ts
+  s_4b16ffa8468de9::t_9f0f2da50c8f83 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "549120c4b482969b40fc656a2e9340504bc2480d",
+  "prompts": {},
+  "sessions": {
+    "s_4b16ffa8468de9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa33a125-14e4-4ba5-8132-a2d017f9289f",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
