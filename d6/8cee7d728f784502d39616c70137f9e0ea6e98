@@ -1,0 +1,32 @@
+wxt.config.ts
+  s_b24d2b355b9859::t_9e4373700ae463 13
+entrypoints/offscreen-clipboard/index.html
+  s_b24d2b355b9859::t_90baeb88d45307 1-13
+entrypoints/offscreen-clipboard/main.ts
+  s_b24d2b355b9859::t_766435bf6d8fc8 1-19
+background/gm-api.ts
+  s_b24d2b355b9859::t_31565ba7280a93 315-317
+  s_b24d2b355b9859::t_00a9ab0e2f3676 277-314,318-321
+  s_b24d2b355b9859::t_10b66a916c2e13 434,437
+  s_b24d2b355b9859::t_fe56d8ca7a1585 324
+background/router.ts
+  s_b24d2b355b9859::t_5d2dedcdb83b42 36-38
+tests/background/gm-api.test.ts
+  s_b24d2b355b9859::t_25f46b6f2c1886 175-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d68cee7d728f784502d39616c70137f9e0ea6e98",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
