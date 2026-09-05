@@ -26,6 +26,7 @@ export const GM_API_REGISTRY: Record<string, GmApiDef> = {
   GM_notification: { impl: 'bridge', promiseForm: true },
   GM_openInTab: { impl: 'bridge', promiseForm: true },
   GM_xmlhttpRequest: { impl: 'bridge', promiseForm: true },
+  GM_llmChat: { impl: 'bridge', promiseForm: true },
 };
 
 /** 特殊 grant 名（非函数，但视为「受支持」——wrapper 直接提供值） */
