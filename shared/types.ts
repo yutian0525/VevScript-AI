@@ -114,6 +114,8 @@ export interface Skill {
   /** Markdown 指令正文（≤64KB） */
   content: string;
   enabled: boolean;
+  /** 内置技能（安装时投放）：不可删除，可停用；升级时内容随扩展更新 */
+  builtin?: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -125,5 +127,6 @@ export interface SkillSummary {
   command: string;
   description: string;
   enabled: boolean;
+  builtin?: boolean;
   updatedAt: number;
 }

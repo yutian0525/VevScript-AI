@@ -301,6 +301,64 @@ body {
   text-align: center;
 }
 
+/* ---------- 空状态欢迎页（Hi + 快捷指令 tag）---------- */
+.chat__hello {
+  margin: auto 0;
+  padding: 20px 4px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.chat__hello-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+}
+.chat__hello-sub {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.chat__hello-tags {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+}
+.chat__hello-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--sunken);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.chat__hello-tag:hover {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+.chat__hello-tagcmd {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--signal);
+}
+.chat__hello-tag:hover .chat__hello-tagcmd {
+  color: var(--signal);
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat__hello-tag { transition: none; }
+}
+
 .msg-user {
   align-self: flex-end;
   max-width: 86%;

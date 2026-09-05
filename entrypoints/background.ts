@@ -16,6 +16,7 @@ import type { ConsoleEntry, HookNetEntry } from '../shared/hook-bridge';
 import { initScriptsModule } from '../background/scripts';
 import { initGmApi } from '../background/gm-api';
 import { initSkillsModule } from '../background/skills';
+import { seedBuiltinSkills } from '../background/builtin-skills';
 import { maybeRunStartupUpdateCheck } from '../background/scripts-update';
 import { initConfirmQueue } from '../background/confirm-queue';
 
@@ -59,6 +60,8 @@ export default defineBackground(() => {
       const stale = Object.keys(all).filter((k) => k.startsWith('session:'));
       if (stale.length) await browser.storage.local.remove(stale);
     } catch { /* 清理失败不阻断启动 */ }
+    // 内置技能投放（安装 + 更新都触发；更新时覆盖为扩展内新版，保留用户启停状态）
+    await seedBuiltinSkills().catch((e) => console.warn('[ai-browser-ext] 内置技能投放失败', e));
   });
 
   // webRequest 接线放 background（统管 browser 事件），observe-store 保持纯数据可测。

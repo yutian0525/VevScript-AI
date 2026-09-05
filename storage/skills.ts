@@ -44,9 +44,11 @@ export async function saveSkill(skill: Skill): Promise<void> {
   await storage.setItem(KEY, next);
 }
 
-/** 幂等：不存在也成功。 */
+/** 幂等：不存在也成功。内置技能（builtin）拒删——只可停用。 */
 export async function deleteSkill(id: string): Promise<void> {
   const all = await listSkills();
+  const hit = all.find((s) => s.id === id);
+  if (hit?.builtin) throw new Error('内置技能不可删除，如不需要可停用');
   await storage.setItem(KEY, all.filter((s) => s.id !== id));
 }
 
@@ -59,7 +61,7 @@ export async function setSkillEnabled(id: string, enabled: boolean): Promise<voi
 export function toSkillSummary(s: Skill): SkillSummary {
   return {
     id: s.id, name: s.name, command: s.command,
-    description: s.description, enabled: s.enabled, updatedAt: s.updatedAt,
+    description: s.description, enabled: s.enabled, builtin: s.builtin, updatedAt: s.updatedAt,
   };
 }
 
