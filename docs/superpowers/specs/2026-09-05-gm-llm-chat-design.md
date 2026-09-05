@@ -110,9 +110,8 @@ chan = `${页实例随机id}:${reqId}`
 2. `var chan = __GM_inst + ':' + (++__GM_reqSeq); var reqId = <同一自增值>;`
    （注意 reqId 与 chan 尾段一致：先 `++__GM_reqSeq` 取值，两处共用）；
 3. `__GM_listeners.set('llmchan:' + chan, onChunk)`（onChunk 存在才注册）；
-4. `return __GM_post_id('LlmChat', [details], reqId).then(function (r) { __GM_listeners.delete('llmchan:' + chan); return r; }, function (e) { __GM_listeners.delete('llmchan:' + chan); throw e; })`——成功/失败都清理监听；
-5. 兼容旧调用风格：返回对象 `{ abort: function () {} }`？——否：GM_llmChat 是 Promise 形态
-   （`promiseForm: true`），下划线形式直接返回 Promise；不提供 abort（已知差异，文档明示）。
+4. `__GM_post_id('LlmChat', [details], reqId).then(function (r) { __GM_listeners.delete('llmchan:' + chan); return r; }, function (e) { __GM_listeners.delete('llmchan:' + chan); throw e; })`——成功/失败都清理监听；
+5. 下划线形式直接返回 Promise（`promiseForm: true`，点形式由 emit 的包装层补 Promise.resolve）；不提供 abort（已知差异，文档明示）。
 
 ### 4.5 grant 映射（background/gm-api.ts）
 
@@ -140,8 +139,8 @@ interface PermissionsShape {
 
 - 「本会话内允许」→ `llmSessionAllow.add(scriptId)`；
 - SW 重启自然失效（与菜单表同款取舍）；
-- `setLlmTier` 写入时通知 SW 清该脚本条目（档位变更优先于会话授权）：
-  通过在 `scripts.ts` 编排层调 `llmSessionAllow.delete(scriptId)` 实现（同模块 import）。
+- 档位变更（`SCRIPTS_SET_LLM_TIER` handler）时同步 `llmSessionAllow.delete(scriptId)`
+  （scripts.ts 编排层与 gm-api.ts 同模块 import，直接调用）。
 
 ### 5.3 决策流程（case 'LlmChat' 内）
 
