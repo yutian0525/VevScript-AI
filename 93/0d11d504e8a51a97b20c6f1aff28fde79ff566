@@ -1,0 +1,37 @@
+tests/agent/provider/openai-compat.test.ts
+  s_9df40509216906::t_1ff4b420fa842c 531-534
+  s_9df40509216906::t_40a96145adddb7 399-499,501-503,506,508-530,535-609
+  s_9df40509216906::t_941bf15db8eef2 500,504-505,507
+storage/settings.ts
+  s_9df40509216906::t_512b8c7f6d370d 21-24,34-40
+tests/storage/settings.test.ts
+  s_9df40509216906::t_28b6cf19d847b6 44,70
+  s_9df40509216906::t_b2a4b8e1c1bb28 84-110
+agent/provider/openai-compat.ts
+  s_9df40509216906::t_49df9fa720bf71 104
+  s_9df40509216906::t_a88215aa370152 283-284,290,304,308
+  s_9df40509216906::t_b1fd307ef7942c 154-157,159-160,163-166
+  s_9df40509216906::t_a0675f64170df8 170-172
+  s_9df40509216906::t_ad61924b38e498 328,331-332,334,340
+  s_9df40509216906::t_dae6d10c4f8c66 10-16,58-82,84-87,93-94,96,98,100-103,107-121,124-153,158,161-162,167-169,173-198,200-243,245-253,255-282,286-289,291-303,305-307,310-316,319-322,324-327,329-330,333,335-336,338-339,341-343,346-350
+components/settings/ModelSettings.tsx
+  s_9df40509216906::t_b075c1fbbecb57 149-174
+background/agent-port.ts
+  s_9df40509216906::t_6c35eb7b3d4d7d 17,19-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "930d11d504e8a51a97b20c6f1aff28fde79ff566",
+  "prompts": {},
+  "sessions": {
+    "s_9df40509216906": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "552f820a-9ac4-4a32-b109-6c5973c2fc11",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
