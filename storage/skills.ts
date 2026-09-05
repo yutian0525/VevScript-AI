@@ -10,7 +10,7 @@ const KEY = 'local:skills:index' as const;
 
 export const MAX_SKILLS = 100;
 export const MAX_CONTENT_LENGTH = 64 * 1024;
-export const MAX_DESCRIPTION_LENGTH = 200;
+export const MAX_DESCRIPTION_LENGTH = 300;
 
 export async function listSkills(): Promise<Skill[]> {
   return (await storage.getItem<Skill[]>(KEY)) ?? [];

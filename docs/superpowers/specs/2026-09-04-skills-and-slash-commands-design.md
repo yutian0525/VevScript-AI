@@ -31,7 +31,7 @@ export interface Skill {
   id: string;          // nanoid
   name: string;        // 显示名（可中文）
   command: string;     // 斜杠调用名，如 "translate"（唯一键，kebab-case ASCII）
-  description: string; // 简述，注入上下文 + 浮层副标题（≤200 字符）
+  description: string; // 简述，注入上下文 + 浮层副标题（≤300 字符）
   content: string;     // Markdown 指令正文（≤64KB）
   enabled: boolean;    // 启停开关
   createdAt: number;
@@ -48,7 +48,7 @@ export interface SkillSummary {
 
 - 单键 `local:skills:index`（`Skill[]`），与 `storage/scripts.ts` 同构，个人量级全量读写。
 - API：`listSkills / getSkill / saveSkill / deleteSkill / setSkillEnabled`。
-- 保存时校验：`command` 唯一 + 格式 `/^[a-z0-9][a-z0-9-]{0,31}$/`；上限 100 条；正文 ≤64KB；description ≤200 字符。超限/撞名 throw（中文可读文案）。
+- 保存时校验：`command` 唯一 + 格式 `/^[a-z0-9][a-z0-9-]{0,31}$/`；上限 100 条；正文 ≤64KB；description ≤300 字符。超限/撞名 throw（中文可读文案）。
 - 删除不存在的 id：幂等成功。
 
 ### 1.3 `.md` 文件格式（`shared/skill-md.ts` 纯函数）
