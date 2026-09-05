@@ -1,0 +1,22 @@
+entrypoints/sidepanel/styles.css
+  s_f76272b3d751e6::t_e59b79519a7718 389-396
+components/chat/ChatView.tsx
+  s_f76272b3d751e6::t_d5dcc717ee074c 334,338-340,342
+  s_f76272b3d751e6::t_0c7b4aa8ea2520 335-337,341,343-346,354-356
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "49829a2cc642e8b00854fd6b201018c5ea109951",
+  "prompts": {},
+  "sessions": {
+    "s_f76272b3d751e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc226d95-afc2-4dad-8a48-17095ac2edfd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
