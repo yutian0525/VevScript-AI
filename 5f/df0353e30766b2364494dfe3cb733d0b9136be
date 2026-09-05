@@ -1,0 +1,30 @@
+fixtures/userscripts/manual/gmt-manual-dom-resource.user.js
+  s_b24d2b355b9859::t_1614bf33463d31 1-208,211-227,230-233,235-252
+  s_b24d2b355b9859::t_f073d0af6810f9 209-210,228-229,234
+fixtures/userscripts/manual/gmt-manual-interaction.user.js
+  s_b24d2b355b9859::t_f073d0af6810f9 220
+  s_b24d2b355b9859::t_1614bf33463d31 1-219,221-267
+fixtures/userscripts/manual/dom-resource.user.js.src
+  s_b24d2b355b9859::t_94b83ff7e137a4 1-21,24-40,43-46,48-64
+  s_b24d2b355b9859::t_b97cd797c1788e 41-42,47
+  s_b24d2b355b9859::t_e7b2f303b1c3b8 22-23
+fixtures/userscripts/manual/interaction.user.js.src
+  s_b24d2b355b9859::t_8a1f118de0796c 33
+  s_b24d2b355b9859::t_535f96bd3c4096 1-32,34-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5fdf0353e30766b2364494dfe3cb733d0b9136be",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": null
+    }
+  }
+}
