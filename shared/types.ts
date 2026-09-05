@@ -66,6 +66,19 @@ export interface UserScript {
   updatedAt: number;
 }
 
+/** 启动/手动更新检查结果（独立于 UserScript：运行时状态，非解析投影，spec §1.2） */
+export interface ScriptUpdateState {
+  remoteVersion: string;
+  checkedAt: number;
+  status: 'available' | 'up-to-date' | 'error';
+  /** status='error' 时的原因（HTTP 404 / 超时 / 解析失败…） */
+  message?: string;
+}
+
+/** chrome.storage.local 键：脚本更新检查结果 map（scriptId → ScriptUpdateState，spec §1.2）。
+ * 读写必须都走 WXT storage（它把 local: 当区域前缀剥离）——裸 browser.storage.local 会按字面量键查找，永远读不到。 */
+export const UPDATE_STATE_KEY = 'local:scripts:update-state';
+
 /** 列表/摘要形状（无 code） */
 export interface ScriptSummary {
   id: string;

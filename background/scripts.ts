@@ -14,6 +14,7 @@ import { buildWrappedCode } from '../shared/gm-wrapper';
 import { getBridgeToken } from './gm-token';
 import { prefetchResources, getResourceBundle } from './gm-resources';
 import { listAllowedHosts, revokeHost, removeScriptPermissions } from './gm-permissions';
+import { handleImportUrl, checkScriptUpdate, handleApplyUpdate, clearUpdateState } from './scripts-update';
 
 export const ENGINE_UNAVAILABLE_MSG = '脚本注入引擎不可用：请在 chrome://extensions 开启开发者模式或升级 Chrome 120+';
 
@@ -314,6 +315,7 @@ export async function handleUpdate(id: string, patch: ScriptPatch): Promise<User
       text, id: existing.id, enabled: patch.enabled ?? existing.enabled,
       source: existing.source, createdAt: existing.createdAt,
     }).script;
+    await clearUpdateState(id).catch(() => {}); // spec §1.2 不变量：本地改动使旧检查结果过期（best-effort）
   } else {
     // 仅启停：不重解析
     next = { ...existing, enabled: patch.enabled as boolean, updatedAt: Date.now() };
@@ -346,6 +348,7 @@ export async function handleGet(id: string, offset?: number, limit?: number): Pr
 export async function handleDelete(id: string): Promise<void> {
   await requireEngine();
   await deleteScript(id);
+  await clearUpdateState(id).catch(() => {}); // spec §1.2 不变量
   await cleanupScriptState(id);
   await removeScriptPermissions(id).catch(() => {});
   await syncRegistrations();
@@ -435,6 +438,25 @@ export function initScriptsModule(router: MessageRouter): void {
     const { id, host } = msg as unknown as { id: string; host: string };
     await revokeHost(id, host);
     return { ok: true };
+  });
+
+  // 更新编排（spec §2）：URL 导入 / 手动检查 / 应用更新
+  router.on('SCRIPTS_IMPORT_URL', async (msg) => {
+    const { url } = msg as unknown as { url: string };
+    const { script, warnings } = await handleImportUrl(url);
+    return { ok: true, data: { script, warnings } };
+  });
+
+  router.on('SCRIPTS_CHECK_UPDATE', async (msg) => {
+    const { id } = msg as unknown as { id: string };
+    const script = await getScript(id);
+    if (!script) throw new Error(`脚本不存在：${id}`);
+    return { ok: true, data: await checkScriptUpdate(script) };
+  });
+
+  router.on('SCRIPTS_APPLY_UPDATE', async (msg) => {
+    const { id } = msg as unknown as { id: string };
+    return { ok: true, data: { script: await handleApplyUpdate(id) } };
   });
 
   // 运行态跟踪：url 变化或加载完成时重算该 tab；关闭时清理

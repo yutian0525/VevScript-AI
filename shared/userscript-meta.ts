@@ -170,3 +170,24 @@ export function stringifyUserScript(script: UserScript): string {
   lines.push('// ==/UserScript==', '');
   return [...lines, script.code].join('\n');
 }
+
+/** 头部注入（spec §1.4）：向 ==UserScript== 块内（==/UserScript== 行前）追加元数据行。
+ * 头必须在首行才注入——远端文本头前有注释时宁可少记更新源也不错插。
+ * 「不覆盖已有键」由调用方保证：只传缺失/应保留的键（见后续 handleImportUrl / handleApplyUpdate）。 */
+export function injectMetaLines(
+  source: string,
+  lines: { updateURL?: string; downloadURL?: string },
+): string {
+  if (!lines.updateURL && !lines.downloadURL) return source;
+  const lineEnd = source.indexOf('\n');
+  const head = lineEnd === -1 ? source : source.slice(0, lineEnd);
+  if (head.trim() !== '// ==UserScript==') return source;
+  const outLines = source.split('\n');
+  const endIdx = outLines.findIndex((l) => l.trim() === '// ==/UserScript==');
+  if (endIdx === -1) return source;
+  const injects: string[] = [];
+  if (lines.updateURL) injects.push(`// @updateURL    ${lines.updateURL}`);
+  if (lines.downloadURL) injects.push(`// @downloadURL  ${lines.downloadURL}`);
+  outLines.splice(endIdx, 0, ...injects);
+  return outLines.join('\n');
+}

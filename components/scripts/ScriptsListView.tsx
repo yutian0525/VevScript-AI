@@ -2,7 +2,7 @@
 // 脚本池列表页（2026-09-03 重设计）：纯管理器——警告 + 确认卡 + 搜索 + 脚本卡片（switch 启停）。
 // 运行观测/菜单触发归 popup；详情页 = 全屏新标签页（openScriptTab）。
 import { useRef, useState } from 'react';
-import { CircleAlert, Plus, Search, Trash2, Upload } from 'lucide-react';
+import { CircleAlert, Link, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -23,9 +23,12 @@ const NEW_SCRIPT_TEMPLATE = [
 ].join('\n');
 
 export function ScriptsListView() {
-  const { summaries, query, engineWarning, confirms, setQuery } = useScripts();
+  const { summaries, query, engineWarning, confirms, updates, dismissed, setQuery } = useScripts();
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [urlBarOpen, setUrlBarOpen] = useState(false);
+  const [urlValue, setUrlValue] = useState('');
+  const [urlBusy, setUrlBusy] = useState(false);
 
   const visible = filterSummaries(summaries, query);
 
@@ -56,9 +59,41 @@ export function ScriptsListView() {
       setImportWarnings([resp.error ?? '导入失败']);
     }
   }
+  async function importUrl(): Promise<void> {
+    const url = urlValue.trim();
+    if (!url) return;
+    if (urlBusy) return;
+    setUrlBusy(true);
+    try {
+      const resp = await sendScriptsRequest<{ ok: boolean; data?: { script: { id: string }; warnings: string[] }; error?: string }>({
+        type: 'SCRIPTS_IMPORT_URL', url,
+      });
+      if (resp.ok && resp.data) {
+        setUrlBarOpen(false);
+        setUrlValue('');
+        setImportWarnings(resp.data.warnings);
+        await useScripts.getState().refresh();
+        openScriptTab(resp.data.script.id);
+      } else {
+        setImportWarnings([resp.error ?? 'URL 导入失败']);
+      }
+    } finally {
+      setUrlBusy(false);
+    }
+  }
 
   async function setEnabled(id: string, enabled: boolean): Promise<void> {
     await sendScriptsRequest({ type: 'SCRIPTS_SET_ENABLED', id, enabled });
+    await useScripts.getState().refresh();
+  }
+
+  async function applyUpdate(id: string, name: string, version: string): Promise<void> {
+    if (!window.confirm(`将下载新版本并覆盖本地修改（含代码与设置），确认更新「${name}」到 v${version}？`)) return;
+    const resp = await sendScriptsRequest<{ ok: boolean; error?: string }>({ type: 'SCRIPTS_APPLY_UPDATE', id });
+    if (!resp.ok) {
+      setImportWarnings([resp.error ?? '更新失败']);
+      return;
+    }
     await useScripts.getState().refresh();
   }
 
@@ -84,6 +119,9 @@ export function ScriptsListView() {
           <Button variant="ghost" className="btn--icon" aria-label="导入脚本" onClick={() => fileRef.current?.click()}>
             <Upload size={16} />
           </Button>
+          <Button variant="ghost" className="btn--icon" aria-label="从 URL 导入" aria-expanded={urlBarOpen} onClick={() => setUrlBarOpen((v) => !v)}>
+            <Link size={16} />
+          </Button>
         </>
       }
     >
@@ -108,6 +146,21 @@ export function ScriptsListView() {
           />
         </div>
       </div>
+      {urlBarOpen && (
+        <div className="scripts-toolbar" role="form" aria-label="从 URL 导入脚本">
+          <Input
+            aria-label="脚本 URL"
+            placeholder="https://…/script.user.js"
+            value={urlValue}
+            onChange={(e) => setUrlValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') void importUrl(); }}
+            disabled={urlBusy}
+          />
+          <Button variant="signal" disabled={urlBusy || !urlValue.trim()} onClick={() => void importUrl()}>
+            {urlBusy ? '导入中…' : '导入'}
+          </Button>
+        </div>
+      )}
       {importWarnings.length > 0 && (
         <div className="scripts-warnline" role="status">
           {importWarnings.map((w, i) => (
@@ -117,7 +170,10 @@ export function ScriptsListView() {
       )}
 
       <div className="scripts-list">
-        {visible.map((s) => (
+        {visible.map((s) => {
+          const upd = updates[s.id];
+          const hasUpdate = upd?.status === 'available' && !dismissed.has(s.id);
+          return (
           <div
             key={s.id}
             className={`scripts-card${s.enabled ? '' : ' scripts-card--off'}`}
@@ -175,10 +231,34 @@ export function ScriptsListView() {
                 {s.errorCount > 0 && (
                   <span className="scripts-badge scripts-badge--warn" title="脚本运行报错（进详情页查看）">{s.errorCount} errors</span>
                 )}
+                {hasUpdate && (
+                  <span className="scripts-badge scripts-badge--signal mono" title="有可用更新，确认后从更新源下载">
+                    ↑ v{upd!.remoteVersion}
+                  </span>
+                )}
               </span>
             </div>
+            {hasUpdate && (
+              <div className="scripts-card__updatebar">
+                <Button
+                  variant="signal"
+                  aria-label={`更新 ${s.name} 到 v${upd!.remoteVersion}`}
+                  onClick={(e) => { e.stopPropagation(); void applyUpdate(s.id, s.name, upd!.remoteVersion); }}
+                >
+                  更新到 v{upd!.remoteVersion}
+                </Button>
+                <Button
+                  variant="ghost"
+                  aria-label={`忽略 ${s.name} 的更新提醒`}
+                  onClick={(e) => { e.stopPropagation(); useScripts.getState().dismissUpdate(s.id); }}
+                >
+                  忽略
+                </Button>
+              </div>
+            )}
           </div>
-        ))}
+          );
+        })}
         {visible.length === 0 && <div className="chat__empty">没有匹配的脚本</div>}
       </div>
 

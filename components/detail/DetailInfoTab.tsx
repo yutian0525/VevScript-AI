@@ -1,12 +1,13 @@
 // components/detail/DetailInfoTab.tsx
 // 详情 Tab（2026-09-04 重写）：中文字段（title 保留原键名）+ URL 可点链接 + 底部操作区（启停/删除）。
 // 双声道：标签 sans 人话；match/grant/run-at 等机器值 mono。
-import { useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Check, RefreshCw, X } from 'lucide-react';
+import { storage } from 'wxt/utils/storage';
 import { Button } from '../ui/Button';
 import { sendScriptsRequest } from '../../stores/scripts';
 import { classifyGrants } from '../../shared/gm-apis';
-import type { UserScript } from '../../shared/types';
+import { UPDATE_STATE_KEY, type ScriptUpdateState, type UserScript } from '../../shared/types';
 
 interface Props {
   script: UserScript;
@@ -28,6 +29,20 @@ function UrlValue({ url }: { url: string }) {
 export function DetailInfoTab({ script, onChanged, onDelete }: Props) {
   const meta = script.meta ?? {};
   const [busy, setBusy] = useState(false);
+  const hasSource = Boolean(meta.updateURL || meta.downloadURL);
+  const [checkState, setCheckState] = useState<ScriptUpdateState | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [updating, setUpdating] = useState(false);
+
+  // 复水：上次启动检查的结果直接显示，不用再点（spec §3.2）
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const stored = await storage.getItem<Record<string, ScriptUpdateState>>(UPDATE_STATE_KEY);
+      if (alive) setCheckState(stored?.[script.id] ?? null);
+    })();
+    return () => { alive = false; };
+  }, [script.id]);
 
   async function toggleEnabled(): Promise<void> {
     setBusy(true);
@@ -45,12 +60,57 @@ export function DetailInfoTab({ script, onChanged, onDelete }: Props) {
     }
   }
 
+  async function checkUpdate(): Promise<void> {
+    setChecking(true);
+    try {
+      const resp = await sendScriptsRequest<{ ok: boolean; data?: ScriptUpdateState; error?: string }>({ type: 'SCRIPTS_CHECK_UPDATE', id: script.id });
+      setCheckState(resp.ok && resp.data ? resp.data : { remoteVersion: '', checkedAt: Date.now(), status: 'error', message: resp.error ?? '检查失败' });
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function doApplyUpdate(): Promise<void> {
+    if (!checkState) return;
+    if (!window.confirm(`将下载新版本并覆盖本地修改（含代码与设置），确认更新「${script.name}」到 v${checkState.remoteVersion}？`)) return;
+    setUpdating(true);
+    try {
+      const resp = await sendScriptsRequest<{ ok: boolean; data?: { script: UserScript }; error?: string }>({ type: 'SCRIPTS_APPLY_UPDATE', id: script.id });
+      if (resp.ok && resp.data) {
+        setCheckState(null);
+        onChanged(resp.data.script, `已更新到 v${resp.data.script.meta?.version ?? checkState.remoteVersion}`);
+      } else {
+        setCheckState({ ...checkState, status: 'error', message: resp.error ?? '更新失败' });
+      }
+    } finally {
+      setUpdating(false);
+    }
+  }
+
   return (
     <div className="detail__info">
       {meta.version && (
         <div className="detail__inforow">
           <span className="detail__infokey" title="version">版本</span>
           <span>{meta.version}</span>
+        </div>
+      )}
+      {(hasSource || checkState) && (
+        <div className="detail__inforow">
+          <span className="detail__infokey" title="update check">更新检查</span>
+          <span className="detail__infoval" role="status">
+            {checkState == null && <span style={{ color: 'var(--ink-3)' }}>尚未检查</span>}
+            {checkState?.status === 'up-to-date' && <span>已是最新{checkState.remoteVersion ? ` v${checkState.remoteVersion}` : ''}</span>}
+            {checkState?.status === 'available' && (
+              <>
+                <span>有新版本 v{checkState.remoteVersion}</span>
+                <Button variant="signal" disabled={updating || checking} onClick={() => void doApplyUpdate()} style={{ marginLeft: 8 }}>
+                  更新
+                </Button>
+              </>
+            )}
+            {checkState?.status === 'error' && <span style={{ color: 'var(--warn)' }}>{checkState.message}</span>}
+          </span>
         </div>
       )}
       {meta.author && (
@@ -107,6 +167,14 @@ export function DetailInfoTab({ script, onChanged, onDelete }: Props) {
         </div>
       )}
       <div className="detail__actions">
+        <Button
+          variant="ghost"
+          disabled={!hasSource || checking || updating}
+          title={hasSource ? undefined : '无更新源（@updateURL/@downloadURL）'}
+          onClick={() => void checkUpdate()}
+        >
+          <RefreshCw size={13} aria-hidden /> {checking ? '检查中…' : '检查更新'}
+        </Button>
         <Button variant="signal" disabled={busy} onClick={() => void toggleEnabled()}>
           {script.enabled ? '禁用脚本' : '启用脚本'}
         </Button>

@@ -3,8 +3,10 @@
 // 运行区 = runtimeEntries[activeTabId]（组件侧取值）；广播按 tabId 全落，取值时按 activeTabId 过滤。
 
 import { create } from 'zustand';
-import type { ScriptsRequest, ScriptsRuntimeEntry, ScriptsRuntimeEvent, ScriptsListData } from '../shared/messages';
+import { storage } from 'wxt/utils/storage';
+import type { ScriptsRequest, ScriptsRuntimeEntry, ScriptsRuntimeEvent, ScriptsListData, ScriptsUpdatesEvent } from '../shared/messages';
 import type { ScriptSummary } from '../shared/types';
+import { UPDATE_STATE_KEY, type ScriptUpdateState } from '../shared/types';
 
 export async function sendScriptsRequest<T = unknown>(req: ScriptsRequest): Promise<T> {
   return (await browser.runtime.sendMessage(req)) as T;
@@ -59,6 +61,12 @@ interface ScriptsState {
   errors: Record<string, GmErrorItem[]>;
   /** GM_xmlhttpRequest 跨域批准队列（spec §11） */
   confirms: GmConfirmItem[];
+  /** 启动/手动检查的更新状态 map（scriptId → state；spec §2） */
+  updates: Record<string, ScriptUpdateState>;
+  /** 本次会话忽略更新的脚本（不持久化；下轮启动重查还会提醒） */
+  dismissed: Set<string>;
+  applyUpdatesEvent: (e: ScriptsUpdatesEvent) => void;
+  dismissUpdate: (scriptId: string) => void;
   setQuery: (q: string) => void;
   setActiveTab: (id: number | null) => void;
   applyRuntimeEvent: (e: ScriptsRuntimeEvent) => void;
@@ -83,6 +91,8 @@ export const useScripts = create<ScriptsState>((set) => ({
   menus: [],
   errors: {},
   confirms: [],
+  updates: {},
+  dismissed: new Set<string>(),
 
   setQuery: (query) => set({ query }),
   setActiveTab: (activeTabId) => set({ activeTabId }),
@@ -103,6 +113,13 @@ export const useScripts = create<ScriptsState>((set) => ({
   applyConfirmEvent: (e) => set((s) => ({ confirms: [...s.confirms, e.confirm] })),
   applyConfirmResolved: (confirmId) => set((s) => ({ confirms: s.confirms.filter((c) => c.confirmId !== confirmId) })),
 
+  applyUpdatesEvent: (e) => set({ updates: e.updates }),
+  dismissUpdate: (scriptId) => set((s) => {
+    const next = new Set(s.dismissed);
+    next.add(scriptId);
+    return { dismissed: next };
+  }),
+
   refresh: async () => {
     set({ loading: true });
     try {
@@ -113,6 +130,8 @@ export const useScripts = create<ScriptsState>((set) => ({
       const rtResp = await sendScriptsRequest<{ ok: boolean; data?: { entries: ScriptsRuntimeEntry[] } }>({ type: 'SCRIPTS_GET_RUNTIME' });
       // GM 状态复水（面板重开而 SW 存活时，广播不补量——冷读一次；GmErrorEntry 形状与 GmErrorItem 一致）
       const gmResp = await sendScriptsRequest<{ ok: boolean; data?: { menus: GmMenuEntry[]; errors: Record<string, GmErrorItem[]>; confirms: GmConfirmItem[] } }>({ type: 'SCRIPTS_GET_GM_STATE' });
+      // 复水更新状态（侧边栏冷开错过 SCRIPTS_UPDATES 广播；WXT storage 读写对称，UPDATE_STATE_KEY 的 local: 前缀由 WXT 处理）
+      const storedUpdates = await storage.getItem<Record<string, ScriptUpdateState>>(UPDATE_STATE_KEY);
       const entries = rtResp.data?.entries ?? [];
       set({
         summaries: listResp.data?.scripts ?? [],
@@ -122,6 +141,7 @@ export const useScripts = create<ScriptsState>((set) => ({
         menus: gmResp.data?.menus ?? [],
         errors: gmResp.data?.errors ?? {},
         confirms: gmResp.data?.confirms ?? [],
+        updates: storedUpdates ?? {},
         loading: false,
       });
     } catch {
