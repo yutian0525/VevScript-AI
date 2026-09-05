@@ -13,9 +13,30 @@
 // @noframes
 // ==/UserScript==
 
-GMT.render({
-  module: 'tabs',
-  title: 'GM 手测·标签页',
-  cards: [],
-  probe: { mark: '__gmt_probe=1', key: '__gmt_manual_probe_tabs' }
-});
+(function () {
+  var handle = null;
+
+  var actions = {
+    't1-open': function (log) {
+      handle = GM_openInTab(location.origin + location.pathname + '?__gmt_probe=1', { active: false });
+      log('t1', '句柄 closed=' + handle.closed + ' typeof close=' + typeof handle.close);
+    },
+    't2-close': function (log) {
+      if (!handle) { log('t2', '先点上一卡的「打开探针页」'); return; }
+      handle.onclose = function () { GMT.log('t2', 'onclose 触发 @ ' + new Date().toLocaleTimeString()); };
+      handle.close();
+      log('t2', 'close() 已调用，等探针页关闭…');
+    }
+  };
+
+  GMT.render({
+    module: 'tabs',
+    title: 'GM 手测·标签页',
+    cards: [
+      { id: 't1', api: 'GM_openInTab(url, opts?)', desc: '开新 tab（active:false 后台开），返回句柄 {closed, close(), onclose}。', steps: [{ id: 't1-open', label: '后台打开探针页' }], expect: '后台出现新 tab；日志 closed=false、close 为 function' },
+      { id: 't2', api: '句柄 close() / onclose', desc: 'close() 关闭探针页；关闭后 onclose 回调触发、closed 翻 true。', steps: [{ id: 't2-close', label: '关闭探针页' }, '切回本页看日志'], expect: '探针页被关；日志出现 onclose 触发时间戳' }
+    ],
+    actions: actions,
+    probe: { mark: '__gmt_probe=1', key: '__gmt_manual_probe_tabs' }
+  });
+})();

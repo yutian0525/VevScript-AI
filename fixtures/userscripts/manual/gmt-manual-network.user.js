@@ -1,15 +1,17 @@
 // ==UserScript==
-// @name         GM 手测·标签页
+// @name         GM 手测·网络
 // @namespace    ai-browser-extend/gmt-manual
 // @version      1.0.0
-// @description  GM 标签页模块人工测试：说明 + 步骤 + 人工标记
+// @description  GM 网络模块人工测试：说明 + 步骤 + 人工标记
 // @match        *://*/*
 // @run-at       document-end
-// @grant        GM_openInTab
+// @grant        GM_xmlhttpRequest
+// @grant        GM_setClipboard
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @grant        GM_addStyle
 // @grant        GM_deleteValue
+// @grant        GM_addStyle
+// @connect      cdn.jsdelivr.net
 // @noframes
 // ==/UserScript==
 
@@ -201,30 +203,86 @@ var GMT = (function () {
 })();
 
 (function () {
-  var handle = null;
+  var PKG = 'https://cdn.jsdelivr.net/npm/zepto@1.2.0/package.json';
+
+  // 无 @connect 版本全文（确认卡分支引导用）：临时脚本文本，人工导入触发确认卡
+  var NO_CONNECT_SRC = [
+    '// ==UserScript==',
+    '// @name         GM 手测·网络确认卡',
+    '// @namespace    ai-browser-extend/gmt-manual',
+    '// @version      1.0.0',
+    '// @description  触发 @connect 确认卡的临时脚本（测完删除）',
+    '// @match        *://*/*',
+    '// @run-at       document-end',
+    '// @grant        GM_xmlhttpRequest',
+    '// @grant        GM_addStyle',
+    '// @grant        GM_getValue',
+    '// @grant        GM_setValue',
+    '// @grant        GM_deleteValue',
+    '// @noframes',
+    '// ==/UserScript==',
+    '',
+    '(function () {',
+    '  GM_xmlhttpRequest({',
+    '    method: "GET",',
+    '    url: "https://cdn.jsdelivr.net/npm/zepto@1.2.0/package.json",',
+    '    timeout: 15000,',
+    '    onload: function (r) { GM_log("确认卡放行 → HTTP " + r.status); },',
+    '    onerror: function (r) { GM_log("请求失败：" + ((r && r.error) || "unknown")); }',
+    '  });',
+    '})();'
+  ].join('\n');
 
   var actions = {
-    't1-open': function (log) {
-      handle = GM_openInTab(location.origin + location.pathname + '?__gmt_probe=1', { active: false });
-      log('t1', '句柄 closed=' + handle.closed + ' typeof close=' + typeof handle.close);
+    'n1-get': function (log) {
+      GM_xmlhttpRequest({
+        method: 'GET', url: PKG, timeout: 15000,
+        onload: function (r) {
+          log('n1', 'HTTP ' + r.status + ' content-type=' + ((r.headers || {})['content-type'] || '?') + ' finalUrl=' + (r.finalUrl || '?') + ' bodyLength=' + (r.body || '').length);
+        },
+        onerror: function (r) { log('n1', '请求失败：' + ((r && r.error) || 'unknown')); },
+        ontimeout: function () { log('n1', '请求超时'); }
+      });
+      log('n1', '已发起请求…');
     },
-    't2-close': function (log) {
-      if (!handle) { log('t2', '先点上一卡的「打开探针页」'); return; }
-      handle.onclose = function () { GMT.log('t2', 'onclose 触发 @ ' + new Date().toLocaleTimeString()); };
-      handle.close();
-      log('t2', 'close() 已调用，等探针页关闭…');
+    'n2-drop': function (log) {
+      GM_xmlhttpRequest({
+        method: 'GET', url: PKG, timeout: 15000,
+        headers: { 'user-agent': 'gmt', 'x-gmt': '1' },
+        onload: function (r) {
+          log('n2', 'HTTP ' + r.status + ' droppedHeaders=' + JSON.stringify((r || {}).droppedHeaders));
+        },
+        onerror: function (r) { log('n2', '请求失败：' + ((r && r.error) || 'unknown')); }
+      });
+      log('n2', '已发起带 user-agent 头的请求…');
+    },
+    'n3-deny': function (log) {
+      GM_xmlhttpRequest({
+        method: 'GET', url: 'https://example.org/favicon.ico', timeout: 15000,
+        onload: function () { log('n3', '意外放行（应为拒绝）'); },
+        onerror: function (r) { log('n3', '拒绝 error=' + ((r && r.error) || 'unknown')); }
+      });
+      log('n3', '已发起未列 host 的请求…');
+    },
+    'n4-copy': function (log) {
+      GM.setClipboard(NO_CONNECT_SRC).then(function () {
+        GMT.log('n4', '无 @connect 版本已复制，去脚本池导入并发到任意页触发确认卡');
+      }, function (e) {
+        GMT.log('n4', '复制失败：' + ((e && e.message) || e));
+      });
     }
   };
 
   GMT.render({
-    module: 'tabs',
-    title: 'GM 手测·标签页',
+    module: 'network',
+    title: 'GM 手测·网络',
     cards: [
-      { id: 't1', api: 'GM_openInTab(url, opts?)', desc: '开新 tab（active:false 后台开），返回句柄 {closed, close(), onclose}。', steps: [{ id: 't1-open', label: '后台打开探针页' }], expect: '后台出现新 tab；日志 closed=false、close 为 function' },
-      { id: 't2', api: '句柄 close() / onclose', desc: 'close() 关闭探针页；关闭后 onclose 回调触发、closed 翻 true。', steps: [{ id: 't2-close', label: '关闭探针页' }, '切回本页看日志'], expect: '探针页被关；日志出现 onclose 触发时间戳' }
+      { id: 'n1', api: 'GM_xmlhttpRequest(details) — @connect 命中', desc: '@connect 列出的 host 直接放行；响应 {status,statusText,headers,body,finalUrl}。', steps: [{ id: 'n1-get', label: 'GET jsDelivr package.json' }], expect: 'HTTP 200、content-type 出现、bodyLength > 0' },
+      { id: 'n2', api: 'GM_xmlhttpRequest — droppedHeaders', desc: 'fetch 禁头（user-agent/referer/cookie/origin/host）被忽略并在响应 droppedHeaders 列出。', steps: [{ id: 'n2-drop', label: '带 user-agent 头请求' }], expect: 'droppedHeaders 含 "user-agent"，请求本身成功' },
+      { id: 'n3', api: 'GM_xmlhttpRequest — @connect 拒绝', desc: '列了 @connect 但请求不命中 → 直接拒绝（无网络 I/O），error 文案应可读。', steps: [{ id: 'n3-deny', label: '请求未列 host' }], expect: 'error 含「不在 @connect 列表」字样' },
+      { id: 'n4', api: '@connect 确认卡分支', desc: '未列 @connect 的脚本请求任意 host → 侧边栏弹确认卡（允许一次/总是/拒绝，60s 超时拒绝）。', steps: [{ id: 'n4-copy', label: '复制无 @connect 版本' }, '脚本池导入该文本 → 刷新任意页触发请求 → 侧边栏批准 → 回来看临时脚本 console 日志'], expect: '确认卡弹出；批准后临时脚本 console 出现「确认卡放行 → HTTP 200」' }
     ],
-    actions: actions,
-    probe: { mark: '__gmt_probe=1', key: '__gmt_manual_probe_tabs' }
+    actions: actions
   });
 })();
 })();
