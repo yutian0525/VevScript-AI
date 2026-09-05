@@ -1,0 +1,28 @@
+components/confirm/ConfirmHubApp.tsx
+  s_9deca6d340b81c::t_db0e1bf80814c9 17-25
+background/confirm-queue.ts
+  s_9deca6d340b81c::t_938d5c30a32358 18-19,23-27
+  s_9deca6d340b81c::t_1f42d64a6515a5 38-57,59-60
+  s_9deca6d340b81c::t_01c9f978758393 110
+  s_9deca6d340b81c::t_593f29c22d1f7e 28
+tests/background/gm-connect.test.ts
+  s_9deca6d340b81c::t_0a4ad792a3c874 48
+tests/background/confirm-queue.test.ts
+  s_9deca6d340b81c::t_9ba261244f8b10 41-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "592f5edc8092dceec60eae6d23f48150ce575780",
+  "prompts": {},
+  "sessions": {
+    "s_9deca6d340b81c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c185704a-ac04-495f-b0a7-d7674bd87f98",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
