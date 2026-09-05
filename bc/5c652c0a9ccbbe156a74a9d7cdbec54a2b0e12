@@ -1,0 +1,19 @@
+wxt.config.ts
+  s_f76272b3d751e6::t_ab5fe011b4f865 5-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bc5c652c0a9ccbbe156a74a9d7cdbec54a2b0e12",
+  "prompts": {},
+  "sessions": {
+    "s_f76272b3d751e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc226d95-afc2-4dad-8a48-17095ac2edfd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
