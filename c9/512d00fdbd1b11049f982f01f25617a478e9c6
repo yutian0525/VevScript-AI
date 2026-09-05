@@ -1,0 +1,33 @@
+stores/chat.ts
+  s_ed860ebd1ec127::t_77dacd1ff9f558 153-156
+  s_ed860ebd1ec127::t_e399f034192892 9
+entrypoints/sidepanel/styles.css
+  s_ed860ebd1ec127::t_f977dace707e3d 333-347
+tests/agent/skills-context.test.ts
+  s_ed860ebd1ec127::t_ccc138a7b80fcb 108-126
+components/chat/ChatView.tsx
+  s_ed860ebd1ec127::t_57715593a81414 3
+  s_ed860ebd1ec127::t_b0869fff1e9518 291-293,295-297
+tests/stores/chat.test.ts
+  s_ed860ebd1ec127::t_516c742268e6ed 59-66
+shared/messages.ts
+  s_ed860ebd1ec127::t_88a61d7de234d0 109-110
+agent/loop.ts
+  s_ed860ebd1ec127::t_9560075665a534 104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c9512d00fdbd1b11049f982f01f25617a478e9c6",
+  "prompts": {},
+  "sessions": {
+    "s_ed860ebd1ec127": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d0a5f89-6c7a-4bb3-8a10-7632eace911a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
