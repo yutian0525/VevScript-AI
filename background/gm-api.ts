@@ -11,6 +11,10 @@ import { bridgeTokensForUrl } from './gm-token';
 import { classifyGrants } from '../shared/gm-apis';
 import { enqueueConfirm } from './confirm-queue';
 import { createRequest, type CsResponse, type GmDebugInfoData } from '../shared/messages';
+import { OpenAICompatProvider } from '../agent/provider/openai-compat';
+import type { ChatMessage, ContentPart, StreamEvent } from '../agent/provider/types';
+import { getSettings } from '../storage/settings';
+import { getLlmTier } from './gm-permissions';
 
 export interface GmErrorEntry {
   at: number;
@@ -48,6 +52,7 @@ const API_TO_GRANT: Record<string, string> = {
   CloseTab: 'GM_openInTab', // close 是 GM_openInTab 返回句柄上的方法，共用同一 grant
   XmlHttpRequest: 'GM_xmlhttpRequest',
   AbortRequest: 'GM_xmlhttpRequest',
+  LlmChat: 'GM_llmChat',
 };
 
 // 框架内部通道（错误上报）与值存储不受 @grant 限制：值 API 的 grant 已在 wrapper 侧安装期把关，
@@ -353,6 +358,168 @@ async function doXmlHttpRequest(
   }
 }
 
+// ---- GM_llmChat（脚本调用大模型，spec docs/superpowers/specs/2026-09-05-gm-llm-chat-design.md）----
+
+// 「本会话内允许」：SW 内存态，重启失效（与菜单表同款取舍）。档位变更时由 SCRIPTS_SET_LLM_TIER 清。
+const llmSessionAllow = new Set<string>();
+
+const LLM_IMAGE_MAX = 5 * 1024 * 1024;      // 单张 data URL 上限（base64 后）
+const LLM_PAYLOAD_MAX = 2 * 1024 * 1024;    // 消息总载荷上限
+const LLM_RESPONSE_MAX = 1024 * 1024;       // 响应聚合文本上限
+const LLM_DEFAULT_TIMEOUT = 120_000;
+const LLM_DENY_MSG = 'permission denied: 大模型调用已被用户拒绝（可在脚本详情 → 设置 → 模型调用 改档位）';
+
+/** 测试注入点：SW 内不可 mock import 的 provider 构造，经此替换。
+ *  返回类型 = streamChat 签名本身（Provider 接口的结构形状）——fake provider 无需继承类。 */
+type LlmProviderLike = { streamChat: OpenAICompatProvider['streamChat'] };
+let llmProviderFactory: (config: { baseUrl: string; apiKey: string; model: string; extraBody?: Record<string, unknown> }) => LlmProviderLike =
+  (config) => new OpenAICompatProvider(config);
+
+/** 仅测试用：替换 provider 工厂。 */
+export function __setLlmProviderFactory(f: typeof llmProviderFactory): void { llmProviderFactory = f; }
+
+/** 仅测试用：清 session 授权表。 */
+export function __resetLlmSession(): void { llmSessionAllow.clear(); }
+
+interface LlmDetails {
+  messages?: unknown;
+  timeout?: number;
+}
+
+function fail(msg: string): { ok: false; error: string } {
+  return { ok: false, error: msg };
+}
+
+/** 参数校验 + 归一化为 ChatMessage[]。返回 union：失败带 error。 */
+function validateLlmMessages(raw: unknown): { ok: true; messages: ChatMessage[] } | { ok: false; error: string } {
+  if (!Array.isArray(raw) || raw.length === 0) return fail('缺少 messages 或为空数组');
+  const out: ChatMessage[] = [];
+  for (const m of raw) {
+    const role = (m as { role?: unknown })?.role;
+    if (role !== 'system' && role !== 'user' && role !== 'assistant') {
+      return fail(`非法 role: ${String(role)}（仅支持 system/user/assistant）`);
+    }
+    const content = (m as { content?: unknown })?.content;
+    if (typeof content === 'string') { out.push({ role, content }); continue; }
+    if (!Array.isArray(content)) return fail('非法 content（应为字符串或 {type,...} 数组）');
+    const parts: ContentPart[] = [];
+    for (const p of content) {
+      const t = (p as { type?: unknown })?.type;
+      if (t === 'text') {
+        parts.push({ type: 'text', text: String((p as { text?: unknown })?.text ?? '') });
+      } else if (t === 'image_url') {
+        const url = String((p as { image_url?: { url?: unknown } })?.image_url?.url ?? '');
+        if (url.startsWith('data:') && url.length > LLM_IMAGE_MAX) {
+          return fail(`图片过大：${Math.round(url.length / 1024)}KB（上限 5MB）`);
+        }
+        parts.push({ type: 'image_url', imageUrl: url });
+      } else {
+        return fail(`非法 content part type: ${String(t)}`);
+      }
+    }
+    out.push({ role, content: parts });
+  }
+  const payload = JSON.stringify(out);
+  if (payload.length > LLM_PAYLOAD_MAX) {
+    return fail(`消息载荷过大：${Math.round(payload.length / 1024)}KB（上限 2MB）`);
+  }
+  return { ok: true, messages: out };
+}
+
+/** 权限档决策：deny 拒 / allow 放 / ask 查 session 表，未命中弹确认卡。
+ *  deny 由调用方（doLlmChat）提前拦截——权限层在最外，档位拒绝不依赖模型配置、不弹卡。 */
+async function llmGate(scriptId: string, scriptName: string, msgCount: number, payloadKB: number, tier: 'ask' | 'allow' | 'deny'): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (tier === 'deny') return fail(LLM_DENY_MSG);
+  if (tier === 'allow') return { ok: true };
+  if (llmSessionAllow.has(scriptId)) return { ok: true };
+  const choice = await enqueueConfirm({
+    kind: 'llm',
+    title: '大模型调用确认',
+    message: `脚本「${scriptName}」请求调用大模型`,
+    rows: [
+      { label: '脚本', value: scriptName },
+      { label: '模型', value: (await getSettings()).provider.model || '（未配置）', mono: true },
+      { label: '消息数', value: String(msgCount), mono: true },
+      { label: '载荷', value: `${payloadKB}KB`, mono: true },
+    ],
+    actions: [
+      { decision: 'allow-once', label: '允许一次', variant: 'primary' },
+      { decision: 'session', label: '本会话内允许' },
+      { decision: 'deny', label: '拒绝', variant: 'danger', countdown: true },
+    ],
+    timeoutMs: 60_000,
+  });
+  if (choice === 'session') { llmSessionAllow.add(scriptId); return { ok: true }; }
+  if (choice === 'allow-once') return { ok: true };
+  return fail(LLM_DENY_MSG);
+}
+
+async function doLlmChat(
+  scriptId: string, params: unknown[], sender: Sender,
+): Promise<{ ok: true; data?: unknown } | { ok: false; error: string }> {
+  const details = (params[0] ?? {}) as LlmDetails;
+  const v = validateLlmMessages(details.messages);
+  if (!v.ok) return v;
+  const script = await getScript(scriptId);
+  if (!script) return fail('脚本不存在');
+
+  // deny 硬拒先于模型配置检查（权限层最外：档位拒绝时既不弹卡也不暴露配置状态）
+  const tier = await getLlmTier(scriptId);
+  if (tier === 'deny') return fail(LLM_DENY_MSG);
+
+  const { provider } = await getSettings();
+  if (!provider.baseUrl || !provider.apiKey || !provider.model) {
+    return fail('模型未配置：请到侧边栏 设置 → 模型设置 配置后重试');
+  }
+  const payloadKB = Math.round(JSON.stringify(v.messages).length / 1024);
+  const gate = await llmGate(scriptId, script.name, v.messages.length, payloadKB, tier);
+  if (!gate.ok) return gate;
+
+  const tabId = sender?.tab?.id;
+  const chan = params[1] as string | undefined; // wrapper 传的通道号（直调/旧调用无 chan → chunk 不下发）
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(new Error('timeout')), details.timeout ?? LLM_DEFAULT_TIMEOUT);
+
+  // chunk 下行 promise 链：保证 gmres resolve 晚于所有 LLM_CHUNK（时序不变量）
+  let chain: Promise<void> = Promise.resolve();
+  const enqueueChunk = (delta: string): void => {
+    chain = chain.then(() =>
+      tabId != null && chan ? sendGmEvent(tabId, scriptId, 'LLM_CHUNK', { chan, delta }) : undefined,
+    );
+  };
+
+  let text = '';
+  let usage: { promptTokens?: number; completionTokens?: number } | undefined;
+  let finishReason: string | undefined;
+  let streamError: string | undefined;
+
+  try {
+    const p = llmProviderFactory(provider);
+    p.streamChat({ messages: v.messages, tools: [], signal: ac.signal }, (ev: StreamEvent) => {
+      if (ev.type === 'text-delta') {
+        text += ev.text;
+        if (text.length > LLM_RESPONSE_MAX) { ac.abort(new Error('response-too-large')); return; }
+        enqueueChunk(ev.text);
+      } else if (ev.type === 'message-done') {
+        usage = ev.usage; finishReason = ev.finishReason;
+      } else if (ev.type === 'error') {
+        streamError = ev.error;
+      }
+      // reasoning-delta 忽略（不下发）
+    });
+    await chain;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (text.length > LLM_RESPONSE_MAX) return fail('响应过大：超 1MB 上限');
+  if (ac.signal.reason instanceof Error && ac.signal.reason.message === 'timeout') {
+    return fail(`LLM 调用超时（${details.timeout ?? LLM_DEFAULT_TIMEOUT}ms）`);
+  }
+  if (streamError) return fail(`LLM 调用失败: ${streamError}`);
+  return { ok: true, data: { text, usage, finishReason } };
+}
+
 // ---- 分发 ----
 
 export async function handleGmCall(
@@ -453,6 +620,8 @@ export async function handleGmCall(
       try { await browser.tabs.remove(tabId); return { ok: true, data: null }; }
       catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
     }
+    case 'LlmChat':
+      return doLlmChat(scriptId, params, sender);
     case 'XmlHttpRequest':
       return doXmlHttpRequest(scriptId, params, sender);
     case 'AbortRequest':

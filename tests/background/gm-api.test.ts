@@ -5,9 +5,13 @@ import { storage } from 'wxt/utils/storage';
 import {
   gmErrorCounts, getErrorBuffer, clearErrors, getMenuSnapshot, handleGmCall,
   initGmApi, cleanupScriptState,
+  __setLlmProviderFactory, __resetLlmSession,
 } from '../../background/gm-api';
+import { __resetConfirmQueue, getPending, resolveConfirm } from '../../background/confirm-queue';
+import { setLlmTier } from '../../background/gm-permissions';
 import { saveScript } from '../../storage/scripts';
 import type { UserScript } from '../../shared/types';
+import type { StreamEvent } from '../../agent/provider/types';
 
 // fakeBrowser 未内置 notifications API——本文件用例需要它，顶部统一挂 stub
 (browser as unknown as Record<string, unknown>).notifications = { create: vi.fn(async () => 'id') };
@@ -293,5 +297,112 @@ describe('gm-api SCRIPTS_GET_GM_STATE 复水快照', () => {
     expect(resp.data.menus).toEqual([{ scriptId: 's1', commands: [{ key: 'm1', name: '抓取' }] }]);
     expect(resp.data.errors['s1']).toHaveLength(1);
     expect(resp.data.errors['s1']![0]).toMatchObject({ message: 'boom', line: 3 });
+  });
+});
+
+describe('gm-api LlmChat 参数校验', () => {
+  beforeEach(() => { fakeBrowser.reset(); vi.restoreAllMocks(); __resetConfirmQueue(); vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({} as never); });
+
+  it('未 grant → permission not requested', async () => {
+    await saveScript(mkScript()); // 只 grant GM_setValue
+    const r = await call('LlmChat', [{ messages: [{ role: 'user', content: 'hi' }] }]);
+    expect(r).toMatchObject({ ok: false, error: expect.stringContaining('permission not requested') });
+  });
+
+  it('模型未配置 → 明确报错', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
+    const r = await call('LlmChat', [{ messages: [{ role: 'user', content: 'hi' }] }]);
+    expect(r).toMatchObject({ ok: false, error: expect.stringContaining('模型未配置') });
+  });
+
+  it('messages 缺失/空 → 报错', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
+    const r1 = await call('LlmChat', [{}]);
+    const r2 = await call('LlmChat', [{ messages: [] }]);
+    expect(r1).toMatchObject({ ok: false, error: expect.stringContaining('messages') });
+    expect(r2).toMatchObject({ ok: false, error: expect.stringContaining('messages') });
+  });
+
+  it('非法 role / content 形状 / part type → 报错', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
+    const bad = await call('LlmChat', [{ messages: [{ role: 'tool', content: 'x' }] }]);
+    expect(bad).toMatchObject({ ok: false, error: expect.stringContaining('role') });
+    const bad2 = await call('LlmChat', [{ messages: [{ role: 'user', content: 42 }] }]);
+    expect(bad2).toMatchObject({ ok: false, error: expect.stringContaining('content') });
+    const bad3 = await call('LlmChat', [{ messages: [{ role: 'user', content: [{ type: 'audio', text: 'x' }] }] }]);
+    expect(bad3).toMatchObject({ ok: false, error: expect.stringContaining('type') });
+  });
+
+  it('图片超 5MB / 载荷超 2MB → 报错', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
+    const big = 'data:image/png;base64,' + 'A'.repeat(5 * 1024 * 1024);
+    const r1 = await call('LlmChat', [{ messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: big } }] }] }]);
+    expect(r1).toMatchObject({ ok: false, error: expect.stringContaining('图片过大') });
+    const fat = 'x'.repeat(2 * 1024 * 1024 + 1);
+    const r2 = await call('LlmChat', [{ messages: [{ role: 'user', content: fat }] }]);
+    expect(r2).toMatchObject({ ok: false, error: expect.stringContaining('载荷过大') });
+  });
+});
+
+describe('gm-api LlmChat 权限档', () => {
+  beforeEach(() => {
+    fakeBrowser.reset(); vi.restoreAllMocks(); __resetConfirmQueue(); __resetLlmSession();
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({} as never);
+    // 注入 fake provider：立即 text-delta 两段 + message-done（事件形状按 StreamEvent 构造）
+    __setLlmProviderFactory(() => ({
+      streamChat: (_params: unknown, onEvent: (ev: StreamEvent) => void) => {
+        queueMicrotask(() => {
+          onEvent({ type: 'text-delta', text: '你' });
+          onEvent({ type: 'text-delta', text: '好' });
+          onEvent({ type: 'message-done', usage: { promptTokens: 3, completionTokens: 2 }, finishReason: 'stop' });
+        });
+        return { cancel: () => {} };
+      },
+    }));
+  });
+
+  it('deny 档直接拒绝（不弹卡、不调 provider）', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
+    await setLlmTier('s1', 'deny');
+    const r = await call('LlmChat', [{ messages: [{ role: 'user', content: 'hi' }] }]);
+    expect(r).toMatchObject({ ok: false, error: expect.stringContaining('permission denied') });
+    expect(getPending()).toHaveLength(0);
+  });
+
+  it('allow 档直通', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
+    await setLlmTier('s1', 'allow');
+    const { saveSettings } = await import('../../storage/settings');
+    await saveSettings({ provider: { baseUrl: 'https://api.test/v1', apiKey: 'k', model: 'm' } });
+    const r = await call('LlmChat', [{ messages: [{ role: 'user', content: 'hi' }] }]);
+    expect(r).toEqual({ ok: true, data: { text: '你好', usage: { promptTokens: 3, completionTokens: 2 }, finishReason: 'stop' } });
+  });
+
+  it('ask 档：弹卡 → deny 拒绝；allow-once 一次放行（不记 session）；session 后免卡', async () => {
+    const { saveSettings } = await import('../../storage/settings');
+    await saveSettings({ provider: { baseUrl: 'https://api.test/v1', apiKey: 'k', model: 'm' } });
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
+    const okParams = [{ messages: [{ role: 'user', content: 'hi' }] }, 'inst1:1'];
+
+    const p1 = call('LlmChat', okParams);
+    await new Promise((r) => setTimeout(r, 10));
+    const confirms = getPending();
+    expect(confirms).toHaveLength(1);
+    expect(confirms[0]).toMatchObject({ kind: 'llm', title: '大模型调用确认' });
+    resolveConfirm(confirms[0]!.confirmId, 'deny');
+    expect(await p1).toMatchObject({ ok: false, error: expect.stringContaining('permission denied') });
+
+    const p2 = call('LlmChat', okParams);
+    await new Promise((r) => setTimeout(r, 10));
+    resolveConfirm(getPending()[0]!.confirmId, 'allow-once');
+    expect(await p2).toMatchObject({ ok: true });
+
+    const r3 = call('LlmChat', okParams); // allow-once 不记 session —— 第三次仍弹卡
+    await new Promise((r) => setTimeout(r, 10));
+    resolveConfirm(getPending()[0]!.confirmId, 'session');
+    expect(await r3).toMatchObject({ ok: true });
+    const r4 = await call('LlmChat', okParams); // session 已记 → 免卡直通
+    expect(await r4).toMatchObject({ ok: true });
+    expect(getPending()).toHaveLength(0);
   });
 });

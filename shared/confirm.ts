@@ -2,7 +2,7 @@
 // 通用确认抽象（三环境共享）：队列只管登记/广播/超时/解析，不含任何副作用。
 // 所有文案/明细/按钮由生产者填 props；kind 仅供生产者区分自己的请求来源，队列/页面对其无特殊逻辑。
 
-export type ConfirmKind = 'connect'; // 将来扩展：| 'script-op' 等
+export type ConfirmKind = 'connect' | 'llm'; // 将来扩展：| 'script-op' 等
 
 export interface ConfirmDetailRow {
   label: string; // "主机" / "方法" / "URL" / "来源"
