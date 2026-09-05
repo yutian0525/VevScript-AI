@@ -37,9 +37,7 @@ async function ensureHub(): Promise<void> {
     }
     hubTabId = null;
   }
-  // confirm.html 入口由后续任务创建，WXT 生成的 PublicPath 联合尚未收录该路径，先放宽为 string。
-  const getURL = browser.runtime.getURL as (path: string) => string;
-  const tab = await browser.tabs.create({ url: getURL(HUB_URL), active: true }).catch(() => null);
+  const tab = await browser.tabs.create({ url: browser.runtime.getURL(HUB_URL), active: true }).catch(() => null);
   hubTabId = tab?.id ?? null;
 }
 
