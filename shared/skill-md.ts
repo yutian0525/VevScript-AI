@@ -16,6 +16,18 @@ export type ParseSkillResult =
 /** command 格式（storage/skills.ts 共用） */
 export const SKILL_COMMAND_RE = /^[a-z0-9][a-z0-9-]{0,31}$/;
 
+/** 从任意字符串派生合法 command：小写化 → 非 [a-z0-9] 段（空格/中文/符号）折叠为连字符 →
+ *  去首尾连字符 → 截断 32 → 再去尾部连字符。派生不出合法值（纯中文/纯符号/空）时返回 ''。 */
+export function deriveCommand(source: string): string {
+  const slug = source
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32)
+    .replace(/-+$/g, '');
+  return SKILL_COMMAND_RE.test(slug) ? slug : '';
+}
+
 /** 单文档解析。filename 用于缺 name 时的兜底（去 .md 后缀）。 */
 export function parseSkillMd(text: string, filename?: string): ParseSkillResult {
   const lines = text.split(/\r?\n/);
@@ -41,18 +53,33 @@ export function parseSkillMd(text: string, filename?: string): ParseSkillResult 
   const content = lines.slice(i).join('\n').trim();
 
   const warnings: string[] = [];
-  const command = meta.command ?? '';
-  if (!SKILL_COMMAND_RE.test(command)) {
-    return {
-      ok: false,
-      error: `command 缺失或非法（需 kebab-case 小写字母/数字/连字符，1-32 字符）：${command || '（空）'}`,
-    };
-  }
+  const fileBase = (filename ?? '').replace(/\.md$/i, '').trim();
+
   let name = meta.name ?? '';
   if (!name) {
-    name = (filename ?? '').replace(/\.md$/i, '').trim() || '未命名技能';
+    name = fileBase || '未命名技能';
     warnings.push(`缺少 name，使用文件名「${name}」`);
   }
+
+  // command 缺失/非法时自动派生：优先从 name，再从文件名兜底。都派生不出（纯中文/纯符号）才拒绝。
+  const rawCommand = meta.command ?? '';
+  let command = rawCommand;
+  if (!SKILL_COMMAND_RE.test(command)) {
+    const derived = deriveCommand(name) || deriveCommand(fileBase);
+    if (!derived) {
+      return {
+        ok: false,
+        error: `command 缺失或非法且无法从 name「${name}」自动派生（需含 ASCII 字母/数字）：${rawCommand || '（空）'}`,
+      };
+    }
+    command = derived;
+    warnings.push(
+      rawCommand
+        ? `command「${rawCommand}」非法，已从 name 自动派生为「${command}」`
+        : `缺少 command，已从 name 自动派生为「${command}」`,
+    );
+  }
+
   const description = meta.description ?? '';
   if (!meta.description) warnings.push('缺少 description');
 

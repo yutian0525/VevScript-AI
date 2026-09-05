@@ -33,14 +33,32 @@ describe('parseSkillMd', () => {
     if (r.ok) expect(r.skill.content).toBe('正文');
   });
 
-  it('缺 command → 拒绝', () => {
-    const r = parseSkillMd('---\nname: A\n---\n正文', 'a.md');
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toContain('command');
+  it('缺 command → 从 name 自动派生 + warning', () => {
+    const r = parseSkillMd('---\nname: My Skill\n---\n正文', 'a.md');
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.skill.command).toBe('my-skill');
+      expect(r.warnings.some((w) => w.includes('自动派生'))).toBe(true);
+    }
   });
 
-  it('command 格式非法 → 拒绝（kebab-case）', () => {
-    const r = parseSkillMd('---\nname: A\ncommand: Bad_Name!\n---\n正文', 'a.md');
+  it('command 格式非法 → 从 name 自动派生 + warning', () => {
+    const r = parseSkillMd('---\nname: Web Translate\ncommand: Bad_Name!\n---\n正文', 'a.md');
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.skill.command).toBe('web-translate');
+      expect(r.warnings.some((w) => w.includes('自动派生'))).toBe(true);
+    }
+  });
+
+  it('缺 command 且 name 纯中文 → 从文件名兜底派生', () => {
+    const r = parseSkillMd('---\nname: 网页翻译\n---\n正文', 'web-translate.md');
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.skill.command).toBe('web-translate');
+  });
+
+  it('缺 command 且 name 纯中文、文件名也派生不出 → 拒绝', () => {
+    const r = parseSkillMd('---\nname: 网页翻译\n---\n正文', '技能.md');
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain('command');
   });
