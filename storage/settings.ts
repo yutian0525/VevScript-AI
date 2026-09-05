@@ -35,7 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
     screenshotPolicy: 'on-demand',
     confirmGate: true,
     networkCaptureHeaders: 'redacted',
-    llmTimeoutSec: 120,
+    llmTimeoutSec: 10,
     llmMaxRetries: 2,
   },
 };

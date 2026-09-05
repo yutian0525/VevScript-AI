@@ -41,7 +41,7 @@ describe('settings storage', () => {
     await saveSettings({ agent: { confirmGate: false, screenshotPolicy: 'never' } });
     await saveSettings({ agent: { screenshotPolicy: 'on-demand' } });
     const s = await getSettings();
-    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted', llmTimeoutSec: 120, llmMaxRetries: 2 });
+    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted', llmTimeoutSec: 10, llmMaxRetries: 2 });
   });
 
   it('saveSettings 持久化到 local:settings（fakeBrowser storage 驱动）', async () => {
@@ -67,7 +67,7 @@ describe('settings storage', () => {
     });
     const s = await getSettings();
     expect(s.provider).toEqual({ baseUrl: 'https://old.com/v1', apiKey: '', model: '' });
-    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted', llmTimeoutSec: 120, llmMaxRetries: 2 });
+    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted', llmTimeoutSec: 10, llmMaxRetries: 2 });
   });
 
   it('AgentConfig 默认 networkCaptureHeaders=redacted', async () => {
@@ -85,9 +85,9 @@ describe('settings storage', () => {
 describe('agent 超时与重试配置', () => {
   beforeEach(() => fakeBrowser.reset());
 
-  it('默认 llmTimeoutSec=120 / llmMaxRetries=2', async () => {
+  it('默认 llmTimeoutSec=10 / llmMaxRetries=2', async () => {
     const s = await getSettings();
-    expect(s.agent.llmTimeoutSec).toBe(120);
+    expect(s.agent.llmTimeoutSec).toBe(10);
     expect(s.agent.llmMaxRetries).toBe(2);
   });
 
@@ -104,7 +104,7 @@ describe('agent 超时与重试配置', () => {
       agent: { confirmGate: false },
     });
     const s = await getSettings();
-    expect(s.agent.llmTimeoutSec).toBe(120);
+    expect(s.agent.llmTimeoutSec).toBe(10);
     expect(s.agent.llmMaxRetries).toBe(2);
   });
 });
