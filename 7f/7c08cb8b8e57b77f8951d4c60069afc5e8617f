@@ -1,0 +1,51 @@
+components/skills/SkillsPage.tsx
+  s_df52bcfd09b7e1::t_955b6c920ac145 173
+  s_df52bcfd09b7e1::t_0653b184d64592 283-298
+  s_df52bcfd09b7e1::t_491156caa29e1a 143-156
+shared/types.ts
+  s_df52bcfd09b7e1::t_e13c93a7a4f9bc 117-118,130
+public/skills/builtin.md
+  s_df52bcfd09b7e1::t_17fd59d9d0671f 1-39,41-107,109-146
+  s_df52bcfd09b7e1::t_2d659e897ae908 40,108
+tests/storage/skills.test.ts
+  s_df52bcfd09b7e1::t_d972e8b09d6c7a 118-122
+  s_df52bcfd09b7e1::t_3ebc0377e32851 92-100
+background/builtin-skills.ts
+  s_df52bcfd09b7e1::t_51bc5d9bb031be 17
+  s_df52bcfd09b7e1::t_5e4a84f2fd4326 13
+  s_df52bcfd09b7e1::t_0e1ae62bdff247 18
+  s_df52bcfd09b7e1::t_392e5f307b401f 1-10,12,14-16,19-43
+  s_df52bcfd09b7e1::t_f9e6ec905f29f5 11
+entrypoints/background.ts
+  s_df52bcfd09b7e1::t_6b86a1727fe5d8 63-64
+  s_df52bcfd09b7e1::t_62e33b24d30a43 19
+docs/superpowers/specs/2026-09-05-builtin-skills-design.md
+  s_df52bcfd09b7e1::t_1876d0d88aad16 1-80
+storage/skills.ts
+  s_df52bcfd09b7e1::t_35bf6926a626e7 64
+  s_df52bcfd09b7e1::t_6d7294b2579b8f 47,50-51
+tests/ui/skills-page.test.tsx
+  s_df52bcfd09b7e1::t_fd7c1aca1d0e30 1-56,61-66
+  s_df52bcfd09b7e1::t_382d2624fb753d 57,59-60
+  s_df52bcfd09b7e1::t_84dc97ecb99e1a 58
+tests/background/builtin-skills.test.ts
+  s_df52bcfd09b7e1::t_4556ca40aefb76 1-74,76,81-114
+  s_df52bcfd09b7e1::t_f50711adb11c60 80
+  s_df52bcfd09b7e1::t_7723bdd7ac611e 75,77-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7f7c08cb8b8e57b77f8951d4c60069afc5e8617f",
+  "prompts": {},
+  "sessions": {
+    "s_df52bcfd09b7e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73f45e65-6f72-4ce2-9279-b6b1b74dde3e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
