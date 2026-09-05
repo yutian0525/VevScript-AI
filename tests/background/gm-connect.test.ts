@@ -45,7 +45,7 @@ describe('matchConnectWithPermissions（查 always 授权库）', () => {
 describe('GM_xmlhttpRequest 确认流', () => {
   beforeEach(() => { fakeBrowser.reset(); vi.restoreAllMocks(); __resetConfirmQueue(); vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({} as never); vi.spyOn(browser.tabs, 'create').mockResolvedValue({ id: 100 } as never); });
 
-  it('CONFIRM 路径：广播 GM_CONFIRM_PENDING；resolve allow-once 后 fetch', async () => {
+  it('CONFIRM 路径：入队通用确认；resolve allow-once 后 fetch', async () => {
     await saveScript(mkScript());
     const fetchMock = vi.fn(async () => ({ ok: true, status: 200, statusText: 'OK', headers: new Map(), text: async () => 'body', url: 'https://c.com/x' }));
     vi.stubGlobal('fetch', fetchMock);

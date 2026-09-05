@@ -38,6 +38,19 @@ describe('confirm-queue', () => {
     expect(update).toHaveBeenCalledWith(100, { active: true });
   });
 
+  it('并发两条 pending（无间隔）：ensureHub 在途单例，只 create 一次 hub', async () => {
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(undefined as never);
+    const create = vi.spyOn(browser.tabs, 'create').mockResolvedValue({ id: 100 } as never);
+    vi.spyOn(browser.tabs, 'get').mockResolvedValue({ id: 100 } as never);
+    vi.spyOn(browser.tabs, 'update').mockResolvedValue({} as never);
+    // 同一事件循环内连发两条、中间不 await（脚本连打两个未 @connect 域）：旧实现会因 hubTabId 未回填而 create 两次
+    void enqueueConfirm(spec());
+    void enqueueConfirm(spec());
+    await new Promise((r) => setTimeout(r, 0));
+    expect(getPending()).toHaveLength(2);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
   it('resolveConfirm：解析 promise 为该 decision + 广播 CONFIRM_RESOLVED + 出队', async () => {
     const send = vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(undefined as never);
     vi.spyOn(browser.tabs, 'create').mockResolvedValue({ id: 100 } as never);

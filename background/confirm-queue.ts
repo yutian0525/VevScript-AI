@@ -15,8 +15,16 @@ const CLOSED = '__closed__';
 
 const pending = new Map<string, Entry>();
 let hubTabId: number | null = null;
+// ensureHub 在途单例：同一事件循环内多条 pending 并发触发时复用同一次 ensure，避免开出重复 hub tab。
+let ensuring: Promise<void> | null = null;
 
 const HUB_URL = '/confirm.html';
+
+async function focusWindow(windowId: number | undefined): Promise<void> {
+  // 把 hub 所在窗口提到前台（多窗口/最小化场景下 tabs.active 不够）。失败不阻断。
+  if (windowId == null) return;
+  try { await browser.windows.update(windowId, { focused: true }); } catch { /* windows API 不可用或窗口已关 */ }
+}
 
 function broadcast(msg: Record<string, unknown>): void {
   void browser.runtime.sendMessage(msg).catch(() => {});
@@ -27,18 +35,29 @@ export function getPending(): ConfirmRequest[] {
   return [...pending.values()].map((e) => e.req);
 }
 
-async function ensureHub(): Promise<void> {
-  // 已记录 hubTabId：校验仍存活（用户可能已关但未触发监听）
-  if (hubTabId != null) {
-    const alive = await browser.tabs.get(hubTabId).then((t) => t?.id != null).catch(() => false);
-    if (alive) {
-      await browser.tabs.update(hubTabId, { active: true }).catch(() => {});
-      return;
+function ensureHub(): Promise<void> {
+  // 在途单例：并发调用复用同一次 ensure（首次未回填 hubTabId 前不会重复 create）。
+  if (ensuring) return ensuring;
+  ensuring = (async () => {
+    try {
+      // 已记录 hubTabId：校验仍存活（用户可能已关但未触发监听）
+      if (hubTabId != null) {
+        const existing = await browser.tabs.get(hubTabId).catch(() => null);
+        if (existing?.id != null) {
+          await browser.tabs.update(hubTabId, { active: true }).catch(() => {});
+          await focusWindow(existing.windowId);
+          return;
+        }
+        hubTabId = null;
+      }
+      const tab = await browser.tabs.create({ url: browser.runtime.getURL(HUB_URL), active: true }).catch(() => null);
+      hubTabId = tab?.id ?? null;
+      await focusWindow(tab?.windowId);
+    } finally {
+      ensuring = null;
     }
-    hubTabId = null;
-  }
-  const tab = await browser.tabs.create({ url: browser.runtime.getURL(HUB_URL), active: true }).catch(() => null);
-  hubTabId = tab?.id ?? null;
+  })();
+  return ensuring;
 }
 
 /** 登记 + 广播 CONFIRM_PENDING + 开/聚焦 hub + 起超时。返回决策 promise。 */
@@ -88,4 +107,5 @@ export function __resetConfirmQueue(): void {
   for (const e of pending.values()) clearTimeout(e.timer);
   pending.clear();
   hubTabId = null;
+  ensuring = null;
 }

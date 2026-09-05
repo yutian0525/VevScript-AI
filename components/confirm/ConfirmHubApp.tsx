@@ -14,7 +14,15 @@ export function ConfirmHubApp() {
     void (async () => {
       const resp = (await browser.runtime.sendMessage({ type: 'CONFIRM_GET_STATE' })) as
         { ok: boolean; data?: { confirms: ConfirmRequest[] } } | undefined;
-      if (resp?.data?.confirms) setConfirms(resp.data.confirms);
+      const snapshot = resp?.data?.confirms;
+      if (!snapshot) return;
+      // 以快照为基「合并」而非整体覆盖：监听器已挂但快照未回的窗口内到达的广播（已 resolve 的移除 /
+      // 新 pending 的追加）不被覆盖丢失或复活——按 confirmId 去重合并，quhub 与活 map 最终一致。
+      setConfirms((cur) => {
+        const merged = [...snapshot];
+        for (const c of cur) if (!merged.some((m) => m.confirmId === c.confirmId)) merged.push(c);
+        return merged;
+      });
     })();
     const onMessage = (msg: unknown) => {
       const m = msg as { type?: string };
