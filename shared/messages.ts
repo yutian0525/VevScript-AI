@@ -175,7 +175,8 @@ export type ScriptsRequest =
   | { type: 'SCRIPTS_GET_RUNTIME_FOR_TAB'; tabId: number }
   | { type: 'SCRIPTS_GET_PERMISSIONS'; id: string }
   | { type: 'SCRIPTS_REVOKE_PERMISSION'; id: string; host: string }
-  | { type: 'GM_CONFIRM_RESOLVE'; confirmId: string; decision: 'allow-once' | 'always' | 'deny' }
+  | { type: 'CONFIRM_RESOLVE'; confirmId: string; decision: string }
+  | { type: 'CONFIRM_GET_STATE' }
   | { type: 'GM_DEBUG_CALL'; scriptId: string; api: string; params: unknown[]; tabId?: number }
   | { type: 'GM_DEBUG_INFO'; scriptId: string; tabId?: number };
 
