@@ -1,0 +1,23 @@
+entrypoints/sidepanel/styles.css
+  s_f76272b3d751e6::t_5bc2011f146ec3 60-62
+components/detail/CodeEditor.tsx
+  s_f76272b3d751e6::t_9651aeaf155e59 39,43-46,48-52
+  s_f76272b3d751e6::t_6899fef17ef367 25-27,29-32
+  s_f76272b3d751e6::t_2815042720c000 34-38,40-42,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7b289548cd345ef802c2cfb58c977a0c64dddb96",
+  "prompts": {},
+  "sessions": {
+    "s_f76272b3d751e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc226d95-afc2-4dad-8a48-17095ac2edfd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
