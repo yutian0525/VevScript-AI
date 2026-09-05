@@ -1,0 +1,280 @@
+// ==UserScript==
+// @name         GM 手测·值存储
+// @namespace    ai-browser-extend/gmt-manual
+// @version      1.0.0
+// @description  GM 值存储模块人工测试：说明 + 步骤 + 人工标记
+// @match        *://*/*
+// @run-at       document-end
+// @grant        GM_info
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_deleteValue
+// @grant        GM_listValues
+// @grant        GM_addValueChangeListener
+// @grant        GM_addStyle
+// @noframes
+// ==/UserScript==
+
+(function () {
+'use strict';
+// _panel-core.js —— gmt-manual-* 共享面板内核（拼接时内联进各产物 IIFE，非独立脚本）。
+// 依赖调用方提供 CFG（render({module,title,cards,probe?}) 的实参，见各模块源的 GMT.render 调用）。
+// 注意：var CFG; 必须声明在本 IIFE 外、var GMT = 之前（拼接进产物 IIFE 后，var 提升使其成为该 IIFE 的函数作用域变量）。
+var CFG;
+var GMT = (function () {
+  var PREFIX = '__gmt_manual_';
+  var ICONS = {
+    pass: '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M3 8.5 6.5 12 13 4.5" fill="none" stroke="#188038" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    fail: '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="#c5221f" stroke-width="2" stroke-linecap="round"/></svg>',
+    none: '<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="5.5" fill="none" stroke="#9aa0a6" stroke-width="1.6"/></svg>'
+  };
+
+  function storeKey() { return PREFIX + CFG.module; }
+
+  function loadResults() {
+    try {
+      var raw = GM_getValue(storeKey());
+      return raw && typeof raw === 'object' ? raw : {};
+    } catch (e) { return {}; }
+  }
+
+  function saveResult(id, verdict, note) {
+    var all = loadResults();
+    all[id] = { verdict: verdict, note: note || '', at: Date.now() };
+    try { GM_setValue(storeKey(), all); } catch (e) { /* 存储失败不阻断面板 */ }
+  }
+
+  function resetResults() {
+    try { GM_deleteValue(storeKey()); } catch (e) { /* ignore */ }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function injectStyles() {
+    GM_addStyle(
+      '#gmt-panel{position:fixed;right:16px;bottom:16px;z-index:2147483647;width:380px;max-height:75vh;' +
+      'background:#fff;color:#202124;font:13px/1.5 system-ui,sans-serif;border:1px solid #dadce0;border-radius:8px;' +
+      'box-shadow:0 4px 16px rgba(0,0,0,.18);display:flex;flex-direction:column}' +
+      '#gmt-panel .gmt-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #eee;flex:none}' +
+      '#gmt-panel .gmt-title{font-weight:600;flex:1}' +
+      '#gmt-panel .gmt-summary{font-size:11px;color:#5f6368}' +
+      '#gmt-panel .gmt-body{overflow-y:auto;padding:4px 0}' +
+      '#gmt-panel .gmt-card{padding:8px 12px;border-bottom:1px solid #f1f3f4}' +
+      '#gmt-panel .gmt-api{font:12px ui-monospace,monospace;background:#f8f9fa;border-radius:4px;padding:2px 6px;display:inline-block}' +
+      '#gmt-panel .gmt-desc{margin:4px 0 0;color:#3c4043}' +
+      '#gmt-panel .gmt-steps{margin:4px 0 0;padding-left:18px;color:#3c4043}' +
+      '#gmt-panel .gmt-expect{margin:4px 0 0;color:#188038;font-size:12px}' +
+      '#gmt-panel .gmt-verdict{margin:4px 0 0;display:flex;gap:6px;align-items:center}' +
+      '#gmt-panel .gmt-verdict button{font:12px system-ui;padding:3px 10px;border:1px solid #dadce0;border-radius:4px;background:#fff;cursor:pointer}' +
+      '#gmt-panel .gmt-note{font:12px system-ui;padding:3px 6px;border:1px solid #dadce0;border-radius:4px;flex:1}' +
+      '#gmt-panel .gmt-state{flex:none}' +
+      '#gmt-panel .gmt-btns{display:flex;gap:6px;padding:8px 12px;border-top:1px solid #eee;flex:none}' +
+      '#gmt-panel .gmt-btns button{font:12px system-ui;padding:4px 10px;border:1px solid #dadce0;border-radius:4px;background:#fff;cursor:pointer}' +
+      '#gmt-panel .gmt-btns button:hover{background:#f1f3f4}' +
+      '#gmt-panel .gmt-log{margin:4px 0 0;font:12px ui-monospace,monospace;background:#f8f9fa;border-radius:4px;padding:4px 6px;word-break:break-all;white-space:pre-wrap}'
+    );
+  }
+
+  function buildPanel() {
+    var old = document.getElementById('gmt-panel');
+    if (old) old.remove();
+    var panel = document.createElement('div');
+    panel.id = 'gmt-panel';
+    panel.innerHTML =
+      '<div class="gmt-head"><span class="gmt-title">' + escapeHtml(CFG.title) + '</span><span class="gmt-summary"></span></div>' +
+      '<div class="gmt-body"></div>' +
+      '<div class="gmt-btns">' +
+      '<button type="button" data-act="reset">重置本模块</button>' +
+      '</div>';
+    (document.body || document.documentElement).appendChild(panel);
+    panel.querySelector('[data-act="reset"]').addEventListener('click', function () {
+      resetResults();
+      renderAll();
+    });
+    return panel;
+  }
+
+  // 卡片定义 {id, api, desc, steps, expect} → DOM。steps 可混入按钮项（供模块脚本挂交互，
+  // 如「触发 setValue」「close()」）：字符串项渲染为有序步骤；对象项形状 { id: string, label: string }
+  // 渲染为按钮，点击回调 CFG.actions[id]。
+  function renderCard(card, results) {
+    var el = document.createElement('div');
+    el.className = 'gmt-card';
+    el.setAttribute('data-card', card.id);
+    var html =
+      '<span class="gmt-api">' + escapeHtml(card.api) + '</span>' +
+      '<p class="gmt-desc">' + escapeHtml(card.desc) + '</p>' +
+      '<ol class="gmt-steps">';
+    for (var i = 0; i < card.steps.length; i++) {
+      var s = card.steps[i];
+      html += '<li>' + (typeof s === 'string' ? escapeHtml(s) : '<button type="button" data-step-act="' + escapeHtml(s.id) + '">' + escapeHtml(s.label) + '</button>') + '</li>';
+    }
+    html += '</ol>' +
+      '<p class="gmt-expect">期望：' + escapeHtml(card.expect) + '</p>' +
+      '<div class="gmt-verdict">' +
+      '<span class="gmt-state"></span>' +
+      '<button type="button" data-verdict="pass">通过</button>' +
+      '<button type="button" data-verdict="fail">失败</button>' +
+      '<input class="gmt-note" placeholder="失败备注（可选）">' +
+      '</div>' +
+      '<div class="gmt-log" style="display:none"></div>';
+    el.innerHTML = html;
+
+    var r = results[card.id];
+    var noteInput = el.querySelector('.gmt-note');
+    if (r && r.note) noteInput.value = r.note;
+    paintState(el, r);
+
+    el.querySelectorAll('[data-verdict]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var verdict = btn.getAttribute('data-verdict');
+        saveResult(card.id, verdict, noteInput.value.trim());
+        paintState(el, loadResults()[card.id]);
+        updateSummary();
+      });
+    });
+    el.querySelectorAll('[data-step-act]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var fn = CFG.actions && CFG.actions[btn.getAttribute('data-step-act')];
+        if (fn) fn(function (cardId, text) { GMT.log(cardId, text); }, card);
+      });
+    });
+    return el;
+  }
+
+  function paintState(cardEl, r) {
+    var stateEl = cardEl.querySelector('.gmt-state');
+    if (r && r.verdict === 'pass') { stateEl.innerHTML = ICONS.pass; cardEl.style.background = '#f2f8f2'; }
+    else if (r && r.verdict === 'fail') { stateEl.innerHTML = ICONS.fail; cardEl.style.background = '#fdf2f1'; }
+    else { stateEl.innerHTML = ICONS.none; cardEl.style.background = ''; }
+  }
+
+  function logLine(cardId, text) {
+    var el = document.querySelector('#gmt-panel [data-card="' + cardId + '"] .gmt-log');
+    if (!el) return;
+    el.style.display = '';
+    el.textContent += text + '\n';
+  }
+
+  function updateSummary() {
+    var el = document.querySelector('#gmt-panel .gmt-summary');
+    if (!el) return;
+    var pass = 0, fail = 0;
+    for (var i = 0; i < CFG.cards.length; i++) {
+      var r = loadResults()[CFG.cards[i].id];
+      if (r && r.verdict === 'pass') pass++;
+      else if (r && r.verdict === 'fail') fail++;
+    }
+    el.textContent = pass + ' 过 / ' + fail + ' 挂 / ' + (CFG.cards.length - pass - fail) + ' 未测';
+  }
+
+  function renderAll() {
+    var body = document.querySelector('#gmt-panel .gmt-body');
+    if (!body) return;
+    var results = loadResults();
+    body.innerHTML = '';
+    for (var i = 0; i < CFG.cards.length; i++) body.appendChild(renderCard(CFG.cards[i], results));
+    updateSummary();
+  }
+
+  return {
+    render: function (cfg) {
+      CFG = cfg;
+      // 探针页休眠：带 probe.mark 的第二实例只写 probe.key 后返回，不建面板
+      if (cfg.probe && location.search.indexOf(cfg.probe.mark) !== -1) {
+        try { GM_setValue(cfg.probe.key, { at: Date.now(), from: location.host }); } catch (e) { /* 静默 */ }
+        return;
+      }
+      injectStyles();
+      function boot() {
+        if (!document.body) { setTimeout(boot, 50); return; }
+        buildPanel();
+        renderAll();
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    },
+    log: logLine
+  };
+})();
+
+(function () {
+  var K = '__gmt_manual_storage_probe';
+
+  var actions = {
+    's2-set': function (log) {
+      GM_setValue(K, 'v1');
+      log('s2', 'GM_setValue 后 GM_getValue → ' + JSON.stringify(GM_getValue(K)));
+    },
+    's3-obj': function (log) {
+      GM_setValue(K + '.obj', { a: 1, b: 'x' });
+      log('s3', '读回 → ' + JSON.stringify(GM_getValue(K + '.obj')));
+    },
+    's4-def': function (log) {
+      log('s4', 'GM_getValue(' + JSON.stringify(K + '.missing') + ', "def") → ' + JSON.stringify(GM_getValue(K + '.missing', 'def')));
+    },
+    's5-del': function (log) {
+      GM_deleteValue(K);
+      log('s5', '删除后 GM_getValue → ' + JSON.stringify(GM_getValue(K)));
+    },
+    's6-list': function (log) {
+      log('s6', 'GM_listValues → ' + JSON.stringify(GM_listValues()));
+    },
+    's7-emit': function () {
+      GM_setValue(K + '.evt', 'x' + (Date.now() % 1000));
+    }
+  };
+
+  // s7 值变更监听：不接返回值——注册表无 GM_removeValueChangeListener，listenerId 无处可用。
+  // 事件在按钮点击后才可能触发，面板必已建成，GMT.log 可直接定位卡片日志区。
+  GM_addValueChangeListener(K + '.evt', function (key, oldV, newV, remote) {
+    GMT.log('s7', '事件: key=' + key + ' old=' + JSON.stringify(oldV) + ' new=' + JSON.stringify(newV) + ' remote=' + remote);
+  });
+
+  GMT.render({
+    module: 'storage',
+    title: 'GM 手测·值存储',
+    cards: [
+      { id: 's1', api: 'GM_info', desc: '脚本与扩展元数据（scriptHandler/version/script/injectInto）。', steps: ['核对下方日志里的 script.name 是否为本脚本名、scriptHandler 是否为 ai-browser-extend'], expect: '字段与本脚本元头一致' },
+      { id: 's2', api: 'GM_getValue(key, def?) / GM_setValue(key, val)', desc: '写后读往返（下划线形式同步返回，值来自注入时快照 + 桥写穿透）。', steps: [{ id: 's2-set', label: '写入 v1 并读回' }], expect: '日志显示 "v1"' },
+      { id: 's3', api: 'GM_setValue（对象值）', desc: '对象值经 JSON 往返存取。', steps: [{ id: 's3-obj', label: '存 {a:1,b:"x"} 并读回' }], expect: '日志显示 {"a":1,"b":"x"}' },
+      { id: 's4', api: 'GM_getValue 默认值分支', desc: '读不存在的键返回调用方默认值。', steps: [{ id: 's4-def', label: '读缺失键（默认 "def"）' }], expect: '日志显示 "def"' },
+      { id: 's5', api: 'GM_deleteValue(key)', desc: '删除后读回 undefined。', steps: [{ id: 's5-del', label: '删除 s2 写入的键并读回' }], expect: '日志显示 undefined' },
+      { id: 's6', api: 'GM_listValues()', desc: '列本脚本命名空间全部键。', steps: [{ id: 's6-list', label: '列出全部键' }], expect: '日志数组含 __gmt_manual_storage_probe.obj / .evt 等键' },
+      { id: 's7', api: 'GM_addValueChangeListener(key, fn)', desc: '值变更监听；本 tab 触发的事件 remote=false。', steps: [{ id: 's7-emit', label: '触发一次 setValue' }, '核对日志事件行 old/new/remote'], expect: '出现 remote=false 的事件行，old/new 值正确' }
+    ],
+    actions: actions
+  });
+
+  // s1 卡日志：GM_info 自读（面板建好后自动填充）。面板 boot 可能晚于本同步代码——
+  // readyState=loading 时等 DOMContentLoaded、body 未就绪时 50ms 重试（_panel-core.js boot），
+  // setTimeout(0) 会早于面板建成而静默丢日志（logLine 找不到元素直接 return）。
+  // 故轮询等卡片 DOM 出现再填；另在「重置本模块」后补填一次（renderAll 会清空卡片日志区）。
+  (function fillS1() {
+    var line = 'scriptHandler=' + GM_info.scriptHandler + ' extVersion=' + GM_info.version +
+      ' | script.name=' + GM_info.script.name + ' script.version=' + GM_info.script.version +
+      ' injectInto=' + GM_info.injectInto;
+    function paint() {
+      // 行幂等：快速连点重置/轮询命中并存时防重复追加（textContent 含该行即跳过）
+      var logEl = document.querySelector('#gmt-panel [data-card="s1"] .gmt-log');
+      if (logEl && logEl.textContent.indexOf(line) !== -1) return;
+      GMT.log('s1', line);
+    }
+    var tries = 0;
+    (function poll() {
+      if (!document.querySelector('#gmt-panel [data-card="s1"]')) {
+        if (++tries < 100) { setTimeout(poll, 50); return; } // 5s 上限兜底：面板理论必建，防病态页面常驻定时器
+        console.warn('gmt-manual: s1 填充放弃（页面 body 迟到）');
+        return;
+      }
+      paint();
+      var reset = document.querySelector('#gmt-panel [data-act="reset"]');
+      if (reset) reset.addEventListener('click', function () { setTimeout(paint, 0); });
+    })();
+  })();
+})();
+})();
