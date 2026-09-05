@@ -259,6 +259,19 @@ preamble 内 `__GM_plain` 函数之后加辅助（浅拷贝摘 onChunk 再走通
 Run: `npx vitest run tests/shared/gm-wrapper.test.ts && npm run compile`
 Expected: 全 PASS（既有用例不受影响——`__GM_post` 行为等价重构）
 
+- [ ] **Step 6b: gmt-selftest fixture 补 grant（连带修复）**
+
+`fixtures/userscripts/gmt-selftest.user.js` 的 @grant 列表（`GM_xmlhttpRequest` 行后）加：
+
+```
+// @grant        GM_llmChat
+```
+
+`tests/shared/gmt-selftest-fixture.test.ts` 的「grants：14 个 API = 15 项」用例是按注册表动态计算的——grant 加上后自动绿；「buildWrappedCode 安装全部」用例依赖 Task 2 已落的安装表达式。跑：
+
+Run: `npx vitest run tests/shared/gmt-selftest-fixture.test.ts`
+Expected: PASS（若仍红，按断言消息定位——通常 fixture 里还有逐 API 安装断言列表需同步加 GM_llmChat）
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -939,10 +952,19 @@ git commit -m "feat(gm): 模型调用权限档设置——消息对 + 详情页 
 
 ---
 
-### Task 6: 直调兼容（chan 缺省路径）+ API_TO_GRANT 断言
+### Task 6: 直调兼容（chan 缺省路径）+ 调试台 CALL 表 + API_TO_GRANT 断言
 
 **Files:**
+- Modify: `components/scriptdebug/ScriptDebugPage.tsx`（CALL 表加 GM_llmChat 条目——否则 call-registry-parity 测试红且调试台渲染该行时 `CALL[name]!` 非空断言运行时崩）
 - Modify: `tests/background/gm-debug.test.ts`（追加用例）
+
+先读 `components/scriptdebug/ScriptDebugPage.tsx` 的 CALL 表形状（现有条目如 `XmlHttpRequest: { kind: 'bridge', short: 'XmlHttpRequest', hint: '[{url:"..."}]' }`——以实际字段为准），在 CALL 表加：
+
+```ts
+  GM_llmChat: { kind: 'bridge', short: 'LlmChat', hint: '[{"messages":[{"role":"user","content":"hi"}]}]' },
+```
+
+跑 `npx vitest run tests/scriptdebug/call-registry-parity.test.ts` 确认绿。
 
 说明：debugCall 走真实桥但无 wrapper——params 里没有 chan，`doLlmChat` 的 `const chan = params[1]` 为 undefined，chunk 静默不下发（`chan ? ... : undefined`），仅返回终值。这正是规格 §7.1「直调 = 非流式语义」。本 Task 用测试锁死该行为，并断言 grant 映射。
 
@@ -994,8 +1016,8 @@ Expected: PASS
 - [ ] **Step 3: Commit**
 
 ```bash
-git add tests/background/gm-debug.test.ts
-git commit -m "test(gm): LlmChat 直调无 chan 静默下行 + grant 映射断言"
+git add components/scriptdebug/ScriptDebugPage.tsx tests/background/gm-debug.test.ts
+git commit -m "feat(gm): LlmChat 直调无 chan 静默下行 + 调试台 CALL 表 + grant 映射断言"
 ```
 
 ---
