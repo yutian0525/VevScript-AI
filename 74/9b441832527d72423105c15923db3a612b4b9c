@@ -1,0 +1,27 @@
+tests/background/scripts.test.ts
+  s_f76272b3d751e6::t_e20e9fac9c7355 263
+  s_f76272b3d751e6::t_dbdfd3d2595ce0 190
+  s_f76272b3d751e6::t_0e0cb3e13d6b1d 239
+background/scripts.ts
+  s_f76272b3d751e6::t_3f24db36ab1ee6 202
+  s_f76272b3d751e6::t_9ef1b802d77ddf 79-81
+  s_f76272b3d751e6::t_be4fdcad2362bc 213
+entrypoints/sidepanel/styles.css
+  s_f76272b3d751e6::t_5c5d9059e735de 922-924
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "749b441832527d72423105c15923db3a612b4b9c",
+  "prompts": {},
+  "sessions": {
+    "s_f76272b3d751e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc226d95-afc2-4dad-8a48-17095ac2edfd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
