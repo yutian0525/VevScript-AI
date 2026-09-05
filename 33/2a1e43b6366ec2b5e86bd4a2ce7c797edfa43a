@@ -1,0 +1,23 @@
+tests/storage/settings.test.ts
+  s_9df40509216906::t_f757f1da3b40d0 107
+  s_9df40509216906::t_561298ba0af0eb 44,70
+  s_9df40509216906::t_ecaab501775a3f 88,90
+storage/settings.ts
+  s_9df40509216906::t_c26c805cbd9ad2 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "332a1e43b6366ec2b5e86bd4a2ce7c797edfa43a",
+  "prompts": {},
+  "sessions": {
+    "s_9df40509216906": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "552f820a-9ac4-4a32-b109-6c5973c2fc11",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
