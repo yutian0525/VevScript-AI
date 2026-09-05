@@ -91,6 +91,28 @@ function preamble(scriptId: string): string {
   function __GM_report(message, stack, line) {
     try { __GM_post('ReportError', [message, stack, line]); } catch (e) { /* 上报失败静默 */ }
   }
+  // 递归摘除对象里的函数（onload/onerror 等回调不过桥——跨 world 结构化克隆会把含函数的
+  // detail 克隆失败变 null，宿主静默丢弃导致请求永挂）。纯数据（字符串/数字/布尔/数组/ Plain object）保留。
+  function __GM_plain(v) {
+    if (v === null || typeof v !== 'object') {
+      return typeof v === 'function' ? undefined : v;
+    }
+    if (Array.isArray(v)) {
+      var arr = [];
+      for (var i = 0; i < v.length; i++) {
+        var item = __GM_plain(v[i]);
+        if (item !== undefined) arr.push(item);
+      }
+      return arr;
+    }
+    var out = {};
+    for (var k in v) {
+      if (!Object.prototype.hasOwnProperty.call(v, k)) continue;
+      var val = __GM_plain(v[k]);
+      if (val !== undefined) out[k] = val;
+    }
+    return out;
+  }
   // 可变参 Function 构造器：预编译探测（只编译不执行）与用户代码执行共用语言级构造。
   // 构造器返回对象覆盖 new 产物，故 new __GM_probe(...) 直接得到编译出的函数。
   // 注意：Function 构造体只认全局作用域——wrapper 闭包变量对用户代码不可见，
@@ -130,9 +152,12 @@ const GM_INSTALLS: ReadonlyArray<readonly [string, string]> = [
   ['GM_log', 'function () { var a = [].slice.call(arguments); a.unshift(GM_info.script.name); console.log.apply(console, a); }'],
   ['GM_registerMenuCommand', 'function (name, fn) { var key = "m" + (++__GM_reqSeq); __GM_listeners.set("menu:" + key, fn); __GM_post("RegisterMenu", [key, name]); return key; }'],
   ['GM_setClipboard', 'function (text) { return __GM_post("SetClipboard", [text]); }'],
-  ['GM_notification', 'function (details, ondone) { var id = "n" + (++__GM_reqSeq); if (ondone) __GM_listeners.set("notif:" + id, ondone); __GM_post("Notification", [details, id]); }'],
-  ['GM_openInTab', 'function (url, opts) { opts = opts || {}; var h = { closed: false, onclose: null, __tabId: null, close: function () { if (h.__tabId != null) { __GM_post("CloseTab", [h.__tabId]); } else { h.__closePending = true; } } }; __GM_post("OpenInTab", [url, opts]).then(function (tabId) { h.__tabId = tabId; if (h.__closePending) { __GM_post("CloseTab", [tabId]); } __GM_listeners.set("tab:" + tabId, function (d) { h.closed = !!d.closed; if (d.closed && h.onclose) h.onclose(); }); }); return h; }'],
-  ['GM_xmlhttpRequest', 'function (details) { __GM_post("XmlHttpRequest", [details]).then(function (resp) { if (resp && resp.error) { details.onerror && details.onerror(resp); } else { details.onload && details.onload(resp); } }, function (err) { details.onerror && details.onerror({ error: String(err) }); }); return { abort: function () {} }; }'],
+  ['GM_notification', 'function (details, ondone) { var id = "n" + (++__GM_reqSeq); if (ondone) __GM_listeners.set("notif:" + id, ondone); __GM_post("Notification", [__GM_plain(details), id]); }'],
+  ['GM_openInTab', 'function (url, opts) { opts = opts || {}; var h = { closed: false, onclose: null, __tabId: null, close: function () { if (h.__tabId != null) { __GM_post("CloseTab", [h.__tabId]); } else { h.__closePending = true; } } }; __GM_post("OpenInTab", [url, __GM_plain(opts)]).then(function (tabId) { h.__tabId = tabId; if (h.__closePending) { __GM_post("CloseTab", [tabId]); } __GM_listeners.set("tab:" + tabId, function (d) { h.closed = !!d.closed; if (d.closed && h.onclose) h.onclose(); }); }); return h; }'],
+  // details 经 __GM_plain 摘除回调函数再过桥：CustomEvent detail 跨 world（USER_SCRIPT→ISOLATED）
+  // 走结构化克隆，函数不可克隆会使 detail 变 null（宿主静默丢弃，请求永挂无任何回显）。
+  // onload/onerror/ontimeout 留在闭包里，由 .then 分支调用。
+  ['GM_xmlhttpRequest', 'function (details) { var d = __GM_plain(details); __GM_post("XmlHttpRequest", [d]).then(function (resp) { if (resp && resp.error) { details.onerror && details.onerror(resp); } else { details.onload && details.onload(resp); } }, function (err) { details.onerror && details.onerror({ error: String(err) }); }); return { abort: function () {} }; }'],
 ] as const;
 
 function installLines(script: UserScript): { code: string; vars: string[] } {

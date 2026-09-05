@@ -35,7 +35,7 @@
       GM.setClipboard('gmt-manual-clipboard-' + (Date.now() % 10000)).then(function () {
         GMT.log('i3', '写入成功，请粘到任意文本框核对内容');
       }, function (e) {
-        GMT.log('i3', '写入失败（MV3 SW 无手势链可能被拒）：' + ((e && e.message) || e));
+        GMT.log('i3', '写入失败：' + ((e && e.message) || e));
       });
     }
   };
@@ -46,7 +46,7 @@
     cards: [
       { id: 'i1', api: 'GM_registerMenuCommand(name, fn)', desc: '注册菜单命令；入口在侧边栏脚本池「菜单命令」区（非浏览器右键菜单）。', steps: [{ id: 'i1-menu', label: '注册菜单命令' }, '侧边栏 → 脚本池 → 菜单命令 → 点「GMT 手测：点我」'], expect: '卡片日志出现「菜单命令被点击」时间戳' },
       { id: 'i2', api: 'GM_notification(details, ondone?)', desc: '系统通知；点击/关闭后 ondone 触发（click/close）。', steps: [{ id: 'i2-notif', label: '发通知' }, '点掉系统通知（Chrome 通知中心）'], expect: '日志出现 ondone 回调值（click 或 close）' },
-      { id: 'i3', api: 'GM_setClipboard(data)', desc: '写剪贴板仅文本；SW 无手势链时可能被拒（失败给可读提示）。', steps: [{ id: 'i3-clip', label: '写剪贴板' }, '把内容粘贴到任意文本框核对前缀'], expect: '粘贴出 gmt-manual-clipboard-* 文本（或失败行给可读错误）' },
+      { id: 'i3', api: 'GM_setClipboard(data)', desc: '写剪贴板仅文本（SW 经 offscreen 文档 + execCommand 写入）。', steps: [{ id: 'i3-clip', label: '写剪贴板' }, '把内容粘贴到任意文本框核对前缀'], expect: '粘贴出 gmt-manual-clipboard-* 文本（或失败行给可读错误）' },
       { id: 'i4', api: 'GM.info / GM_info', desc: 'GM.info 与 GM_info 同引用（点形式别名）。', steps: ['核对卡片日志：两者引用相同为 true'], expect: '同引用 true（打开面板时已自动打印）' }
     ],
     actions: actions

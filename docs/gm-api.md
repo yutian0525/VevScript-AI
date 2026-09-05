@@ -14,8 +14,8 @@
 - **GM_addStyle**：当前 world 直接 `createElement('style')` 建 DOM。
 - **GM_log**：写本地 `console`，带 `[脚本名]` 前缀。
 - **GM_registerMenuCommand**：菜单命令入口在**侧边栏脚本页「菜单命令」区**（非浏览器右键菜单）；点击经 SW 回发到注册来源 tab 触发回调。
-- **GM_setClipboard**：仅文本（`navigator.clipboard.writeText`）；MV3 SW 无用户手势链时可能失败，返回可读错误文本。
-- **GM_notification**：图标为内嵌占位（Chrome basic 通知要求非空 `iconUrl`，public 无图标资产时用内嵌透明 PNG 的 data URL）；后续可通过 `details.image` 扩展自定义图标。
+- **GM_setClipboard**：仅文本。MV3 SW 无文档上下文（`navigator.clipboard` 为 undefined），经专用 offscreen 文档（reason CLIPBOARD）+ `execCommand('copy')`（writeText 要求文档焦点，offscreen 永无焦点）写入；失败返回可读错误文本。
+- **GM_notification**：图标为扩展内占位 PNG（`/gm-notif.png`，Chrome basic 通知不接受 data: URI）；后续可通过 `details.image` 扩展自定义图标。
 - **unsafeWindow**：MAIN world 下 = `window`（真页面 window）；USER_SCRIPT world 下 = 隔离世界 window（要真页面 window 请 `@world MAIN`）。
 
 ## 0. @grant 语义（三家通用，本扩展遵循）
@@ -94,7 +94,7 @@
 | API | 点形式 | 语义 | TM | VM | SC | 本扩展 |
 |---|---|---|---|---|---|---|
 | `GM_notification(details, ondone?)` | `GM.notification` | 系统通知，点击/关闭回调 | ✓ | ✓ | ✓ | **Phase 5**（SW `chrome.notifications`） |
-| `GM_setClipboard(data, type?)` | `GM.setClipboard` | 写剪贴板 | ✓ | ✓ | ✓ | **Phase 5**（SW `navigator.clipboard.writeText`；仅文本） |
+| `GM_setClipboard(data, type?)` | `GM.setClipboard` | 写剪贴板 | ✓ | ✓ | ✓ | **Phase 5**（offscreen 文档 + execCommand；仅文本） |
 | `GM_closeNotification(id)` | — | 关闭/更新已发通知 | ✗ | ✗ | ✓ | 后续候选（SC 扩展，依赖通知 id 注册表） |
 | `GM_updateNotification(id, details)` | — | 同上 | ✗ | ✗ | ✓ | 后续候选（SC 扩展） |
 

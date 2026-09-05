@@ -62,6 +62,19 @@ describe('buildWrappedCode', () => {
     expect(code).toContain('if (h.__tabId != null)');
   });
 
+  it('XmlHttpRequest/notification 过桥参数经 __GM_plain 摘除回调（跨 world 结构化克隆含函数 detail 会变 null）', () => {
+    const s = mkScript({ meta: { grants: ['GM_xmlhttpRequest', 'GM_notification', 'GM_openInTab'] } });
+    const code = buildWrappedCode(s, { token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0' });
+    // XHR：闭包 details 原样持有回调（onload/onerror 可调），过桥用 __GM_plain 摘函数后的副本
+    expect(code).toContain('var d = __GM_plain(details)');
+    expect(code).toContain('__GM_post("XmlHttpRequest", [d])');
+    // notification/openInTab 的 details/opts 同样摘函数（防御未来加回调字段）
+    expect(code).toContain('__GM_post("Notification", [__GM_plain(details), id])');
+    expect(code).toContain('__GM_post("OpenInTab", [url, __GM_plain(opts)])');
+    // __GM_plain 定义在 preamble（全部 grant 组合都可用）
+    expect(code).toContain('function __GM_plain(v)');
+  });
+
   it('@require 内容在用户代码之前、preamble 之后', () => {
     const code = buildWrappedCode(mkScript(), {
       token: 't', values: {}, resources: {}, requireCodes: ['libBody();'], extensionVersion: '1.0.0',
