@@ -1,0 +1,26 @@
+components/chat/ChatView.tsx
+  s_df52bcfd09b7e1::t_8811240aefa21e 187-205
+  s_df52bcfd09b7e1::t_b004f5d0583b85 25-32
+entrypoints/sidepanel/styles.css
+  s_df52bcfd09b7e1::t_0b3a161a0d0ce4 304-338,340-361
+  s_df52bcfd09b7e1::t_91e33ce1b8588c 339
+tests/ui/chat-hello.test.tsx
+  s_df52bcfd09b7e1::t_9dd91c8c927f8b 14-15
+  s_df52bcfd09b7e1::t_e36d6c68ce0826 1-13,16-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ac319642af7fc8759f707961d34c6dc0a76f07b5",
+  "prompts": {},
+  "sessions": {
+    "s_df52bcfd09b7e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73f45e65-6f72-4ce2-9279-b6b1b74dde3e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
