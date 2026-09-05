@@ -12,6 +12,8 @@ import type { UserScript } from '../../shared/types';
 // fakeBrowser 未内置 notifications API——本文件用例需要它，顶部统一挂 stub
 (browser as unknown as Record<string, unknown>).notifications = { create: vi.fn(async () => 'id') };
 
+import offscreenMainSrc from '../../entrypoints/offscreen-clipboard/main.ts?raw';
+
 function mkScript(over: Partial<UserScript> = {}): UserScript {
   return {
     id: 's1', text: '// ==UserScript==\n// @name t\n// @match https://a.com/*\n// @grant GM_setValue\n// ==/UserScript==\nx();',
@@ -195,6 +197,15 @@ describe('gm-api 简单 API', () => {
     const r = await call('SetClipboard', ['t']);
     expect(r).toMatchObject({ ok: false, error: expect.stringContaining('denied') });
     delete (browser as unknown as Record<string, unknown>).offscreen;
+  });
+
+  it('offscreen-clipboard 页源码走 execCommand 路径（writeText 在无焦点 offscreen 文档必报 Document is not focused）', async () => {
+    // offscreen 页无单测环境（execCommand 为浏览器 API，jsdom 无实现）——做源码锚点断言锁死实现路径。
+    // Vite ?raw 内联原文（项目无 @types/node，node:fs 过不了 compile 门禁，同 gmt-selftest-fixture 惯例）
+    const src = offscreenMainSrc;
+    expect(src).toContain("execCommand('copy')");
+    expect(src).not.toContain('clipboard.writeText'); // 防 Backport 回 writeText 路径
+    expect(src).toContain('OFFSCREEN_WRITE_CLIPBOARD');
   });
 
   // XmlHttpRequest 由 gm-connect.test.ts 完整覆盖（@connect 三分支 + 确认队列），此处不再占位

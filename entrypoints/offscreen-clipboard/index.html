@@ -1,6 +1,8 @@
 <!doctype html>
 <!-- offscreen 剪贴板写入页（GM_setClipboard 专用）：
-     MV3 SW 里 navigator.clipboard 为 undefined，只有真实文档上下文才有 Clipboard API。
+     MV3 SW 里 navigator.clipboard 为 undefined，只有真实文档上下文才有剪贴板能力。
+     async Clipboard API 的 writeText 要求文档焦点——offscreen 永不可见即永无焦点，
+     故本页用 execCommand('copy') + 临时 textarea 路径（详见 main.ts 头注）。
      SW 经 runtime.sendMessage({ type: 'OFFSCREEN_WRITE_CLIPBOARD', text }) 委托本页写入。 -->
 <html lang="zh-CN">
   <head>
