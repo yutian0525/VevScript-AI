@@ -1,0 +1,25 @@
+fixtures/userscripts/manual/dom-resource.user.js.src
+  s_b24d2b355b9859::t_94b83ff7e137a4 1-60
+fixtures/userscripts/manual/interaction.user.js.src
+  s_b24d2b355b9859::t_535f96bd3c4096 1-79
+fixtures/userscripts/manual/gmt-manual-interaction.user.js
+  s_b24d2b355b9859::t_1614bf33463d31 1-267
+fixtures/userscripts/manual/gmt-manual-dom-resource.user.js
+  s_b24d2b355b9859::t_1614bf33463d31 1-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4273d1b84c772a23297e332cccb0a2333bb51fb3",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
