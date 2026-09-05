@@ -22,12 +22,12 @@ function prefersReducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-/** 空状态快捷指令（点击填入输入框，不自动发送）。tag 为斜杠命令前缀时填入文本带尾空格触发浮层。 */
+/** 空状态快捷指令（点击填入输入框，不自动发送）。所见即所得：填入 = tag 上展示的完整文案。 */
 const HELLO_SUGGESTIONS: { tag?: string; label: string; text: string }[] = [
   { label: '帮我关闭页面上的弹窗', text: '帮我关闭页面上的弹窗' },
-  { tag: '/help', label: '你能做什么？', text: '/help ' },
-  { tag: '/find-scripts', label: '帮我找一个脚本', text: '/find-scripts ' },
-  { tag: '/write-script', label: '帮我写一个脚本', text: '/write-script ' },
+  { tag: '/help', label: '你能做什么？', text: '/help 你能做什么？' },
+  { tag: '/find-scripts', label: '帮我找一个脚本', text: '/find-scripts 帮我找一个脚本' },
+  { tag: '/write-script', label: '帮我写一个脚本', text: '/write-script 帮我写一个脚本' },
 ];
 
 export function ChatView() {
