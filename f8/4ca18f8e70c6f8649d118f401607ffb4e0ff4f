@@ -1,0 +1,27 @@
+fixtures/userscripts/manual/network.user.js.src
+  s_b24d2b355b9859::t_650d0c71236d67 1-8,10-100
+  s_b24d2b355b9859::t_2387aacba42525 9
+fixtures/userscripts/manual/tabs.user.js.src
+  s_b24d2b355b9859::t_3a5aae7226f5be 16-42
+fixtures/userscripts/manual/gmt-manual-tabs.user.js
+  s_b24d2b355b9859::t_2726b5746d7db7 203-229
+fixtures/userscripts/manual/gmt-manual-network.user.js
+  s_b24d2b355b9859::t_2726b5746d7db7 1-8,10-288
+  s_b24d2b355b9859::t_c8e7a4ebde965b 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f84ca18f8e70c6f8649d118f401607ffb4e0ff4f",
+  "prompts": {},
+  "sessions": {
+    "s_b24d2b355b9859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae209bd0-3bc6-49b7-ba69-f88d0c1988f2",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": null
+    }
+  }
+}
