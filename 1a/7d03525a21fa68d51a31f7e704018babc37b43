@@ -1,0 +1,28 @@
+tests/shared/gm-apis.test.ts
+  s_4b16ffa8468de9::t_f6d44cacbda890 6,9
+  s_4b16ffa8468de9::t_a00482798dc8a4 39-49
+tests/background/gm-permissions.test.ts
+  s_4b16ffa8468de9::t_2f46a30d3b4cce 11-12
+  s_4b16ffa8468de9::t_75000b78db78d8 60-85
+background/gm-permissions.ts
+  s_4b16ffa8468de9::t_35466e2240e659 56-71
+  s_4b16ffa8468de9::t_32ec1abc51e644 9
+shared/gm-apis.ts
+  s_4b16ffa8468de9::t_4334106c4cc5c6 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1a7d03525a21fa68d51a31f7e704018babc37b43",
+  "prompts": {},
+  "sessions": {
+    "s_4b16ffa8468de9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa33a125-14e4-4ba5-8132-a2d017f9289f",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
