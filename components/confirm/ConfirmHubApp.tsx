@@ -41,7 +41,7 @@ export function ConfirmHubApp() {
   return (
     <div className="confirm-hub">
       <header className="confirm-hub__head">
-        <span className="confirm-hub__title">跨域请求确认</span>
+        <span className="confirm-hub__title">GM-api 权限确认</span>
         <span className="confirm-hub__count mono">{confirms.length} 个待确认</span>
       </header>
       {confirms.length === 0 ? (

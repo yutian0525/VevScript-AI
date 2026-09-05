@@ -991,7 +991,7 @@ body {
 .confirm-hub__list { display: flex; flex-direction: column; gap: 12px; }
 
 .confirm-card {
-  border: 1px solid var(--warn); background: var(--warn-wash);
+  border: 1px solid var(--warn); background: var(--surface);
   border-radius: var(--r-lg); padding: 14px 16px;
   display: flex; flex-direction: column; gap: 10px;
 }

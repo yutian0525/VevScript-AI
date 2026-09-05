@@ -26,6 +26,15 @@ async function focusWindow(windowId: number | undefined): Promise<void> {
   try { await browser.windows.update(windowId, { focused: true }); } catch { /* windows API 不可用或窗口已关 */ }
 }
 
+// 全部确认处理完（pending 清空）自动关 hub tab。先置 null 再 remove：remove 触发的
+// tabs.onRemoved → onHubClosed 会因 hubTabId 已为 null 而空转（不重入、不误 resolve）。
+function closeHub(): void {
+  if (hubTabId == null) return;
+  const id = hubTabId;
+  hubTabId = null;
+  void browser.tabs.remove(id).catch(() => { /* tab 已关或不存在 */ });
+}
+
 function broadcast(msg: Record<string, unknown>): void {
   void browser.runtime.sendMessage(msg).catch(() => {});
 }
@@ -80,6 +89,8 @@ export function resolveConfirm(confirmId: string, decision: string): void {
   pending.delete(confirmId);
   entry.resolve(decision);
   broadcast({ type: 'CONFIRM_RESOLVED', confirmId });
+  // 队列清空即关 hub（点完/超时皆然）。onHubClosed 已把 hubTabId 置 null 时 closeHub 空转。
+  if (pending.size === 0) closeHub();
 }
 
 function onHubClosed(tabId: number): void {
