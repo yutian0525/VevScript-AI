@@ -1,0 +1,30 @@
+tests/content/gm-bridge-host.test.ts
+  s_9deca6d340b81c::t_f12d2fda7fc633 95
+  s_9deca6d340b81c::t_cbbcacaad2c0bf 5
+  s_9deca6d340b81c::t_4a0ef66e51db1d 60-94,96-111
+shared/gm-wrapper.ts
+  s_9deca6d340b81c::t_03f7f5755a8373 59-66,71-73,76-87
+tests/shared/gm-wrapper.test.ts
+  s_9deca6d340b81c::t_21acf5eb68eda1 113-130
+shared/gm-bridge.ts
+  s_9deca6d340b81c::t_9699523fe8a2ef 19-25
+content/gm-bridge-host.ts
+  s_9deca6d340b81c::t_87d031d8fa4167 6-8,12,32-33,36-41
+  s_9deca6d340b81c::t_87458ded602b79 61,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9c1d68acb8783710e8717318c2ccb414df5f0d25",
+  "prompts": {},
+  "sessions": {
+    "s_9deca6d340b81c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c185704a-ac04-495f-b0a7-d7674bd87f98",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
