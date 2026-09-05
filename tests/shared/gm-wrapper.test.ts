@@ -176,5 +176,14 @@ describe('GM_llmChat wrapper', () => {
   it('onChunk 摘除后过桥：payload 里无 onChunk 键（__GM_plain_llm 摘函数语义）', () => {
     const code = buildWrappedCode(mkScript({ meta: { grants: ['GM_llmChat'] } }), opts);
     expect(code).toMatch(/function __GM_plain_llm\(v\) \{[\s\S]*?__GM_plain\(v\)/);
+    expect(code).toContain('delete copy.onChunk');
+  });
+
+  it('chan/reqId 共用单次自增：安装行 ++__GM_reqSeq 恰好一次，且 reqId 同时喂 chan 与 __GM_post_id', () => {
+    const code = buildWrappedCode(mkScript({ meta: { grants: ['GM_llmChat'] } }), opts);
+    const installLine = code.split('\n').find((l) => l.includes('install("GM_llmChat"'));
+    expect(installLine).toBeDefined();
+    expect(installLine!.match(/\+\+__GM_reqSeq/g)).toHaveLength(1);
+    expect(installLine).toContain('__GM_post_id("LlmChat", [d], reqId)');
   });
 });

@@ -47,6 +47,8 @@ function preamble(scriptId: string): string {
   var __GM_id = ${J(scriptId)};
   var __GM_token = TOKEN_PLACEHOLDER;
   var __GM_reqSeq = 0;
+  // 页实例 id：LLM_CHUNK 通道前缀。同页二次注入（扩展重载重注而旧 wrapper 仍在流式）时，
+  // 两个闭包的数字 reqId 会撞——chan 带上实例 id 才能配对到正确的 onChunk。
   var __GM_inst = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   var __GM_pending = new Map();
   var __GM_listeners = new Map();
