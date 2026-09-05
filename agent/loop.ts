@@ -1,13 +1,14 @@
 // agent/loop.ts
 // Agent 主循环状态机（设计 §2）：convId 存储 + tabId 操作目标 + usage 计量 + 自动压缩 + 熔断阀。
 import type { Provider, ChatMessage, ToolCall, ContentPart } from './provider/types';
-import type { ToolResult } from '../shared/types';
+import type { ToolResult, Skill } from '../shared/types';
 import type { AgentEvent } from '../shared/messages';
 import { runTurn } from './run-turn';
-import { buildContext, type PageInfo } from './context';
+import { buildContext, type PageInfo, type SkillBrief } from './context';
 import { getToolSchemas } from './tools/registry';
 import { initGuardState, recordTurn, checkGuards, DEFAULT_GUARD_CONFIG, type GuardState } from './loop-guards';
 import { getConversation, appendMessage, setStatus, setLastPromptTokens } from '../storage/conversations';
+import { listSkills } from '../storage/skills';
 import { meterRatio, COMPACT_THRESHOLD } from './context-meter';
 
 export interface LoopDeps {
@@ -20,6 +21,8 @@ export interface LoopDeps {
   getContextWindow?: () => Promise<number>;
   /** 压缩当前会话。缺省则不做自动压缩（便于测试）。 */
   compact?: (convId: string) => Promise<{ ok: boolean; newPromptTokens?: number; error?: string }>;
+  /** 启用技能简述（每轮 buildContext 注入）。缺省不注入（便于测试）。 */
+  getSkills?: () => Promise<SkillBrief[]>;
 }
 
 const TAB_OPENING_TOOLS = new Set(['click', 'press_key']);
@@ -33,7 +36,9 @@ export interface LoopArgs {
 export async function runAgentLoop(args: LoopArgs, deps: LoopDeps, signal?: AbortSignal): Promise<void> {
   await appendMessage(args.convId, { role: 'user', content: args.userMessage });
   await setStatus(args.convId, 'running');
-  await drive(args.convId, args.tabId, deps, initGuardState(), signal ?? new AbortController().signal);
+  const m = /^\/([a-z0-9-]+)(?:\s+([\s\S]*))?$/.exec(args.userMessage.trim());
+  const slash = m ? { command: m[1]!, rest: m[2] ?? '' } : undefined;
+  await drive(args.convId, args.tabId, deps, initGuardState(), signal ?? new AbortController().signal, slash);
 }
 
 /** 从暂停状态恢复（不追加新 user 消息）。 */
@@ -42,10 +47,18 @@ export async function resumeAgentLoop(convId: string, tabId: number, deps: LoopD
   await drive(convId, tabId, deps, initGuardState(), signal ?? new AbortController().signal);
 }
 
-async function drive(convId: string, startTabId: number, deps: LoopDeps, guardState: GuardState, signal: AbortSignal): Promise<void> {
+async function drive(
+  convId: string,
+  startTabId: number,
+  deps: LoopDeps,
+  guardState: GuardState,
+  signal: AbortSignal,
+  slash?: { command: string; rest: string },
+): Promise<void> {
   let guard = guardState;
   let targetTab = startTabId;
   let lastPromptTokens: number | undefined;
+  let pendingSlash = slash; // 仅首轮（触发轮）注入技能正文
 
   for (;;) {
     if (signal.aborted) return void (await finishAborted(convId, deps));
@@ -73,7 +86,23 @@ async function drive(convId: string, startTabId: number, deps: LoopDeps, guardSt
 
     const conv = await getConversation(convId);
     const page = await deps.getPageInfo(targetTab).catch(() => ({ url: '', title: '' }));
-    const messages = buildContext(conv.messages, page, 60, conv.summary);
+    const skills = (await deps.getSkills?.()) ?? [];
+    const messages = buildContext(conv.messages, page, 60, conv.summary, skills);
+    // 斜杠触发：查 command 对应 enabled skill，其正文作为隐藏 system 消息仅注入本轮
+    // （位于主 system 之后、user 原文之前；不落库——messages 是本轮临时数组）
+    const triggerSlash = pendingSlash;
+    pendingSlash = undefined; // 仅触发轮注入；后续轮不再重复
+    if (triggerSlash) {
+      // storage 故障按「未命中」处理（原样普通文本跑），与 port 侧 getSkills 降级对称
+      const all = await listSkills().catch(() => [] as Skill[]);
+      const hit = all.find((s) => s.command === triggerSlash.command && s.enabled);
+      if (hit) {
+        messages.splice(1, 0, {
+          role: 'system',
+          content: `【技能指令 /${hit.command}】\n${hit.content}\n\n用户附加输入：${triggerSlash.rest || '（无）'}`,
+        });
+      }
+    }
 
     const result = await runTurn(deps.provider, { messages, tools: getToolSchemas(), signal }, {
       onTextDelta: (t) => deps.emit({ type: 'text-delta', text: t }),

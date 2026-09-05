@@ -87,3 +87,30 @@ export interface ScriptSummary {
   /** 不支持的 grant（列表页黄色警示） */
   grantUnsupported: string[];
 }
+
+// ---------- Skill 系统（spec：skills-and-slash-commands）----------
+
+export interface Skill {
+  id: string;
+  /** 显示名（可中文） */
+  name: string;
+  /** 斜杠调用名（唯一键，kebab-case ASCII） */
+  command: string;
+  /** 简述（注入上下文 + 浮层副标题，≤200 字符） */
+  description: string;
+  /** Markdown 指令正文（≤64KB） */
+  content: string;
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** 列表/摘要形状（无 content） */
+export interface SkillSummary {
+  id: string;
+  name: string;
+  command: string;
+  description: string;
+  enabled: boolean;
+  updatedAt: number;
+}

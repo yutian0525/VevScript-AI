@@ -7,6 +7,9 @@ import { Gauge } from '../ui/Gauge';
 import { ContextRing } from './ContextRing';
 import { Markdown } from './Markdown';
 import { ConversationMenu } from './ConversationMenu';
+import { SlashMenu } from './SlashMenu';
+import { shouldOpenSlash, handleSlashKey, completeSlash } from './slash';
+import { filterSkills, useSkills } from '../../stores/skills';
 import { nextFollow } from './follow';
 import { useChat, type ChatItem } from '../../stores/chat';
 import { useConversations } from '../../stores/conversations';
@@ -26,13 +29,19 @@ export function ChatView() {
   const [contextWindow, setContextWindow] = useState(DEFAULT_CONTEXT_WINDOW);
   const [follow, setFollow] = useState(true);
   const logRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [slashHi, setSlashHi] = useState(0);
+  const [slashDismissed, setSlashDismissed] = useState(false);
+  const skillList = useSkills((s) => s.list);
+  const refreshSkills = useSkills((s) => s.refresh);
   // 上一次的 scrollTop：用来判滚动方向（见 ./follow.ts）
   const prevTopRef = useRef(0);
 
-  // 挂载：恢复上次会话（浏览器重启后 session 指针已失效 → init 内自动开新会话）+ 读上下文窗口。
+  // 挂载：恢复上次会话（浏览器重启后 session 指针已失效 → init 内自动开新会话）+ 读上下文窗口 + 拉技能列表。
   useEffect(() => {
     void useConversations.getState().init();
     void getSettings().then((s) => setContextWindow(resolveContextWindow(s.provider.model, s.provider.contextWindow)));
+    void refreshSkills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -133,6 +142,19 @@ export function ChatView() {
 
   const hasInput = input.trim().length > 0;
 
+  // 斜杠浮层候选与可见性（spec §3）：/ 开头且尚无空白时触发，Esc 临时关闭（slashDismissed）。
+  // 候选在计算处统一截断 8 条——浮层渲染与键盘导航（count）共用同一数组，防高亮索引逃出可见窗口。
+  const slashCandidates = slashDismissed
+    ? []
+    : filterSkills(skillList, input.startsWith('/') ? input.slice(1) : '').slice(0, 8);
+  const slashVisible = !slashDismissed && shouldOpenSlash(input) && slashCandidates.length > 0;
+  const slashHiSafe = Math.min(slashHi, Math.max(0, slashCandidates.length - 1));
+  const selectSlash = (cmd: string) => {
+    setInput(completeSlash(cmd));
+    setSlashDismissed(false);
+    void textareaRef.current?.focus();
+  };
+
   return (
     <PageShell
       title={title}
@@ -186,15 +208,41 @@ export function ChatView() {
           )}
         </div>
         <div className="composer">
-          <textarea
-            className="composer__input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
-            placeholder={compacting ? '压缩中…' : status === 'running' ? 'AI 执行中…' : '输入指令，让 AI 操作页面…'}
-            disabled={status === 'running' || compacting}
-            rows={2}
-          />
+          <div className="composer__wrap">
+            {slashVisible && (
+              <SlashMenu
+                candidates={slashCandidates}
+                hi={slashHiSafe}
+                onSelect={selectSlash}
+              />
+            )}
+            <textarea
+              ref={textareaRef}
+              className="composer__input"
+              value={input}
+              onChange={(e) => { setInput(e.target.value); setSlashDismissed(false); setSlashHi(0); }}
+              onKeyDown={(e) => {
+                if (slashVisible) {
+                  const next = handleSlashKey(e.key, { open: true, hi: slashHiSafe, count: slashCandidates.length });
+                  if (next) {
+                    e.preventDefault();
+                    if (next.selected) {
+                      selectSlash(slashCandidates[next.hi ?? slashHiSafe]!.command);
+                    } else if (typeof next.hi === 'number') {
+                      setSlashHi(next.hi);
+                    } else {
+                      setSlashDismissed(true);
+                    }
+                    return;
+                  }
+                }
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }
+              }}
+              placeholder={compacting ? '压缩中…' : status === 'running' ? 'AI 执行中…' : '输入指令，让 AI 操作页面…'}
+              disabled={status === 'running' || compacting}
+              rows={2}
+            />
+          </div>
           <div className="composer__bar">
             <button
               type="button"
@@ -240,7 +288,14 @@ function MessageRow({ item, index, streaming }: { item: ChatItem; index: number;
   const toggleExpand = useChat((s) => s.toggleExpand);
 
   if (item.role === 'user') {
-    return <div className="msg-user rise">{item.text}</div>;
+    const text = item.text ?? '';
+    const slash = /^\/([a-z0-9-]+)(?:\s|$)/.exec(text);
+    return (
+      <div className="msg-user rise">
+        {slash && slash[1] && <span className="mono slash-chip">/{slash[1]}</span>}
+        {text}
+      </div>
+    );
   }
   if (item.role === 'error') {
     return (

@@ -15,6 +15,7 @@ import {
 import type { ConsoleEntry, HookNetEntry } from '../shared/hook-bridge';
 import { initScriptsModule } from '../background/scripts';
 import { initGmApi } from '../background/gm-api';
+import { initSkillsModule } from '../background/skills';
 
 export default defineBackground(() => {
   const router = new MessageRouter();
@@ -87,6 +88,7 @@ export default defineBackground(() => {
   attachObservers();
   initScriptsModule(router);
   initGmApi(router);
+  initSkillsModule(router);
   router.attach();
   console.log('[ai-browser-ext] background started');
 });
