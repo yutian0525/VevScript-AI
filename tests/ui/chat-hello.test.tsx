@@ -36,17 +36,18 @@ describe('ChatView 空状态欢迎页', () => {
     expect(screen.getByText('帮我写一个脚本')).toBeTruthy();
   });
 
-  it('点击 tag 填入输入框并聚焦，不自动发送', async () => {
+  it('点击 tag 填入完整文案并聚焦，不自动发送', async () => {
     render(<ChatView />);
     const textarea = await screen.findByPlaceholderText('输入指令，让 AI 操作页面…') as HTMLTextAreaElement;
     // 普通建议：原文填入
     fireEvent.click(screen.getByText('帮我关闭页面上的弹窗'));
     expect(textarea.value).toBe('帮我关闭页面上的弹窗');
-    // 斜杠建议：带尾空格（触发斜杠浮层补全）
+    // 斜杠建议：命令 + 需求描述一并填入（所见即所得）
     fireEvent.click(screen.getByText('你能做什么？'));
-    expect(textarea.value).toBe('/help ');
-    expect(screen.queryByText('发送')).toBeNull(); // 未自动发送（无用户消息）
-    expect(useChat.getState().messages).toHaveLength(0);
+    expect(textarea.value).toBe('/help 你能做什么？');
+    fireEvent.click(screen.getByText('帮我找一个脚本'));
+    expect(textarea.value).toBe('/find-scripts 帮我找一个脚本');
+    expect(useChat.getState().messages).toHaveLength(0); // 未自动发送
     expect(document.activeElement).toBe(textarea);
   });
 });
