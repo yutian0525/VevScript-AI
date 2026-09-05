@@ -1,0 +1,23 @@
+background/confirm-queue.ts
+  s_9deca6d340b81c::t_2b3172ed9f0e99 58,69,83
+  s_9deca6d340b81c::t_e6d3bd6b15c64b 1-39,43-57,59-68,70-82,84-93
+  s_9deca6d340b81c::t_2e4e50aaf1b77c 40-42
+tests/background/confirm-queue.test.ts
+  s_9deca6d340b81c::t_f685e80b354771 1-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1b0fa9e56fe7027cb39b472e99d9fefe8ad0f68d",
+  "prompts": {},
+  "sessions": {
+    "s_9deca6d340b81c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c185704a-ac04-495f-b0a7-d7674bd87f98",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
