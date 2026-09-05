@@ -56,13 +56,6 @@ describe('chat store', () => {
     expect(useChat.getState().status).toBe('idle');
   });
 
-  it('skill-loaded 追加系统提示（notice，含技能名与 command）', () => {
-    useChat.getState().applyEvent({ type: 'skill-loaded', command: 'frontend-design', name: '前端设计' });
-    const last = useChat.getState().messages.at(-1)!;
-    expect(last.role).toBe('notice');
-    expect(last.text).toContain('前端设计');
-    expect(last.text).toContain('/frontend-design');
-  });
 
   it('重复 tool-start（同 callId）幂等：只留一张卡片', () => {
     useChat.getState().applyEvent({ type: 'tool-start', name: 'click', args: '{"uid":1}', callId: 'c1' });

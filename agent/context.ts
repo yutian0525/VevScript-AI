@@ -21,7 +21,7 @@ export interface SkillBrief { name: string; command: string; description: string
 export function buildSkillsPrompt(briefs: SkillBrief[]): string {
   if (briefs.length === 0) return '';
   const lines = briefs.map((s) => `- /${s.command} ${s.name}：${s.description}`);
-  return `\n\n## 可用技能\n\n用户可以用 /命令 触发技能（触发轮会注入技能正文）。如果任务与某技能明显匹配，也可以主动遵循该技能行事（此时请向用户说明你正在使用哪个技能）。技能正文在触发时提供，此处仅简述：\n\n${lines.join('\n')}`;
+  return `\n\n## 可用技能\n\n下面是可用技能的简述（不含正文）。当用户以 /命令 形式触发某技能，或当前任务与某技能明显匹配时，先调用 load_skill 工具（传该技能的 command，不含 /）取回它的完整指令正文，再遵循正文行事，并向用户说明你正在使用哪个技能。不要凭简述臆测正文内容。\n\n${lines.join('\n')}`;
 }
 
 export interface PageInfo { url: string; title: string }

@@ -9,12 +9,13 @@ describe('TOOL_TAGS 完备性', () => {
     }
   });
 
-  it('四类计数 PAGE 10 / TABS 5 / NET 4 / SCRIPTS 6', () => {
+  it('五类计数 PAGE 10 / TABS 5 / NET 4 / SCRIPTS 6 / SKILLS 1', () => {
     const count = (tag: string) => Object.values(TOOL_TAGS).filter((v) => v === tag).length;
     expect(count('PAGE')).toBe(10);
     expect(count('TABS')).toBe(5);
     expect(count('NET')).toBe(4);
     expect(count('SCRIPTS')).toBe(6);
+    expect(count('SKILLS')).toBe(1);
   });
 
   it('TOOL_TAGS 键集 = TOOL_SCHEMAS 名字集（无多余、无遗漏）', () => {
@@ -22,7 +23,7 @@ describe('TOOL_TAGS 完备性', () => {
     expect(new Set(Object.keys(TOOL_TAGS))).toEqual(names);
   });
 
-  it('GROUPS 按组序 PAGE/TABS/NET/SCRIPTS', () => {
-    expect(GROUPS.map((g) => g.key)).toEqual(['PAGE', 'TABS', 'NET', 'SCRIPTS']);
+  it('GROUPS 按组序 PAGE/TABS/NET/SCRIPTS/SKILLS', () => {
+    expect(GROUPS.map((g) => g.key)).toEqual(['PAGE', 'TABS', 'NET', 'SCRIPTS', 'SKILLS']);
   });
 });

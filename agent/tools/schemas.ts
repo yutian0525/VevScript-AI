@@ -354,4 +354,17 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
       ),
     },
   },
+  // ---- Skill（技能）：加载完整指令正文（spec §2.4 修订 2026-09-05）----
+  {
+    type: 'function',
+    function: {
+      name: 'load_skill',
+      description:
+        '按 command 加载一个「技能」的完整指令正文并据此执行。系统提示里列出的可用技能只有简述；当用户以 /command 触发某技能，或当前任务与某技能明显匹配时，先调用本工具取回它的完整正文，再遵循正文行事。command 即技能的斜杠命令名（不含 /），如 frontend-design。',
+      parameters: obj(
+        { command: { type: 'string', description: '技能的斜杠命令名（不含 /），来自系统提示中的可用技能清单' } },
+        ['command'],
+      ),
+    },
+  },
 ];
