@@ -386,6 +386,14 @@ body {
   color: var(--ink-2);
   white-space: pre-wrap;
   word-break: break-word;
+  /* 卡片化：井视觉 + 限高滚动，防止长思考撑爆消息流 */
+  padding: 8px 10px;
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* ============ Markdown 正文（.md） ============ */

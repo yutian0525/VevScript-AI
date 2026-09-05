@@ -331,6 +331,19 @@ function ReasoningBlock({ item, onToggle }: { item: ChatItem; onToggle: () => vo
   // 思考中默认展开；出正文后（thinking=false）默认收起。用户手动 expanded 优先。
   const live = !!item.thinking;
   const open = item.expanded ?? live;
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // 吸附意图：仅由用户滚动改变（内容增长不触发 scroll 事件，故不会误关）。
+  // 这样一旦吸底就持续跟随流式；用户上滚查看即脱离，滚回底部又重新吸附。
+  const stickRef = useRef(true);
+  useEffect(() => {
+    if (!live) return;
+    const el = bodyRef.current;
+    if (el && stickRef.current) el.scrollTop = el.scrollHeight;
+  }, [live, item.reasoning]);
+  function onBodyScroll(): void {
+    const el = bodyRef.current;
+    if (el) stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= 24;
+  }
   return (
     <div className={`think${live ? ' think--live' : ''}`}>
       <button className="think__toggle" aria-expanded={open} onClick={onToggle}>
@@ -338,7 +351,9 @@ function ReasoningBlock({ item, onToggle }: { item: ChatItem; onToggle: () => vo
         <ChevronRight size={12} className={`think__chev${open ? ' think__chev--open' : ''}`} />
         <span>{live ? '思考中…' : '已思考'}</span>
       </button>
-      {open && item.reasoning && <div className="think__body">{item.reasoning}</div>}
+      {open && item.reasoning && (
+        <div ref={bodyRef} className="think__body" onScroll={onBodyScroll}>{item.reasoning}</div>
+      )}
     </div>
   );
 }
