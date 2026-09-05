@@ -22,6 +22,14 @@ function prefersReducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+/** 空状态快捷指令（点击填入输入框，不自动发送）。tag 为斜杠命令前缀时填入文本带尾空格触发浮层。 */
+const HELLO_SUGGESTIONS: { tag?: string; label: string; text: string }[] = [
+  { label: '帮我关闭页面上的弹窗', text: '帮我关闭页面上的弹窗' },
+  { tag: '/help', label: '你能做什么？', text: '/help ' },
+  { tag: '/find-scripts', label: '帮我找一个脚本', text: '/find-scripts ' },
+  { tag: '/write-script', label: '帮我写一个脚本', text: '/write-script ' },
+];
+
 export function ChatView() {
   const { messages, status, pauseReason, applyEvent, promptTokens, compacting } = useChat();
   const { currentId, list, menuOpen, setMenuOpen } = useConversations();
@@ -176,10 +184,25 @@ export function ChatView() {
         <div className="chat__stage">
           <div className="chat__log" ref={logRef} onScroll={onLogScroll}>
             {messages.length === 0 && (
-              <div className="chat__empty">
-                输入指令，让 AI 操作当前页面。
-                <br />
-                例如“帮我点掉 cookie 弹窗”。
+              <div className="chat__hello">
+                <div className="chat__hello-title">Hi</div>
+                <div className="chat__hello-sub">需要我帮你做些什么？</div>
+                <div className="chat__hello-tags">
+                  {HELLO_SUGGESTIONS.map((s) => (
+                    <button
+                      key={s.text}
+                      type="button"
+                      className="chat__hello-tag"
+                      onClick={() => {
+                        setInput(s.text);
+                        textareaRef.current?.focus();
+                      }}
+                    >
+                      {s.tag ? <span className="mono chat__hello-tagcmd">{s.tag}</span> : null}
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {messages.map((m, i) => (
