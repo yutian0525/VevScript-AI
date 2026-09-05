@@ -1,0 +1,24 @@
+docs/superpowers/plans/2026-09-05-gm-llm-chat.md
+  s_4b16ffa8468de9::t_2848424cf6c225 773
+  s_4b16ffa8468de9::t_38be10cec7f783 951
+  s_4b16ffa8468de9::t_9333052093f035 926
+  s_4b16ffa8468de9::t_cec2d0e00d6527 729,731,737,753,755-756,758-762,764-765
+  s_4b16ffa8468de9::t_885363a323c2f1 1-728,730,732-736,738-752,754,757,763,766-772,774-925,927-950,952-986,988-1189
+  s_4b16ffa8468de9::t_fb80c602a63e04 987
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4c0baaea60724ce60e2b956d7ae4ef2ac71121d6",
+  "prompts": {},
+  "sessions": {
+    "s_4b16ffa8468de9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa33a125-14e4-4ba5-8132-a2d017f9289f",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
