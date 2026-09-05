@@ -124,16 +124,14 @@ describe('scripts store', () => {
     expect(s.menus).toEqual([{ scriptId: 's1', commands: [{ key: 'm1', name: '抓取' }] }]);
     expect(s.errors['s1']).toHaveLength(1);
     expect(s.errors['s1']![0]).toMatchObject({ message: 'boom', line: 3 });
-    expect(s.confirms).toHaveLength(1);
-    expect(s.confirms[0]).toMatchObject({ confirmId: 'c1', scriptId: 's1', host: 'ext.com' });
   });
 });
 
-describe('Phase 5：menus/errors/confirms', () => {
+describe('Phase 5：menus/errors', () => {
   beforeEach(() => {
     fakeBrowser.reset();
     vi.restoreAllMocks();
-    useScripts.setState({ summaries: [], runtimeEntries: {}, activeTabId: null, query: '', loading: false, engineWarning: null, menus: [], errors: {}, confirms: [] });
+    useScripts.setState({ summaries: [], runtimeEntries: {}, activeTabId: null, query: '', loading: false, engineWarning: null, menus: [], errors: {} });
   });
 
   it('applyMenusEvent 全量替换', () => {
@@ -146,13 +144,6 @@ describe('Phase 5：menus/errors/confirms', () => {
     const errs = useScripts.getState().errors['s1']!;
     expect(errs).toHaveLength(20);
     expect(errs[0]!.message).toBe('e5');
-  });
-
-  it('applyConfirmEvent 入列 / applyConfirmResolved 出列', () => {
-    useScripts.getState().applyConfirmEvent({ confirm: { confirmId: 'c1', scriptId: 's1', host: 'x.com', url: 'https://x.com/', createdAt: 1 } });
-    expect(useScripts.getState().confirms).toHaveLength(1);
-    useScripts.getState().applyConfirmResolved('c1');
-    expect(useScripts.getState().confirms).toHaveLength(0);
   });
 
   it('applyErrorCleared 清某脚本错误', () => {
