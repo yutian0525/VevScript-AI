@@ -3,10 +3,13 @@
 // 校验 token 后转发 GM_API_CALL；SW 下行 GM_EVENT 转发为 gmevt:<id> 页面事件。
 // wrapper（USER_SCRIPT/MAIN 世界）派发的 CustomEvent 在 ISOLATED 世界可见——共享同一 DOM。
 
-import { gmReqEvent, gmResEvent, gmEvtEvent, type GmBridgeRequest } from '../shared/gm-bridge';
+import {
+  gmReqEvent, gmResEvent, gmEvtEvent, gmHelloEvent, gmHostEvent, type GmBridgeRequest,
+} from '../shared/gm-bridge';
 
 let tokens = new Map<string, string>();
 let listenersByScript = new Map<string, (e: Event) => void>();
+let helloListenersByScript = new Map<string, (e: Event) => void>();
 
 function attachFor(scriptId: string): void {
   if (listenersByScript.has(scriptId)) return;
@@ -26,8 +29,16 @@ function attachFor(scriptId: string): void {
       }));
     });
   };
+  // 顺序要害：先挂 gmreq 监听，再发 gmhost。wrapper 收到 gmhost 会同步冲刷 backlog（回派 gmreq），
+  // 此刻监听器必须已在，否则冲刷出来的 gmreq 又丢失（收口「早到 gmreq 竞态」，见 gm-bridge.ts）。
   window.addEventListener(gmReqEvent(scriptId), listener);
   listenersByScript.set(scriptId, listener);
+  // gmhello 监听：wrapper 若晚于宿主注入，其 gmhello 到达时重发 gmhost（覆盖反向时序漏接首个 gmhost）。
+  const helloListener = (): void => { window.dispatchEvent(new CustomEvent(gmHostEvent(scriptId))); };
+  window.addEventListener(gmHelloEvent(scriptId), helloListener);
+  helloListenersByScript.set(scriptId, helloListener);
+  // 首个 gmhost：wrapper 若早于宿主注入，其 gmhost 监听已挂好，此发信号触发冲刷。
+  window.dispatchEvent(new CustomEvent(gmHostEvent(scriptId)));
 }
 
 async function refreshTokens(): Promise<void> {
@@ -47,7 +58,9 @@ export function initBridgeHost(): () => void {
   void refreshTokens();
   return () => {
     for (const [id, fn] of listenersByScript) window.removeEventListener(gmReqEvent(id), fn);
+    for (const [id, fn] of helloListenersByScript) window.removeEventListener(gmHelloEvent(id), fn);
     listenersByScript = new Map();
+    helloListenersByScript = new Map();
   };
 }
 

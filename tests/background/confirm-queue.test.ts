@@ -86,6 +86,23 @@ describe('confirm-queue', () => {
     expect(await p).toBe('deny'); // 不被超时覆盖
   });
 
+  it('全部处理完自动关 hub：resolve 到 pending 清空才 tabs.remove（点完最后一个才关）', async () => {
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(undefined as never);
+    vi.spyOn(browser.tabs, 'create').mockResolvedValue({ id: 100 } as never);
+    vi.spyOn(browser.tabs, 'get').mockResolvedValue({ id: 100 } as never);
+    vi.spyOn(browser.tabs, 'update').mockResolvedValue({} as never);
+    const remove = vi.spyOn(browser.tabs, 'remove').mockResolvedValue(undefined as never);
+    void enqueueConfirm(spec());
+    await new Promise((r) => setTimeout(r, 0));
+    void enqueueConfirm(spec());
+    await new Promise((r) => setTimeout(r, 0));
+    const [a, b] = getPending();
+    resolveConfirm(a!.confirmId, 'allow-once');
+    expect(remove).not.toHaveBeenCalled(); // 还剩一条，不关
+    resolveConfirm(b!.confirmId, 'deny');
+    expect(remove).toHaveBeenCalledWith(100); // 清空 → 关 hub
+  });
+
   it('关 hub tab：剩余全部 __closed__', async () => {
     vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(undefined as never);
     vi.spyOn(browser.tabs, 'create').mockResolvedValue({ id: 100 } as never);

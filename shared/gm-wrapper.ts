@@ -56,15 +56,35 @@ function preamble(scriptId: string): string {
   var unsafeWindow = window;
   var __values = VALUES_PLACEHOLDER;
   var __resources = RESOURCES_PLACEHOLDER;
+  // 握手态：wrapper 可能早于桥宿主挂 gmreq 监听（@run-at document-end/start 早于宿主的
+  // document_idle + 异步拉 token）。宿主未就绪时 gmreq 派发进虚空、请求永挂——故未就绪先入
+  // backlog，收到 gmhost 就绪信号再冲刷（见 shared/gm-bridge.ts 握手注释）。
+  var __GM_hostReady = false;
+  var __GM_backlog = [];
+  function __GM_send(detail) {
+    window.dispatchEvent(new CustomEvent('gmreq:' + __GM_id, { detail: detail }));
+  }
   function __GM_post(api, params) {
     return new Promise(function (resolve, reject) {
       var reqId = ++__GM_reqSeq;
       __GM_pending.set(reqId, { resolve: resolve, reject: reject });
-      window.dispatchEvent(new CustomEvent('gmreq:' + __GM_id, {
-        detail: { token: __GM_token, reqId: reqId, api: api, params: params }
-      }));
+      var detail = { token: __GM_token, reqId: reqId, api: api, params: params };
+      if (__GM_hostReady) __GM_send(detail);
+      else __GM_backlog.push(detail);
     });
   }
+  // 收到宿主就绪信号：置位 + 冲刷 backlog（取出并清空，重复 gmhost 到达时 backlog 已空，幂等）。
+  window.addEventListener('gmhost:' + __GM_id, function () {
+    __GM_hostReady = true;
+    if (__GM_backlog.length) {
+      var pend = __GM_backlog;
+      __GM_backlog = [];
+      for (var i = 0; i < pend.length; i++) __GM_send(pend[i]);
+    }
+  });
+  // 宣告 wrapper 就绪并问询：宿主若已就绪会收到 gmhello 重发 gmhost；若未就绪，宿主 attachFor
+  // 时主动发首个 gmhost。gmhost 监听器已在上方挂好，故重发能被接住。
+  window.dispatchEvent(new CustomEvent('gmhello:' + __GM_id));
   window.addEventListener('gmres:' + __GM_id, function (e) {
     var d = e.detail || {};
     var p = __GM_pending.get(d.reqId);
