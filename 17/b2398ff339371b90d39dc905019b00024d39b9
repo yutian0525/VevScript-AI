@@ -1,0 +1,68 @@
+tests/agent/skills-context.test.ts
+  s_ed860ebd1ec127::t_359121e86cce3a 7
+  s_ed860ebd1ec127::t_fe6fa2b9eae458 141-143
+  s_ed860ebd1ec127::t_8c32e6b01be5b7 81,94,96-100,103,110,118,136,146-152
+  s_ed860ebd1ec127::t_3729790496670a 15,22
+stores/chat.ts
+  s_ed860ebd1ec127::t_7c204637c95cc9 9
+agent/tools/registry.ts
+  s_ed860ebd1ec127::t_72f650d034c0b0 15
+  s_ed860ebd1ec127::t_0c384308d8181f 80-82
+entrypoints/sidepanel/styles.css
+  s_ed860ebd1ec127::t_f25234736854a6 618
+tests/debug/tool-tags.test.ts
+  s_ed860ebd1ec127::t_dac59d6c4500c4 12,18
+  s_ed860ebd1ec127::t_e10e72749787b1 26-27
+agent/tools/skills-tool.ts
+  s_ed860ebd1ec127::t_ff9a92b8c9ca88 1-25
+agent/tools/schemas.ts
+  s_ed860ebd1ec127::t_25cfc5f39086e8 357-369
+components/chat/ChatView.tsx
+  s_ed860ebd1ec127::t_2e346589557d57 3
+tests/agent/tools/registry.test.ts
+  s_ed860ebd1ec127::t_0589bece70863c 14
+  s_ed860ebd1ec127::t_a0a9c0332be187 132-139
+tests/agent/tools/skills-tool.test.ts
+  s_ed860ebd1ec127::t_df984324fd6c7d 1-45
+docs/superpowers/specs/2026-09-04-skills-and-slash-commands-design.md
+  s_ed860ebd1ec127::t_9fbd71d8489916 113,115-121
+  s_ed860ebd1ec127::t_fc12776caec69d 99-101
+  s_ed860ebd1ec127::t_4875223a4664ab 16-17
+  s_ed860ebd1ec127::t_e1a2a85a186cfd 178
+components/debug/tool-tags.ts
+  s_ed860ebd1ec127::t_a444ba536943a9 5,20-21
+  s_ed860ebd1ec127::t_74d214a25c43d4 34,37,39
+tests/agent/tools/schemas.test.ts
+  s_ed860ebd1ec127::t_ba352958c4bba8 5,10,16-20
+  s_9deca6d340b81c::t_aa5696d6b02b99 21-22
+agent/loop.ts
+  s_ed860ebd1ec127::t_986c422a6774c0 166-175
+  s_ed860ebd1ec127::t_8fef786dd08b08 38-40
+  s_ed860ebd1ec127::t_0613c4e421a5cf 4
+agent/context.ts
+  s_ed860ebd1ec127::t_08aa3381059629 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "17b2398ff339371b90d39dc905019b00024d39b9",
+  "prompts": {},
+  "sessions": {
+    "s_9deca6d340b81c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c185704a-ac04-495f-b0a7-d7674bd87f98",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    },
+    "s_ed860ebd1ec127": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d0a5f89-6c7a-4bb3-8a10-7632eace911a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
