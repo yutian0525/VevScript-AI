@@ -170,7 +170,7 @@ export function ModelSettings({ onBack }: { onBack: () => void }) {
               setSettings({ ...settings, agent: { ...settings.agent, llmTimeoutSec: Number.isFinite(v) ? Math.max(0, v) : 0 } });
             }}
           />
-          <span className="hint">静默窗口：连接后或流式输出中，超过该时长未收到任何数据即判定挂死并中止（0 = 关闭超时保护）。</span>
+          <span className="hint">静默窗口：连接后或流式输出中，超过该时长未收到任何数据即判定挂死并中止（0 = 不限时，仍有 5 分钟静默兜底防永久挂死）。</span>
         </div>
         <div className="field">
           <label className="field-label">失败重试次数（0 = 不重试）</label>
