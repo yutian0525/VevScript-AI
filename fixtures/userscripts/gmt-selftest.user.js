@@ -3,7 +3,7 @@
 // @namespace    ai-browser-extend/gmt-selftest
 // @version      1.0.0
 // @author       gmt-selftest
-// @description  本扩展脚本池运行环境全功能自检：元字段解析自证 + 14 个 GM API 可用性
+// @description  本扩展脚本池运行环境全功能自检：元字段解析自证 + 15 个 GM API 可用性
 // @homepage     https://example.com/gmt-selftest
 // @supportURL   https://example.com/gmt-selftest/support
 // @iconURL      https://example.com/favicon.ico
@@ -257,10 +257,10 @@
     addRow('1 元字段解析', 'script.matches 含 *://*/*', function () {
       return (info.script.matches || []).indexOf('*://*/*') !== -1 || 'matches=' + JSON.stringify(info.script.matches);
     });
-    addRow('1 元字段解析', 'script.grants = 14 API + unsafeWindow', function () {
+    addRow('1 元字段解析', 'script.grants = 15 API + unsafeWindow', function () {
       var g = (info.script.grants || []).slice().sort();
       var expected = ['GM_addStyle', 'GM_addValueChangeListener', 'GM_deleteValue', 'GM_getResourceText', 'GM_getValue',
-        'GM_info', 'GM_listValues', 'GM_log', 'GM_notification', 'GM_openInTab', 'GM_registerMenuCommand',
+        'GM_info', 'GM_listValues', 'GM_llmChat', 'GM_log', 'GM_notification', 'GM_openInTab', 'GM_registerMenuCommand',
         'GM_setClipboard', 'GM_setValue', 'GM_xmlhttpRequest', 'unsafeWindow'];
       return JSON.stringify(g) === JSON.stringify(expected) || 'grants=' + JSON.stringify(g);
     });

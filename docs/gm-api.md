@@ -2,7 +2,7 @@
 
 > 定位：**GM_* API 的完整清单**——聚合 Tampermonkey / Violentmonkey / ScriptCat 三家生态（源码调研 2026-09-02），逐个标注本扩展的支持状态。
 > 面向脚本作者的签名/示例/差异细节随 Phase 5 实施补齐；实现设计见 `docs/superpowers/specs/2026-09-02-ai-browser-extension-phase5-gm-api-design.md`。
-> 状态图例：**Phase 5**（本阶段实现，14 个）· **后续候选**（架构可容纳，按需排期）· **明确不做**（架构不匹配或 YAGNI，附理由与替代）。
+> 状态图例：**Phase 5**（本阶段实现，15 个）· **后续候选**（架构可容纳，按需排期）· **明确不做**（架构不匹配或 YAGNI，附理由与替代）。
 
 ## Phase 5 实现说明（本扩展的落地细节）
 
@@ -17,6 +17,7 @@
 - **GM_setClipboard**：仅文本。MV3 SW 无文档上下文（`navigator.clipboard` 为 undefined），经专用 offscreen 文档（reason CLIPBOARD）+ `execCommand('copy')`（writeText 要求文档焦点，offscreen 永无焦点）写入；失败返回可读错误文本。
 - **GM_notification**：图标为扩展内占位 PNG（`/gm-notif.png`，Chrome basic 通知不接受 data: URI）；后续可通过 `details.image` 扩展自定义图标。
 - **unsafeWindow**：MAIN world 下 = `window`（真页面 window）；USER_SCRIPT world 下 = 隔离世界 window（要真页面 window 请 `@world MAIN`）。
+- **GM_llmChat**：脚本调用扩展配置的大模型（OpenAI 兼容，`设置 → 模型设置` 同源配置，脚本不可自选模型/覆盖）。`messages` 数组（system/user/assistant；content 为字符串或多段 `{type:'text'|'image_url',...}`，图片 data URL ≤5MB 或 http(s) URL）；`onChunk(delta)` 可选收流式文本增量；Promise resolve `{ text, usage, finishReason }`。权限档 per-script（默认「每次询问」弹确认卡：允许一次 / 本会话内允许 / 拒绝 60s 超时），脚本详情 → 设置 → 模型调用 可改档。限制：消息载荷 ≤2MB、响应聚合 ≤1MB（超限报错不截断）、整调用超时默认 120s（可传 `timeout` 覆盖）。无 abort、无 tool 角色、reasoning 不下发。
 
 ## 0. @grant 语义（三家通用，本扩展遵循）
 
@@ -104,6 +105,12 @@
 |---|---|---|---|---|---|---|
 | `GM_log(...args)` | `GM.log` | 带脚本前缀的日志 | ✗ | ✓ | ✓ | **Phase 5**（本地 console，格式 `[脚本名]`） |
 
+## 9.5 大模型（本扩展新增，非 GM 生态标准）
+
+| API | 点形式 | 语义 | TM | VM | SC | 本扩展 |
+|---|---|---|---|---|---|---|
+| `GM_llmChat(details)` | `GM.llmChat` | 调扩展配置的大模型（文本/图片、流式 onChunk） | ✗ | ✗ | ✗ | **本扩展**（权限档三选一 + 确认卡；限制见 Phase 5 实现说明） |
+
 ## 10. 明确不做（含理由与替代）
 
 | API / 能力 | 来源 | 不做理由 | 替代方案 |
@@ -114,9 +121,9 @@
 | unsafe header 改写（`user-agent`/`referer`/`cookie` 等被 fetch 禁的头） | TM/VM/SC（DNR session 规则实现） | 本阶段不引入 DNR；忽略禁头并记 warning | 后续若做，按 VM `dnr.js` 的 per-request session rule 模式 |
 | 流式响应 / `responseType: 'stream'` | TM/SC（MessageConnect 分块流） | 首批一次性桥足够；响应 ≤1MB 截断 | 大文件场景后续升级长连接通道 |
 
-## 11. Phase 5 首批 14 个速览
+## 11. Phase 5 首批 15 个速览
 
-`GM_info` · `GM_getValue` · `GM_setValue` · `GM_deleteValue` · `GM_listValues` · `GM_addValueChangeListener` · `GM_addStyle` · `GM_getResourceText` · `GM_log` · `GM_registerMenuCommand` · `GM_setClipboard` · `GM_notification` · `GM_openInTab` · `GM_xmlhttpRequest`
+`GM_info` · `GM_getValue` · `GM_setValue` · `GM_deleteValue` · `GM_listValues` · `GM_addValueChangeListener` · `GM_addStyle` · `GM_getResourceText` · `GM_log` · `GM_registerMenuCommand` · `GM_setClipboard` · `GM_notification` · `GM_openInTab` · `GM_xmlhttpRequest` · `GM_llmChat`
 
 外加特殊 grant：`unsafeWindow`（语义见 §3）。
 
