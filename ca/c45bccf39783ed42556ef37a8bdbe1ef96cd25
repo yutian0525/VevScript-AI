@@ -1,0 +1,42 @@
+docs/superpowers/plans/2026-09-06-ai-script-authoring-optimization.md
+  s_1b8e3189527efd::t_5e593c75b9601c 1365-1531
+  s_1b8e3189527efd::t_811361d299573c 879-880
+  s_1b8e3189527efd::t_03727e28a9006d 318-414
+  s_1b8e3189527efd::t_44124691e1d4c5 1-53
+  s_1b8e3189527efd::t_b2c64a2f5b4127 1238-1285,1287-1364
+  s_1b8e3189527efd::t_eab7de16b14eb4 774-775,778-779
+  s_1b8e3189527efd::t_f818f13da48139 979-1076
+  s_1b8e3189527efd::t_5c9a1fb88229f0 54-160
+  s_1b8e3189527efd::t_6b9530170a0740 617-760
+  s_1b8e3189527efd::t_b3f1e077982e30 1999-2003
+  s_1b8e3189527efd::t_ac90a38e32c615 1532-1721
+  s_1b8e3189527efd::t_1d5972920b4d9a 1077-1237
+  s_1b8e3189527efd::t_94181bf4403f9d 1286
+  s_1b8e3189527efd::t_d10154830aca65 415-557
+  s_1b8e3189527efd::t_97b73a040fd8d0 761-773,776-777,780-849
+  s_1b8e3189527efd::t_8c5b959405b594 1871
+  s_1b8e3189527efd::t_b9619aab9987d7 558-616
+  s_1b8e3189527efd::t_e25061f9e643ea 1722-1870,1872-1880,1882-1896
+  s_1b8e3189527efd::t_68edcf6281cc31 1881
+  s_1b8e3189527efd::t_1a711f964bc7d4 1897-1980,1982-1998,2004-2086
+  s_1b8e3189527efd::t_65624345aa31ff 1981
+  s_1b8e3189527efd::t_95d313e5d8db6a 2087-2190
+  s_1b8e3189527efd::t_c65ba82c5b8182 161-317
+  s_1b8e3189527efd::t_c47ce1ced889a9 850-878,881-978
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "cac45bccf39783ed42556ef37a8bdbe1ef96cd25",
+  "prompts": {},
+  "sessions": {
+    "s_1b8e3189527efd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a422d7b-b7c9-4d8d-b680-a38a4f5b5194",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
