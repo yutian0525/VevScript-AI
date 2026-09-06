@@ -1,0 +1,21 @@
+components/settings/ModelSettings.tsx
+  s_1b8e3189527efd::t_ff92746e6115a1 173
+components/debug/ToolBenchPage.tsx
+  s_1b8e3189527efd::t_75bb8ffe1eeac1 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "77e91df141425b5312af8864448df7f263662b07",
+  "prompts": {},
+  "sessions": {
+    "s_1b8e3189527efd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a422d7b-b7c9-4d8d-b680-a38a4f5b5194",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
