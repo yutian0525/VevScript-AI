@@ -132,15 +132,22 @@ command: write-script
    - 需要看接口时用 `list_network_requests` / `get_network_request` 找数据源。
 3. 把探索结论（选择器、时机、数据源）简要讲给用户听，确认理解无误再动手。
 
-## 第 3 步：编写、安装、调试
+## 第 3 步：编写、安装、调试（分步写入）
 
-1. 写完整的 `.user.js`，要求：
-   - `==UserScript==` 头必须有：`@name`（中文）、`@match`（精确到作用站点，宁窄勿宽）、`@version`、`@description`；必要时 `@run-at`（document-end 默认、SPA 页面考虑 document-start/idle）。
-   - 代码用 IIFE 包裹，避免污染页面；CSS 注入用 GM_addStyle 或手动 `<style>`。
+**为什么分步**：单次工具调用的参数有长度上限，长脚本一次性塞进 `create_script` 会被截断作废。骨架 → 追加 → 闭合，每步都是一次独立调用，输出量小、可恢复。
+
+1. **提交骨架**：`create_script(source=...)` 只含元数据头 + 未闭合 IIFE：
+   - 头部必备：`@name`（中文）、`@match`（精确到作用站点，宁窄勿宽）、`@version`、`@description`；必要时 `@run-at`（document-end 默认、SPA 考虑 document-start/idle）。
+   - 代码体写到 `(function () {\n  'use strict';\n` 为止，**不写** `})();`——提前闭合会让后续追加落到全局作用域。
+   - source 上限 200 行 / 8192 字符，骨架远小于此，不会触发。
    - 本扩展支持的 GM API 共 14 个（GM_xmlhttpRequest / GM_setValue / GM_getValue / GM_registerMenuCommand 等），除此之外的 GM 函数（GM_addStyle 之外的 unsafeWindow 高级用法等）不要用，写纯 DOM/JS 实现。
-2. 调用 `create_script`，参数 `source` = 完整脚本文本（解析后必须带 @match 才能创建）。
-3. **测试闭环**：
-   - `navigate_page` 到目标页（刷新使脚本注入），`take_screenshot` 或 `evaluate_script` 检查效果是否符合预期；
-   - 不符合 → 改代码，用 `update_script` 的 `text`（整文替换）或 `edit`（行区间替换）修正，再刷新验证；
-   - 直到符合预期，并把最终效果截图/描述给用户。
-4. 收尾：告诉用户脚本已安装、作用在哪些站点、如何启停（脚本池开关）、想改需求随时再说。
+2. **分段追加**：`update_script(id, { append: '...' })` 按功能块逐段追加，每段 50~80 行：
+   - 硬规则：切在函数或语句块边界，绝不切在语句/字符串中间；
+   - 最后一段带上 `})();` 闭合 IIFE；
+   - 每次 append 都会返回 `balance` 配平状态：过程中 `unclosed` 是正常的（骨架本来就没闭合），最后一段写完应为 `ok`。
+3. **配平不对就修**：`balance` 不是 `ok` 时，用 `grep_script` 搜漏掉的括号/引号，用 `update_script(id, { replace: { old, new } })` 修正（old 要带上足够上下文保证唯一）。
+4. **注入验证**：
+   - `navigate_page` 到目标页（刷新触发注入），`list_console_messages` 看有无报错（语法错误会在 console 报 SyntaxError）；
+   - `take_screenshot` 或 `evaluate_script` 检查效果是否符合预期。
+5. **迭代修正**：优先 `patch.replace`（精确、不依赖行号）；需要看代码时用 `get_script` 按区间读（返回带行号，默认只给前 200 行）或 `grep_script` 定位，不要整份读回；改完再刷新验证，直到符合预期。
+6. 收尾：告诉用户脚本已安装、作用在哪些站点、如何启停（脚本池开关）、想改需求随时再说。
