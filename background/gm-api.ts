@@ -360,7 +360,7 @@ async function doXmlHttpRequest(
 
 // ---- GM_llmChat（脚本调用大模型，spec docs/superpowers/specs/2026-09-05-gm-llm-chat-design.md）----
 
-// 「本会话内允许」：SW 内存态，重启失效（与菜单表同款取舍）。档位变更时由 SCRIPTS_SET_LLM_TIER 清。
+// 「本会话内允许」：SW 内存态，重启失效（与菜单表同款取舍）。档位变更时由 SCRIPTS_SET_LLM_TIER 清（Task 5 接线，当前尚未接线）。
 const llmSessionAllow = new Set<string>();
 
 const LLM_IMAGE_MAX = 5 * 1024 * 1024;      // 单张 data URL 上限（base64 后）
@@ -390,8 +390,8 @@ function fail(msg: string): { ok: false; error: string } {
   return { ok: false, error: msg };
 }
 
-/** 参数校验 + 归一化为 ChatMessage[]。返回 union：失败带 error。 */
-function validateLlmMessages(raw: unknown): { ok: true; messages: ChatMessage[] } | { ok: false; error: string } {
+/** 参数校验 + 归一化为 ChatMessage[]。返回 union：失败带 error；payloadKB 供确认卡复用（避免二次 stringify）。 */
+function validateLlmMessages(raw: unknown): { ok: true; messages: ChatMessage[]; payloadKB: number } | { ok: false; error: string } {
   if (!Array.isArray(raw) || raw.length === 0) return fail('缺少 messages 或为空数组');
   const out: ChatMessage[] = [];
   for (const m of raw) {
@@ -420,16 +420,16 @@ function validateLlmMessages(raw: unknown): { ok: true; messages: ChatMessage[] 
     out.push({ role, content: parts });
   }
   const payload = JSON.stringify(out);
+  const payloadKB = Math.round(payload.length / 1024);
   if (payload.length > LLM_PAYLOAD_MAX) {
-    return fail(`消息载荷过大：${Math.round(payload.length / 1024)}KB（上限 2MB）`);
+    return fail(`消息载荷过大：${payloadKB}KB（上限 2MB）`);
   }
-  return { ok: true, messages: out };
+  return { ok: true, messages: out, payloadKB };
 }
 
-/** 权限档决策：deny 拒 / allow 放 / ask 查 session 表，未命中弹确认卡。
- *  deny 由调用方（doLlmChat）提前拦截——权限层在最外，档位拒绝不依赖模型配置、不弹卡。 */
-async function llmGate(scriptId: string, scriptName: string, msgCount: number, payloadKB: number, tier: 'ask' | 'allow' | 'deny'): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (tier === 'deny') return fail(LLM_DENY_MSG);
+/** 权限档决策：allow 放 / ask 查 session 表，未命中弹确认卡。
+ *  deny 已在 doLlmChat 硬拒，gate 只处理 ask/allow/session（不弹卡不依赖模型配置状态的拒绝在最外层）。 */
+async function llmGate(scriptId: string, scriptName: string, modelName: string, msgCount: number, payloadKB: number, tier: 'ask' | 'allow'): Promise<{ ok: true } | { ok: false; error: string }> {
   if (tier === 'allow') return { ok: true };
   if (llmSessionAllow.has(scriptId)) return { ok: true };
   const choice = await enqueueConfirm({
@@ -438,7 +438,7 @@ async function llmGate(scriptId: string, scriptName: string, msgCount: number, p
     message: `脚本「${scriptName}」请求调用大模型`,
     rows: [
       { label: '脚本', value: scriptName },
-      { label: '模型', value: (await getSettings()).provider.model || '（未配置）', mono: true },
+      { label: '模型', value: modelName, mono: true },
       { label: '消息数', value: String(msgCount), mono: true },
       { label: '载荷', value: `${payloadKB}KB`, mono: true },
     ],
@@ -460,6 +460,9 @@ async function doLlmChat(
   const details = (params[0] ?? {}) as LlmDetails;
   const v = validateLlmMessages(details.messages);
   if (!v.ok) return v;
+  if (details.timeout != null && (typeof details.timeout !== 'number' || !Number.isFinite(details.timeout) || details.timeout <= 0)) {
+    return fail('非法 timeout');
+  }
   const script = await getScript(scriptId);
   if (!script) return fail('脚本不存在');
 
@@ -471,14 +474,19 @@ async function doLlmChat(
   if (!provider.baseUrl || !provider.apiKey || !provider.model) {
     return fail('模型未配置：请到侧边栏 设置 → 模型设置 配置后重试');
   }
-  const payloadKB = Math.round(JSON.stringify(v.messages).length / 1024);
-  const gate = await llmGate(scriptId, script.name, v.messages.length, payloadKB, tier);
+  const gate = await llmGate(scriptId, script.name, provider.model, v.messages.length, v.payloadKB, tier);
   if (!gate.ok) return gate;
 
   const tabId = sender?.tab?.id;
   const chan = params[1] as string | undefined; // wrapper 传的通道号（直调/旧调用无 chan → chunk 不下发）
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(new Error('timeout')), details.timeout ?? LLM_DEFAULT_TIMEOUT);
+
+  // 流结束哨兵：provider 契约保证恰好终止于一个 message-done（abort 也不例外）——
+  // 先等流终结，再等 chunk 下行链排空，gmres 才会 resolve（时序不变量）。
+  let resolveDone!: () => void;
+  const done = new Promise<void>((r) => { resolveDone = r; });
+  let finished = false; // 防御 fake/异常 provider 违约重复发 message-done（第二次忽略）
 
   // chunk 下行 promise 链：保证 gmres resolve 晚于所有 LLM_CHUNK（时序不变量）
   let chain: Promise<void> = Promise.resolve();
@@ -502,12 +510,14 @@ async function doLlmChat(
         enqueueChunk(ev.text);
       } else if (ev.type === 'message-done') {
         usage = ev.usage; finishReason = ev.finishReason;
+        if (!finished) { finished = true; resolveDone(); }
       } else if (ev.type === 'error') {
         streamError = ev.error;
       }
       // reasoning-delta 忽略（不下发）
     });
-    await chain;
+    await done;   // 等流终结（此刻全部 chunk 已入链）
+    await chain;  // 再排空 chunk 下行链
   } finally {
     clearTimeout(timer);
   }

@@ -333,6 +333,16 @@ describe('gm-api LlmChat 参数校验', () => {
     expect(bad3).toMatchObject({ ok: false, error: expect.stringContaining('type') });
   });
 
+  it('非法 timeout（0/负数/非数字）→ 报错', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
+    const r1 = await call('LlmChat', [{ messages: [{ role: 'user', content: 'hi' }], timeout: 0 }]);
+    const r2 = await call('LlmChat', [{ messages: [{ role: 'user', content: 'hi' }], timeout: -5 }]);
+    const r3 = await call('LlmChat', [{ messages: [{ role: 'user', content: 'hi' }], timeout: 'abc' as unknown as number }]);
+    expect(r1).toMatchObject({ ok: false, error: expect.stringContaining('非法 timeout') });
+    expect(r2).toMatchObject({ ok: false, error: expect.stringContaining('非法 timeout') });
+    expect(r3).toMatchObject({ ok: false, error: expect.stringContaining('非法 timeout') });
+  });
+
   it('图片超 5MB / 载荷超 2MB → 报错', async () => {
     await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
     const big = 'data:image/png;base64,' + 'A'.repeat(5 * 1024 * 1024);
@@ -348,14 +358,15 @@ describe('gm-api LlmChat 权限档', () => {
   beforeEach(() => {
     fakeBrowser.reset(); vi.restoreAllMocks(); __resetConfirmQueue(); __resetLlmSession();
     vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({} as never);
-    // 注入 fake provider：立即 text-delta 两段 + message-done（事件形状按 StreamEvent 构造）
+    // 注入 fake provider：宏任务（setTimeout 0）后 text-delta 两段 + message-done——
+    // 对齐真实 provider 时序（网络宏任务后才 emit），防止微任务早于 await 续体掩盖时序 bug
     __setLlmProviderFactory(() => ({
       streamChat: (_params: unknown, onEvent: (ev: StreamEvent) => void) => {
-        queueMicrotask(() => {
+        setTimeout(() => {
           onEvent({ type: 'text-delta', text: '你' });
           onEvent({ type: 'text-delta', text: '好' });
           onEvent({ type: 'message-done', usage: { promptTokens: 3, completionTokens: 2 }, finishReason: 'stop' });
-        });
+        }, 0);
         return { cancel: () => {} };
       },
     }));
@@ -404,5 +415,16 @@ describe('gm-api LlmChat 权限档', () => {
     const r4 = await call('LlmChat', okParams); // session 已记 → 免卡直通
     expect(await r4).toMatchObject({ ok: true });
     expect(getPending()).toHaveLength(0);
+  });
+
+  it('无 chan（params[1] 缺省）→ 终值返回但不产生任何 LLM_CHUNK 下发', async () => {
+    const { saveSettings } = await import('../../storage/settings');
+    await saveSettings({ provider: { baseUrl: 'https://api.test/v1', apiKey: 'k', model: 'm' } });
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
+    await setLlmTier('s1', 'allow');
+    const tabSpy = vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(undefined as never);
+    const r = await call('LlmChat', [{ messages: [{ role: 'user', content: 'hi' }] }]);
+    expect(r).toMatchObject({ ok: true, data: { text: '你好' } });
+    expect(tabSpy.mock.calls.filter((c) => (c[1] as { kind?: string })?.kind === 'LLM_CHUNK')).toHaveLength(0);
   });
 });
