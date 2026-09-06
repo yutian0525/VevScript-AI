@@ -1,0 +1,37 @@
+docs/gm-api.md
+  s_4b16ffa8468de9::t_19d7067797d533 124,126
+  s_4b16ffa8468de9::t_c043808ffe0967 108-113
+  s_4b16ffa8468de9::t_5581bdec55c37b 5
+  s_4b16ffa8468de9::t_2fe76f99a23aa6 20
+fixtures/userscripts/manual/gmt-manual-llm.user.js
+  s_4b16ffa8468de9::t_1577e45f422833 13,308-311,313-317,330
+  s_4b16ffa8468de9::t_b829b14bfaf572 1-12,14-307,312,318-329,331-335
+fixtures/userscripts/manual/llm.user.js.src
+  s_4b16ffa8468de9::t_4da1a1745b6899 143
+  s_4b16ffa8468de9::t_8331e892f86691 121-124,126-130
+  s_4b16ffa8468de9::t_c00380e1ee688a 1-12,14-120,125,131-142,144-147
+  s_4b16ffa8468de9::t_d68762d862e3f7 13
+fixtures/userscripts/gmt-selftest.user.js
+  s_4b16ffa8468de9::t_bba5d619d8413a 6
+  s_4b16ffa8468de9::t_be5feac5950789 260,263
+tests/shared/gmt-selftest-fixture.test.ts
+  s_4b16ffa8468de9::t_134890f333f674 36
+  s_4b16ffa8468de9::t_92eec6e505b50a 52
+  s_4b16ffa8468de9::t_8764ae1d7f4fa2 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "13c777ab76ba40b3c310811ab7eac633e378cc51",
+  "prompts": {},
+  "sessions": {
+    "s_4b16ffa8468de9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa33a125-14e4-4ba5-8132-a2d017f9289f",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
