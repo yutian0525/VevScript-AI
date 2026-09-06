@@ -118,4 +118,32 @@ describe('工具 schema', () => {
     // 缺省搜全库这条语义必须写进 description（模型据此决定是否传 id）
     expect(g.function.description).toContain('全库');
   });
+
+  it('create_script description：写明长度阈值与骨架不闭合约定', () => {
+    const d = TOOL_SCHEMAS.find((s) => s.function.name === 'create_script')!.function.description;
+    expect(d).toContain('200 行');
+    expect(d).toContain('append');
+    expect(d).toContain('})();');
+  });
+
+  it('update_script description：写明 append/replace 语义与互斥', () => {
+    const u = TOOL_SCHEMAS.find((s) => s.function.name === 'update_script')!;
+    const props = (u.function.parameters as { properties: { patch: { properties: Record<string, unknown> } } })
+      .properties.patch.properties;
+    expect(Object.keys(props).sort()).toEqual(['append', 'applyUpdate', 'edit', 'enabled', 'replace', 'text']);
+    expect(u.function.description).toContain('append');
+    expect(u.function.description).toContain('replace');
+    expect(u.function.description).toContain('balance');
+  });
+
+  it('get_script description：说明行号前缀不是内容 + 默认限量', () => {
+    const d = TOOL_SCHEMAS.find((s) => s.function.name === 'get_script')!.function.description;
+    expect(d).toContain('行号');
+    expect(d).toContain('200');
+  });
+
+  it('list_scripts description：提及 lines 用于判断读取策略', () => {
+    const d = TOOL_SCHEMAS.find((s) => s.function.name === 'list_scripts')!.function.description;
+    expect(d).toContain('lines');
+  });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildContext, truncateMessages } from '../../agent/context';
+import { buildContext, truncateMessages, SYSTEM_PROMPT } from '../../agent/context';
 import type { ChatMessage, ContentPart } from '../../agent/provider/types';
 
 const u = (c: string): ChatMessage => ({ role: 'user', content: c });
@@ -10,6 +10,11 @@ describe('context 组装', () => {
     expect(msgs[0]!.role).toBe('system');
     expect(msgs[0]!.content).toContain('不可信');
     expect(msgs[0]!.content).toContain('take_snapshot');
+  });
+
+  it('SYSTEM_PROMPT 含「长内容分步写入」通用规则', () => {
+    expect(SYSTEM_PROMPT).toContain('骨架');
+    expect(SYSTEM_PROMPT).toContain('截断');
   });
 
   it('注入当前页 URL/title', () => {
