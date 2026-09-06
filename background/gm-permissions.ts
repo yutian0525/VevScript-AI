@@ -6,7 +6,7 @@ import { storage } from 'wxt/utils/storage';
 const KEY = 'local:gm:permissions';
 
 interface PermissionsShape {
-  [scriptId: string]: { cors: Record<string, 'allow'> };
+  [scriptId: string]: { cors: Record<string, 'allow'>; llm?: 'ask' | 'allow' | 'deny' };
 }
 
 async function readAll(): Promise<PermissionsShape> {
@@ -51,5 +51,21 @@ export async function revokeHost(scriptId: string, host: string): Promise<void> 
   if (!entry || entry.cors?.[host] === undefined) return;
   delete entry.cors[host];
   if (Object.keys(entry.cors).length === 0) delete all[scriptId];
+  await storage.setItem(KEY, all);
+}
+
+export type LlmTier = 'ask' | 'allow' | 'deny';
+
+/** 脚本的 LLM 调用权限档（缺省 ask = 每次询问）。 */
+export async function getLlmTier(scriptId: string): Promise<LlmTier> {
+  const all = await readAll();
+  return all[scriptId]?.llm ?? 'ask';
+}
+
+export async function setLlmTier(scriptId: string, tier: LlmTier): Promise<void> {
+  const all = await readAll();
+  const entry = all[scriptId] ?? { cors: {} };
+  entry.llm = tier;
+  all[scriptId] = entry;
   await storage.setItem(KEY, all);
 }

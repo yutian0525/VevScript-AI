@@ -47,6 +47,9 @@ function preamble(scriptId: string): string {
   var __GM_id = ${J(scriptId)};
   var __GM_token = TOKEN_PLACEHOLDER;
   var __GM_reqSeq = 0;
+  // 页实例 id：LLM_CHUNK 通道前缀。同页二次注入（扩展重载重注而旧 wrapper 仍在流式）时，
+  // 两个闭包的数字 reqId 会撞——chan 带上实例 id 才能配对到正确的 onChunk。
+  var __GM_inst = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   var __GM_pending = new Map();
   var __GM_listeners = new Map();
   var __GM_valueHooks = new Map();
@@ -64,14 +67,19 @@ function preamble(scriptId: string): string {
   function __GM_send(detail) {
     window.dispatchEvent(new CustomEvent('gmreq:' + __GM_id, { detail: detail }));
   }
-  function __GM_post(api, params) {
+  // 请求双形态：显式 reqId 版供 LLM 等需要通道号配对下行的调用方（chan 与 reqId 共用一次自增），
+  // 自增版是常规请求入口——Promise 挂载 + 握手 backlog 分流逻辑集中在 __GM_post_id 内。
+  function __GM_post_id(api, params, reqId) {
     return new Promise(function (resolve, reject) {
-      var reqId = ++__GM_reqSeq;
       __GM_pending.set(reqId, { resolve: resolve, reject: reject });
       var detail = { token: __GM_token, reqId: reqId, api: api, params: params };
       if (__GM_hostReady) __GM_send(detail);
       else __GM_backlog.push(detail);
     });
+  }
+  function __GM_post(api, params) {
+    var reqId = ++__GM_reqSeq;
+    return __GM_post_id(api, params, reqId);
   }
   // 收到宿主就绪信号：置位 + 冲刷 backlog（取出并清空，重复 gmhost 到达时 backlog 已空，幂等）。
   window.addEventListener('gmhost:' + __GM_id, function () {
@@ -106,6 +114,9 @@ function preamble(scriptId: string): string {
     } else if (d.kind === 'TAB_EVENT') {
       var tc = __GM_listeners.get('tab:' + d.data.tabId);
       if (tc) tc(d.data);
+    } else if (d.kind === 'LLM_CHUNK') {
+      var lc = __GM_listeners.get('llmchan:' + d.data.chan);
+      if (lc) lc(d.data.delta);
     }
   });
   function __GM_report(message, stack, line) {
@@ -132,6 +143,13 @@ function preamble(scriptId: string): string {
       if (val !== undefined) out[k] = val;
     }
     return out;
+  }
+  // LLM 专用摘除：onChunk 语义上必摘（函数不可过桥），防御调用方塞了非函数可克隆值
+  // （如字符串/对象）残留在 payload 里混进 SW。__GM_plain 本身已摘所有函数，此处是显式化。
+  function __GM_plain_llm(v) {
+    var copy = __GM_plain(v);
+    if (copy && copy.onChunk !== undefined) delete copy.onChunk;
+    return copy;
   }
   // 可变参 Function 构造器：预编译探测（只编译不执行）与用户代码执行共用语言级构造。
   // 构造器返回对象覆盖 new 产物，故 new __GM_probe(...) 直接得到编译出的函数。
@@ -178,6 +196,10 @@ const GM_INSTALLS: ReadonlyArray<readonly [string, string]> = [
   // 走结构化克隆，函数不可克隆会使 detail 变 null（宿主静默丢弃，请求永挂无任何回显）。
   // onload/onerror/ontimeout 留在闭包里，由 .then 分支调用。
   ['GM_xmlhttpRequest', 'function (details) { var d = __GM_plain(details); __GM_post("XmlHttpRequest", [d]).then(function (resp) { if (resp && resp.error) { details.onerror && details.onerror(resp); } else { details.onload && details.onload(resp); } }, function (err) { details.onerror && details.onerror({ error: String(err) }); }); return { abort: function () {} }; }'],
+  // LLM 调用：onChunk 先摘出存闭包（函数不可过桥），chan = 页实例id:reqId 供 SW 下行 LLM_CHUNK 配对。
+  // chan 与请求 reqId 共用同一次 ++__GM_reqSeq 自增（不二次自增）。成功/失败都清监听；
+  // 不提供 abort（一次性语义，文档明示）。
+  ['GM_llmChat', 'function (details) { var onChunk = details && typeof details.onChunk === "function" ? details.onChunk : null; var d = __GM_plain_llm(details); var reqId = ++__GM_reqSeq; var chan = __GM_inst + ":" + reqId; if (onChunk) __GM_listeners.set("llmchan:" + chan, onChunk); return __GM_post_id("LlmChat", [d, chan], reqId).then(function (r) { if (onChunk) __GM_listeners.delete("llmchan:" + chan); return r; }, function (e) { if (onChunk) __GM_listeners.delete("llmchan:" + chan); throw e; }); }'],
 ] as const;
 
 function installLines(script: UserScript): { code: string; vars: string[] } {

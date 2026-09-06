@@ -23,6 +23,7 @@ export const CALL: Record<string, { kind: CallKind; short?: string; hint: string
   GM_notification: { kind: 'bridge', short: 'Notification', hint: '[{"title":"标题","text":"正文"}, "notifId"]' },
   GM_openInTab: { kind: 'bridge', short: 'OpenInTab', hint: '["https://example.com", {"active":true}]' },
   GM_xmlhttpRequest: { kind: 'bridge', short: 'XmlHttpRequest', hint: '[{"url":"https://api.a.com","method":"GET"}]' },
+  GM_llmChat: { kind: 'bridge', short: 'LlmChat', hint: '[{"messages":[{"role":"user","content":"hi"}]}]' },
   // SW 有分支 2：经桥调 SW 的 GetValue/ListValues，返回 storage 实时值（非页面快照）
   GM_getValue: { kind: 'sw', short: 'GetValue', hint: '["key", "默认值"]' },
   GM_listValues: { kind: 'sw', short: 'ListValues', hint: '[]' },

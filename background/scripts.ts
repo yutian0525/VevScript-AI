@@ -9,11 +9,11 @@ import type { ScriptRunAt, ScriptSource, ScriptWorld, UserScript } from '../shar
 import { deleteScript, getScript, listScripts, saveScript, toSummary, MAX_CODE_LENGTH, MAX_TEXT_LENGTH } from '../storage/scripts';
 import { isValidMatchPattern, matchUrl } from '../shared/match-pattern';
 import { parseUserScript } from '../shared/userscript-meta';
-import { gmErrorCounts, readValuesForSnapshot, cleanupScriptState } from './gm-api'; // Task 7 提供：Record<scriptId, number>
+import { gmErrorCounts, readValuesForSnapshot, cleanupScriptState, __resetLlmSessionFor } from './gm-api'; // Task 7 提供：Record<scriptId, number>
 import { buildWrappedCode } from '../shared/gm-wrapper';
 import { getBridgeToken } from './gm-token';
 import { prefetchResources, getResourceBundle } from './gm-resources';
-import { listAllowedHosts, revokeHost, removeScriptPermissions } from './gm-permissions';
+import { listAllowedHosts, revokeHost, removeScriptPermissions, getLlmTier, setLlmTier } from './gm-permissions';
 import { handleImportUrl, checkScriptUpdate, handleApplyUpdate, clearUpdateState } from './scripts-update';
 
 export const ENGINE_UNAVAILABLE_MSG = '脚本注入引擎不可用：请在 chrome://extensions 开启开发者模式或升级 Chrome 120+';
@@ -441,6 +441,19 @@ export function initScriptsModule(router: MessageRouter): void {
   router.on('SCRIPTS_REVOKE_PERMISSION', async (msg) => {
     const { id, host } = msg as unknown as { id: string; host: string };
     await revokeHost(id, host);
+    return { ok: true };
+  });
+
+  // 脚本详情页「模型调用」档位：读档 + 写档（写档同时清该脚本的会话内授权，档位优先）
+  router.on('SCRIPTS_GET_LLM_TIER', async (msg) => {
+    const { id } = msg as unknown as { id: string };
+    return { ok: true, data: { tier: await getLlmTier(id) } };
+  });
+
+  router.on('SCRIPTS_SET_LLM_TIER', async (msg) => {
+    const { id, tier } = msg as unknown as { id: string; tier: 'ask' | 'allow' | 'deny' };
+    await setLlmTier(id, tier);
+    __resetLlmSessionFor(id);
     return { ok: true };
   });
 
