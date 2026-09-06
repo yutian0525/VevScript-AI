@@ -147,8 +147,12 @@ export interface ScriptPatch {
   enabled?: boolean;
   /** 行区间替换：在当前原文上 splice 后整体重解析 */
   edit?: ScriptEditRange;
-  /** 从更新源（@updateURL/@downloadURL）拉取远端最新文本并覆盖；与 text/edit 互斥，优先生效。 */
+  /** 从更新源（@updateURL/@downloadURL）拉取远端最新文本并覆盖；与其余分支互斥且优先。 */
   applyUpdate?: boolean;
+  /** 追加到原文末尾（不需要行号）。分步写长脚本的主力原语（spec §4.1）。 */
+  append?: string;
+  /** 字面量精确替换（不依赖行号）。old 需唯一，否则报错列出命中行号。 */
+  replace?: { old: string; new: string; all?: boolean };
 }
 
 /** SCRIPTS_GET 响应 data 形状：传 offset/limit 时 script.text 为行切片（修订 2026-09-02） */

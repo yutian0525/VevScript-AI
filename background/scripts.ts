@@ -248,6 +248,59 @@ export function spliceLines(text: string, startLine: number, endLine: number, re
   return [...lines.slice(0, startLine - 1), replacement, ...lines.slice(endLine)].join('\n');
 }
 
+/** 追加到原文末尾（原文无尾换行时先补一个）。分步写脚本的主力原语（spec §4.1）。
+ *  !addition 守卫同时挡空串与 null/undefined（模型 JSON 透传），避免静默追加 "null"。 */
+export function appendText(text: string, addition: string): string {
+  if (!addition) throw new Error('append 不能为空');
+  if (text === '' || text.endsWith('\n')) return text + addition;
+  return `${text}\n${addition}`;
+}
+
+/** old 在 text 中每处出现的 1-based 行号（非重叠，与 split/join 语义一致）。
+ *  换行计数增量推进：idx 单调递增，每次只扫上一匹配之后的新片段，不反复 slice+split 全文。 */
+function occurrenceLines(text: string, needle: string): number[] {
+  const lines: number[] = [];
+  let newlines = 0;
+  let scanned = 0; // 已完成换行计数的前缀长度
+  let idx = text.indexOf(needle);
+  while (idx >= 0) {
+    for (let i = scanned; i < idx; i++) {
+      if (text.charCodeAt(i) === 10) newlines += 1; // '\n'
+    }
+    scanned = idx;
+    lines.push(newlines + 1);
+    idx = text.indexOf(needle, idx + needle.length);
+  }
+  return lines;
+}
+
+/** 错误文案里的 old 预览：换行可视化 + 截断，避免把整段代码打进错误消息。 */
+function previewNeedle(s: string): string {
+  const flat = s.replace(/\n/g, '\\n');
+  return flat.length > 60 ? `${flat.slice(0, 60)}…` : flat;
+}
+
+/**
+ * 字面量精确替换（不走正则，避开元字符陷阱）。
+ * old 未命中 → throw；命中多处且未传 all → throw 并列出行号；all=true 全替（无需算行号）。
+ */
+export function replaceText(text: string, old: string, replacement: string, all = false): string {
+  if (typeof old !== 'string' || !old) throw new Error('replace.old 不能为空'); // 挡 null/undefined 透传
+  if (!text.includes(old)) {
+    throw new Error(`replace 未找到该文本：「${previewNeedle(old)}」——请先用 get_script 或 grep_script 确认原文`);
+  }
+  if (all) return text.split(old).join(replacement);
+  // 非 all 才需要行号：多处命中时要告诉模型落在哪几行
+  const lines = occurrenceLines(text, old);
+  if (lines.length > 1) {
+    throw new Error(
+      `replace.old 命中 ${lines.length} 处（第 ${lines.join('、')} 行）：请加上下文让 old 唯一，或传 all:true 全部替换`,
+    );
+  }
+  const idx = text.indexOf(old);
+  return text.slice(0, idx) + replacement + text.slice(idx + old.length);
+}
+
 /** 文本 → 校验通过的全量 UserScript：投影字段全部由 parseUserScript 生成（spec §6.1 修订）。 */
 function buildFromText(args: {
   text: string; id: string; enabled: boolean; source: ScriptSource; createdAt: number; fallbackName?: string;
@@ -293,33 +346,56 @@ export async function handleCreate(input: ScriptInput): Promise<{ script: UserSc
   return { script, warnings: [...warnings, ...resWarnings, ...syncWarnings] };
 }
 
+/** 文本改动分支：四支互斥（同传两支报错，不静默按优先级取一支——静默取舍会让模型
+ *  误以为两处改动都生效）。applyUpdate 由调用方在此之前拦下，不参与本组判定。 */
+const TEXT_BRANCHES = ['text', 'edit', 'append', 'replace'] as const;
+
 export async function handleUpdate(id: string, patch: ScriptPatch): Promise<UserScript> {
   await requireEngine(); // spec §6.1：改注册类操作引擎不可用直接报固定文案
   const existing = await getScript(id);
   if (!existing) throw new Error(`脚本不存在：${id}`);
-  if (patch.text === undefined && patch.edit === undefined && patch.enabled === undefined) {
-    throw new Error('patch 至少包含 text / enabled / edit 之一');
+
+  // != null 而非 !== undefined：挡掉模型 JSON 透传的 null 分支（如 { append: null }）
+  const branches = TEXT_BRANCHES.filter((k) => patch[k] != null);
+  if (branches.length > 1) {
+    throw new Error(`patch 只能传一个文本改动分支，收到 ${branches.length} 个：${branches.join('、')}`);
   }
+  if (branches.length === 0 && patch.enabled === undefined) {
+    throw new Error('patch 至少包含 text / edit / append / replace / enabled 之一');
+  }
+
   let next: UserScript;
-  if (patch.text !== undefined || patch.edit) {
-    // 文本路径：整文替换或行区间 splice 后整体重解析（文本为源，投影字段全部重建）
-    let text = existing.text;
-    if (patch.edit) {
-      text = spliceLines(text, patch.edit.startLine, patch.edit.endLine, patch.edit.text);
-    } else if (typeof patch.text === 'string' && patch.text.trim()) {
-      text = patch.text;
-    } else {
-      throw new Error('text 必填：完整的 .user.js 文本（含 ==UserScript== 头）');
+  if (branches.length === 1) {
+    // 文本路径：算出新原文后整体重解析（文本为源，投影字段全部重建）
+    let text: string;
+    switch (branches[0]) {
+      case 'edit':
+        text = spliceLines(existing.text, patch.edit!.startLine, patch.edit!.endLine, patch.edit!.text);
+        break;
+      case 'append':
+        text = appendText(existing.text, patch.append!);
+        break;
+      case 'replace':
+        text = replaceText(existing.text, patch.replace!.old, patch.replace!.new, patch.replace!.all);
+        break;
+      case 'text':
+        if (!patch.text!.trim()) throw new Error('text 必填：完整的 .user.js 文本（含 ==UserScript== 头）');
+        text = patch.text!;
+        break;
+      default:
+        // TEXT_BRANCHES 已穷举四支，走到这里说明类型层被绕过——无穷举保护
+        throw new Error(`未处理的文本分支：${String(branches[0])}`);
     }
     next = buildFromText({
       text, id: existing.id, enabled: patch.enabled ?? existing.enabled,
       source: existing.source, createdAt: existing.createdAt,
     }).script;
-    await clearUpdateState(id).catch(() => {}); // spec §1.2 不变量：本地改动使旧检查结果过期（best-effort）
+    await clearUpdateState(id).catch(() => {}); // spec §1.2 不变量：本地改动使旧检查结果过期
   } else {
     // 仅启停：不重解析
     next = { ...existing, enabled: patch.enabled as boolean, updatedAt: Date.now() };
   }
+
   await saveScript(next);
   const resWarnings = await prefetchResources(next);
   if (resWarnings.length > 0) console.warn('[scripts] 依赖预取:', ...resWarnings);
