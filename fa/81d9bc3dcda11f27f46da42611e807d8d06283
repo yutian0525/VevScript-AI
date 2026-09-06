@@ -1,0 +1,23 @@
+agent/tools/script-pool.ts
+  s_1b8e3189527efd::t_e0aa7ea28d0cfd 83-93,96-106
+tests/agent/tools/script-pool.test.ts
+  s_1b8e3189527efd::t_ad07e3d61bb590 78-79,82-83
+  s_1b8e3189527efd::t_b1a7510d18d425 250-302
+  s_1b8e3189527efd::t_cf52f643f4a9c0 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "fa81d9bc3dcda11f27f46da42611e807d8d06283",
+  "prompts": {},
+  "sessions": {
+    "s_1b8e3189527efd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a422d7b-b7c9-4d8d-b680-a38a4f5b5194",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
