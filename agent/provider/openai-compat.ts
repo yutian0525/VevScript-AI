@@ -13,7 +13,8 @@
 // - 重试只针对「一个增量都没吐出」的失败：网络错误、HTTP 429/5xx、静默超时。
 //   已向 UI 流出内容后失败不重试（增量事件已发出，重试会造成输出重复/错乱）。
 //   429/5xx 指数退避（1s 起，×2，封顶 10s），其余立即重试。
-// - options.timeoutMs = 0 表示不限时；调用方 signal 的 abort 永远优先（不重试，直接收尾）。
+// - options.timeoutMs = 0 表示不限时，但仍有 300s 硬兜底（hardCapMs）防永久悬挂；
+//   调用方 signal 的 abort 永远优先（不重试，直接收尾）。
 import { createSseParser } from './sse';
 import { createThinkSplitter } from './think-splitter';
 import type {
@@ -63,10 +64,14 @@ export interface ProviderOptions {
   maxRetries?: number;
   /** 首次退避时长（毫秒），仅测试注入用，默认 1000 */
   retryDelayMs?: number;
+  /** timeoutMs=0（不限时）时的硬兜底静默窗（毫秒）。防「网关挂死 → Promise 永不 resolve
+   *  → runningConvs 永久占位 → 面板永久 running」。默认 300s；仅测试注入更小值。 */
+  hardCapMs?: number;
 }
 
 const DEFAULT_RETRY_DELAY_MS = 1_000;
 const MAX_RETRY_DELAY_MS = 10_000;
+const HARD_SILENT_CAP_MS = 300_000;
 
 /** 单次尝试的失败：kind 决定可否重试 */
 interface AttemptFailure {
@@ -150,7 +155,9 @@ export class OpenAICompatProvider implements Provider {
       if (external.signal.aborted) abortCurrent();
       else external.signal.addEventListener('abort', abortCurrent, { once: true });
 
-      const timeoutMs = this.options.timeoutMs ?? 0;
+      // timeoutMs=0 表示用户关掉了超时保护——仍保留一个远大的硬兜底，避免永久悬挂
+      const configured = this.options.timeoutMs ?? 0;
+      const timeoutMs = configured > 0 ? configured : (this.options.hardCapMs ?? HARD_SILENT_CAP_MS);
       // 静默窗口定时器：必须覆盖三个阶段——连接（fetch 前武装）、响应头后（首字节）、
       // 每块数据后（增量间隙）。关键：fetch 本身挂死时 .then 永不执行，所以连接阶段的
       // 定时器必须在调用 fetch 之前武装，超时时主动 abort 让挂死的 fetch reject。

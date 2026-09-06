@@ -568,6 +568,29 @@ describe('OpenAICompatProvider 超时与重试', () => {
     expect(events.filter((e) => e.type === 'message-done')).toHaveLength(1);
   });
 
+  it('timeoutMs=0（不限时）仍有硬兜底：超过 hardCapMs 判死并报错', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.mocked(fetch);
+    // 永不 settle 的 fetch：模拟网关挂死
+    fetchMock.mockImplementation(() => new Promise(() => {}));
+    const p = new OpenAICompatProvider(
+      { baseUrl: 'https://api.x.com/v1', apiKey: 'k', model: 'm' },
+      { timeoutMs: 0, maxRetries: 0, hardCapMs: 1000 },
+    );
+    const events: StreamEvent[] = [];
+    const done = new Promise<void>((resolve) => {
+      p.streamChat(baseParams(), (e) => {
+        events.push(e);
+        if (e.type === 'message-done') resolve();
+      });
+    });
+    await vi.advanceTimersByTimeAsync(1100);
+    await done;
+    expect(events.some((e) => e.type === 'error' && /超时/.test(e.error))).toBe(true);
+    expect(events[events.length - 1]!.type).toBe('message-done');
+    vi.useRealTimers();
+  });
+
   it('timeoutMs=0 不设超时（挂流不误杀）', async () => {
     const hanging = () => new Promise<Response>(() => {});
     vi.mocked(fetch).mockImplementation(hanging);
