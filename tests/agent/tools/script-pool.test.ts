@@ -5,6 +5,7 @@ import {
   doListScripts, doGetScript, doCreateScript, doUpdateScript, doDeleteScript, doToggleScript,
 } from '../../../agent/tools/script-pool';
 import { listScripts } from '../../../storage/scripts';
+import { handleCreate, handleGet } from '../../../background/scripts';
 
 function installFakeUserScripts(): void {
   (browser as unknown as Record<string, unknown>).userScripts = {
@@ -74,9 +75,12 @@ describe('script-pool 工具执行器', () => {
     expect(full.data.script.code).toBe('\na();\nb();'); // code 含头后空行 → 前导 \n
     expect(full.data).toMatchObject({ totalLines: 7, startLine: 1, endLine: 7 });
     expect(full.data.script.text).toContain('@name');
+    // 工具层给 text 加了行号前缀（spec §4.4）；code 是解析投影、保持原文
+    expect(full.data.script.text).toContain('| a();');
 
     const slice = (await doGetScript({ id, offset: 6, limit: 2 })) as { data: { script: { text: string }; startLine: number; endLine: number; totalLines: number } };
-    expect(slice.data.script.text).toBe('a();\nb();');
+    // 行区间同样带行号前缀，且行号按真实行号（6/7）对齐，不是切片内重新从 1 数
+    expect(slice.data.script.text).toBe('   6| a();\n   7| b();');
     expect(slice.data).toMatchObject({ startLine: 6, endLine: 7, totalLines: 7 });
 
     expect(await doGetScript({ id: 'nope' })).toMatchObject({ ok: false });
@@ -242,5 +246,58 @@ describe('script-pool 工具执行器', () => {
     const r = await doCreateScript({ url: 'not-a-real-url' });
     expect(r.ok).toBe(false);
     expect((r as { error: string }).error).not.toContain('过长');
+  });
+
+  it('get_script：每行带右对齐行号前缀', async () => {
+    installFakeUserScripts();
+    const c = await doCreateScript({ source: mkTm('n', 'https://a.com/*', 'a();\nb();') });
+    const id = (c as { data: { id: string } }).data.id;
+
+    const r = await doGetScript({ id });
+    expect(r.ok).toBe(true);
+    const text = (r as { data: { script: { text: string } } }).data.script.text;
+    expect(text.split('\n')[0]).toBe('   1| // ==UserScript==');
+    expect(text).toContain('| a();');
+    // 行号是标注不是内容：原文本身不含它
+    expect(text).not.toContain('|| ');
+  });
+
+  it('get_script：默认限量 200 行 + 超长提示；显式 offset/limit 仍生效', async () => {
+    installFakeUserScripts();
+    const body = Array.from({ length: 400 }, (_, i) => `l${i}();`).join('\n');
+    // 走编排层直接落库，绕开 create 硬闸（模拟用户导入的长脚本）
+    const created = await handleCreate({ text: mkTm('big', 'https://a.com/*', body) });
+    const id = created.script.id;
+
+    const def = await doGetScript({ id });
+    const d = (def as { data: { script: { text: string }; startLine: number; endLine: number; notice?: string } }).data;
+    expect(d.startLine).toBe(1);
+    expect(d.endLine).toBe(200);
+    expect(d.script.text.split('\n')).toHaveLength(200);
+    expect(d.notice).toContain('offset=201');
+    expect(d.notice).toContain('grep_script');
+
+    const page2 = await doGetScript({ id, offset: 201, limit: 50 });
+    const p = (page2 as { data: { startLine: number; endLine: number; script: { text: string } } }).data;
+    expect(p.startLine).toBe(201);
+    expect(p.endLine).toBe(250);
+    expect(p.script.text.split('\n')[0]).toMatch(/^ 201\| /);
+  });
+
+  it('get_script：总行数不超 200 时不带 notice', async () => {
+    installFakeUserScripts();
+    const c = await doCreateScript({ source: mkTm('n', 'https://a.com/*', 'a();') });
+    const id = (c as { data: { id: string } }).data.id;
+    const r = await doGetScript({ id });
+    expect((r as { data: { notice?: string } }).data.notice).toBeUndefined();
+  });
+
+  it('回归：编排层 handleGet 不带行号（UI 拿干净原文）', async () => {
+    installFakeUserScripts();
+    const c = await doCreateScript({ source: mkTm('n', 'https://a.com/*', 'a();') });
+    const id = (c as { data: { id: string } }).data.id;
+    const raw = await handleGet(id);
+    expect(raw.script.text.startsWith('// ==UserScript==')).toBe(true);
+    expect(raw.script.text).not.toContain('| ');
   });
 });

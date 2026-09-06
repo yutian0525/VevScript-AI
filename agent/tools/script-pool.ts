@@ -80,10 +80,30 @@ export async function doListScripts(args: { enabled?: boolean; urlContains?: str
   }
 }
 
+/** 模型不传区间时的默认返回行数（spec §4.4）：避免整份长脚本灌进上下文。 */
+export const DEFAULT_GET_LIMIT = 200;
+
+/** 给每行加右对齐行号前缀（`%4d| `），供模型做 edit 时不必自己数行。 */
+export function annotateLines(text: string, startLine: number): string {
+  return text
+    .split('\n')
+    .map((l, i) => `${String(startLine + i).padStart(4, ' ')}| ${l}`)
+    .join('\n');
+}
+
 export async function doGetScript(args: { id: string; offset?: number; limit?: number }): Promise<ToolResult> {
   try {
-    // data: { script, totalLines, startLine, endLine }；传区间时 script.text 为行切片（spec §8 修订）
-    return { ok: true, data: await handleGet(args.id, args.offset, args.limit) };
+    // 模型不传区间 → 工具层自己按 DEFAULT_GET_LIMIT 请求（编排层语义不变，仍支持全文）
+    const explicit = args.offset !== undefined || args.limit !== undefined;
+    const offset = args.offset ?? 1;
+    const limit = args.limit ?? (explicit ? undefined : DEFAULT_GET_LIMIT);
+    const data = await handleGet(args.id, offset, limit);
+    // 行号是标注不是内容：schema description 里说明写回时不要带上前缀
+    const script = { ...data.script, text: annotateLines(data.script.text, data.startLine) };
+    const notice = data.endLine < data.totalLines
+      ? `已返回第 ${data.startLine}-${data.endLine} 行（共 ${data.totalLines} 行）。继续读用 offset=${data.endLine + 1}，定位特定代码用 grep_script。`
+      : undefined;
+    return { ok: true, data: { ...data, script, ...(notice ? { notice } : {}) } };
   } catch (e) {
     return { ok: false, error: `get_script 失败：${err(e)}` };
   }
