@@ -86,4 +86,12 @@ describe('toSummary', () => {
     expect(sum).not.toHaveProperty('text');
     expect(sum).toMatchObject({ id: 's1', description: '描述', hasGrants: true });
   });
+
+  it('带 lines/bytes 规模字段（按 text 计算）', () => {
+    const s = mkScript({ text: 'a\nb\nc' });
+    expect(toSummary(s)).toMatchObject({ lines: 3, bytes: 5 });
+    // 尾换行计入一个空行（split('\n') 语义）
+    expect(toSummary(mkScript({ text: 'a\n' }))).toMatchObject({ lines: 2, bytes: 2 });
+    expect(toSummary(mkScript({ text: '' }))).toMatchObject({ lines: 1, bytes: 0 });
+  });
 });

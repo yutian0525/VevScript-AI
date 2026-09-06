@@ -99,6 +99,10 @@ export interface ScriptSummary {
   grantSupported: string[];
   /** 不支持的 grant（列表页黄色警示） */
   grantUnsupported: string[];
+  /** 原文总行数（text.split('\n').length），供模型判断读取策略（spec §4.3） */
+  lines: number;
+  /** 原文字符数 */
+  bytes: number;
 }
 
 // ---------- Skill 系统（spec：skills-and-slash-commands）----------
