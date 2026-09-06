@@ -484,9 +484,20 @@ async function doLlmChat(
 
   // 流结束哨兵：provider 契约保证恰好终止于一个 message-done（abort 也不例外）——
   // 先等流终结，再等 chunk 下行链排空，gmres 才会 resolve（时序不变量）。
+  // 兜底：abort 时 provider 可能已死（如流被 cancel 后连补发都做不了的违约实现），
+  // 不能指望它补发事件——abort 即放行等待，下方终态判定（超时/超限）会正确接管。
+  // resolveDone 幂等（finished 守卫 + once 监听），与契约路径并存为双保险。
   let resolveDone!: () => void;
   const done = new Promise<void>((r) => { resolveDone = r; });
   let finished = false; // 防御 fake/异常 provider 违约重复发 message-done（第二次忽略）
+  // abort 双兜底：①放行 done 等待（provider 可能已死、连契约的补发 message-done 都没有）；
+  // ②cancel 流句柄（signal 是契约通道，cancel 是显式句柄——fake/实现可能不监听 signal）。
+  // 均幂等：resolveDone 有 finished 守卫，cancel 对已终止流是无害 no-op。
+  let handle: { cancel: () => void } | undefined; // 事件可能先于赋值到达（防御 TDZ）
+  ac.signal.addEventListener('abort', () => {
+    if (!finished) resolveDone();
+    handle?.cancel();
+  }, { once: true });
 
   // chunk 下行 promise 链：保证 gmres resolve 晚于所有 LLM_CHUNK（时序不变量）
   let chain: Promise<void> = Promise.resolve();
@@ -503,7 +514,7 @@ async function doLlmChat(
 
   try {
     const p = llmProviderFactory(provider);
-    p.streamChat({ messages: v.messages, tools: [], signal: ac.signal }, (ev: StreamEvent) => {
+    handle = p.streamChat({ messages: v.messages, tools: [], signal: ac.signal }, (ev: StreamEvent) => {
       if (ev.type === 'text-delta') {
         text += ev.text;
         if (text.length > LLM_RESPONSE_MAX) { ac.abort(new Error('response-too-large')); return; }

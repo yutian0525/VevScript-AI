@@ -428,3 +428,99 @@ describe('gm-api LlmChat 权限档', () => {
     expect(tabSpy.mock.calls.filter((c) => (c[1] as { kind?: string })?.kind === 'LLM_CHUNK')).toHaveLength(0);
   });
 });
+
+describe('gm-api LlmChat 流式下行', () => {
+  beforeEach(() => {
+    fakeBrowser.reset(); vi.restoreAllMocks(); __resetConfirmQueue(); __resetLlmSession();
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({} as never);
+  });
+
+  it('chunk 有序：LLM_CHUNK 按序到达 tab，gmres 晚于全部 chunk；chan 原样回显', async () => {
+    const { saveSettings } = await import('../../storage/settings');
+    await saveSettings({ provider: { baseUrl: 'https://api.test/v1', apiKey: 'k', model: 'm' } });
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
+    await setLlmTier('s1', 'allow');
+    const tabSpy = vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(undefined as never);
+
+    // gate 式 fake：流事件被 gate 挡住，先让 doLlmChat 进入 await 状态再放行——
+    // 验证「await done 等流终结」修复（4454bca）：函数不得在流事件前返回
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    __setLlmProviderFactory(() => ({
+      streamChat: (_p: unknown, onEvent: (ev: StreamEvent) => void) => {
+        void gate.then(() => {
+          onEvent({ type: 'text-delta', text: 'a' });
+          onEvent({ type: 'text-delta', text: 'b' });
+          onEvent({ type: 'message-done' });
+        });
+        return { cancel: () => {} };
+      },
+    }));
+    const pending = call('LlmChat', [{ messages: [{ role: 'user', content: 'hi' }] }, 'inst9:7']);
+    await new Promise((r) => setTimeout(r, 10)); // doLlmChat 已在 await done 挂起
+    release();
+    const r = await pending as { ok: boolean; data?: { text: string } };
+    expect(r).toMatchObject({ ok: true, data: { text: 'ab' } });
+    // 下行顺序：两条 LLM_CHUNK 按 a、b 序到达，chan 原样回显；resolve 语义由 wrapper 清监听保证，
+    // SW 侧可断言的是 chunk 全部先于 handleGmCall promise resolve 前发出（await chain 排空）
+    const chunks = tabSpy.mock.calls
+      .filter((c) => (c[1] as { kind?: string })?.kind === 'LLM_CHUNK')
+      .map((c) => (c[1] as { data: { chan: string; delta: string } }).data);
+    expect(chunks).toEqual([
+      { chan: 'inst9:7', delta: 'a' },
+      { chan: 'inst9:7', delta: 'b' },
+    ]);
+  });
+
+  it('响应超 1MB：cancel 流并报「响应过大」', async () => {
+    const { saveSettings } = await import('../../storage/settings');
+    await saveSettings({ provider: { baseUrl: 'https://api.test/v1', apiKey: 'k', model: 'm' } });
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
+    await setLlmTier('s1', 'allow');
+    let cancelled = false;
+    __setLlmProviderFactory(() => ({
+      streamChat: (_p: unknown, onEvent: (ev: StreamEvent) => void) => {
+        // 宏任务时序（与真实 provider 对齐；4454bca 后 fake 统一 setTimeout）
+        setTimeout(() => {
+          onEvent({ type: 'text-delta', text: 'x'.repeat(1024 * 1024 + 1) });
+          onEvent({ type: 'message-done' });
+        }, 0);
+        return { cancel: () => { cancelled = true; } };
+      },
+    }));
+    const r = await call('LlmChat', [{ messages: [{ role: 'user', content: 'hi' }] }]);
+    expect(r).toMatchObject({ ok: false, error: expect.stringContaining('响应过大') });
+    expect(cancelled).toBe(true);
+  });
+
+  it('provider error 事件 → 「LLM 调用失败:」前缀', async () => {
+    const { saveSettings } = await import('../../storage/settings');
+    await saveSettings({ provider: { baseUrl: 'https://api.test/v1', apiKey: 'k', model: 'm' } });
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
+    await setLlmTier('s1', 'allow');
+    __setLlmProviderFactory(() => ({
+      streamChat: (_p: unknown, onEvent: (ev: StreamEvent) => void) => {
+        setTimeout(() => { onEvent({ type: 'error', error: 'HTTP 500: boom' }); onEvent({ type: 'message-done' }); }, 0);
+        return { cancel: () => {} };
+      },
+    }));
+    const r = await call('LlmChat', [{ messages: [{ role: 'user', content: 'hi' }] }]);
+    expect(r).toMatchObject({ ok: false, error: expect.stringContaining('HTTP 500: boom') });
+  });
+
+  it('超时：timeout 到点 abort → 「LLM 调用超时（Xms）」', async () => {
+    const { saveSettings } = await import('../../storage/settings');
+    await saveSettings({ provider: { baseUrl: 'https://api.test/v1', apiKey: 'k', model: 'm' } });
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'] } }));
+    await setLlmTier('s1', 'allow');
+    __setLlmProviderFactory(() => ({
+      streamChat: (_p: unknown, _onEvent: unknown) => {
+        // 永不发事件——等 timeout abort（provider 契约：abort 后仍会补发 message-done，
+        // 但本 fake 连补发也不做，验证 doLlmChat 对「流永不结束」也能按超时终态返回）
+        return { cancel: () => {} };
+      },
+    }));
+    const r = await call('LlmChat', [{ messages: [{ role: 'user', content: 'hi' }], timeout: 30 }]);
+    expect(r).toMatchObject({ ok: false, error: expect.stringContaining('LLM 调用超时') });
+  });
+});
