@@ -2,9 +2,10 @@
 // 脚本池六工具执行器（spec §8 + 2026-09-02 修订：文本为源）。与 UI 共用 background/scripts 编排层——AI 改脚本 = 用户改脚本，行为零分叉。
 // 全部豁免受限页预检（registry 在 RESTRICTED 检查之前分发）：不碰页面内容，纯 storage/注册操作。
 
-import type { ScriptUpdateState, ToolResult } from '../../shared/types';
+import type { ScriptUpdateState, ToolResult, UserScript } from '../../shared/types';
 import type { ScriptPatch } from '../../shared/messages';
 import { parseUserScript } from '../../shared/userscript-meta';
+import { checkBalance } from '../../shared/js-balance';
 import { listScripts, toSummary } from '../../storage/scripts';
 import { gmErrorCounts } from '../../background/gm-api';
 import {
@@ -23,6 +24,25 @@ function toUpdateHint(st: ScriptUpdateState | undefined) {
     remoteVersion: st.remoteVersion || undefined,
     checkedAt: st.checkedAt,
     message: st.message,
+  };
+}
+
+/** 写操作的精简返回（spec §3.4）：不回灌 text/code，只给模型下一步决策需要的元信息 + 配平状态。
+ *  balance 只报告不阻断——分步 append 的中间态必然 unclosed（骨架刻意不闭合 IIFE）。 */
+function toWriteResult(script: UserScript, warnings: string[]) {
+  const bal = checkBalance(script.code);
+  return {
+    id: script.id,
+    name: script.name,
+    lines: script.text.split('\n').length,
+    bytes: script.text.length,
+    matches: script.matches,
+    enabled: script.enabled,
+    runAt: script.runAt,
+    world: script.world,
+    warnings,
+    balance: bal.ok ? ('ok' as const) : ('unclosed' as const),
+    ...(bal.ok ? {} : { balanceDetail: bal.detail }),
   };
 }
 
@@ -60,7 +80,7 @@ export async function doCreateScript(args: { source?: string; text?: string; url
     // url 分支：从直链下载安装（fetch → 注入 @updateURL → 解析导入），来源记为 agent。与 source 二选一。
     if (typeof args.url === 'string' && args.url.trim()) {
       const { script, warnings } = await handleImportUrl(args.url.trim(), 'agent');
-      return { ok: true, data: { script, warnings } };
+      return { ok: true, data: toWriteResult(script, warnings) };
     }
     // 工具参数名是 source（spec §8 冻结），编排层字段名是 text——此处做名称映射；text 别名留给内部调用
     const text = typeof args.source === 'string' ? args.source : args.text;
@@ -72,7 +92,7 @@ export async function doCreateScript(args: { source?: string; text?: string; url
       return { ok: false, error: 'create_script 解析后无匹配规则：请在头部添加 @match（pattern 形式的 @include 也计入）' };
     }
     const { script, warnings } = await handleCreate({ text, enabled: args.enabled, source: 'agent' });
-    return { ok: true, data: { script, warnings } };
+    return { ok: true, data: toWriteResult(script, warnings) };
   } catch (e) {
     return { ok: false, error: `create_script 失败：${err(e)}` };
   }
@@ -82,9 +102,9 @@ export async function doUpdateScript(args: { id: string; patch: ScriptPatch }): 
   try {
     // applyUpdate 分支：从更新源拉远端最新文本覆盖（与 text/edit 互斥，优先生效）
     if (args.patch?.applyUpdate) {
-      return { ok: true, data: { script: await handleApplyUpdate(args.id) } };
+      return { ok: true, data: toWriteResult(await handleApplyUpdate(args.id), []) };
     }
-    return { ok: true, data: { script: await handleUpdate(args.id, args.patch) } };
+    return { ok: true, data: toWriteResult(await handleUpdate(args.id, args.patch), []) };
   } catch (e) {
     return { ok: false, error: `update_script 失败：${err(e)}` };
   }
@@ -101,7 +121,8 @@ export async function doDeleteScript(args: { id: string }): Promise<ToolResult> 
 
 export async function doToggleScript(args: { id: string; enabled: boolean }): Promise<ToolResult> {
   try {
-    return { ok: true, data: { script: await handleSetEnabled(args.id, args.enabled) } };
+    // 启停无需回全文，同样走精简返回
+    return { ok: true, data: toWriteResult(await handleSetEnabled(args.id, args.enabled), []) };
   } catch (e) {
     return { ok: false, error: `toggle_script 失败：${err(e)}` };
   }

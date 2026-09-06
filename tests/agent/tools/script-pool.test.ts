@@ -66,8 +66,8 @@ describe('script-pool 工具执行器', () => {
 
   it('get_script：全文 + totalLines；行区间切片；未知 id 报错', async () => {
     installFakeUserScripts();
-    const created = (await doCreateScript({ source: mkTm('n', 'https://a.com/*', 'a();\nb();') })) as { data: { script: { id: string } } };
-    const id = created.data.script.id;
+    const created = (await doCreateScript({ source: mkTm('n', 'https://a.com/*', 'a();\nb();') })) as { data: { id: string } };
+    const id = created.data.id;
     // mkTm 7 行：4 头 + 空行 + 2 行 body
 
     const full = (await doGetScript({ id })) as { data: { script: { text: string; code: string }; totalLines: number; startLine: number; endLine: number } };
@@ -84,8 +84,8 @@ describe('script-pool 工具执行器', () => {
 
   it('update_script：text 整文替换 + edit 行区间 + toggle/delete 全链路', async () => {
     installFakeUserScripts();
-    const created = (await doCreateScript({ source: mkTm('n', 'https://a.com/*', 'v1;') })) as { data: { script: { id: string } } };
-    const id = created.data.script.id;
+    const created = (await doCreateScript({ source: mkTm('n', 'https://a.com/*', 'v1;') })) as { data: { id: string } };
+    const id = created.data.id;
 
     expect((await doUpdateScript({ id, patch: { text: mkTm('n2', 'https://a.com/*', 'v2;') } })).ok).toBe(true);
     expect((await listScripts())[0]!.code).toBe('\nv2;'); // 头后含空行 → 前导 \n
@@ -105,11 +105,13 @@ describe('script-pool 工具执行器', () => {
     installFakeUserScripts();
     const body = mkTm('from-url', 'https://a.com/*');
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, text: async () => body })));
-    const r = (await doCreateScript({ url: 'https://cdn.example.com/s.user.js' })) as { ok: boolean; data: { script: { name: string; source: string; meta?: { updateURL?: string } } } };
+    const r = (await doCreateScript({ url: 'https://cdn.example.com/s.user.js' })) as { ok: boolean; data: { name: string; warnings: string[] } };
     expect(r.ok).toBe(true);
-    expect(r.data.script.name).toBe('from-url');
-    expect(r.data.script.source).toBe('agent');
-    expect(r.data.script.meta?.updateURL).toBe('https://cdn.example.com/s.user.js');
+    expect(r.data.name).toBe('from-url');
+    // 写操作返回已瘦身（spec §3.4）：不回灌 script 全文——来源/头部投影从存储读回验证
+    const saved = (await listScripts())[0]!;
+    expect(saved.source).toBe('agent');
+    expect(saved.meta?.updateURL).toBe('https://cdn.example.com/s.user.js');
     vi.unstubAllGlobals();
   });
 
@@ -124,38 +126,39 @@ describe('script-pool 工具执行器', () => {
 
   it('update_script：applyUpdate 分支从更新源拉取远端最新覆盖', async () => {
     installFakeUserScripts();
-    const created = (await doCreateScript({ source: `// ==UserScript==\n// @name n\n// @version 1.0.0\n// @updateURL https://x/u\n// @match https://a.com/*\n// ==/UserScript==\nv1;` })) as { data: { script: { id: string } } };
-    const id = created.data.script.id;
+    const created = (await doCreateScript({ source: `// ==UserScript==\n// @name n\n// @version 1.0.0\n// @updateURL https://x/u\n// @match https://a.com/*\n// ==/UserScript==\nv1;` })) as { data: { id: string } };
+    const id = created.data.id;
     const remote = `// ==UserScript==\n// @name n\n// @version 2.0.0\n// @updateURL https://x/u\n// @match https://a.com/*\n// ==/UserScript==\nv2;`;
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, text: async () => remote })));
-    const r = (await doUpdateScript({ id, patch: { applyUpdate: true } })) as { ok: boolean; data: { script: { meta?: { version?: string }; code: string } } };
+    const r = (await doUpdateScript({ id, patch: { applyUpdate: true } })) as { ok: boolean; data: Record<string, unknown> };
     expect(r.ok).toBe(true);
-    expect(r.data.script.meta?.version).toBe('2.0.0');
+    // 返回已瘦身：版本信息从存储读回验证
     expect((await listScripts())[0]!.meta?.version).toBe('2.0.0');
+    expect((await listScripts())[0]!.text).toContain('@version 2.0.0');
     vi.unstubAllGlobals();
   });
 
   it('update_script：applyUpdate 对无更新源脚本报错', async () => {
     installFakeUserScripts();
-    const created = (await doCreateScript({ source: mkTm('n', 'https://a.com/*') })) as { data: { script: { id: string } } };
-    const r = await doUpdateScript({ id: created.data.script.id, patch: { applyUpdate: true } });
+    const created = (await doCreateScript({ source: mkTm('n', 'https://a.com/*') })) as { data: { id: string } };
+    const r = await doUpdateScript({ id: created.data.id, patch: { applyUpdate: true } });
     expect(r).toMatchObject({ ok: false });
     expect((r as { error: string }).error).toContain('无更新源');
   });
 
   it('list_scripts：附加 update 字段（读后台检查缓存，available → hasUpdate=true；无缓存 → 缺省）', async () => {
     installFakeUserScripts();
-    const c1 = (await doCreateScript({ source: mkTm('has-upd', 'https://a.com/*') })) as { data: { script: { id: string } } };
+    const c1 = (await doCreateScript({ source: mkTm('has-upd', 'https://a.com/*') })) as { data: { id: string } };
     await doCreateScript({ source: mkTm('no-upd', 'https://b.com/*') });
     // 预置一条 available 更新状态到缓存
     const { UPDATE_STATE_KEY } = await import('../../../shared/types');
     const { storage } = await import('wxt/utils/storage');
-    await storage.setItem(UPDATE_STATE_KEY, { [c1.data.script.id]: { remoteVersion: '3.0.0', checkedAt: 123, status: 'available' } });
+    await storage.setItem(UPDATE_STATE_KEY, { [c1.data.id]: { remoteVersion: '3.0.0', checkedAt: 123, status: 'available' } });
 
     const all = (await doListScripts({})) as { data: { scripts: Array<{ id: string; update?: { hasUpdate: boolean; remoteVersion?: string } }> } };
-    const withUpd = all.data.scripts.find((s) => s.id === c1.data.script.id)!;
+    const withUpd = all.data.scripts.find((s) => s.id === c1.data.id)!;
     expect(withUpd.update).toMatchObject({ hasUpdate: true, remoteVersion: '3.0.0' });
-    const without = all.data.scripts.find((s) => s.id !== c1.data.script.id)!;
+    const without = all.data.scripts.find((s) => s.id !== c1.data.id)!;
     expect(without.update).toBeUndefined();
   });
 
@@ -165,5 +168,50 @@ describe('script-pool 工具执行器', () => {
     const { executeTool } = await import('../../../agent/tools/registry');
     const r = await executeTool('list_scripts', {}, { tabId: tab.id!, sessionId: 'test', signal: new AbortController().signal });
     expect(r.ok).toBe(true);
+  });
+
+  it('create/update 返回瘦身：不含 text/code，带 lines/bytes/balance', async () => {
+    installFakeUserScripts();
+    const r = await doCreateScript({ source: mkTm('n', 'https://a.com/*', '(function () {') });
+    expect(r.ok).toBe(true);
+    const d = (r as { data: Record<string, unknown> }).data;
+    // 回归断言：全文不得回灌（spec §3.4）
+    expect(d).not.toHaveProperty('script');
+    expect(JSON.stringify(d)).not.toContain('==UserScript==');
+    expect(d).toMatchObject({ name: 'n', matches: ['https://a.com/*'], enabled: true });
+    expect(typeof d.id).toBe('string');
+    expect(typeof d.lines).toBe('number');
+    expect(typeof d.bytes).toBe('number');
+    // 骨架刻意不闭合 IIFE → 中间态 unclosed（不阻断）
+    expect(d.balance).toBe('unclosed');
+    expect(typeof d.balanceDetail).toBe('string');
+  });
+
+  it('update_script：append 后闭合 → balance 转 ok', async () => {
+    installFakeUserScripts();
+    const c = await doCreateScript({ source: mkTm('n', 'https://a.com/*', '(function () {') });
+    const id = (c as { data: { id: string } }).data.id;
+
+    const mid = await doUpdateScript({ id, patch: { append: '  f();' } });
+    expect((mid as { data: { balance: string } }).data.balance).toBe('unclosed');
+
+    const done = await doUpdateScript({ id, patch: { append: '})();' } });
+    const d = (done as { data: Record<string, unknown> }).data;
+    expect(d.balance).toBe('ok');
+    expect(d).not.toHaveProperty('balanceDetail');
+    expect(d).not.toHaveProperty('script');
+  });
+
+  it('update_script：replace 分支可用，命中多处报错', async () => {
+    installFakeUserScripts();
+    const c = await doCreateScript({ source: mkTm('n', 'https://a.com/*', 'f();\ng();') });
+    const id = (c as { data: { id: string } }).data.id;
+
+    const ok = await doUpdateScript({ id, patch: { replace: { old: 'g();', new: 'h();' } } });
+    expect(ok.ok).toBe(true);
+
+    const dup = await doUpdateScript({ id, patch: { replace: { old: '();', new: 'x' } } });
+    expect(dup).toMatchObject({ ok: false });
+    expect((dup as { error: string }).error).toContain('命中');
   });
 });
