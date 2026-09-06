@@ -569,6 +569,7 @@ body {
 
 /* 输入坞：整卡片，上输入 / 下操作条 */
 .composer {
+  position: relative; /* 模式下拉浮层的定位锚 */
   flex-shrink: 0;
   margin-top: 12px;
   background: var(--surface);
@@ -689,15 +690,16 @@ body {
 .composer__attach-err svg { flex-shrink: 0; }
 
 /* ============ 行为模式下拉（ask/agent，自绘浮层） ============ */
-.modeselect { position: relative; flex-shrink: 0; }
+/* 浮层锚定整个 composer 卡片（.composer 上加 relative），从卡片上缘弹出、左右贴边，
+   避免以小触发器为锚时 264px 浮层溢出面板右缘 + 与输入框之间隔出大空隙。 */
+.modeselect { flex-shrink: 0; margin-right: 2px; }
 .modeselect__trigger {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   height: 26px;
-  padding: 0 7px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  padding: 0 4px;
+  border: none;
   background: transparent;
   color: var(--ink-3);
   font-family: var(--mono);
@@ -706,21 +708,22 @@ body {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+  border-radius: var(--r-md);
+  transition: color var(--t-fast) var(--ease);
 }
-.modeselect__trigger:hover:not(:disabled) { color: var(--ink); border-color: var(--line-strong); background: var(--sunken); }
+.modeselect__trigger:hover:not(:disabled) { color: var(--ink); }
 .modeselect__trigger:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
 .modeselect__trigger:disabled { opacity: 0.5; cursor: not-allowed; }
-.modeselect__trigger--ask { color: var(--signal-ink); border-color: #c3c5e0; background: var(--signal-wash); }
-.modeselect__trigger--ask:hover:not(:disabled) { color: var(--signal-ink); border-color: var(--signal); background: var(--signal-wash); }
+.modeselect__trigger--ask { color: var(--signal-ink); }
+.modeselect__trigger--ask:hover:not(:disabled) { color: var(--signal); }
 .modeselect__chev { transition: transform var(--t-fast) var(--ease); }
 .modeselect__chev--open { transform: rotate(180deg); }
 
 .modeselect__pop {
   position: absolute;
   bottom: calc(100% + 8px);
-  left: 0;
-  width: 264px;
+  left: 8px;
+  right: 8px;
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-lg);
