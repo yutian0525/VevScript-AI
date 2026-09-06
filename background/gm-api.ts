@@ -360,8 +360,17 @@ async function doXmlHttpRequest(
 
 // ---- GM_llmChat（脚本调用大模型，spec docs/superpowers/specs/2026-09-05-gm-llm-chat-design.md）----
 
-// 「本会话内允许」：SW 内存态，重启失效（与菜单表同款取舍）。档位变更时由 SCRIPTS_SET_LLM_TIER 清（Task 5 接线，当前尚未接线）。
+// 「本会话内允许」：SW 内存态，重启失效（与菜单表同款取舍）。档位变更时由 SCRIPTS_SET_LLM_TIER 清（scripts.ts handler 调用）。
 const llmSessionAllow = new Set<string>();
+
+/** 档位变更时清单脚本的会话内授权（scripts.ts SCRIPTS_SET_LLM_TIER 调用）。 */
+export function __resetLlmSessionFor(scriptId: string): void { llmSessionAllow.delete(scriptId); }
+
+/** 仅测试用：造一个 session 授权（scripts-llm-tier 测试验证「set 档清 session」）。 */
+export function __addLlmSessionForTest(scriptId: string): void { llmSessionAllow.add(scriptId); }
+
+/** 仅测试用：只读查询 session 授权是否存在（同上）。 */
+export function __llmSessionHasForTest(scriptId: string): boolean { return llmSessionAllow.has(scriptId); }
 
 const LLM_IMAGE_MAX = 5 * 1024 * 1024;      // 单张 data URL 上限（base64 后）
 const LLM_PAYLOAD_MAX = 2 * 1024 * 1024;    // 消息总载荷上限

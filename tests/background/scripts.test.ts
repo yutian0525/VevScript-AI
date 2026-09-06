@@ -282,7 +282,7 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     expect(script.matches).toEqual(['https://i.com/*']);
   });
 
-  it('initScriptsModule：挂 11 个 handler + tabs 监听 + 启动 sync', async () => {
+  it('initScriptsModule：挂 13 个 handler + tabs 监听 + 启动 sync', async () => {
     const api = installFakeUserScripts();
     const router = new MessageRouter();
     vi.spyOn(browser.tabs.onUpdated, 'addListener').mockImplementation(() => {});
@@ -292,8 +292,8 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     // 空库时启动 sync 无缺失注册可补（register 不会被调）；getScripts 仅由启动自愈 sync 触达
     await vi.waitFor(() => expect(api.getScripts).toHaveBeenCalled());
 
-    // 11 个 handler 全部有注册（未注册类型才会报 no handler；SCRIPTS_GET 无参走 handleGet throw → router 兜底 ok:false）
-    for (const type of ['SCRIPTS_LIST', 'SCRIPTS_GET', 'SCRIPTS_CREATE', 'SCRIPTS_UPDATE', 'SCRIPTS_DELETE', 'SCRIPTS_SET_ENABLED', 'SCRIPTS_IMPORT', 'SCRIPTS_GET_RUNTIME', 'SCRIPTS_GET_RUNTIME_FOR_TAB', 'SCRIPTS_GET_PERMISSIONS', 'SCRIPTS_REVOKE_PERMISSION']) {
+    // 13 个 handler 全部有注册（未注册类型才会报 no handler；SCRIPTS_GET 无参走 handleGet throw → router 兜底 ok:false）
+    for (const type of ['SCRIPTS_LIST', 'SCRIPTS_GET', 'SCRIPTS_CREATE', 'SCRIPTS_UPDATE', 'SCRIPTS_DELETE', 'SCRIPTS_SET_ENABLED', 'SCRIPTS_IMPORT', 'SCRIPTS_GET_RUNTIME', 'SCRIPTS_GET_RUNTIME_FOR_TAB', 'SCRIPTS_GET_PERMISSIONS', 'SCRIPTS_REVOKE_PERMISSION', 'SCRIPTS_GET_LLM_TIER', 'SCRIPTS_SET_LLM_TIER']) {
       const r = await router.dispatch({ type } as { type: string });
       expect(r).not.toMatchObject({ error: expect.stringContaining('no handler') });
     }

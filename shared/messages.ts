@@ -177,6 +177,8 @@ export type ScriptsRequest =
   | { type: 'SCRIPTS_GET_RUNTIME_FOR_TAB'; tabId: number }
   | { type: 'SCRIPTS_GET_PERMISSIONS'; id: string }
   | { type: 'SCRIPTS_REVOKE_PERMISSION'; id: string; host: string }
+  | { type: 'SCRIPTS_GET_LLM_TIER'; id: string }
+  | { type: 'SCRIPTS_SET_LLM_TIER'; id: string; tier: 'ask' | 'allow' | 'deny' }
   | { type: 'CONFIRM_RESOLVE'; confirmId: string; decision: string }
   | { type: 'CONFIRM_GET_STATE' }
   | { type: 'GM_DEBUG_CALL'; scriptId: string; api: string; params: unknown[]; tabId?: number }
