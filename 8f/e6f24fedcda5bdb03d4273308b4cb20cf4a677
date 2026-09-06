@@ -1,0 +1,23 @@
+tests/background/gm-api.test.ts
+  s_4b16ffa8468de9::t_039c9805ec607e 431-526
+background/gm-api.ts
+  s_4b16ffa8468de9::t_61ee39194e2f76 493-500
+  s_4b16ffa8468de9::t_22ca890396c754 517
+  s_4b16ffa8468de9::t_bf6ec7bcd3cea9 487-489
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8fe6f24fedcda5bdb03d4273308b4cb20cf4a677",
+  "prompts": {},
+  "sessions": {
+    "s_4b16ffa8468de9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa33a125-14e4-4ba5-8132-a2d017f9289f",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
