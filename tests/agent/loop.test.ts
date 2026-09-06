@@ -123,6 +123,22 @@ describe('agent loop', () => {
     expect(conv.messages.some((m) => m.role === 'tool' && String(m.content).includes('截断'))).toBe(true);
   });
 
+  it('finishReason=length + toolCalls → tool 消息含分步指引（教学式纠正）', async () => {
+    const provider = queuedProvider([[
+      { type: 'tool-call-delta', index: 0, id: 'c1', name: 'create_script', argsDelta: '{"source":"//截断' },
+      { type: 'message-done', finishReason: 'length' },
+    ], [
+      { type: 'text-delta', text: '改用分步' },
+      { type: 'message-done', finishReason: 'stop' },
+    ]]);
+    await runAgentLoop({ convId: 'clen', tabId: 1, userMessage: 'x' }, deps(provider, vi.fn()));
+    const conv = await getConversation('clen');
+    const toolMsg = conv.messages.find((m) => m.role === 'tool')!;
+    expect(toolMsg.content).toContain('截断');
+    expect(toolMsg.content).toContain('append');
+    expect(toolMsg.content).toContain('骨架');
+  });
+
   it('provider error 事件终止并保存错误', async () => {
     const provider = queuedProvider([[{ type: 'error', error: 'HTTP 401' }, { type: 'message-done' }]]);
     const exec = vi.fn<LoopDeps['executeTool']>();

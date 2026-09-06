@@ -137,7 +137,9 @@ async function drive(
       await appendMessage(convId, assistantMsg(result.text, result.toolCalls, result.reasoning));
       const truncFailed: ToolResult[] = [];
       for (const tc of result.toolCalls) {
-        await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: '错误：模型输出被截断，该工具调用参数不完整，请重新发起' });
+        await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: '错误：模型输出被截断，该工具调用参数不完整。若在写长脚本，请改用分步方式：'
+          + '先 create_script 只提交元数据头 + 未闭合的 IIFE 骨架（如 `(function () {` 结尾，不写 `})();`），'
+          + '再用 update_script 的 patch.append 分次追加代码体，最后一段带上 `})();` 闭合。' });
         truncFailed.push({ ok: false, error: '模型输出被截断' });
       }
       guard = recordTurn(guard, result.toolCalls, truncFailed);
