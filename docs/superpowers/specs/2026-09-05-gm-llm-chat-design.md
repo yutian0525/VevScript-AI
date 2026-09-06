@@ -110,7 +110,7 @@ chan = `${页实例随机id}:${reqId}`
 2. `var chan = __GM_inst + ':' + (++__GM_reqSeq); var reqId = <同一自增值>;`
    （注意 reqId 与 chan 尾段一致：先 `++__GM_reqSeq` 取值，两处共用）；
 3. `__GM_listeners.set('llmchan:' + chan, onChunk)`（onChunk 存在才注册）；
-4. `__GM_post_id('LlmChat', [details], reqId).then(function (r) { __GM_listeners.delete('llmchan:' + chan); return r; }, function (e) { __GM_listeners.delete('llmchan:' + chan); throw e; })`——成功/失败都清理监听；
+4. `__GM_post_id('LlmChat', [details, chan], reqId).then(function (r) { __GM_listeners.delete('llmchan:' + chan); return r; }, function (e) { __GM_listeners.delete('llmchan:' + chan); throw e; })`——成功/失败都清理监听；chan 作为 params[1] 过桥——SW 按 params[1] 读通道号；
 5. 下划线形式直接返回 Promise（`promiseForm: true`，点形式由 emit 的包装层补 Promise.resolve）；不提供 abort（已知差异，文档明示）。
 
 ### 4.5 grant 映射（background/gm-api.ts）

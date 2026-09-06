@@ -17,7 +17,7 @@
 - **GM_setClipboard**：仅文本。MV3 SW 无文档上下文（`navigator.clipboard` 为 undefined），经专用 offscreen 文档（reason CLIPBOARD）+ `execCommand('copy')`（writeText 要求文档焦点，offscreen 永无焦点）写入；失败返回可读错误文本。
 - **GM_notification**：图标为扩展内占位 PNG（`/gm-notif.png`，Chrome basic 通知不接受 data: URI）；后续可通过 `details.image` 扩展自定义图标。
 - **unsafeWindow**：MAIN world 下 = `window`（真页面 window）；USER_SCRIPT world 下 = 隔离世界 window（要真页面 window 请 `@world MAIN`）。
-- **GM_llmChat**：脚本调用扩展配置的大模型（OpenAI 兼容，`设置 → 模型设置` 同源配置，脚本不可自选模型/覆盖）。`messages` 数组（system/user/assistant；content 为字符串或多段 `{type:'text'|'image_url',...}`，图片 data URL ≤5MB 或 http(s) URL）；`onChunk(delta)` 可选收流式文本增量；Promise resolve `{ text, usage, finishReason }`。权限档 per-script（默认「每次询问」弹确认卡：允许一次 / 本会话内允许 / 拒绝 60s 超时），脚本详情 → 设置 → 模型调用 可改档。限制：消息载荷 ≤2MB、响应聚合 ≤1MB（超限报错不截断）、整调用超时默认 120s（可传 `timeout` 覆盖）。无 abort、无 tool 角色、reasoning 不下发。
+- **GM_llmChat**：脚本调用扩展配置的大模型（OpenAI 兼容，`设置 → 模型设置` 同源配置，脚本不可自选模型/覆盖）。`messages` 数组（system/user/assistant；content 为字符串或多段 `{type:'text'|'image_url',...}`，图片 data URL ≤5MB 或 http(s) URL）；`onChunk(delta)` 可选收流式文本增量；Promise resolve `{ text, usage, finishReason }`。权限档 per-script（默认「每次询问」弹确认卡：允许一次 / 本会话内允许 / 拒绝 60s 超时），脚本详情 → 设置 → 模型调用 可改档。限制：消息载荷 ≤2MB、响应聚合 ≤1MB（超限报错不截断）、整调用超时默认 120s（可传 `timeout` 覆盖）。无 abort、无 tool 角色、reasoning 不下发。已知差异：直调（调试台）为非流式语义（无 onChunk 通道）；「本会话内允许」为 SW 内存态，扩展进程重启后回到档位语义。
 
 ## 0. @grant 语义（三家通用，本扩展遵循）
 

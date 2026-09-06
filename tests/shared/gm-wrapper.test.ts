@@ -184,6 +184,33 @@ describe('GM_llmChat wrapper', () => {
     const installLine = code.split('\n').find((l) => l.includes('install("GM_llmChat"'));
     expect(installLine).toBeDefined();
     expect(installLine!.match(/\+\+__GM_reqSeq/g)).toHaveLength(1);
-    expect(installLine).toContain('__GM_post_id("LlmChat", [d], reqId)');
+    expect(installLine).toContain('__GM_post_id("LlmChat", [d, chan], reqId)');
+  });
+
+  it('集成：真实执行安装表达式——过桥 params[1] 携带 chan（SW 下行配对依赖，防桥两侧契约断点）', () => {
+    const code = buildWrappedCode(mkScript({ meta: { grants: ['GM_llmChat'] } }), opts);
+    // 从产物中提取 GM_llmChat 安装表达式源码（install("GM_llmChat", <expr>); 行），
+    // 在 stub 最小环境里 eval：捕获 __GM_post_id 收到的 params。
+    const line = code.split('\n').find((l) => l.includes('install("GM_llmChat"'));
+    expect(line).toBeDefined();
+    const exprMatch = /install\("GM_llmChat", (.+)\);$/.exec(line!.trim())!;
+    expect(exprMatch).toBeTruthy();
+    const captured: Array<{ api: string; params: unknown[]; reqId: number }> = [];
+    const listeners = new Map<string, unknown>();
+    const fn = new Function(
+      '__GM_plain_llm', '__GM_plain', '__GM_inst', '__GM_listeners', '__GM_post_id',
+      'var __GM_reqSeq = 0; return (' + exprMatch[1] + ');',
+    )(
+      (v: unknown) => { const c = JSON.parse(JSON.stringify(v ?? null)); if (c && c.onChunk !== undefined) delete c.onChunk; return c; },
+      (v: unknown) => JSON.parse(JSON.stringify(v ?? null)),
+      'inst1', listeners,
+      (api: string, params: unknown[], reqId: number) => { captured.push({ api, params, reqId }); return Promise.resolve({ text: 'x' }); },
+    );
+    const onChunk = (): void => {};
+    fn({ messages: [{ role: 'user', content: 'hi' }], onChunk });
+    expect(captured).toHaveLength(1);
+    expect(captured[0]!.api).toBe('LlmChat');
+    expect(captured[0]!.params).toHaveLength(2);
+    expect(captured[0]!.params[1]).toBe('inst1:1'); // inst 前缀 + reqId（++__GM_reqSeq 后为 1）
   });
 });

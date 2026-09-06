@@ -239,7 +239,7 @@ gmevt 分发器（`TAB_EVENT` 分支之后）加：
 ```ts
   // LLM 调用：onChunk 先摘出存闭包（函数不可过桥），chan = 页实例id:reqId 供 SW 下行 LLM_CHUNK 配对。
   // 成功/失败都清监听；不提供 abort（一次性语义，文档明示）。
-  ['GM_llmChat', 'function (details) { var onChunk = details && typeof details.onChunk === "function" ? details.onChunk : null; var d = __GM_plain_llm(details); var reqId = ++__GM_reqSeq; var chan = __GM_inst + ":" + reqId; if (onChunk) __GM_listeners.set("llmchan:" + chan, onChunk); return __GM_post_id("LlmChat", [d], reqId).then(function (r) { if (onChunk) __GM_listeners.delete("llmchan:" + chan); return r; }, function (e) { if (onChunk) __GM_listeners.delete("llmchan:" + chan); throw e; }); }'],
+  ['GM_llmChat', 'function (details) { var onChunk = details && typeof details.onChunk === "function" ? details.onChunk : null; var d = __GM_plain_llm(details); var reqId = ++__GM_reqSeq; var chan = __GM_inst + ":" + reqId; if (onChunk) __GM_listeners.set("llmchan:" + chan, onChunk); return __GM_post_id("LlmChat", [d, chan], reqId).then(function (r) { if (onChunk) __GM_listeners.delete("llmchan:" + chan); return r; }, function (e) { if (onChunk) __GM_listeners.delete("llmchan:" + chan); throw e; }); }'],
 ```
 
 preamble 内 `__GM_plain` 函数之后加辅助（浅拷贝摘 onChunk 再走通用摘函数）：
