@@ -688,6 +688,83 @@ body {
 }
 .composer__attach-err svg { flex-shrink: 0; }
 
+/* ============ 行为模式下拉（ask/agent，自绘浮层） ============ */
+.modeselect { position: relative; flex-shrink: 0; }
+.modeselect__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.modeselect__trigger:hover:not(:disabled) { color: var(--ink); border-color: var(--line-strong); background: var(--sunken); }
+.modeselect__trigger:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+.modeselect__trigger:disabled { opacity: 0.5; cursor: not-allowed; }
+.modeselect__trigger--ask { color: var(--signal-ink); border-color: #c3c5e0; background: var(--signal-wash); }
+.modeselect__trigger--ask:hover:not(:disabled) { color: var(--signal-ink); border-color: var(--signal); background: var(--signal-wash); }
+.modeselect__chev { transition: transform var(--t-fast) var(--ease); }
+.modeselect__chev--open { transform: rotate(180deg); }
+
+.modeselect__pop {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 264px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+  z-index: 30;
+  padding: 4px;
+  animation: pop-in var(--t-fast) var(--ease);
+}
+.modeselect__opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 9px;
+  border: 0;
+  background: transparent;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  color: var(--ink);
+  font: inherit;
+}
+.modeselect__opt--hi { background: var(--sunken); }
+.modeselect__opt-icon { flex-shrink: 0; color: var(--ink-2); margin-top: 1px; display: flex; }
+.modeselect__opt-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.modeselect__opt-label {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.modeselect__opt-desc { font-size: 11px; color: var(--ink-2); line-height: 1.45; }
+.modeselect__opt-check { flex-shrink: 0; color: var(--signal); margin-left: auto; margin-top: 2px; }
+
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modeselect__pop { animation: none; }
+  .modeselect__chev { transition: none; }
+}
+
 /* 用户气泡内的只读附件 tag：深底反色 */
 .msg-user .attach-chips { padding: 0 0 6px; }
 .msg-user .attach-chip {

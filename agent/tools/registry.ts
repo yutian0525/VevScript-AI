@@ -4,6 +4,7 @@ import type { ToolResult } from '../../shared/types';
 import type { ToolSchema } from '../provider/types';
 import { createRequest, type BgToCsRequestMap } from '../../shared/messages';
 import { TOOL_SCHEMAS } from './schemas';
+import { ASK_MODE_TOOLS, type AgentMode } from '../mode';
 import { doListPages, doNewPage, doClosePage, doSelectPage } from './tabs';
 import { doScreenshot } from './screenshot';
 import { doEvaluate } from './evaluate';
@@ -21,10 +22,14 @@ export interface ToolCtx {
   signal: AbortSignal;
   /** navigate 后等待 content script 就绪；由 background 注入（默认空实现方便测试）。 */
   waitForReady?: (tabId: number) => Promise<void>;
+  /** 行为模式守卫：ask 模式拒执行只读白名单外的工具（默认 'agent' 不设限）。 */
+  mode?: AgentMode;
 }
 
-export function getToolSchemas(): ToolSchema[] {
-  return TOOL_SCHEMAS;
+/** 全量 schema（调试台/默认用）。ask 模式清单见 agent/mode.ts。 */
+export function getToolSchemas(mode: AgentMode = 'agent'): ToolSchema[] {
+  if (mode === 'agent') return TOOL_SCHEMAS;
+  return TOOL_SCHEMAS.filter((s) => ASK_MODE_TOOLS.has(s.function.name));
 }
 
 const RESTRICTED = /^(chrome|edge|about|chrome-extension|moz-extension|devtools):|^https:\/\/(chrome\.google\.com\/webstore|chromewebstore\.google\.com)/;
@@ -46,6 +51,10 @@ export async function executeTool(
   args: Record<string, unknown>,
   ctx: ToolCtx,
 ): Promise<ToolResult> {
+  // ---- 模式守卫（ask）：白名单外一律拒。工具清单已按模式下发，这里是防幻觉调用的硬闸 ----
+  if (ctx.mode === 'ask' && !ASK_MODE_TOOLS.has(name)) {
+    return { ok: false, error: `当前为 ask（只读）模式，工具 ${name} 不可用；如需执行该操作请切换到 agent 模式` };
+  }
   // ---- 豁免受限页预检的工具（不碰当前页内容 / background 独立发起）----
   // navigate_page 走 tabs API，可跨受限页工作（如从 chrome://newtab 导航到普通页）。
   if (name === 'navigate_page') {

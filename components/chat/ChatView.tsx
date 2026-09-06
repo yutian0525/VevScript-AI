@@ -9,6 +9,7 @@ import { Markdown } from './Markdown';
 import { ConversationMenu } from './ConversationMenu';
 import { SlashMenu } from './SlashMenu';
 import { AttachmentChips } from './AttachmentChips';
+import { ModeSelect } from './ModeSelect';
 import { shouldOpenSlash, handleSlashKey, completeSlash } from './slash';
 import { fileToAttachment, MAX_ATTACHMENTS } from './attachments';
 import { filterSkills, useSkills } from '../../stores/skills';
@@ -163,7 +164,7 @@ export function ChatView() {
     setInput('');
     setAttachments([]);
     setAttachError('');
-    postToPort({ type: 'agent:start', convId, tabId, userMessage: text, attachments: atts.length ? atts : undefined });
+    postToPort({ type: 'agent:start', convId, tabId, userMessage: text, attachments: atts.length ? atts : undefined, mode: useChat.getState().mode });
     // 首条消息发出后会话落库 → 刷新列表让其出现在下拉里
     void useConversations.getState().refreshList();
   };
@@ -338,6 +339,7 @@ export function ChatView() {
             >
               <Paperclip size={16} />
             </button>
+            <ModeSelect disabled={status === 'running' ? false : compacting} />
             <div className="composer__actions">
               <ContextRing
                 used={promptTokens}

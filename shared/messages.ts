@@ -95,12 +95,14 @@ export interface DebugExecResponse {
 // 约定：Port name 为 'agent'；消息用 'agent:' 前缀（→bg）或事件名（bg→）区分。
 
 export type PortMsgFromPanel =
-  | { type: 'agent:start'; convId: string; tabId: number; userMessage: string; attachments?: ChatAttachment[] }
+  | { type: 'agent:start'; convId: string; tabId: number; userMessage: string; attachments?: ChatAttachment[]; mode?: 'ask' | 'agent' }
   | { type: 'agent:stop'; convId: string }
   /** 面板（重）挂载/切会话时附着：后台回权威 state + 补发未落库的流式尾巴。 */
   | { type: 'agent:attach'; convId: string }
   | { type: 'agent:resume'; convId: string; tabId: number }
-  | { type: 'agent:compact'; convId: string };
+  | { type: 'agent:compact'; convId: string }
+  /** 切换会话行为模式（ask/agent）：落库 + 通知运行中 loop 下一轮生效。 */
+  | { type: 'agent:setMode'; convId: string; mode: 'ask' | 'agent' };
 
 /** agent 领域事件（loop 只关心语义，不关心投递给谁）。 */
 export type AgentEvent =
@@ -114,7 +116,8 @@ export type AgentEvent =
   | { type: 'paused'; reason: string }
   | { type: 'done'; finalText: string }
   | { type: 'error'; message: string }
-  | { type: 'state'; status: 'idle' | 'running' | 'paused'; messageCount: number };
+  | { type: 'state'; status: 'idle' | 'running' | 'paused'; messageCount: number }
+  | { type: 'mode'; mode: 'ask' | 'agent' };
 
 /** 下行到面板的事件 = 领域事件 + 归属会话（面板按当前会话过滤，避免多会话串台）。
  *  用分布式条件类型逐支叠加，保留可辨识联合（直接写 `AgentEvent & {convId}` 会破坏 type 判别收窄）。 */

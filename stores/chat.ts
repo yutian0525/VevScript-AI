@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { AgentEvent } from '../shared/messages';
 import type { ChatMessage } from '../agent/provider/types';
 import type { ChatAttachment } from '../shared/types';
+import type { AgentMode } from '../agent/mode';
 import { isScreenshotInjection, parseUserContent } from '../agent/user-message';
 
 export type ChatStatus = 'idle' | 'running' | 'paused';
@@ -28,9 +29,11 @@ interface ChatState {
   pauseReason?: string;
   promptTokens?: number;   // 当前会话最近一轮真实发出的 token（环形指示器分子）
   compacting: boolean;     // 是否正在压缩
+  mode: AgentMode;         // 行为模式（ask/agent）：attach 回权威值，setMode 本地即时改
   addUserMessage: (text: string, attachments?: ChatAttachment[]) => void;
   applyEvent: (e: AgentEvent) => void;
   setStatus: (s: ChatStatus) => void;
+  setMode: (m: AgentMode) => void;
   toggleExpand: (index: number) => void;
   loadFromStorage: (messages: ChatMessage[]) => void;
   reset: () => void;
@@ -54,11 +57,13 @@ export const useChat = create<ChatState>((set) => ({
   messages: [],
   status: 'idle',
   compacting: false,
+  mode: 'agent',
   addUserMessage: (text, attachments) => set((s) => ({
     messages: [...s.messages, { role: 'user', text, attachments: attachments?.length ? attachments : undefined }],
     status: 'running',
   })),
   setStatus: (status) => set({ status }),
+  setMode: (mode) => set({ mode }),
   toggleExpand: (index) => set((s) => {
     const messages = [...s.messages];
     const cur = messages[index];
@@ -121,7 +126,7 @@ export const useChat = create<ChatState>((set) => ({
     }
     return { messages: items, status: 'idle', pauseReason: undefined };
   }),
-  reset: () => set({ messages: [], status: 'idle', pauseReason: undefined, promptTokens: undefined, compacting: false }),
+  reset: () => set({ messages: [], status: 'idle', pauseReason: undefined, promptTokens: undefined, compacting: false, mode: 'agent' }),
   applyEvent: (e) => set((s) => {
     const messages = [...s.messages];
     switch (e.type) {
@@ -159,6 +164,7 @@ export const useChat = create<ChatState>((set) => ({
         return { messages };
       }
       case 'state': return { status: e.status };
+      case 'mode': return { mode: e.mode };
       case 'usage': {
         // 事件未带 promptTokens 时保留上一轮环值（?? 回落）
         const idx = messages.findLastIndex((m) => m.role === 'assistant');

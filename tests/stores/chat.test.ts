@@ -244,6 +244,27 @@ describe('chat store：输入框附件', () => {
   });
 });
 
+describe('chat store：行为模式', () => {
+  beforeEach(() => useChat.getState().reset());
+
+  it('默认 agent；setMode 即时改', () => {
+    expect(useChat.getState().mode).toBe('agent');
+    useChat.getState().setMode('ask');
+    expect(useChat.getState().mode).toBe('ask');
+  });
+
+  it('mode 事件更新 mode', () => {
+    useChat.getState().applyEvent({ type: 'mode', mode: 'ask' });
+    expect(useChat.getState().mode).toBe('ask');
+  });
+
+  it('reset 回落 agent', () => {
+    useChat.getState().setMode('ask');
+    useChat.getState().reset();
+    expect(useChat.getState().mode).toBe('agent');
+  });
+});
+
 describe('chat store 新分支', () => {
   beforeEach(() => useChat.getState().reset());
 

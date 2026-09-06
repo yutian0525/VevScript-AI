@@ -8,7 +8,7 @@ import { runAgentLoop, resumeAgentLoop, type LoopDeps } from '../agent/loop';
 import { executeTool } from '../agent/tools/registry';
 import { compactConversation } from '../agent/compact';
 import { resolveContextWindow } from '../agent/model-windows';
-import { getConversation, setLastPromptTokens, setStatus } from '../storage/conversations';
+import { getConversation, setLastPromptTokens, setStatus, setMode as storeSetMode } from '../storage/conversations';
 import { listSkills } from '../storage/skills';
 import type { Skill } from '../shared/types';
 import { emptyTail, reduceTail, replayTail, type AgentTail } from './agent-tail';
@@ -97,7 +97,7 @@ function makeDeps(provider: Provider, convId: string): LoopDeps {
   return {
     provider,
     executeTool: (name, args, tabId, signal) =>
-      executeTool(name, args, { tabId, sessionId: convId, signal, waitForReady: (t) => waitForCsReady(t) }),
+      executeTool(name, args, { tabId, sessionId: convId, signal, waitForReady: (t) => waitForCsReady(t), mode: convModeRef.mode }),
     getPageInfo,
     resolveOpenedTab: (_name, openerTabId) => resolveOpenedTab(openerTabId, (t) => waitForCsReady(t)),
     getContextWindow: async () => {
@@ -109,6 +109,8 @@ function makeDeps(provider: Provider, convId: string): LoopDeps {
       (await listSkills().catch(() => [] as Skill[]))
         .filter((s) => s.enabled)
         .map((s) => ({ name: s.name, command: s.command, description: s.description })),
+    // 每轮开跑前重读模式：中途切换下一轮生效（ref 读的是最新值）
+    getMode: async () => convModeRef.mode,
     // 断开的端口在 postTo 内被吞掉：loop 不受面板生死影响，继续跑到底
     emit: (m) => broadcast(convId, m),
   };
@@ -117,17 +119,22 @@ function makeDeps(provider: Provider, convId: string): LoopDeps {
 // 同 conv 单 loop 闸门 + 中断句柄：每个运行中的会话挂一个 AbortController。
 const runningConvs = new Map<string, AbortController>();
 
+/** 运行中会话的实时模式（loop 的 deps.getMode/executeTool 守卫读这里）。
+ *  map 的生命周期 = loop 生命周期（agent:start 写入、finally 清除），中途 setMode 只改值不重建 loop。 */
+const convModeRef: { mode: 'ask' | 'agent' } = { mode: 'agent' };
+
 /** 算出附着时该补发给面板的事件序列（权威运行态 + 未落库的流式尾巴）。
  *  running 与否只认后台有没有活着的 loop，不认 storage：SW 被杀会在 storage 里留下假 running，
  *  此处顺手改回 idle，避免面板输入框永久禁用。 */
 export async function buildAttachEvents(convId: string, running: boolean, tail: AgentTail): Promise<AgentEvent[]> {
   const conv = await getConversation(convId);
+  const modeEvent: AgentEvent = { type: 'mode', mode: convModeRef.mode };
   if (running) {
-    return [{ type: 'state', status: 'running', messageCount: conv.messages.length }, ...replayTail(tail)];
+    return [modeEvent, { type: 'state', status: 'running', messageCount: conv.messages.length }, ...replayTail(tail)];
   }
   if (conv.status === 'running') await setStatus(convId, 'idle');
   const status = conv.status === 'running' ? 'idle' : conv.status;
-  return [{ type: 'state', status, messageCount: conv.messages.length }];
+  return [modeEvent, { type: 'state', status, messageCount: conv.messages.length }];
 }
 
 async function handleAttach(port: Browser.runtime.Port, convId: string): Promise<void> {
@@ -166,6 +173,14 @@ export function attachAgentPort(): void {
         return;
       }
 
+      // 模式切换：立即落库（草稿会话也建档）；运行中则同步改 convModeRef，loop 下一轮生效。
+      if (msg.type === 'agent:setMode') {
+        await storeSetMode(msg.convId, msg.mode);
+        if (runningConvs.has(msg.convId)) convModeRef.mode = msg.mode;
+        broadcast(msg.convId, { type: 'mode', mode: msg.mode });
+        return;
+      }
+
       // 手动压缩：与运行中 loop 互斥（避免并发改会话）
       if (msg.type === 'agent:compact') {
         if (runningConvs.has(msg.convId)) {
@@ -201,13 +216,15 @@ export function attachAgentPort(): void {
         safePost({ type: 'error', message: '请先在设置页配置 AI 服务（Base URL + 模型）' });
         return;
       }
+      const conv = await getConversation(msg.convId);
+      convModeRef.mode = msg.type === 'agent:start' && msg.mode ? msg.mode : (conv.mode ?? 'agent');
       const deps = makeDeps(provider, msg.convId);
       const ac = new AbortController();
       runningConvs.set(msg.convId, ac);
       tails.set(msg.convId, emptyTail());
       try {
         if (msg.type === 'agent:start') {
-          await runAgentLoop({ convId: msg.convId, tabId: msg.tabId, userMessage: msg.userMessage, attachments: msg.attachments }, deps, ac.signal);
+          await runAgentLoop({ convId: msg.convId, tabId: msg.tabId, userMessage: msg.userMessage, attachments: msg.attachments, mode: convModeRef.mode }, deps, ac.signal);
         } else {
           await resumeAgentLoop(msg.convId, msg.tabId, deps, ac.signal);
         }

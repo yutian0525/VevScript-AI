@@ -6,8 +6,9 @@ import type { AgentEvent } from '../shared/messages';
 import { runTurn } from './run-turn';
 import { buildContext, type PageInfo, type SkillBrief } from './context';
 import { getToolSchemas } from './tools/registry';
+import { modePrompt, type AgentMode } from './mode';
 import { initGuardState, recordTurn, checkGuards, DEFAULT_GUARD_CONFIG, type GuardState } from './loop-guards';
-import { getConversation, appendMessage, setStatus, setLastPromptTokens } from '../storage/conversations';
+import { getConversation, appendMessage, setStatus, setLastPromptTokens, setMode } from '../storage/conversations';
 import { meterRatio, COMPACT_THRESHOLD } from './context-meter';
 import { composeUserContent, SCREENSHOT_SENTINEL } from './user-message';
 import type { ChatAttachment } from '../shared/types';
@@ -24,6 +25,8 @@ export interface LoopDeps {
   compact?: (convId: string) => Promise<{ ok: boolean; newPromptTokens?: number; error?: string }>;
   /** 启用技能简述（每轮 buildContext 注入）。缺省不注入（便于测试）。 */
   getSkills?: () => Promise<SkillBrief[]>;
+  /** 当前行为模式（缺省 'agent'）。每轮开跑前经 getMode 重读，支持任务中途切换。 */
+  getMode?: () => Promise<AgentMode>;
 }
 
 const TAB_OPENING_TOOLS = new Set(['click', 'press_key']);
@@ -34,11 +37,14 @@ export interface LoopArgs {
   userMessage: string;
   /** 输入框上传的附件（纯文本内联进消息、图片作 image_url part）。 */
   attachments?: ChatAttachment[];
+  /** 发起本轮时的行为模式（写入 user 消息前的默认模式；loop 每轮经 deps.getMode 重读）。 */
+  mode?: AgentMode;
 }
 
 export async function runAgentLoop(args: LoopArgs, deps: LoopDeps, signal?: AbortSignal): Promise<void> {
   await appendMessage(args.convId, { role: 'user', content: composeUserContent(args.userMessage, args.attachments ?? []) });
   await setStatus(args.convId, 'running');
+  if (args.mode) await setMode(args.convId, args.mode);
   // 斜杠 /command 不再注入技能正文——它就是普通 user 文本；模型看到系统提示的技能简述后，
   // 自行调用 load_skill 工具取正文（spec §2.4 修订 2026-09-05）。
   await drive(args.convId, args.tabId, deps, initGuardState(), signal ?? new AbortController().signal);
@@ -88,9 +94,11 @@ async function drive(
     const conv = await getConversation(convId);
     const page = await deps.getPageInfo(targetTab).catch(() => ({ url: '', title: '' }));
     const skills = (await deps.getSkills?.()) ?? [];
-    const messages = buildContext(conv.messages, page, 60, conv.summary, skills);
+    // 模式每轮重读：任务中途用户切 ask/agent，下一轮立即生效（已发出的轮次不回收）
+    const mode = (await deps.getMode?.()) ?? 'agent';
+    const messages = buildContext(conv.messages, page, 60, conv.summary, skills, mode);
 
-    const result = await runTurn(deps.provider, { messages, tools: getToolSchemas(), signal }, {
+    const result = await runTurn(deps.provider, { messages, tools: getToolSchemas(mode), signal }, {
       onTextDelta: (t) => deps.emit({ type: 'text-delta', text: t }),
       onReasoningDelta: (t) => deps.emit({ type: 'reasoning-delta', text: t }),
     });

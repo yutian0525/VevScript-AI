@@ -3,6 +3,7 @@
 import { storage } from 'wxt/utils/storage';
 import { nanoid } from 'nanoid';
 import type { ChatMessage } from '../agent/provider/types';
+import type { AgentMode } from '../agent/mode';
 
 export type ConversationStatus = 'idle' | 'running' | 'paused';
 
@@ -15,6 +16,8 @@ export interface Conversation {
   updatedAt: number;
   lastPromptTokens?: number;
   summary?: { text: string; coversUpTo: number };
+  /** 行为模式（ask/agent），随会话续存；缺省按 'agent'。 */
+  mode?: AgentMode;
 }
 
 export interface ConversationMeta {
@@ -116,6 +119,13 @@ export async function setLastPromptTokens(id: string, tokens: number): Promise<v
 export async function setSummary(id: string, summary: { text: string; coversUpTo: number }): Promise<void> {
   const conv = await getConversation(id);
   await saveConversation({ ...conv, summary });
+}
+
+/** 设置会话行为模式（ask/agent）。草稿会话也落库——模式选择不应等首条消息才生效。 */
+export async function setMode(id: string, mode: AgentMode): Promise<void> {
+  const conv = await getConversation(id);
+  if (conv.mode === mode) return;
+  await saveConversation({ ...conv, mode });
 }
 
 // ---------- 当前会话指针（session 区，浏览器重启自动失效）----------

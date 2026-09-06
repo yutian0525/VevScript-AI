@@ -293,4 +293,37 @@ describe('agent loop', () => {
     await runAgentLoop({ convId: 'c-noauto', tabId: 1, userMessage: 'x' }, deps(provider, exec, { compact, getContextWindow }));
     expect(compact).not.toHaveBeenCalled();
   });
+
+  it('mode: getMode 每轮重读——中途切换下一轮工具清单收窄', async () => {
+    let mode: 'ask' | 'agent' = 'agent';
+    const seenTools: Array<Array<string>> = [];
+    const provider: Provider = {
+      streamChat(p, onEvent) {
+        seenTools.push(p.tools.map((t) => t.function.name));
+        queueMicrotask(() => {
+          if (p.tools.some((t) => t.function.name === 'click')) {
+            onEvent({ type: 'tool-call-delta', index: 0, id: `c${seenTools.length}`, name: 'click', argsDelta: '{"uid":1}' });
+            onEvent({ type: 'message-done', finishReason: 'tool_calls' });
+          } else {
+            // ask 模式下没有 click 可用 → 模型改用快照后结束
+            onEvent({ type: 'tool-call-delta', index: 0, id: `c${seenTools.length}`, name: 'take_snapshot', argsDelta: '{}' });
+            onEvent({ type: 'message-done', finishReason: 'tool_calls' });
+          }
+        });
+        return { cancel: vi.fn() };
+      },
+    };
+    const exec = vi.fn<LoopDeps['executeTool']>().mockImplementation(async (_name, _args, _tabId, signal) => {
+      void signal;
+      // 第一次工具执行完就切 ask：下一轮 getMode 返回 ask
+      mode = 'ask';
+      return { ok: true, data: { text: 'ok' } } as ToolResult;
+    });
+    const d = deps(provider, exec, { getMode: async () => mode });
+    await runAgentLoop({ convId: 'c-mode', tabId: 1, userMessage: 'x' }, d);
+    // 第 1 轮全量；第 2 轮 ask 收窄（无 click）；第 3 轮 take_snapshot 仍在但 click 不在
+    expect(seenTools[0]).toContain('click');
+    expect(seenTools[1]).not.toContain('click');
+    expect(seenTools[1]).toContain('take_snapshot');
+  });
 });

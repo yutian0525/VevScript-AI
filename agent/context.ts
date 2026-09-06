@@ -1,6 +1,7 @@
 // agent/context.ts
 // 上下文组装（设计 §2、§8）：system prompt + 页面信息 + 简单截断。
 import type { ChatMessage, ContentPart } from './provider/types';
+import { modePrompt, type AgentMode } from './mode';
 
 export const SYSTEM_PROMPT = `你是一个能操控浏览器的 AI 助手。你可以调用工具查看和操作当前网页。
 
@@ -66,12 +67,13 @@ export function buildContext(
   keepRecent = 60,
   summary?: { text: string; coversUpTo: number },
   skills?: SkillBrief[],
+  mode: AgentMode = 'agent',
 ): ChatMessage[] {
   const pageBlock = page.url
     ? `\n\n当前页面：\n- URL: ${page.url}\n- 标题: ${page.title}`
     : '';
   const skillsBlock = buildSkillsPrompt(skills ?? []);
-  const system: ChatMessage = { role: 'system', content: SYSTEM_PROMPT + pageBlock + skillsBlock };
+  const system: ChatMessage = { role: 'system', content: SYSTEM_PROMPT + pageBlock + skillsBlock + modePrompt(mode) };
 
   if (summary) {
     // coversUpTo 之后的原始消息为保留段；剥掉头部孤立 tool 消息（其 assistant(toolCalls)
