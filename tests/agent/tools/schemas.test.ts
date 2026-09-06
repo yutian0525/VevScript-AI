@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { TOOL_SCHEMAS } from '../../../agent/tools/schemas';
 
 describe('工具 schema', () => {
-  it('恰好 26 个工具（Phase 2 的 9 + Phase 3a 的 7 + Phase 3b 的 3 + Phase 4 的 6 + Skill 的 1）', () => {
+  it('恰好 27 个工具（Phase 2 的 9 + Phase 3a 的 7 + Phase 3b 的 3 + Phase 4 的 6 + Skill 的 1 + 脚本检索的 1）', () => {
     const names = TOOL_SCHEMAS.map((s) => s.function.name).sort();
     expect(names).toEqual([
       'click', 'close_page', 'create_script', 'delete_script', 'evaluate_script', 'fill',
-      'fill_form', 'get_network_request', 'get_script', 'hover', 'http_request',
+      'fill_form', 'get_network_request', 'get_script', 'grep_script', 'hover', 'http_request',
       'list_console_messages', 'list_network_requests', 'list_pages', 'list_scripts', 'load_skill',
       'navigate_page', 'new_page', 'press_key', 'scroll', 'select_page',
       'take_screenshot', 'take_snapshot', 'toggle_script', 'update_script', 'wait_for',
@@ -107,5 +107,15 @@ describe('工具 schema', () => {
     const t = TOOL_SCHEMAS.find((s) => s.function.name === 'new_page')!;
     const p = t.function.parameters as { required: string[] };
     expect(p.required).toContain('url');
+  });
+
+  it('grep_script schema：pattern 必填，id/ignoreCase/contextLines/limit 可选', () => {
+    const g = TOOL_SCHEMAS.find((s) => s.function.name === 'grep_script')!;
+    expect(g).toBeDefined();
+    const p = g.function.parameters as { properties: Record<string, unknown>; required: string[] };
+    expect(p.required).toEqual(['pattern']);
+    expect(Object.keys(p.properties).sort()).toEqual(['contextLines', 'id', 'ignoreCase', 'limit', 'pattern']);
+    // 缺省搜全库这条语义必须写进 description（模型据此决定是否传 id）
+    expect(g.function.description).toContain('全库');
   });
 });

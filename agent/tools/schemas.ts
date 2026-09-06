@@ -1,5 +1,5 @@
 // agent/tools/schemas.ts
-// 25 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）。描述对齐 chrome-devtools-mcp。
+// 27 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个。描述对齐 chrome-devtools-mcp。
 import type { ToolSchema } from '../provider/types';
 
 // 显式声明返回 Record<string, unknown>，避免 type:'object' 字面量收窄导致的赋值报错。
@@ -282,6 +282,24 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
           limit: { type: 'number', description: '行数（缺省读到末尾）' },
         },
         ['id'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'grep_script',
+      description:
+        '在用户脚本原文中检索（按正则；非法正则自动降级为字面量子串）。id 缺省时搜全库（脚本库全部脚本）——可用来回答「哪个脚本动了这个选择器/接口」。返回命中行的 scriptId、脚本名、行号与带行号前缀的内容。用于在不整份读回长脚本的前提下定位代码，配合 update_script 的 patch.replace 做精确改写。',
+      parameters: obj(
+        {
+          pattern: { type: 'string', description: '检索式（正则语法；非法时按字面量处理）' },
+          id: { type: 'string', description: '限定单个脚本 id；缺省搜全库' },
+          ignoreCase: { type: 'boolean', description: '忽略大小写（默认 false）' },
+          contextLines: { type: 'number', description: '每处命中额外返回的上下文行数（默认 0）' },
+          limit: { type: 'number', description: '最多返回行数（默认 50，超出时 truncated=true）' },
+        },
+        ['pattern'],
       ),
     },
   },

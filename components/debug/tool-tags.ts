@@ -14,8 +14,8 @@ export const TOOL_TAGS: Record<string, ToolTag> = {
   // NET(4)：后台 fetch / console / 网络元数据
   http_request: 'NET', list_console_messages: 'NET',
   list_network_requests: 'NET', get_network_request: 'NET',
-  // SCRIPTS(6)：userScripts CRUD 与启停
-  list_scripts: 'SCRIPTS', get_script: 'SCRIPTS', create_script: 'SCRIPTS',
+  // SCRIPTS(7)：userScripts CRUD 与启停 + 检索
+  list_scripts: 'SCRIPTS', get_script: 'SCRIPTS', grep_script: 'SCRIPTS', create_script: 'SCRIPTS',
   update_script: 'SCRIPTS', delete_script: 'SCRIPTS', toggle_script: 'SCRIPTS',
   // SKILLS(1)：技能正文加载
   load_skill: 'SKILLS',

@@ -14,6 +14,7 @@ export const ASK_MODE_TOOLS = new Set([
   'get_network_request',
   'list_scripts',
   'get_script',
+  'grep_script',      // 脚本检索（纯读）
   'load_skill',
 ]);
 

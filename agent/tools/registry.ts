@@ -13,6 +13,7 @@ import { doListConsoleMessages, doListNetworkRequests, doGetNetworkRequest } fro
 import {
   doListScripts, doGetScript, doCreateScript, doUpdateScript, doDeleteScript, doToggleScript,
 } from './script-pool';
+import { doGrepScript } from './script-grep';
 import { doLoadSkill } from './skills-tool';
 import type { ScriptPatch } from '../../shared/messages';
 
@@ -81,6 +82,9 @@ export async function executeTool(
   // 脚本池六工具：纯 storage/注册操作，不碰页面内容，豁免受限页预检（spec §8）。
   if (name === 'list_scripts') return doListScripts(args as { enabled?: boolean; urlContains?: string });
   if (name === 'get_script') return doGetScript(args as { id: string; offset?: number; limit?: number });
+  if (name === 'grep_script') {
+    return doGrepScript(args as { pattern: string; id?: string; ignoreCase?: boolean; contextLines?: number; limit?: number });
+  }
   if (name === 'create_script') return doCreateScript(args as { source?: string; text?: string; url?: string; enabled?: boolean });
   if (name === 'update_script') return doUpdateScript(args as { id: string; patch: ScriptPatch });
   if (name === 'delete_script') return doDeleteScript(args as { id: string });

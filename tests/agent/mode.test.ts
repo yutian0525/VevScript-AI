@@ -22,12 +22,16 @@ describe('ASK_MODE_TOOLS 白名单', () => {
       expect(ASK_MODE_TOOLS.has(t)).toBe(true);
     }
   });
+
+  it('grep_script 属只读，ask 模式可用', () => {
+    expect(ASK_MODE_TOOLS.has('grep_script')).toBe(true);
+  });
 });
 
 describe('filterSchemasForMode / getToolSchemas', () => {
-  it('agent 模式返回全量 26 个（schemas.ts 当前 26 工具）', () => {
-    expect(getToolSchemas('agent')).toHaveLength(26);
-    expect(getToolSchemas()).toHaveLength(26); // 缺省 = agent
+  it('agent 模式返回全量 27 个（schemas.ts 当前 27 工具）', () => {
+    expect(getToolSchemas('agent')).toHaveLength(27);
+    expect(getToolSchemas()).toHaveLength(27); // 缺省 = agent
   });
 
   it('ask 模式只返回白名单内的 schema', () => {

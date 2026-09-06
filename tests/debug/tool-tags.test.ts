@@ -9,12 +9,12 @@ describe('TOOL_TAGS 完备性', () => {
     }
   });
 
-  it('五类计数 PAGE 10 / TABS 5 / NET 4 / SCRIPTS 6 / SKILLS 1', () => {
+  it('五类计数 PAGE 10 / TABS 5 / NET 4 / SCRIPTS 7 / SKILLS 1', () => {
     const count = (tag: string) => Object.values(TOOL_TAGS).filter((v) => v === tag).length;
     expect(count('PAGE')).toBe(10);
     expect(count('TABS')).toBe(5);
     expect(count('NET')).toBe(4);
-    expect(count('SCRIPTS')).toBe(6);
+    expect(count('SCRIPTS')).toBe(7);
     expect(count('SKILLS')).toBe(1);
   });
 
