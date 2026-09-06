@@ -1283,3 +1283,18 @@ body {
 .confirm-card__row dt { color: var(--ink-3); }
 .confirm-card__row dd { margin: 0; color: var(--ink); word-break: break-all; }
 .confirm-card__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* 工具参数生成进度：模型在写长参数（如 create_script.source）时的可见反馈 */
+.argsprog {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 6px;
+  background: var(--signal-wash);
+  font-size: 12px;
+}
+.argsprog__name { color: var(--signal-ink); font-weight: 600; }
+.argsprog__text { color: var(--ink-3); }
+.argsprog__size { color: var(--ink-3); margin-left: auto; }

@@ -35,7 +35,7 @@ const HELLO_SUGGESTIONS: { tag?: string; label: string; text: string }[] = [
 ];
 
 export function ChatView() {
-  const { messages, status, pauseReason, applyEvent, promptTokens, compacting } = useChat();
+  const { messages, status, pauseReason, applyEvent, promptTokens, compacting, argsProgress } = useChat();
   const { currentId, list, menuOpen, setMenuOpen } = useConversations();
   const [input, setInput] = useState('');
   const [contextWindow, setContextWindow] = useState(DEFAULT_CONTEXT_WINDOW);
@@ -93,7 +93,8 @@ export function ChatView() {
   }, []);
 
   const last = messages[messages.length - 1];
-  const scrollKey = `${messages.length}:${last?.text?.length ?? 0}:${last?.reasoning?.length ?? 0}:${last?.status ?? ''}`;
+  // argsProgress 计入 key：进度条出现/增长时若用户贴底则保持贴底（含 name，防新工具 bytes 重置时不触发）
+  const scrollKey = `${messages.length}:${last?.text?.length ?? 0}:${last?.reasoning?.length ?? 0}:${last?.status ?? ''}:${argsProgress ? `${argsProgress.name}:${argsProgress.bytes}` : ''}`;
   useEffect(() => {
     // 跟随中才自动贴底。流式期间一律瞬时滚动：smooth 的中间态会被 scroll 监听误判成用户上滚。
     if (!follow) return;
@@ -252,6 +253,13 @@ export function ChatView() {
             {messages.map((m, i) => (
               <MessageRow key={i} index={i} item={m} streaming={status === 'running' && i === lastIdx} />
             ))}
+            {argsProgress && status === 'running' && (
+              <div className="argsprog rise">
+                <span className="mono argsprog__name">{argsProgress.name}</span>
+                <span className="argsprog__text">正在生成参数…</span>
+                <span className="mono argsprog__size">{formatBytes(argsProgress.bytes)}</span>
+              </div>
+            )}
             {status === 'paused' && (
               <div className="pausebar rise">
                 <div style={{ marginBottom: 8 }}>
@@ -512,4 +520,9 @@ function formatArgs(args: string): string {
 /** token 数格式化：>=1000 显示 xk，否则原样。 */
 function formatTokens(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+}
+
+/** 参数进度的体积显示：<1KB 显示字节，否则一位小数的 KB。 */
+function formatBytes(n: number): string {
+  return n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`;
 }
