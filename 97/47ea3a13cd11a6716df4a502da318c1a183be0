@@ -1,0 +1,34 @@
+stores/chat.ts
+  s_1b8e3189527efd::t_379fd7f0813d1f 187,190,194
+  s_1b8e3189527efd::t_547a1c9b7e559a 129
+  s_1b8e3189527efd::t_751a2f14139377 32-33
+  s_1b8e3189527efd::t_154d1a7a7bfde5 154-156,161,164
+  s_1b8e3189527efd::t_42586fccc345d1 131
+entrypoints/sidepanel/styles.css
+  s_1b8e3189527efd::t_3d21585a6eb6d6 1286-1300
+tests/chat/args-progress.test.ts
+  s_1b8e3189527efd::t_6d9838bfae9f6f 45-52
+  s_1b8e3189527efd::t_c837c277b33515 1-3,5-44,53
+  s_1b8e3189527efd::t_e21df2f7d711b2 4
+components/chat/ChatView.tsx
+  s_1b8e3189527efd::t_a8c57fd1898074 38
+  s_1b8e3189527efd::t_64894e16afc0eb 256-262
+  s_1b8e3189527efd::t_1873d08ea4611d 524-528
+  s_1b8e3189527efd::t_ea971ccdd5054e 96-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "9747ea3a13cd11a6716df4a502da318c1a183be0",
+  "prompts": {},
+  "sessions": {
+    "s_1b8e3189527efd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a422d7b-b7c9-4d8d-b680-a38a4f5b5194",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
