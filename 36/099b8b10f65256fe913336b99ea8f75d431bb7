@@ -1,0 +1,24 @@
+docs/superpowers/specs/2026-09-06-ai-script-authoring-optimization-design.md
+  s_1b8e3189527efd::t_53a77b973fc64f 1-28
+  s_1b8e3189527efd::t_58c408d5e8301b 29-63,214
+  s_1b8e3189527efd::t_e7e7507045c73b 93-97
+  s_1b8e3189527efd::t_dc2da336855a12 109-148,212
+  s_1b8e3189527efd::t_fb45f52f605644 149-211
+  s_1b8e3189527efd::t_1f3ab9dd8a69b5 64-92,98-108,213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "36099b8b10f65256fe913336b99ea8f75d431bb7",
+  "prompts": {},
+  "sessions": {
+    "s_1b8e3189527efd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a422d7b-b7c9-4d8d-b680-a38a4f5b5194",
+        "model": "claude-opus-5"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
