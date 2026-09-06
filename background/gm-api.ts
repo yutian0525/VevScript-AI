@@ -493,7 +493,7 @@ async function doLlmChat(
   // abort 双兜底：①放行 done 等待（provider 可能已死、连契约的补发 message-done 都没有）；
   // ②cancel 流句柄（signal 是契约通道，cancel 是显式句柄——fake/实现可能不监听 signal）。
   // 均幂等：resolveDone 有 finished 守卫，cancel 对已终止流是无害 no-op。
-  let handle: { cancel: () => void } | undefined; // 事件可能先于赋值到达（防御 TDZ）
+  let handle: { cancel: () => void } | undefined; // provider 可能在 streamChat 内部同步 emit+abort，此刻赋值语句未执行 → ?. 防 undefined
   ac.signal.addEventListener('abort', () => {
     if (!finished) resolveDone();
     handle?.cancel();
