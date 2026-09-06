@@ -1,0 +1,25 @@
+tests/storage/scripts.test.ts
+  s_1b8e3189527efd::t_95cff674c97597 89-96
+shared/types.ts
+  s_1b8e3189527efd::t_3accf88f96c903 102-105
+storage/scripts.ts
+  s_1b8e3189527efd::t_638df860bc712b 78-79
+tests/stores/scripts.test.ts
+  s_1b8e3189527efd::t_efe37faa2026bf 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "46a32783fd4d2400eba5c13ec03ea5738ef541c2",
+  "prompts": {},
+  "sessions": {
+    "s_1b8e3189527efd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a422d7b-b7c9-4d8d-b680-a38a4f5b5194",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
