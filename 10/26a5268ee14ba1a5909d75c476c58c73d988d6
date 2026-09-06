@@ -1,0 +1,76 @@
+tests/stores/chat.test.ts
+  s_28e6c8ee91bedf::t_8d0d7c5189e7c0 247-267
+agent/tools/registry.ts
+  s_28e6c8ee91bedf::t_274bc12bf9a7c9 7,25-26,29-32
+  s_28e6c8ee91bedf::t_1374d3400e2250 54-57
+storage/conversations.ts
+  s_28e6c8ee91bedf::t_54978f4988941e 6,19-20
+  s_28e6c8ee91bedf::t_ee93dd227fb22b 124-130
+stores/chat.ts
+  s_28e6c8ee91bedf::t_f295e681ecdc29 6
+  s_28e6c8ee91bedf::t_f203adb2c0078b 60,66
+  s_28e6c8ee91bedf::t_63736e5462a997 167
+  s_28e6c8ee91bedf::t_30b146c3bad1f3 129
+  s_28e6c8ee91bedf::t_cb1de3ea31bda0 32,36
+components/chat/ModeSelect.tsx
+  s_28e6c8ee91bedf::t_e07f47c11b5f89 1-109
+entrypoints/sidepanel/styles.css
+  s_28e6c8ee91bedf::t_66103c329a57c8 691-767
+shared/messages.ts
+  s_28e6c8ee91bedf::t_f4550b9b7ff94c 119-120
+  s_28e6c8ee91bedf::t_e7e5643aa1853c 98,103-105
+background/agent-port.ts
+  s_28e6c8ee91bedf::t_b9ee8f37cb17c3 11
+  s_28e6c8ee91bedf::t_36ff8babbc01a2 122-125
+  s_28e6c8ee91bedf::t_81b6e93a6881c3 100,112-113
+  s_28e6c8ee91bedf::t_198ccc5030a845 131,133,137
+  s_28e6c8ee91bedf::t_94402ce509b067 176-183
+  s_28e6c8ee91bedf::t_afab840470ce46 219-220,227
+agent/context.ts
+  s_28e6c8ee91bedf::t_0c95f46cd1ac90 70,76
+  s_28e6c8ee91bedf::t_19813e7da557c6 4
+tests/agent/mode.test.ts
+  s_28e6c8ee91bedf::t_8e89ec279d87db 29-30
+  s_28e6c8ee91bedf::t_c22104871d2a89 28
+  s_28e6c8ee91bedf::t_921598400c2f96 1-27,31-87
+stores/conversations.ts
+  s_28e6c8ee91bedf::t_aaf505c511e718 7,10,26-27
+  s_28e6c8ee91bedf::t_c0fd1ec45f4f74 57,62
+  s_28e6c8ee91bedf::t_ee270dbda90dee 91
+  s_28e6c8ee91bedf::t_25d5cdd0051641 86-90,92
+  s_28e6c8ee91bedf::t_1157072c11eeb0 12
+agent/loop.ts
+  s_28e6c8ee91bedf::t_491eea1234f2f3 9
+  s_28e6c8ee91bedf::t_c0d10d1fce5857 28-29,40-41
+  s_28e6c8ee91bedf::t_52772ca805c422 47
+  s_28e6c8ee91bedf::t_ab5091df576ce7 11
+  s_28e6c8ee91bedf::t_89526235c02fc5 97-99,101
+agent/mode.ts
+  s_28e6c8ee91bedf::t_699ee90e409428 1-39
+tests/agent/loop.test.ts
+  s_28e6c8ee91bedf::t_b788bbec310d7f 297,299-318,320,324-327
+  s_28e6c8ee91bedf::t_f661b107aea6c2 319,321,323
+  s_28e6c8ee91bedf::t_2ef1ac3de50cff 296,298,322,328
+tests/background/agent-port.test.ts
+  s_28e6c8ee91bedf::t_5224c394a626c4 87,92,99,103,111,120,126
+components/chat/ChatView.tsx
+  s_28e6c8ee91bedf::t_3279be7dad04e0 12
+  s_28e6c8ee91bedf::t_2296ad659d30ab 342
+  s_28e6c8ee91bedf::t_d41ddb823fa73c 167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1026a5268ee14ba1a5909d75c476c58c73d988d6",
+  "prompts": {},
+  "sessions": {
+    "s_28e6c8ee91bedf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ce63f31-3e8b-46aa-91a4-45b3cb2b5685",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
