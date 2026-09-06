@@ -1,0 +1,19 @@
+background/gm-api.ts
+  s_4b16ffa8468de9::t_d578b6f7139f6e 496
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e04c6dbb9338737744d74bbb67bb303d77450cac",
+  "prompts": {},
+  "sessions": {
+    "s_4b16ffa8468de9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa33a125-14e4-4ba5-8132-a2d017f9289f",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
