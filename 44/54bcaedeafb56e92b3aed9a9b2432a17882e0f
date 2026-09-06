@@ -1,0 +1,28 @@
+tests/background/gm-api.test.ts
+  s_4b16ffa8468de9::t_db089652a7a8da 419-429
+  s_4b16ffa8468de9::t_77b619eea307f8 361-362,365,369
+  s_4b16ffa8468de9::t_66451a461b063d 336-345
+background/gm-api.ts
+  s_4b16ffa8468de9::t_8d07e8bd020c1a 485-490,513,519-520
+  s_4b16ffa8468de9::t_483a08882761f0 423,425,427
+  s_4b16ffa8468de9::t_a543726e008100 430-432,441
+  s_4b16ffa8468de9::t_178b002611ff20 463-465,477
+  s_4b16ffa8468de9::t_4c73d628d35f0d 363
+  s_4b16ffa8468de9::t_d2c3ec34a76897 393-394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4454bcaedeafb56e92b3aed9a9b2432a17882e0f",
+  "prompts": {},
+  "sessions": {
+    "s_4b16ffa8468de9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa33a125-14e4-4ba5-8132-a2d017f9289f",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
