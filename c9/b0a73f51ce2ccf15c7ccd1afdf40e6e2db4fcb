@@ -1,0 +1,26 @@
+shared/js-balance.ts
+  s_1b8e3189527efd::t_52731d1f00cd60 129-136
+  s_1b8e3189527efd::t_69c5f44ffc5517 103
+  s_1b8e3189527efd::t_ab60fa3559109c 84
+  s_1b8e3189527efd::t_0fb88eae5c2ef6 1-16,19-83,85-102,104-128,137-144
+  s_1b8e3189527efd::t_50aeba21990135 17-18
+tests/shared/js-balance.test.ts
+  s_1b8e3189527efd::t_a84234e91fdda4 1-57,59-88
+  s_1b8e3189527efd::t_01fa82876d7ee9 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c9b0a73f51ce2ccf15c7ccd1afdf40e6e2db4fcb",
+  "prompts": {},
+  "sessions": {
+    "s_1b8e3189527efd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a422d7b-b7c9-4d8d-b680-a38a4f5b5194",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": null
+    }
+  }
+}
