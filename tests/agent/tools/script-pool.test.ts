@@ -214,4 +214,33 @@ describe('script-pool 工具执行器', () => {
     expect(dup).toMatchObject({ ok: false });
     expect((dup as { error: string }).error).toContain('命中');
   });
+
+  it('create_script 硬闸：超 200 行或 8192 字符报错，文案给分步指引', async () => {
+    installFakeUserScripts();
+    // 注意 mkTm 头部占 5 行（4 行头 + 1 空行）：body 195 行 → 恰好 200 行 → 通过
+    const body200 = Array.from({ length: 195 }, (_, i) => `l${i}();`).join('\n');
+    expect((await doCreateScript({ source: mkTm('n', 'https://a.com/*', body200) })).ok).toBe(true);
+
+    // body 196 行 → 共 201 行 → 报错
+    const body201 = Array.from({ length: 196 }, (_, i) => `l${i}();`).join('\n');
+    const tooLong = await doCreateScript({ source: mkTm('n2', 'https://a.com/*', body201) });
+    expect(tooLong).toMatchObject({ ok: false });
+    const err = (tooLong as { error: string }).error;
+    expect(err).toContain('过长');
+    expect(err).toContain('append');   // 指引里必须提到分步原语
+    expect(err).toContain('骨架');
+
+    // 字符数超限（行数不超）→ 同样报错
+    const fat = await doCreateScript({ source: mkTm('n3', 'https://a.com/*', 'x'.repeat(9000)) });
+    expect(fat).toMatchObject({ ok: false });
+    expect((fat as { error: string }).error).toContain('过长');
+  });
+
+  it('create_script 硬闸不管 url 导入分支', async () => {
+    installFakeUserScripts();
+    // url 分支不经 source 长度检查（不是模型在逐 token 吐字）；此处只断言未被硬闸拦下
+    const r = await doCreateScript({ url: 'not-a-real-url' });
+    expect(r.ok).toBe(false);
+    expect((r as { error: string }).error).not.toContain('过长');
+  });
 });

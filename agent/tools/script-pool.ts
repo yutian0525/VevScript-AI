@@ -15,6 +15,20 @@ import { handleImportUrl, handleApplyUpdate, readUpdateStates } from '../../back
 
 const err = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
+// create_script 的 source 长度硬闸（spec §4.2）：阈值宽松——200 行以下仍可一次写完，
+// 不白多一次往返。只拦 AI 逐 token 吐出的 source；url 导入/UI 导入/patch.text 不受限
+// （那些不是模型在生成），总量另由 storage 的 MAX_TEXT_LENGTH（280KB）管。
+export const MAX_CREATE_LINES = 200;
+export const MAX_CREATE_CHARS = 8192;
+
+function createGateError(text: string): string | undefined {
+  const lines = text.split('\n').length;
+  if (lines <= MAX_CREATE_LINES && text.length <= MAX_CREATE_CHARS) return undefined;
+  return `create_script 的 source 过长（${lines} 行 / ${text.length} 字符，上限 ${MAX_CREATE_LINES} 行 / ${MAX_CREATE_CHARS} 字符）。`
+    + '长脚本请分步：先只提交元数据头 + 未闭合的 IIFE 骨架（如 `(function () {` 结尾，不写 `})();`），'
+    + '再用 update_script 的 patch.append 分次追加代码体，最后一段带上 `})();` 闭合。';
+}
+
 /** 附加给摘要的更新提示（只读后台检查缓存；无缓存则字段缺省）。 */
 function toUpdateHint(st: ScriptUpdateState | undefined) {
   if (!st) return undefined;
@@ -88,6 +102,9 @@ export async function doCreateScript(args: { source?: string; text?: string; url
     if (typeof text !== 'string' || !text.trim()) {
       return { ok: false, error: 'create_script 需要 source（完整 .user.js 文本）或 url（.user.js 直链）二选一' };
     }
+    // 长度硬闸在 matches 校验之前：长度错误比「缺 @match」更可操作——模型该先改写作策略（分步），而不是先补头部字段
+    const gate = createGateError(text);
+    if (gate) return { ok: false, error: gate };
     if (parseUserScript(text).fields.matches.length === 0) {
       return { ok: false, error: 'create_script 解析后无匹配规则：请在头部添加 @match（pattern 形式的 @include 也计入）' };
     }
