@@ -1,0 +1,23 @@
+tests/agent/provider/openai-compat.test.ts
+  s_1b8e3189527efd::t_fa08774d48c083 571-593
+agent/provider/openai-compat.ts
+  s_1b8e3189527efd::t_f52f9a313a98c9 67-69,74
+  s_1b8e3189527efd::t_0116fca6ef7221 16-17
+  s_1b8e3189527efd::t_7afc56e0f3547a 158-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7869bd28fc38c37a8ca0ef08d43455573fcff102",
+  "prompts": {},
+  "sessions": {
+    "s_1b8e3189527efd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a422d7b-b7c9-4d8d-b680-a38a4f5b5194",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
