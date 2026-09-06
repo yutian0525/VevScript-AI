@@ -625,16 +625,18 @@ body {
 /* ============ 附件 tag ============ */
 .attach-chips {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
   padding: 6px 6px 2px;
+  overflow-x: auto;
 }
 .attach-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  max-width: 200px;
-  padding: 4px 6px 4px 8px;
+  max-width: 150px;
+  flex-shrink: 0;
+  padding: 3px 5px 3px 3px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: var(--sunken);
