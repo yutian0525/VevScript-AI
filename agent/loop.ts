@@ -101,12 +101,15 @@ async function drive(
     const messages = buildContext(conv.messages, page, 60, conv.summary, skills, mode);
 
     const maxTokens = (await deps.getMaxTokens?.()) ?? 0;
+    // 参数生成进度节流器：每轮新建，状态不跨轮（下一轮从 0 重新计）
+    const onArgs = makeArgsThrottle((name, bytes) => deps.emit({ type: 'tool-args-delta', name, bytes }));
     const result = await runTurn(deps.provider, {
       messages, tools: getToolSchemas(mode), signal,
       ...(maxTokens > 0 ? { maxTokens } : {}),
     }, {
       onTextDelta: (t) => deps.emit({ type: 'text-delta', text: t }),
       onReasoningDelta: (t) => deps.emit({ type: 'reasoning-delta', text: t }),
+      onToolArgsDelta: onArgs,
     });
 
     if (signal.aborted) {
@@ -234,4 +237,21 @@ async function finishAborted(convId: string, deps: LoopDeps): Promise<void> {
 function toToolContent(r: ToolResult): string {
   if (r.ok) return typeof r.data === 'string' ? r.data : JSON.stringify(r.data ?? { ok: true });
   return `错误：${r.error ?? '未知错误'}`;
+}
+
+const ARGS_THROTTLE_MS = 200;
+const ARGS_THROTTLE_BYTES = 1024;
+
+/** 参数进度节流：首次立即发，之后满 200ms 或涨够 1KB 才发（避免逐 token 广播）。
+ *  每轮 runTurn 前新建一个，状态不跨轮。 */
+function makeArgsThrottle(emit: (name: string, bytes: number) => void): (name: string, bytes: number) => void {
+  let lastAt = 0;
+  let lastBytes = -1;
+  return (name, bytes) => {
+    const now = Date.now();
+    if (lastBytes >= 0 && now - lastAt < ARGS_THROTTLE_MS && bytes - lastBytes < ARGS_THROTTLE_BYTES) return;
+    lastAt = now;
+    lastBytes = bytes;
+    emit(name, bytes);
+  };
 }

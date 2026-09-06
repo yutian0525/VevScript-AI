@@ -15,6 +15,8 @@ export interface TurnResult {
 export interface RunTurnHooks {
   onTextDelta?: (text: string) => void;
   onReasoningDelta?: (text: string) => void;
+  /** 工具参数增量：name = 工具名，bytes = 该 tool_call 参数已累计字节数。 */
+  onToolArgsDelta?: (name: string, bytes: number) => void;
 }
 
 export interface RunTurnHandle extends Promise<TurnResult> {
@@ -50,6 +52,10 @@ export function runTurn(provider: Provider, params: ChatParams, hooks: RunTurnHo
           if (e.name) cur.name = e.name;
           if (e.argsDelta) cur.args += e.argsDelta;
           agg.set(e.index, cur);
+          if (cur.name) {
+            // 消费者回调异常不应打断流处理（同 text/reasoning delta 的兜底）
+            try { hooks.onToolArgsDelta?.(cur.name, cur.args.length); } catch { /* 忽略消费者回调异常 */ }
+          }
           break;
         }
         case 'error':

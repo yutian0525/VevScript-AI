@@ -354,4 +354,25 @@ describe('agent loop', () => {
       deps(provider, vi.fn(), { getMaxTokens: async () => 0 }));
     expect(seen).toEqual([undefined]);
   });
+
+  it('tool-args-delta：节流后 emit（首次立即 + 每 1KB）', async () => {
+    const big = 'x'.repeat(1200);
+    const provider: Provider = {
+      streamChat(_p: ChatParams, onEvent: (e: StreamEvent) => void) {
+        queueMicrotask(() => {
+          onEvent({ type: 'tool-call-delta', index: 0, id: 'c1', name: 'create_script', argsDelta: '{}' });
+          onEvent({ type: 'tool-call-delta', index: 0, argsDelta: big });
+          onEvent({ type: 'message-done', finishReason: 'stop' });
+        });
+        return { cancel: vi.fn() };
+      },
+    };
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true, data: { text: 'snap' } } as ToolResult);
+    const d = deps(provider, exec);
+    await runAgentLoop({ convId: 'cad', tabId: 1, userMessage: 'x' }, d);
+    const calls = vi.mocked(d.emit).mock.calls.map(([e]) => e).filter((e) => e.type === 'tool-args-delta');
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    expect(calls[0]).toMatchObject({ type: 'tool-args-delta', name: 'create_script', bytes: 2 });
+    expect(calls[calls.length - 1]).toMatchObject({ name: 'create_script', bytes: 1202 });
+  });
 });

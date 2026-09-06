@@ -18,6 +18,8 @@ export interface AgentTail {
   reasoning: string;
   text: string;
   compacting: boolean;
+  /** 当前 tool_call 参数生成进度（瞬态）：切标签回来仍能看到，边界事件清空。 */
+  argsProgress?: { name: string; bytes: number };
 }
 
 export function emptyTail(): AgentTail {
@@ -35,6 +37,9 @@ export function reduceTail(tail: AgentTail, e: AgentEvent): AgentTail {
       return { ...tail, compacting: true };
     case 'compact-done':
       return { ...tail, compacting: false };
+    case 'tool-args-delta':
+      // bytes 是累计值 → 覆盖写而非累加
+      return { ...tail, argsProgress: { name: e.name, bytes: e.bytes } };
     case 'tool-start':
     case 'done':
     case 'paused':
@@ -53,5 +58,8 @@ export function replayTail(tail: AgentTail): AgentEvent[] {
   if (tail.reasoning) out.push({ type: 'reasoning-delta', text: tail.reasoning });
   if (tail.text) out.push({ type: 'text-delta', text: tail.text });
   if (tail.compacting) out.push({ type: 'compact-start' });
+  if (tail.argsProgress) {
+    out.push({ type: 'tool-args-delta', name: tail.argsProgress.name, bytes: tail.argsProgress.bytes });
+  }
   return out;
 }

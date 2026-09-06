@@ -108,6 +108,8 @@ export type PortMsgFromPanel =
 export type AgentEvent =
   | { type: 'reasoning-delta'; text: string }
   | { type: 'text-delta'; text: string }
+  /** 工具参数流式生成中（bytes = 已累计字节数，非增量）。根治「模型在写长参数时 UI 全静默」。 */
+  | { type: 'tool-args-delta'; name: string; bytes: number }
   | { type: 'tool-start'; name: string; args: string; callId: string }
   | { type: 'tool-end'; name: string; callId: string; ok: boolean; summary: string; output?: string; image?: string }
   | { type: 'usage'; promptTokens?: number; completionTokens?: number }

@@ -100,4 +100,22 @@ describe('agent-tail：未落库的流式尾巴', () => {
     ]);
     expect(fold(replayTail(tail))).toEqual(tail);
   });
+
+  it('tool-args-delta 写入 argsProgress，tool-start/done 清空', () => {
+    let t = reduceTail(emptyTail(), { type: 'tool-args-delta', name: 'create_script', bytes: 512 });
+    expect(t.argsProgress).toEqual({ name: 'create_script', bytes: 512 });
+    // 覆盖写（不累加——事件里的 bytes 已是累计值）
+    t = reduceTail(t, { type: 'tool-args-delta', name: 'create_script', bytes: 900 });
+    expect(t.argsProgress).toEqual({ name: 'create_script', bytes: 900 });
+
+    expect(reduceTail(t, { type: 'tool-start', name: 'create_script', args: '{}', callId: 'c1' }).argsProgress).toBeUndefined();
+    expect(reduceTail(t, { type: 'done', finalText: 'x' }).argsProgress).toBeUndefined();
+    expect(reduceTail(t, { type: 'error', message: 'e' }).argsProgress).toBeUndefined();
+  });
+
+  it('replayTail 末尾补发 argsProgress（重新附着能看到进度）', () => {
+    const t = reduceTail(emptyTail(), { type: 'tool-args-delta', name: 'create_script', bytes: 300 });
+    const events = replayTail({ ...t, text: '写脚本' });
+    expect(events[events.length - 1]).toEqual({ type: 'tool-args-delta', name: 'create_script', bytes: 300 });
+  });
 });
