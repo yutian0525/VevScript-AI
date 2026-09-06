@@ -80,8 +80,12 @@ export async function appendMessage(id: string, msg: ChatMessage): Promise<void>
   const messages = [...conv.messages, msg];
   const trimmed = messages.length > MAX_MESSAGES ? messages.slice(messages.length - MAX_MESSAGES) : messages;
   let title = conv.title;
-  if (title === DEFAULT_TITLE && msg.role === 'user' && typeof msg.content === 'string' && msg.content.trim()) {
-    title = msg.content.trim().slice(0, MAX_TITLE_LEN);
+  if (title === DEFAULT_TITLE && msg.role === 'user') {
+    // 纯字符串取原文；带附件的数组消息取首个文本 part（约定 part[0] = 用户输入文本）
+    const first = typeof msg.content === 'string'
+      ? msg.content
+      : msg.content.find((p) => p.type === 'text')?.text ?? '';
+    if (first.trim()) title = first.trim().slice(0, MAX_TITLE_LEN);
   }
   await saveConversation({ ...conv, messages: trimmed, title });
 }

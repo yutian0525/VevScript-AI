@@ -207,7 +207,7 @@ export function attachAgentPort(): void {
       tails.set(msg.convId, emptyTail());
       try {
         if (msg.type === 'agent:start') {
-          await runAgentLoop({ convId: msg.convId, tabId: msg.tabId, userMessage: msg.userMessage }, deps, ac.signal);
+          await runAgentLoop({ convId: msg.convId, tabId: msg.tabId, userMessage: msg.userMessage, attachments: msg.attachments }, deps, ac.signal);
         } else {
           await resumeAgentLoop(msg.convId, msg.tabId, deps, ac.signal);
         }

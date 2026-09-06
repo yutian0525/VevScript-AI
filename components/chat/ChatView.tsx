@@ -8,7 +8,9 @@ import { ContextRing } from './ContextRing';
 import { Markdown } from './Markdown';
 import { ConversationMenu } from './ConversationMenu';
 import { SlashMenu } from './SlashMenu';
+import { AttachmentChips } from './AttachmentChips';
 import { shouldOpenSlash, handleSlashKey, completeSlash } from './slash';
+import { fileToAttachment, MAX_ATTACHMENTS } from './attachments';
 import { filterSkills, useSkills } from '../../stores/skills';
 import { nextFollow } from './follow';
 import { useChat, type ChatItem } from '../../stores/chat';
@@ -17,6 +19,7 @@ import { attachConv, postToAgent } from '../../stores/agent-port-client';
 import { getSettings } from '../../storage/settings';
 import { resolveContextWindow, DEFAULT_CONTEXT_WINDOW } from '../../agent/model-windows';
 import type { PortMsgFromPanel } from '../../shared/messages';
+import type { ChatAttachment } from '../../shared/types';
 
 function prefersReducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -40,6 +43,9 @@ export function ChatView() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [slashHi, setSlashHi] = useState(0);
   const [slashDismissed, setSlashDismissed] = useState(false);
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [attachError, setAttachError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const skillList = useSkills((s) => s.list);
   const refreshSkills = useSkills((s) => s.refresh);
   // 上一次的 scrollTop：用来判滚动方向（见 ./follow.ts）
@@ -60,8 +66,8 @@ export function ChatView() {
     if (!attachConv(currentId)) useChat.getState().setStatus('idle');
   }, [currentId]);
 
-  // 切会话：重置跟随（新会话的内容一律先贴底）
-  useEffect(() => { setFollow(true); prevTopRef.current = 0; }, [currentId]);
+  // 切会话：重置跟随（新会话的内容一律先贴底）+ 清空未发送的附件暂存
+  useEffect(() => { setFollow(true); prevTopRef.current = 0; setAttachments([]); setAttachError(''); }, [currentId]);
 
   // 直接滚容器而非 sentinel.scrollIntoView：落点精确到底、不牵动外层滚动祖先。
   const scrollToBottom = useCallback((smooth: boolean) => {
@@ -107,9 +113,43 @@ export function ChatView() {
     return false;
   };
 
+  // 追加文件到暂存区：分类 → 读取/压缩 → 去超限，逐条汇报错误。
+  const addFiles = useCallback(async (files: File[]) => {
+    if (files.length === 0) return;
+    setAttachError('');
+    const errors: string[] = [];
+    const accepted: ChatAttachment[] = [];
+    let remaining = MAX_ATTACHMENTS - attachments.length;
+    for (const file of files) {
+      if (remaining <= 0) { errors.push(`最多 ${MAX_ATTACHMENTS} 个附件，其余已忽略`); break; }
+      const r = await fileToAttachment(file);
+      if ('error' in r) { errors.push(r.error); continue; }
+      accepted.push(r);
+      remaining -= 1;
+    }
+    if (accepted.length) setAttachments((prev) => [...prev, ...accepted]);
+    if (errors.length) setAttachError(errors.join('；'));
+  }, [attachments.length]);
+
+  const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = ''; // 允许再次选同名文件
+    void addFiles(files);
+  };
+
+  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = Array.from(e.clipboardData?.files ?? []);
+    if (files.length === 0) return; // 纯文本粘贴走默认行为
+    e.preventDefault();
+    void addFiles(files);
+  };
+
+  const removeAttachment = (index: number) => setAttachments((prev) => prev.filter((_, i) => i !== index));
+
   const send = async () => {
     const text = input.trim();
-    if (!text || status === 'running' || compacting) return;
+    const atts = attachments;
+    if ((!text && atts.length === 0) || status === 'running' || compacting) return;
     const convId = currentId;
     if (!convId) return;
     useChat.getState().setStatus('running');
@@ -119,9 +159,11 @@ export function ChatView() {
       applyEvent({ type: 'error', message: '无法获取当前标签页，请先切到一个普通网页标签再试' });
       return;
     }
-    useChat.getState().addUserMessage(text);
+    useChat.getState().addUserMessage(text, atts);
     setInput('');
-    postToPort({ type: 'agent:start', convId, tabId, userMessage: text });
+    setAttachments([]);
+    setAttachError('');
+    postToPort({ type: 'agent:start', convId, tabId, userMessage: text, attachments: atts.length ? atts : undefined });
     // 首条消息发出后会话落库 → 刷新列表让其出现在下拉里
     void useConversations.getState().refreshList();
   };
@@ -148,7 +190,8 @@ export function ChatView() {
   const title = list.find((c) => c.id === currentId)?.title ?? '新会话';
   const lastIdx = messages.length - 1;
 
-  const hasInput = input.trim().length > 0;
+  const hasInput = input.trim().length > 0 || attachments.length > 0;
+  const attachDisabled = status === 'running' || compacting || attachments.length >= MAX_ATTACHMENTS;
 
   // 斜杠浮层候选与可见性（spec §3）：/ 开头且尚无空白时触发，Esc 临时关闭（slashDismissed）。
   // 候选在计算处统一截断 8 条——浮层渲染与键盘导航（count）共用同一数组，防高亮索引逃出可见窗口。
@@ -231,6 +274,15 @@ export function ChatView() {
           )}
         </div>
         <div className="composer">
+          {attachments.length > 0 && (
+            <AttachmentChips items={attachments} onRemove={removeAttachment} />
+          )}
+          {attachError && (
+            <div className="composer__attach-err">
+              <CircleAlert size={12} />
+              <span>{attachError}</span>
+            </div>
+          )}
           <div className="composer__wrap">
             {slashVisible && (
               <SlashMenu
@@ -244,6 +296,7 @@ export function ChatView() {
               className="composer__input"
               value={input}
               onChange={(e) => { setInput(e.target.value); setSlashDismissed(false); setSlashHi(0); }}
+              onPaste={onPaste}
               onKeyDown={(e) => {
                 if (slashVisible) {
                   const next = handleSlashKey(e.key, { open: true, hi: slashHiSafe, count: slashCandidates.length });
@@ -267,12 +320,21 @@ export function ChatView() {
             />
           </div>
           <div className="composer__bar">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,text/*,.md,.markdown,.json,.csv,.tsv,.log,.xml,.yaml,.yml,.js,.jsx,.ts,.tsx,.py,.go,.rs,.java,.c,.h,.cpp,.css,.html,.sh,.sql,.toml,.ini"
+              style={{ display: 'none' }}
+              onChange={onPickFiles}
+            />
             <button
               type="button"
               className="composer__attach"
-              disabled
-              title="附件上传（即将支持）"
-              aria-label="上传附件（即将支持）"
+              disabled={attachDisabled}
+              title={attachments.length >= MAX_ATTACHMENTS ? `最多 ${MAX_ATTACHMENTS} 个附件` : '上传附件（文本 / 图片，也可 Ctrl+V 粘贴）'}
+              aria-label="上传附件"
+              onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip size={16} />
             </button>
@@ -311,7 +373,14 @@ function MessageRow({ item, index, streaming }: { item: ChatItem; index: number;
   const toggleExpand = useChat((s) => s.toggleExpand);
 
   if (item.role === 'user') {
-    return <div className="msg-user rise">{item.text ?? ''}</div>;
+    return (
+      <div className="msg-user rise">
+        {item.attachments && item.attachments.length > 0 && (
+          <AttachmentChips items={item.attachments} />
+        )}
+        {item.text ? <div className="msg-user__text">{item.text}</div> : null}
+      </div>
+    );
   }
   if (item.role === 'error') {
     return (

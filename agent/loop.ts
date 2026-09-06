@@ -9,6 +9,8 @@ import { getToolSchemas } from './tools/registry';
 import { initGuardState, recordTurn, checkGuards, DEFAULT_GUARD_CONFIG, type GuardState } from './loop-guards';
 import { getConversation, appendMessage, setStatus, setLastPromptTokens } from '../storage/conversations';
 import { meterRatio, COMPACT_THRESHOLD } from './context-meter';
+import { composeUserContent, SCREENSHOT_SENTINEL } from './user-message';
+import type { ChatAttachment } from '../shared/types';
 
 export interface LoopDeps {
   provider: Provider;
@@ -30,10 +32,12 @@ export interface LoopArgs {
   convId: string;
   tabId: number;
   userMessage: string;
+  /** 输入框上传的附件（纯文本内联进消息、图片作 image_url part）。 */
+  attachments?: ChatAttachment[];
 }
 
 export async function runAgentLoop(args: LoopArgs, deps: LoopDeps, signal?: AbortSignal): Promise<void> {
-  await appendMessage(args.convId, { role: 'user', content: args.userMessage });
+  await appendMessage(args.convId, { role: 'user', content: composeUserContent(args.userMessage, args.attachments ?? []) });
   await setStatus(args.convId, 'running');
   // 斜杠 /command 不再注入技能正文——它就是普通 user 文本；模型看到系统提示的技能简述后，
   // 自行调用 load_skill 工具取正文（spec §2.4 修订 2026-09-05）。
@@ -179,7 +183,7 @@ async function drive(
         await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: '截图已捕获，见下一条消息' });
         if (shot) {
           const parts: ContentPart[] = [
-            { type: 'text', text: '（take_screenshot 返回的页面截图）' },
+            { type: 'text', text: SCREENSHOT_SENTINEL },
             { type: 'image_url', imageUrl: shot },
           ];
           await appendMessage(convId, { role: 'user', content: parts });

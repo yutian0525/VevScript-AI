@@ -193,6 +193,57 @@ describe('chat store', () => {
   });
 });
 
+describe('chat store：输入框附件', () => {
+  beforeEach(() => useChat.getState().reset());
+
+  it('addUserMessage 带附件 → 挂到 user 项', () => {
+    useChat.getState().addUserMessage('看这个', [{ kind: 'text', name: 'a.md', size: 3, text: 'abc' }]);
+    const msg = useChat.getState().messages.at(-1)!;
+    expect(msg).toMatchObject({ role: 'user', text: '看这个' });
+    expect(msg.attachments).toHaveLength(1);
+    expect(msg.attachments![0]).toMatchObject({ kind: 'text', name: 'a.md' });
+  });
+
+  it('addUserMessage 空附件数组不挂 attachments 字段', () => {
+    useChat.getState().addUserMessage('你好', []);
+    expect(useChat.getState().messages.at(-1)!.attachments).toBeUndefined();
+  });
+
+  it('loadFromStorage：用户上传图片消息渲染成 user 气泡（不被当截图回挂）', () => {
+    const stored = [
+      { role: 'user', content: [{ type: 'text', text: '这是我的图' }, { type: 'image_url', imageUrl: 'data:image/png;base64,I' }] },
+    ] as unknown as ChatMessage[];
+    useChat.getState().loadFromStorage(stored);
+    const items = useChat.getState().messages;
+    const userBubbles = items.filter((m) => m.role === 'user');
+    expect(userBubbles).toHaveLength(1);
+    expect(userBubbles[0]).toMatchObject({ text: '这是我的图' });
+    expect(userBubbles[0]!.attachments![0]).toMatchObject({ kind: 'image', dataUrl: 'data:image/png;base64,I' });
+  });
+
+  it('loadFromStorage：文本附件消息还原出附件列表', () => {
+    const stored = [
+      { role: 'user', content: [{ type: 'text', text: '看代码' }, { type: 'text', text: '[附件文件：x.ts]\nconst a = 1' }] },
+    ] as unknown as ChatMessage[];
+    useChat.getState().loadFromStorage(stored);
+    const u = useChat.getState().messages.find((m) => m.role === 'user')!;
+    expect(u.text).toBe('看代码');
+    expect(u.attachments![0]).toMatchObject({ kind: 'text', name: 'x.ts', text: 'const a = 1' });
+  });
+
+  it('loadFromStorage：截图注入仍回挂工具卡片（不受附件解析影响）', () => {
+    const stored = [
+      { role: 'assistant', content: '', toolCalls: [{ id: 't1', name: 'take_screenshot', arguments: '{}' }] },
+      { role: 'tool', toolCallId: 't1', name: 'take_screenshot', content: '截图已捕获，见下一条消息' },
+      { role: 'user', content: [{ type: 'text', text: '（take_screenshot 返回的页面截图）' }, { type: 'image_url', imageUrl: 'data:image/jpeg;base64,ZZZ' }] },
+    ] as unknown as ChatMessage[];
+    useChat.getState().loadFromStorage(stored);
+    const items = useChat.getState().messages;
+    expect(items.find((m) => m.role === 'tool' && m.name === 'take_screenshot')!.image).toBe('data:image/jpeg;base64,ZZZ');
+    expect(items.filter((m) => m.role === 'user')).toHaveLength(0);
+  });
+});
+
 describe('chat store 新分支', () => {
   beforeEach(() => useChat.getState().reset());
 

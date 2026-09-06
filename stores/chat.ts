@@ -2,6 +2,8 @@
 import { create } from 'zustand';
 import type { AgentEvent } from '../shared/messages';
 import type { ChatMessage } from '../agent/provider/types';
+import type { ChatAttachment } from '../shared/types';
+import { isScreenshotInjection, parseUserContent } from '../agent/user-message';
 
 export type ChatStatus = 'idle' | 'running' | 'paused';
 
@@ -12,6 +14,7 @@ export interface ChatItem {
   thinking?: boolean;        // 是否处于「思考中」（控制默认展开）
   expanded?: boolean;        // 用户手动展开/收起（思考块 & 工具卡片共用）
   sealed?: boolean;          // 由 storage 载入的历史项：流式增量不得再往它上面追加
+  attachments?: ChatAttachment[]; // user 消息携带的上传附件（气泡内以 tag/缩略图展示）
   name?: string; args?: string; callId?: string;
   status?: 'running' | 'done'; ok?: boolean; summary?: string;
   output?: string;           // 工具完整输出（供展开）
@@ -25,7 +28,7 @@ interface ChatState {
   pauseReason?: string;
   promptTokens?: number;   // 当前会话最近一轮真实发出的 token（环形指示器分子）
   compacting: boolean;     // 是否正在压缩
-  addUserMessage: (text: string) => void;
+  addUserMessage: (text: string, attachments?: ChatAttachment[]) => void;
   applyEvent: (e: AgentEvent) => void;
   setStatus: (s: ChatStatus) => void;
   toggleExpand: (index: number) => void;
@@ -51,7 +54,10 @@ export const useChat = create<ChatState>((set) => ({
   messages: [],
   status: 'idle',
   compacting: false,
-  addUserMessage: (text) => set((s) => ({ messages: [...s.messages, { role: 'user', text }], status: 'running' })),
+  addUserMessage: (text, attachments) => set((s) => ({
+    messages: [...s.messages, { role: 'user', text, attachments: attachments?.length ? attachments : undefined }],
+    status: 'running',
+  })),
   setStatus: (status) => set({ status }),
   toggleExpand: (index) => set((s) => {
     const messages = [...s.messages];
@@ -69,10 +75,10 @@ export const useChat = create<ChatState>((set) => ({
     const items: ChatItem[] = [];
     for (const m of stored) {
       if (m.role === 'user') {
-        // 注入的截图消息（content 是数组且含 image_url part）：
-        // 回挂到最近的 take_screenshot 工具卡片，不产生独立 user 气泡（消除重载幽灵气泡+丢图）
-        if (Array.isArray(m.content)) {
-          const imgPart = m.content.find((p) => p.type === 'image_url');
+        // take_screenshot 注入的图片消息（首个文本 part = 哨兵）：回挂到最近的 take_screenshot
+        // 工具卡片，不产生独立 user 气泡（消除重载幽灵气泡 + 丢图）。
+        if (isScreenshotInjection(m.content)) {
+          const imgPart = Array.isArray(m.content) ? m.content.find((p) => p.type === 'image_url') : undefined;
           if (imgPart && imgPart.type === 'image_url') {
             for (let i = items.length - 1; i >= 0; i--) {
               const it = items[i];
@@ -81,10 +87,12 @@ export const useChat = create<ChatState>((set) => ({
                 break;
               }
             }
-            continue;
           }
+          continue;
         }
-        items.push({ role: 'user', text: contentText(m.content) });
+        // 普通 user 消息：可能带上传附件（数组 content）→ 反解出展示文本 + 附件列表
+        const { text, attachments } = parseUserContent(m.content);
+        items.push({ role: 'user', text, attachments: attachments.length ? attachments : undefined });
       } else if (m.role === 'assistant') {
         const text = contentText(m.content);
         // 历史思考块：thinking=false（默认收起，可点开）

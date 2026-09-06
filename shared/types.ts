@@ -130,3 +130,19 @@ export interface SkillSummary {
   builtin?: boolean;
   updatedAt: number;
 }
+
+// ---------- 输入框附件（聊天上传：纯文本 / 图片）----------
+
+/** 用户在输入框上传的附件。text：读出的文件正文；image：压缩后的 dataURL。
+ *  经 Port 的 agent:start 携带 → loop 组装进 user 消息（文本内联、图片作 image_url part）。 */
+export interface ChatAttachment {
+  kind: 'text' | 'image';
+  /** 文件名（展示 + 内联包裹头） */
+  name: string;
+  /** 字节大小（展示用；kind=text 为原文字节数，kind=image 为压缩后估算） */
+  size: number;
+  /** kind=text：文件正文（UTF-8 解码后） */
+  text?: string;
+  /** kind=image：压缩后的 data URL（data:image/...;base64,...） */
+  dataUrl?: string;
+}

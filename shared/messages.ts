@@ -3,7 +3,7 @@
 // 设计决策：request/response 模式 + correlation id（设计 §4.4）；
 // 例外：cs→bg 的 fire-and-forget 通知（见 HookConsoleNotification / HookNetworkNotification）。
 
-import type { ScriptSource, ScriptSummary, ScriptUpdateState, ToolResult, Uid, UserScript } from './types';
+import type { ChatAttachment, ScriptSource, ScriptSummary, ScriptUpdateState, ToolResult, Uid, UserScript } from './types';
 import type { ConsoleEntry, HookNetEntry } from './hook-bridge';
 
 export interface BgToCsRequestMap {
@@ -95,7 +95,7 @@ export interface DebugExecResponse {
 // 约定：Port name 为 'agent'；消息用 'agent:' 前缀（→bg）或事件名（bg→）区分。
 
 export type PortMsgFromPanel =
-  | { type: 'agent:start'; convId: string; tabId: number; userMessage: string }
+  | { type: 'agent:start'; convId: string; tabId: number; userMessage: string; attachments?: ChatAttachment[] }
   | { type: 'agent:stop'; convId: string }
   /** 面板（重）挂载/切会话时附着：后台回权威 state + 补发未落库的流式尾巴。 */
   | { type: 'agent:attach'; convId: string }
