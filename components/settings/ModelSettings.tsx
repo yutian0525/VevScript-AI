@@ -147,6 +147,19 @@ export function ModelSettings({ onBack }: { onBack: () => void }) {
           )}
         </div>
         <div className="field">
+          <label className="field-label">单轮回复上限（token，0 = 不下发）</label>
+          <Input
+            type="number"
+            min={0}
+            value={settings.agent.maxTokens}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setSettings({ ...settings, agent: { ...settings.agent, maxTokens: Number.isFinite(v) ? Math.max(0, v) : 0 } });
+            }}
+          />
+          <span className="hint">下发为 max_tokens。太小会让长回复/长工具参数被截断；置 0 则不下发该字段（走服务端默认）。</span>
+        </div>
+        <div className="field">
           <label className="field-label">超时时间（秒，0 = 不限时）</label>
           <Input
             type="number"

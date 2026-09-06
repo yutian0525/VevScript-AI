@@ -326,4 +326,32 @@ describe('agent loop', () => {
     expect(seenTools[1]).not.toContain('click');
     expect(seenTools[1]).toContain('take_snapshot');
   });
+
+  it('getMaxTokens 提供时透传给 provider 的 ChatParams.maxTokens', async () => {
+    const seen: Array<number | undefined> = [];
+    const provider: Provider = {
+      streamChat(p: ChatParams, onEvent: (e: StreamEvent) => void) {
+        seen.push(p.maxTokens);
+        queueMicrotask(() => onEvent({ type: 'message-done', finishReason: 'stop' }));
+        return { cancel: vi.fn() };
+      },
+    };
+    await runAgentLoop({ convId: 'cmt', tabId: 1, userMessage: 'x' },
+      deps(provider, vi.fn(), { getMaxTokens: async () => 4096 }));
+    expect(seen).toEqual([4096]);
+  });
+
+  it('getMaxTokens 返回 0 → 不下发（maxTokens 为 undefined）', async () => {
+    const seen: Array<number | undefined> = [];
+    const provider: Provider = {
+      streamChat(p: ChatParams, onEvent: (e: StreamEvent) => void) {
+        seen.push(p.maxTokens);
+        queueMicrotask(() => onEvent({ type: 'message-done', finishReason: 'stop' }));
+        return { cancel: vi.fn() };
+      },
+    };
+    await runAgentLoop({ convId: 'cmt0', tabId: 1, userMessage: 'x' },
+      deps(provider, vi.fn(), { getMaxTokens: async () => 0 }));
+    expect(seen).toEqual([undefined]);
+  });
 });

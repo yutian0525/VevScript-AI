@@ -27,6 +27,8 @@ export interface LoopDeps {
   getSkills?: () => Promise<SkillBrief[]>;
   /** 当前行为模式（缺省 'agent'）。每轮开跑前经 getMode 重读，支持任务中途切换。 */
   getMode?: () => Promise<AgentMode>;
+  /** 单轮 token 上限（0/缺省 = 不下发 max_tokens）。 */
+  getMaxTokens?: () => Promise<number>;
 }
 
 const TAB_OPENING_TOOLS = new Set(['click', 'press_key']);
@@ -98,7 +100,11 @@ async function drive(
     const mode = (await deps.getMode?.()) ?? 'agent';
     const messages = buildContext(conv.messages, page, 60, conv.summary, skills, mode);
 
-    const result = await runTurn(deps.provider, { messages, tools: getToolSchemas(mode), signal }, {
+    const maxTokens = (await deps.getMaxTokens?.()) ?? 0;
+    const result = await runTurn(deps.provider, {
+      messages, tools: getToolSchemas(mode), signal,
+      ...(maxTokens > 0 ? { maxTokens } : {}),
+    }, {
       onTextDelta: (t) => deps.emit({ type: 'text-delta', text: t }),
       onReasoningDelta: (t) => deps.emit({ type: 'reasoning-delta', text: t }),
     });

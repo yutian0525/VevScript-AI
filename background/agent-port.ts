@@ -104,6 +104,7 @@ function makeDeps(provider: Provider, convId: string): LoopDeps {
       const { provider: p } = await getSettings();
       return resolveContextWindow(p.model, p.contextWindow);
     },
+    getMaxTokens: async () => (await getSettings()).agent.maxTokens,
     compact: (id) => compactConversation(id, { provider }),
     getSkills: async () =>
       (await listSkills().catch(() => [] as Skill[]))

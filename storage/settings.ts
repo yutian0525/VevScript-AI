@@ -22,6 +22,9 @@ export interface AgentConfig {
   llmTimeoutSec: number;
   /** LLM 调用失败自动重试次数（仅对未产出任何 token 的失败重试；429/5xx 指数退避）。0 = 不重试。 */
   llmMaxRetries: number;
+  /** 单轮回复的 token 上限（下发为 max_tokens）。此前从不下发 → 走服务端默认（多数网关
+   *  2048~4096），长脚本必然被截断。0 = 不下发该字段（留给对它敏感的特殊网关）。 */
+  maxTokens: number;
 }
 
 export interface Settings {
@@ -35,8 +38,9 @@ export const DEFAULT_SETTINGS: Settings = {
     screenshotPolicy: 'on-demand',
     confirmGate: true,
     networkCaptureHeaders: 'redacted',
-    llmTimeoutSec: 10,
+    llmTimeoutSec: 60,
     llmMaxRetries: 2,
+    maxTokens: 8192,
   },
 };
 
