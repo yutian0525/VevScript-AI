@@ -1,0 +1,24 @@
+fixtures/userscripts/manual/gmt-manual-llm.user.js
+  s_4b16ffa8468de9::t_36164ae1c0e260 207,218-238,313-316,322,353
+fixtures/userscripts/manual/llm.user.js.src
+  s_4b16ffa8468de9::t_da0282bb7a7a63 20,31-48
+  s_4b16ffa8468de9::t_257afb9ddf86b5 126-129,135
+  s_4b16ffa8468de9::t_6019e78060ad00 166
+  s_4b16ffa8468de9::t_1271c12ead85a4 49-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "f1fceca7c90e637c02f1620675702ccd93264747",
+  "prompts": {},
+  "sessions": {
+    "s_4b16ffa8468de9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa33a125-14e4-4ba5-8132-a2d017f9289f",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
