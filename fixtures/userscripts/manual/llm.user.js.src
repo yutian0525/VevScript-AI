@@ -17,7 +17,7 @@
 (function () {
   var MSGL = [{ role: 'user', content: '用一句话介绍你自己' }];
 
-  // canvas 画纯色方块转 data URL（l3 多模态 / l5 超限用）
+  // canvas 画纯色方块转 data URL（l3 多模态用）
   function colorDataUrl(size, color) {
     var c = document.createElement('canvas');
     c.width = size;
@@ -25,6 +25,27 @@
     var ctx = c.getContext('2d');
     ctx.fillStyle = color;
     ctx.fillRect(0, 0, size, size);
+    return c.toDataURL('image/png');
+  }
+
+  // 随机噪点图 data URL（l5 超限用）。纯色 PNG 经 deflate 压缩后仅 KB 级（3000px 纯色 ≈34KB），
+  // 永远到不了 5MB 上限——必须用逐像素随机的噪声图：1200px 噪声 PNG 压缩后 ≈4.2MB、
+  // base64 后 ≈5.6MB，稳超 LLM_IMAGE_MAX。
+  function noiseDataUrl(size) {
+    var c = document.createElement('canvas');
+    c.width = size;
+    c.height = size;
+    var ctx = c.getContext('2d');
+    var img = ctx.createImageData(size, size);
+    var d = img.data;
+    for (var i = 0; i < d.length; i++) {
+      d[i] = Math.floor(Math.random() * 256);
+      d[i + 1] = Math.floor(Math.random() * 256);
+      d[i + 2] = Math.floor(Math.random() * 256);
+      d[i + 3] = 255;
+      i += 3;
+    }
+    ctx.putImageData(img, 0, 0);
     return c.toDataURL('image/png');
   }
 
@@ -102,13 +123,16 @@
       });
     },
     'l5-oversize': function (log) {
-      log('l5', '已发起（3000px 方块 data URL，预期图片过大）…');
+      // 注意：不能用纯色方块——纯色 PNG deflate 后仅 KB 级，根本到不了 5MB。
+      // 用 1200px 随机噪点图（base64 后 ≈5.6MB，稳超上限）。
+      var url = noiseDataUrl(1200);
+      log('l5', '已发起（1200px 噪点图 data URL ' + Math.round(url.length / 1024) + 'KB，预期图片过大）…');
       GM_llmChat({
         messages: [{
           role: 'user',
           content: [
             { type: 'text', text: '图里是什么？' },
-            { type: 'image_url', image_url: { url: colorDataUrl(3000, '#000000') } }
+            { type: 'image_url', image_url: { url: url } }
           ]
         }]
       }).then(function (r) {
@@ -139,7 +163,7 @@
       { id: 'l2', api: 'GM_llmChat — 流式 onChunk', desc: '可选 onChunk(delta) 逐段收流式文本增量，Promise 终值 text = 各增量拼接。', steps: [{ id: 'l2-stream', label: '发一次流式问答' }], expect: 'chunk 若干条（顺序递增），终值 text = 各 chunk 拼接' },
       { id: 'l3', api: 'GM_llmChat — 多模态（图片）', desc: 'content 为数组 [{type:text},{type:image_url}]，图片传 canvas 生成的 data URL。', steps: [{ id: 'l3-image', label: '发 64px 红色方块图' }], expect: '回答含「红」' },
       { id: 'l4', api: 'GM_llmChat — 权限档「始终拒绝」', desc: 'deny 硬拒：既不弹确认卡也不暴露模型配置状态。', steps: ['先到侧边栏 脚本池 → 本脚本详情 → 设置 → 模型调用 改「始终拒绝」', { id: 'l4-deny', label: '发起调用' }, '看完把档位改回「每次询问」'], expect: '报 permission denied（文案含可读指引）' },
-      { id: 'l5', api: 'GM_llmChat — 单图超限', desc: '单张 data URL 上限 5MB；3000px 纯色方块 base64 后远超。', steps: [{ id: 'l5-oversize', label: '发 3000px 方块图' }], expect: '报「图片过大」且不发起模型请求' },
+      { id: 'l5', api: 'GM_llmChat — 单图超限', desc: '单张 data URL 上限 5MB。纯色图会被 PNG 压到 KB 级，必须用随机噪点图：1200px 噪声 PNG base64 后 ≈5.6MB，稳超。', steps: [{ id: 'l5-oversize', label: '发 1200px 噪点图' }], expect: '日志先显示 data URL 实际 KB 数（>5120），后报「图片过大」且不发起模型请求' },
       { id: 'l6', api: '未声明 @grant GM_llmChat 的脚本', desc: '「声明即授权」：未声明的 API 不注入作用域。两种结果都算预期——① 未安装（裸引用不存在）② 安装但报 permission not requested。', steps: [{ id: 'l6-nogrant-copy', label: '存源到 GM 值并复制到剪贴板' }, '读出源文本（调试台直调 GM_getValue 或直接用剪贴板内容）→ 脚本池导入探针脚本 → 任意页触发 → 看探针脚本 console 日志 → 测完删除探针脚本'], expect: '探针脚本 console 日志显示「未安装」或「permission not requested」之一' }
     ],
     actions: actions
