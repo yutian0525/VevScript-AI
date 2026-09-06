@@ -1,0 +1,20 @@
+tests/background/gm-debug.test.ts
+  s_4b16ffa8468de9::t_d45209f3f7c347 6-10,13
+  s_4b16ffa8468de9::t_ddedc1adcb872a 74-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c373b2307b457def673db7c0f6a1c6c96408e573",
+  "prompts": {},
+  "sessions": {
+    "s_4b16ffa8468de9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa33a125-14e4-4ba5-8132-a2d017f9289f",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
