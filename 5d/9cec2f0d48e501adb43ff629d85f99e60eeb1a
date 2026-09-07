@@ -1,0 +1,37 @@
+tests/settings/settings-view.test.tsx
+  s_b4a0c595677b1b::t_a856361c5b57e8 20,32-38
+  s_b4a0c595677b1b::t_f5d5c53e79a34b 39
+tests/settings/memory-page.test.tsx
+  s_b4a0c595677b1b::t_29991f419f91bb 1-93,95-103,105-131
+  s_b4a0c595677b1b::t_d6c8e23336f8f9 94
+  s_b4a0c595677b1b::t_cddde1960969b2 104
+tests/settings/memory-page-utils.test.ts
+  s_b4a0c595677b1b::t_5cbc7a01dda26e 1-50
+components/settings/MemoryPage.tsx
+  s_b4a0c595677b1b::t_018f545671aadc 1-286
+components/settings/SettingsHome.tsx
+  s_b4a0c595677b1b::t_2c53b729084375 3,8,13-14
+components/settings/memory-page-utils.ts
+  s_b4a0c595677b1b::t_fe156338b48124 1-29
+entrypoints/sidepanel/styles.css
+  s_b4a0c595677b1b::t_bb9e86548e330d 1396-1408
+components/settings/SettingsView.tsx
+  s_b4a0c595677b1b::t_c1c4f31c02f518 10
+  s_b4a0c595677b1b::t_6df371105974ec 22-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5d9cec2f0d48e501adb43ff629d85f99e60eeb1a",
+  "prompts": {},
+  "sessions": {
+    "s_b4a0c595677b1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01db4937-1c12-4f2d-be27-e819f2e93fc0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
