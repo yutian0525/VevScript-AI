@@ -53,11 +53,25 @@ const API_TO_GRANT: Record<string, string> = {
   XmlHttpRequest: 'GM_xmlhttpRequest',
   AbortRequest: 'GM_xmlhttpRequest',
   LlmChat: 'GM_llmChat',
+  SetValues: 'GM_setValues',
+  DeleteValues: 'GM_deleteValues',
+  UnregisterMenu: 'GM_unregisterMenuCommand',
+  CloseNotification: 'GM_closeNotification',
+  UpdateNotification: 'GM_updateNotification',
+  GetTab: 'GM_getTab',
+  SaveTab: 'GM_saveTab',
+  GetTabs: 'GM_getTabs',
+  Download: 'GM_download',
+  CookieList: 'GM_cookie',
+  CookieSet: 'GM_cookie',
+  CookieDelete: 'GM_cookie',
+  WindowClose: 'window.close',
+  WindowFocus: 'window.focus',
 };
 
 // 框架内部通道（错误上报）与值存储不受 @grant 限制：值 API 的 grant 已在 wrapper 侧安装期把关，
 // SW 只当存储；错误上报是框架自身调用（spec §8）。
-const GRANT_EXEMPT = new Set(['ReportError', 'SetValue', 'GetValue', 'DeleteValue', 'ListValues']);
+const GRANT_EXEMPT = new Set(['ReportError', 'SetValue', 'GetValue', 'DeleteValue', 'ListValues', 'SetValues', 'DeleteValues', 'GetValues']);
 
 // GM_notification 兜底图标（Chrome basic 通知要求非空 iconUrl，且只认扩展内真实文件路径——
 // data: URI 会报 "Unable to download all specified images"，资产由 public/gm-notif.png 提供）
@@ -592,6 +606,48 @@ export async function handleGmCall(
     case 'ListValues': {
       const values = await readValues(scriptId);
       return { ok: true, data: Object.keys(values) };
+    }
+    case 'SetValues': {
+      const [obj] = params as [Record<string, unknown>];
+      const values = await readValues(scriptId);
+      const entries = obj && typeof obj === 'object' ? Object.entries(obj) : [];
+      for (const [key, value] of entries) {
+        const oldValue = values[key];
+        values[key] = value;
+        await broadcastValueChange(scriptId, key, oldValue, value, sender);
+      }
+      await writeValues(scriptId, values);
+      return { ok: true, data: null };
+    }
+    case 'DeleteValues': {
+      const [keys] = params as [string[]];
+      const values = await readValues(scriptId);
+      for (const key of Array.isArray(keys) ? keys : []) {
+        const oldValue = values[key];
+        delete values[key];
+        await broadcastValueChange(scriptId, key, oldValue, undefined, sender);
+      }
+      await writeValues(scriptId, values);
+      return { ok: true, data: null };
+    }
+    case 'UnregisterMenu': {
+      const [key] = params as [string];
+      const cmds = menuTable.get(scriptId);
+      if (cmds) { cmds.delete(key); if (cmds.size === 0) menuTable.delete(scriptId); }
+      broadcastMenus();
+      return { ok: true, data: null };
+    }
+    case 'CloseNotification': {
+      const [id] = params as [string];
+      try { await browser.notifications?.clear(id); return { ok: true, data: null }; }
+      catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+    }
+    case 'UpdateNotification': {
+      const [id, details] = params as [string, { title?: string; text?: string }];
+      try {
+        await browser.notifications?.update(id, { type: 'basic', iconUrl: NOTIF_ICON, title: details?.title ?? scriptId, message: details?.text ?? '' });
+        return { ok: true, data: null };
+      } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
     }
     case 'RegisterMenu': {
       const [key, name] = params as [string, string];
