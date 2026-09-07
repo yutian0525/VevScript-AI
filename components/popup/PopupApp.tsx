@@ -111,12 +111,6 @@ export function PopupApp() {
         </button>
       </div>
       <div className="popup__run">
-        {loaded && rows.length > 0 && (
-          <div className="popup__runhead">
-            <span className="scripts-run__dot" aria-hidden />
-            <span className="mono">RUNNING · {rows.length}</span>
-          </div>
-        )}
         {!loaded ? (
           <div className="popup__empty popup__empty--center">加载中…</div>
         ) : rows.length === 0 ? (

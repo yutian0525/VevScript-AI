@@ -1064,16 +1064,6 @@ body {
 .convrow__iconbtn:hover { background: var(--line-strong); color: var(--ink); }
 
 /* —— Phase 4 脚本池（scripts- 前缀防撞名）—— */
-/* 呼吸点（popup RUNNING 计数头在用；2026-09-03 重设计后容器/条目类已删） */
-.scripts-run__dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--ok); display: inline-block; flex: none;
-  animation: scriptPulse 1.6s ease-in-out infinite;
-}
-.scripts-run__dot--off { background: var(--ink-3); animation: none; }
-@keyframes scriptPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-@media (prefers-reduced-motion: reduce) { .scripts-run__dot { animation: none; } }
-
 .scripts-notice {
   display: flex; gap: 6px; align-items: flex-start;
   border: 1px solid var(--warn); background: var(--warn-wash); color: var(--warn);
@@ -1251,7 +1241,6 @@ body {
 }
 .popup__navbtn:hover { background: var(--sunken); }
 .popup__run { padding: 10px 12px 12px; }
-.popup__runhead { display: flex; align-items: center; gap: 6px; color: var(--ink-2); margin-bottom: 6px; font-size: 11px; }
 .popup__empty { color: var(--ink-3); font-size: 12px; padding: 4px 0 2px; }
 /* 空态：无 RUNNING 头，文案居中留白 */
 .popup__empty--center { text-align: center; padding: 22px 0; }

@@ -45,7 +45,7 @@ describe('PopupApp', () => {
     vi.restoreAllMocks();
   });
 
-  it('渲染两导航按钮 + RUNNING 计数头 + 空态', async () => {
+  it('渲染两导航按钮 + 空态（无 RUNNING 头）', async () => {
     mockBackend({ entry: null });
     render(<PopupApp />);
     expect(screen.getByRole('button', { name: /打开侧边栏/ })).toBeTruthy();
