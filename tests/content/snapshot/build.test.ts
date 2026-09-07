@@ -169,4 +169,32 @@ describe('快照组装', () => {
     // 不应出现未转义的独立伪造行
     expect(text).not.toMatch(/^\[999\] button "假的"/m);
   });
+
+  it('StaticText 与父节点 name 相同时不重复输出（去重）', () => {
+    document.body.innerHTML = '<a href="/x">链接文字</a>';
+    const { text } = buildSnapshot(document.body);
+    expect(text).toContain('link "链接文字"');
+    // 同一段文字不该再出一行 StaticText
+    expect(text).not.toContain('StaticText "链接文字"');
+  });
+
+  it('StaticText 与父 name 不同时保留', () => {
+    document.body.innerHTML = '<div aria-label="标签">正文内容</div>';
+    const { text } = buildSnapshot(document.body);
+    expect(text).toContain('StaticText "正文内容"');
+  });
+
+  it('父 name 被截断（100 字符）时，文本是其前缀也算重复', () => {
+    const long = 'x'.repeat(150);
+    document.body.innerHTML = `<button>${long}</button>`;
+    const { text } = buildSnapshot(document.body);
+    expect(text).not.toContain('StaticText');
+  });
+
+  it('多段文本只去重与 name 相同的那段', () => {
+    document.body.innerHTML = '<a href="/x">主文字<span> 副文字</span></a>';
+    const { text } = buildSnapshot(document.body);
+    // name 由 visibleText 聚合成 "主文字 副文字"，两段单独文本都是其子串但都不等于它
+    expect(text).toContain('StaticText "主文字"');
+  });
 });

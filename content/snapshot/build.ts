@@ -50,7 +50,15 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
     return uidCounter;
   }
 
-  function walkChildren(el: Element, parentUid: number, out: SnapNode[]): void {
+  /** 文本是否被父节点 name 覆盖（含 name 被截至 100 字符的前缀情形）。 */
+  function coveredByName(parentName: string, t: string): boolean {
+    if (!parentName) return false;
+    if (parentName === t) return true;
+    // computeName 截断到 100：name 是 t 的前缀即视为同一段文字
+    return parentName.length === 100 && t.startsWith(parentName);
+  }
+
+  function walkChildren(el: Element, parent: SnapNode, out: SnapNode[]): void {
     const kids: ChildNode[] = [];
     const shadow = (el as HTMLElement).shadowRoot;
     if (shadow) kids.push(...Array.from(shadow.childNodes));
@@ -65,9 +73,10 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
       if (node.nodeType === Node.TEXT_NODE) {
         const t = (node.textContent ?? '').replace(/\s+/g, ' ').trim();
         if (!t) continue;
+        if (coveredByName(parent.name, t)) continue;
         if (nodeCount >= cfg.maxNodes) { truncated = true; break; }
         nodeCount += 1;
-        out.push({ role: 'StaticText', name: t.slice(0, 200), states: [], description: '', extras: {}, uid: parentUid, isText: true, children: [] });
+        out.push({ role: 'StaticText', name: t.slice(0, 200), states: [], description: '', extras: {}, uid: parent.uid, isText: true, children: [] });
         emitted += 1;
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         const child = walkElement(node as Element);
@@ -91,7 +100,7 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
       uid,
       children: [],
     };
-    walkChildren(elem, uid, node.children);
+    walkChildren(elem, node, node.children);
     return node;
   }
 
@@ -107,7 +116,7 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
     uid: rootUid,
     children: [],
   };
-  walkChildren(root, rootUid, rootNode.children);
+  walkChildren(root, rootNode, rootNode.children);
 
   const lines: string[] = [];
   serialize(rootNode, 0, lines);
