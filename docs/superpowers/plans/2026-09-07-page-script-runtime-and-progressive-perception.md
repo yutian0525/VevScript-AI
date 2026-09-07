@@ -96,12 +96,19 @@
   });
 
   it('多段文本只去重与 name 相同的那段', () => {
-    document.body.innerHTML = '<a href="/x">主文字<span> 副文字</span></a>';
+    // aria-label 给出确定的 name，故第一段文本命中去重、第二段存活——测到混合场景。
+    // 反例警戒：若 fixture 用 <a>主文字<span>副文字</span></a>，name 会被 visibleText
+    // 聚合成"主文字 副文字"，两段都不等于它 → 不发生任何去重，该用例删掉实现也照样绿。
+    document.body.innerHTML = '<button aria-label="标签">标签<span>其他</span></button>';
     const { text } = buildSnapshot(document.body);
-    // name 由 visibleText 聚合成 "主文字 副文字"，两段单独文本都是其子串但都不等于它
-    expect(text).toContain('StaticText "主文字"');
+    expect(text).not.toContain('StaticText "标签"');
+    expect(text).toContain('StaticText "其他"');
   });
 ```
+
+> 验收判据：把 `coveredByName` 的调用临时改成 `if (false && coveredByName(...))` 重跑，本用例**必须失败**。否则它没有检出力。
+
+> 实施后补记：`parent` 参数应收紧为 `SnapNode & { uid: number }`（保证 StaticText 行必带 uid——agent 定位元素的唯一入口）。这需要**三处**标注：参数本身 + `walkElement` 内的 `node` 与根部 `rootNode` 两个局部变量声明，只改参数会报 TS2345。
 
 - [ ] **Step 2: 运行测试确认失败**
 
