@@ -1,0 +1,26 @@
+package.json
+  s_b4a0c595677b1b::t_1642b5329e8246 29
+components/detail/CodeEditor.tsx
+  s_b4a0c595677b1b::t_98aff2416ffce7 9
+  s_b4a0c595677b1b::t_68530c9916a007 60
+  s_b4a0c595677b1b::t_411ac6a468e2da 75
+  s_b4a0c595677b1b::t_291345c68e63d0 18-19
+package-lock.json
+  s_b4a0c595677b1b::t_1dcb4edd63c56e 14,257-286,302-316,588-598,608-618,639-648
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "eca6deaec49779196630f937c5dab54ad3d63c9d",
+  "prompts": {},
+  "sessions": {
+    "s_b4a0c595677b1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01db4937-1c12-4f2d-be27-e819f2e93fc0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
