@@ -30,10 +30,11 @@ export function PopupApp() {
   // 启停开关状态：冷读页不订阅广播，本地 optimistic 覆盖（undefined = 未动过，用默认开）
   const [enabledIds, setEnabledIds] = useState<Map<string, boolean>>(new Map());
 
-  // 冷读：当前 tab 运行条目 + 菜单快照（短命页面不订阅广播）
+  // 冷读：当前 tab 运行条目 + 菜单快照。挂载拉一次；打开期间订阅 SCRIPTS_CHANGED 重拉
+  // （别处启停/删/改后 popup 仍开着时同步——不再靠重开）。
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const load = async () => {
       try {
         const tab = await activeTab();
         const tabId = tab?.id;
@@ -67,8 +68,13 @@ export function PopupApp() {
       } finally {
         if (!cancelled) setLoaded(true);
       }
-    })();
-    return () => { cancelled = true; };
+    };
+    void load();
+    const onMessage = (msg: unknown) => {
+      if ((msg as { type?: string })?.type === 'SCRIPTS_CHANGED') void load();
+    };
+    browser.runtime.onMessage.addListener(onMessage);
+    return () => { cancelled = true; browser.runtime.onMessage.removeListener(onMessage); };
   }, []);
 
   async function openSidepanel(): Promise<void> {

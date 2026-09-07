@@ -26,6 +26,11 @@ export function ScriptsView() {
       if (m?.type === 'SCRIPTS_UPDATES') {
         useScripts.getState().applyUpdatesEvent(msg as ScriptsUpdatesEvent);
       }
+      // 清单写变更（增/改/启停/删/导入，含 AI 工具与详情页/popup 发起的）→ 全量重拉，
+      // 同步 name/enabled/matches/errorCount/updates，删除卡片随之消失
+      if (m?.type === 'SCRIPTS_CHANGED') {
+        void useScripts.getState().refresh();
+      }
     };
     browser.runtime.onMessage.addListener(onMessage);
     const onActivated = ({ tabId }: { tabId: number }) => {

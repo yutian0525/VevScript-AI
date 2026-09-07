@@ -4,7 +4,7 @@
 // confirmGate 拦截位：下阶段确认门控在本文件各写 handler 入口处统一拦截（pendingOps + 批准卡）。
 
 import type { MessageRouter } from './router';
-import type { ScriptGetData, ScriptInput, ScriptPatch, ScriptsRuntimeEntry } from '../shared/messages';
+import type { ScriptGetData, ScriptInput, ScriptPatch, ScriptsRuntimeEntry, ScriptsChangedEvent, ScriptsChangedReason } from '../shared/messages';
 import type { ScriptRunAt, ScriptSource, ScriptWorld, UserScript } from '../shared/types';
 import { deleteScript, getScript, listScripts, saveScript, toSummary, MAX_CODE_LENGTH, MAX_TEXT_LENGTH } from '../storage/scripts';
 import { isValidMatchPattern, matchUrl } from '../shared/match-pattern';
@@ -37,6 +37,13 @@ function sameEntry(a: ScriptsRuntimeEntry | undefined, b: ScriptsRuntimeEntry): 
 function broadcastRuntime(entry: ScriptsRuntimeEntry): void {
   // 无接收方（sidepanel 未开）时 sendMessage 会 reject——fire-and-forget，吞掉即可
   void browser.runtime.sendMessage({ type: 'SCRIPTS_RUNTIME', payload: entry }).catch(() => {});
+}
+
+/** 脚本清单写变更广播（增/改/启停/删/导入）：驱动侧栏 refresh、详情页刷新/删除、popup 重载。
+ *  与 broadcastRuntime 互补——运行集不变的纯改码也要发，故独立于 recomputeTab 的去重闸。 */
+function broadcastScriptsChanged(reason: ScriptsChangedReason, ids?: string[]): void {
+  const msg: ScriptsChangedEvent = { type: 'SCRIPTS_CHANGED', reason, ...(ids ? { ids } : {}) };
+  void browser.runtime.sendMessage(msg).catch(() => {});
 }
 
 export async function recomputeTab(tabId: number, url: string): Promise<void> {
@@ -343,6 +350,7 @@ export async function handleCreate(input: ScriptInput): Promise<{ script: UserSc
   const resWarnings = await prefetchResources(script);
   const syncWarnings = await syncBestEffort();
   await recomputeAllTabs().catch(() => {});
+  broadcastScriptsChanged('create', [script.id]);
   return { script, warnings: [...warnings, ...resWarnings, ...syncWarnings] };
 }
 
@@ -401,6 +409,8 @@ export async function handleUpdate(id: string, patch: ScriptPatch): Promise<User
   if (resWarnings.length > 0) console.warn('[scripts] 依赖预取:', ...resWarnings);
   await syncRegistrations();
   await recomputeAllTabs().catch(() => {});
+  // 纯启停也报 update：接收方只需知道该脚本清单字段变了（enabled/name/matches 任一）
+  broadcastScriptsChanged(branches.length === 0 ? 'enable' : 'update', [id]);
   return next;
 }
 
@@ -429,6 +439,7 @@ export async function handleDelete(id: string): Promise<void> {
   await removeScriptPermissions(id).catch(() => {});
   await syncRegistrations();
   await recomputeAllTabs().catch(() => {});
+  broadcastScriptsChanged('delete', [id]);
 }
 
 export async function handleSetEnabled(id: string, enabled: boolean): Promise<UserScript> {
@@ -439,6 +450,7 @@ export async function handleSetEnabled(id: string, enabled: boolean): Promise<Us
   await saveScript(next);
   await syncRegistrations();
   await recomputeAllTabs().catch(() => {});
+  broadcastScriptsChanged('enable', [id]);
   return next;
 }
 
@@ -454,6 +466,7 @@ export async function handleImport(
   const resWarnings = await prefetchResources(script);
   const syncWarnings = await syncBestEffort();
   await recomputeAllTabs().catch(() => {});
+  broadcastScriptsChanged('import', [script.id]);
   return { script, warnings: [...warnings, ...resWarnings, ...syncWarnings] };
 }
 

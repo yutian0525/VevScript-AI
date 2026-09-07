@@ -156,6 +156,19 @@ describe('PopupApp', () => {
     expect((screen.getByRole('switch', { name: /禁用脚本/ }) as HTMLElement).getAttribute('aria-checked')).toBe('false');
   });
 
+  it('打开期间收到 SCRIPTS_CHANGED → 重新拉取（不再靠重开）', async () => {
+    mockBackend({ entry: { tabId: 11, url: 'https://a.com/', scriptIds: ['r1'] } });
+    const sendSpy = vi.spyOn(browser.runtime, 'sendMessage');
+    render(<PopupApp />);
+    await screen.findByText('脚本r1');
+    const before = sendSpy.mock.calls.filter((c) => (c[0] as { type?: string })?.type === 'SCRIPTS_LIST').length;
+    fakeBrowser.runtime.onMessage.trigger({ type: 'SCRIPTS_CHANGED', reason: 'enable', ids: ['r1'] }, {} as never, () => {});
+    await vi.waitFor(() => {
+      const after = sendSpy.mock.calls.filter((c) => (c[0] as { type?: string })?.type === 'SCRIPTS_LIST').length;
+      expect(after).toBeGreaterThan(before); // 重新拉取了一次
+    });
+  });
+
   it('不匹配当前页 URL 的禁用脚本不显示（空态）', async () => {
     (browser.tabs as unknown as { query: () => Promise<Array<{ id: number; url: string }>> }).query =
       vi.fn().mockResolvedValue([{ id: 11, url: 'https://other.com/' }]);

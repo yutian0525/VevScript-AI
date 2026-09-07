@@ -178,6 +178,23 @@ describe('DetailApp', () => {
     expect(await screen.findByText('脚本不存在或已被删除')).toBeTruthy();
   });
 
+  it('别处删除本脚本（SCRIPTS_CHANGED delete 广播）→ 跳「已删除」空态，不留 ghost', async () => {
+    mockBackend(mkScript());
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    fakeBrowser.runtime.onMessage.trigger({ type: 'SCRIPTS_CHANGED', reason: 'delete', ids: ['s1'] }, {} as never, () => {});
+    expect(await screen.findByText('脚本不存在或已被删除')).toBeTruthy();
+  });
+
+  it('别处删除的是其它脚本（ids 不含本脚本）→ 详情页不受影响', async () => {
+    mockBackend(mkScript());
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    fakeBrowser.runtime.onMessage.trigger({ type: 'SCRIPTS_CHANGED', reason: 'delete', ids: ['other'] }, {} as never, () => {});
+    expect(screen.getByText('测试脚本')).toBeTruthy();
+    expect(screen.queryByText('脚本不存在或已被删除')).toBeNull();
+  });
+
   it('代码 Tab 工具栏：保存/导入/导出按钮在状态字左侧（DOM 顺序）', async () => {
     // meta.grants 覆盖掉 fixture 默认值（NO_SUCH_API 会触发解析警告）→ 状态字为「已同步」
     mockBackend(mkScript({ text: '// ==UserScript==\n// @name 测试脚本\n// @match *://*/*\n// ==/UserScript==\nconsole.log(1);', meta: {} }));

@@ -231,6 +231,19 @@ export interface ScriptsUpdatesEvent {
   updates: Record<string, ScriptUpdateState>;
 }
 
+/** 脚本清单变更原因（跨界面同步：侧栏 refresh、详情页刷新/删除、popup 重载） */
+export type ScriptsChangedReason = 'create' | 'update' | 'enable' | 'delete' | 'import';
+
+/** bg → 扩展页面广播：脚本清单发生写变更（增/改/启停/删/导入）。
+ *  与 SCRIPTS_RUNTIME 区别：后者只报某 tab 运行集，本事件报「清单本体变了」，
+ *  接收方据此重拉 summaries / 重取详情，修 name/enabled/matches/删除卡片残留不同步。
+ *  ids：受影响脚本 id（删除/改单条时给；批量或不确定可省，接收方全量 refresh）。 */
+export interface ScriptsChangedEvent {
+  type: 'SCRIPTS_CHANGED';
+  reason: ScriptsChangedReason;
+  ids?: string[];
+}
+
 /** popup/侧边栏跨面导航通知（popup → sidepanel，fire-and-forget；sidepanel 未开时由 pendingView 兜底） */
 export interface UiNavNotification {
   type: 'UI_NAV';
