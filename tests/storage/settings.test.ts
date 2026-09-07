@@ -50,6 +50,7 @@ describe('settings storage', () => {
     expect(raw).toEqual({
       provider: { baseUrl: 'https://b.com/v1', apiKey: '', model: '' },
       agent: DEFAULT_SETTINGS.agent,
+      prompt: DEFAULT_SETTINGS.prompt,
     });
   });
 
@@ -112,5 +113,42 @@ describe('agent 超时与重试配置', () => {
     const s = await getSettings();
     expect(s.agent.llmTimeoutSec).toBe(60);
     expect(s.agent.llmMaxRetries).toBe(2);
+  });
+});
+
+describe('prompt 段（系统提示词自定义）', () => {
+  beforeEach(() => fakeBrowser.reset());
+
+  it('默认 custom 为空串、无 baseSnapshot', async () => {
+    const s = await getSettings();
+    expect(s.prompt.custom).toBe('');
+    expect(s.prompt.baseSnapshot).toBeUndefined();
+  });
+
+  it('可存可读回 custom 与 baseSnapshot', async () => {
+    await saveSettings({ prompt: { custom: '我的提示词', baseSnapshot: '内置全文' } });
+    const s = await getSettings();
+    expect(s.prompt.custom).toBe('我的提示词');
+    expect(s.prompt.baseSnapshot).toBe('内置全文');
+  });
+
+  it('段内 merge：只改 custom 不丢 baseSnapshot', async () => {
+    await saveSettings({ prompt: { custom: 'A', baseSnapshot: 'S' } });
+    await saveSettings({ prompt: { custom: 'B' } });
+    const s = await getSettings();
+    expect(s.prompt.custom).toBe('B');
+    expect(s.prompt.baseSnapshot).toBe('S');
+  });
+
+  it('存量数据无 prompt 段时补默认值（前向兼容）', async () => {
+    await storage.setItem('local:settings', { provider: { baseUrl: 'https://old.com/v1' } });
+    const s = await getSettings();
+    expect(s.prompt).toEqual({ custom: '' });
+  });
+
+  it('保存 provider 段不会清掉 prompt 段', async () => {
+    await saveSettings({ prompt: { custom: '保留我' } });
+    await saveSettings({ provider: { model: 'm' } });
+    expect((await getSettings()).prompt.custom).toBe('保留我');
   });
 });
