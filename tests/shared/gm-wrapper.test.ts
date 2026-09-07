@@ -142,6 +142,22 @@ describe('buildWrappedCode', () => {
     // 钩子定义在 preamble 内（先于用户代码执行体注册，保证首帧后的异步异常已被覆盖）
     expect(code.indexOf("window.addEventListener('error'")).toBeLessThan(code.indexOf('userCode();'));
   });
+
+  it('本地/快照类 API：getValues/addElement/removeValueChangeListener/getResourceURL', () => {
+    const s = mkScript({ meta: { grants: ['GM_getValues', 'GM_addElement', 'GM_removeValueChangeListener', 'GM_getResourceURL'] } });
+    const code = buildWrappedCode(s, {
+      token: 't', values: { a: 1 }, resources: {}, resourceUrls: { logo: 'data:image/png;base64,AAA' },
+      requireCodes: [], extensionVersion: '1.0.0',
+    });
+    expect(code).toContain('install("GM_getValues"');
+    expect(code).toContain('install("GM_addElement"');
+    expect(code).toContain('install("GM_removeValueChangeListener"');
+    expect(code).toContain('install("GM_getResourceURL"');
+    // getResourceURL 数据源：注入时快照 __resourceUrls
+    expect(code).toContain('__resourceUrls = {"logo":"data:image/png;base64,AAA"}');
+    // 全为 local/snapshot：无 __GM_post（无这些 API 的桥调用）
+    expect(code).not.toContain('__GM_post("SetValues"');
+  });
 });
 
 describe('GM_llmChat wrapper', () => {

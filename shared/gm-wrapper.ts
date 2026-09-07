@@ -15,6 +15,8 @@ export interface WrapperDeps {
   values: Record<string, unknown>;
   /** @resource 内容（name → text） */
   resources: Record<string, string>;
+  /** @resource 的 data: URL 快照（GM_getResourceURL 零 RPC 数据源）；可选，缺省 {} */
+  resourceUrls?: Record<string, string>;
   /** @require 预取产物（按声明顺序） */
   requireCodes: string[];
   extensionVersion: string;
@@ -59,6 +61,7 @@ function preamble(scriptId: string): string {
   var unsafeWindow = window;
   var __values = VALUES_PLACEHOLDER;
   var __resources = RESOURCES_PLACEHOLDER;
+  var __resourceUrls = RESOURCEURLS_PLACEHOLDER;
   // 握手态：wrapper 可能早于桥宿主挂 gmreq 监听（@run-at document-end/start 早于宿主的
   // document_idle + 异步拉 token）。宿主未就绪时 gmreq 派发进虚空、请求永挂——故未就绪先入
   // backlog，收到 gmhost 就绪信号再冲刷（见 shared/gm-bridge.ts 握手注释）。
@@ -104,7 +107,7 @@ function preamble(scriptId: string): string {
     var d = e.detail || {};
     if (d.kind === 'VALUE_CHANGE') {
       var hooks = __GM_valueHooks.get(d.data.key);
-      if (hooks) hooks.forEach(function (fn) { fn(d.data.key, d.data.oldValue, d.data.newValue, d.data.remote); });
+      if (hooks) hooks.forEach(function (fn) { if (fn) fn(d.data.key, d.data.oldValue, d.data.newValue, d.data.remote); });
     } else if (d.kind === 'MENU_CLICK') {
       var cb = __GM_listeners.get('menu:' + d.data.key);
       if (cb) cb();
@@ -187,6 +190,10 @@ const GM_INSTALLS: ReadonlyArray<readonly [string, string]> = [
   ['GM_addValueChangeListener', 'function (key, fn) { var arr = __GM_valueHooks.get(key) || []; arr.push(fn); __GM_valueHooks.set(key, arr); return key + ":" + (arr.length - 1); }'],
   ['GM_addStyle', 'function (css) { var el = document.createElement("style"); el.textContent = css; (document.head || document.documentElement).appendChild(el); return el; }'],
   ['GM_getResourceText', 'function (name) { return __resources[name]; }'],
+  ['GM_getValues', 'function (keys) { var out = {}; if (Array.isArray(keys)) { for (var i = 0; i < keys.length; i++) { var k = keys[i]; out[k] = __values[k]; } } else if (keys && typeof keys === "object") { for (var k2 in keys) { if (Object.prototype.hasOwnProperty.call(keys, k2)) { out[k2] = __values[k2] === undefined ? keys[k2] : __values[k2]; } } } else { for (var k3 in __values) { if (Object.prototype.hasOwnProperty.call(__values, k3)) out[k3] = __values[k3]; } } return out; }'],
+  ['GM_removeValueChangeListener', 'function (id) { var i = String(id).lastIndexOf(":"); if (i < 0) return; var key = String(id).slice(0, i); var idx = parseInt(String(id).slice(i + 1), 10); var arr = __GM_valueHooks.get(key); if (arr && arr[idx]) arr[idx] = null; }'],
+  ['GM_addElement', 'function (a, b, c) { var parent, tag, attrs; if (typeof a === "string") { parent = null; tag = a; attrs = b || {}; } else { parent = a; tag = b; attrs = c || {}; } var el = document.createElement(tag); for (var k in attrs) { if (!Object.prototype.hasOwnProperty.call(attrs, k)) continue; if (k === "textContent") el.textContent = attrs[k]; else if (k === "innerHTML") el.innerHTML = attrs[k]; else el.setAttribute(k, attrs[k]); } (parent || document.head || document.documentElement).appendChild(el); return el; }'],
+  ['GM_getResourceURL', 'function (name) { return __resourceUrls[name]; }'],
   ['GM_log', 'function () { var a = [].slice.call(arguments); a.unshift(GM_info.script.name); console.log.apply(console, a); }'],
   ['GM_registerMenuCommand', 'function (name, fn) { var key = "m" + (++__GM_reqSeq); __GM_listeners.set("menu:" + key, fn); __GM_post("RegisterMenu", [key, name]); return key; }'],
   ['GM_setClipboard', 'function (text) { return __GM_post("SetClipboard", [text]); }'],
@@ -237,6 +244,7 @@ export function buildWrappedCode(script: UserScript, deps: WrapperDeps): string 
     .replace('TOKEN_PLACEHOLDER', () => J(deps.token))
     .replace('VALUES_PLACEHOLDER', () => J(deps.values))
     .replace('RESOURCES_PLACEHOLDER', () => J(deps.resources))
+    .replace('RESOURCEURLS_PLACEHOLDER', () => J(deps.resourceUrls ?? {}))
     .replace('GMINFO_PLACEHOLDER', () => gmInfoLiteral(script, deps.extensionVersion));
 
   // 用户代码执行体：@require 前置拼接（require 与用户代码共享同一函数作用域，TM 同款），
