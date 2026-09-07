@@ -98,7 +98,7 @@ async function drive(
     const skills = (await deps.getSkills?.()) ?? [];
     // 模式每轮重读：任务中途用户切 ask/agent，下一轮立即生效（已发出的轮次不回收）
     const mode = (await deps.getMode?.()) ?? 'agent';
-    const messages = buildContext(conv.messages, page, 60, conv.summary, skills, mode);
+    const messages = buildContext(conv.messages, page, { summary: conv.summary, skills, mode });
 
     const maxTokens = (await deps.getMaxTokens?.()) ?? 0;
     // 参数生成进度节流器：每轮新建，状态不跨轮（下一轮从 0 重新计）

@@ -62,14 +62,20 @@ export function trimImageParts(messages: ChatMessage[], keep = KEEP_IMAGES): Cha
   });
 }
 
+export interface BuildContextOptions {
+  /** 简单截断时保留的最近条数（无 summary 时生效）。默认 60。 */
+  keepRecent?: number;
+  summary?: { text: string; coversUpTo: number };
+  skills?: SkillBrief[];
+  mode?: AgentMode;
+}
+
 export function buildContext(
   history: ChatMessage[],
   page: PageInfo,
-  keepRecent = 60,
-  summary?: { text: string; coversUpTo: number },
-  skills?: SkillBrief[],
-  mode: AgentMode = 'agent',
+  opts: BuildContextOptions = {},
 ): ChatMessage[] {
+  const { keepRecent = 60, summary, skills, mode = 'agent' } = opts;
   const pageBlock = page.url
     ? `\n\n当前页面：\n- URL: ${page.url}\n- 标题: ${page.title}`
     : '';

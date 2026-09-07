@@ -83,7 +83,7 @@ describe('modePrompt', () => {
   });
 
   it('buildContext 把模式段并入 system 消息', () => {
-    const msgs = buildContext([], { url: 'https://x.com', title: 'X' }, 60, undefined, [], 'ask');
+    const msgs = buildContext([], { url: 'https://x.com', title: 'X' }, { mode: 'ask' });
     const sys = msgs[0]!;
     expect(sys.role).toBe('system');
     expect(String(sys.content)).toContain('ask（只读问答）');

@@ -101,7 +101,7 @@ describe('buildContext summary 分支', () => {
       { role: 'user', content: 'm2' },
       { role: 'assistant', content: 'm3' },
     ];
-    const out = buildContext(history, page, 60, { text: '前情：做了 m0-m1', coversUpTo: 1 });
+    const out = buildContext(history, page, { summary: { text: '前情：做了 m0-m1', coversUpTo: 1 } });
     expect(out[0]!.role).toBe('system');
     expect(out[1]!.role).toBe('user');
     expect(String(out[1]!.content)).toContain('前情：做了 m0-m1');
@@ -119,7 +119,7 @@ describe('buildContext summary 分支', () => {
       { role: 'assistant', content: 'm2' },
     ];
     // coversUpTo=0 → 保留段从 index1 起是 tool（悬空），应被剥掉，留 assistant
-    const out = buildContext(history, page, 60, { text: 's', coversUpTo: 0 });
+    const out = buildContext(history, page, { summary: { text: 's', coversUpTo: 0 } });
     const afterSummary = out.slice(2);
     expect(afterSummary[0]!.role).not.toBe('tool');
     expect(afterSummary).toEqual([{ role: 'assistant', content: 'm2' }]);
@@ -130,10 +130,51 @@ describe('buildContext summary 分支', () => {
       { role: 'user', content: 'm0' },
       { role: 'assistant', content: 'm1' },
     ];
-    const out = buildContext(history, page, 60, { text: 's', coversUpTo: 5 });
+    const out = buildContext(history, page, { summary: { text: 's', coversUpTo: 5 } });
     expect(out).toHaveLength(2);
     expect(out[0]!.role).toBe('system');
     expect(out[1]!.role).toBe('user');
     expect(String(out[1]!.content)).toContain('s');
+  });
+});
+
+describe('buildContext opts 签名', () => {
+  it('opts.summary 生效（等价于旧的第 4 位置参数）', () => {
+    const history: ChatMessage[] = [
+      { role: 'user', content: 'm0' },
+      { role: 'assistant', content: 'm1' },
+      { role: 'user', content: 'm2' },
+    ];
+    const out = buildContext(history, page, { summary: { text: '前情 S', coversUpTo: 1 } });
+    expect(out[0]!.role).toBe('system');
+    expect(String(out[1]!.content)).toContain('前情 S');
+    expect(out.slice(2)).toEqual([{ role: 'user', content: 'm2' }]);
+  });
+
+  it('opts.keepRecent 生效', () => {
+    const history: ChatMessage[] = Array.from({ length: 10 }, (_, i) => ({
+      role: 'user' as const, content: `m${i}`,
+    }));
+    const out = buildContext(history, page, { keepRecent: 2 });
+    // system + 首条 + 最近 2 条
+    expect(out).toHaveLength(4);
+    expect(out[1]).toEqual({ role: 'user', content: 'm0' });
+  });
+
+  it('opts.mode 与 opts.skills 同时生效', () => {
+    const out = buildContext([], page, {
+      mode: 'ask',
+      skills: [{ name: 'N', command: 'c', description: 'd' }],
+    });
+    const sys = String(out[0]!.content);
+    expect(sys).toContain('ask（只读问答）');
+    expect(sys).toContain('/c');
+  });
+
+  it('不传 opts 时行为不变（默认 keepRecent=60 / mode=agent）', () => {
+    const out = buildContext([{ role: 'user', content: 'hi' }], page);
+    expect(out[0]!.role).toBe('system');
+    expect(String(out[0]!.content)).toContain('agent（完整操控）');
+    expect(out[1]).toEqual({ role: 'user', content: 'hi' });
   });
 });
