@@ -18,6 +18,7 @@ import { getSettings } from '../storage/settings';
 import { getLlmTier } from './gm-permissions';
 import { listCookies, setCookie, deleteCookie, cookieTargetUrl, type CookieDetails } from './gm-cookie';
 import { runDownload, type DownloadDetails } from './gm-download';
+import { initUrlChange } from './gm-urlchange';
 
 export interface GmErrorEntry {
   at: number;
@@ -832,6 +833,18 @@ export async function handleGmCall(
     }
     case 'GetTabs':
       return { ok: true, data: await getAllTabData(scriptId) };
+    case 'WindowClose': {
+      const tabId = sender?.tab?.id;
+      if (tabId == null) return { ok: false, error: 'window.close 缺少 tab 上下文' };
+      try { await browser.tabs.remove(tabId); return { ok: true, data: null }; }
+      catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+    }
+    case 'WindowFocus': {
+      const tabId = sender?.tab?.id;
+      if (tabId == null) return { ok: false, error: 'window.focus 缺少 tab 上下文' };
+      try { await browser.tabs.update(tabId, { active: true }); return { ok: true, data: null }; }
+      catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+    }
     default:
       return { ok: false, error: `未知 GM API：${api}` };
   }
@@ -952,5 +965,8 @@ export function initGmApi(router: RouterLike): void {
     notifTargets.delete(notifId); // 关闭即清映射
     void sendGmEvent(t.tabId, t.scriptId, 'NOTIF_CLICK', { id: notifId, byUser: false });
   });
+
+  // window.onurlchange：SW 监听 SPA 导航（pushState/hash），命中脚本下行 URL_CHANGE（Task 11）
+  initUrlChange((tabId, scriptId, url) => void sendGmEvent(tabId, scriptId, 'URL_CHANGE', { url }));
 }
 

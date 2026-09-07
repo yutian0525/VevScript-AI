@@ -566,4 +566,14 @@ describe('批量值 + 菜单注销 + 通知管理', () => {
     expect((await handleGmCall({ scriptId: 's1', api: 'GetTab', reqId: 3, params: [] }, sender) as { data: unknown }).data).toEqual({ hits: 5 });
     expect((await handleGmCall({ scriptId: 's1', api: 'GetTabs', reqId: 4, params: [] }, sender) as { data: unknown }).data).toEqual({ '7': { hits: 5 } });
   });
+
+  it('WindowClose 关 tab；WindowFocus 激活 tab', async () => {
+    await saveScript(mkScript({ meta: { grants: ['window.close', 'window.focus'] } }));
+    const remove = vi.spyOn(browser.tabs, 'remove').mockResolvedValue(undefined as never);
+    const update = vi.spyOn(browser.tabs, 'update').mockResolvedValue({} as never);
+    await handleGmCall({ scriptId: 's1', api: 'WindowClose', reqId: 1, params: [] }, { tab: { id: 8, url: 'https://a.com/' } } as never);
+    expect(remove).toHaveBeenCalledWith(8);
+    await handleGmCall({ scriptId: 's1', api: 'WindowFocus', reqId: 2, params: [] }, { tab: { id: 8, url: 'https://a.com/' } } as never);
+    expect(update).toHaveBeenCalledWith(8, { active: true });
+  });
 });
