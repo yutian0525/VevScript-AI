@@ -25,6 +25,10 @@ export interface AgentConfig {
   /** 单轮回复的 token 上限（下发为 max_tokens）。此前从不下发 → 走服务端默认（多数网关
    *  2048~4096），长脚本必然被截断。0 = 不下发该字段（留给对它敏感的特殊网关）。 */
   maxTokens: number;
+  /** 记忆总开关。false = 不注入记忆块、不下发三个记忆工具。 */
+  memoryEnabled: boolean;
+  /** AI 是否可写记忆。false = 只注入 + 只下发 memory_list，记忆改由人工维护。 */
+  memoryWritable: boolean;
 }
 
 /** 系统提示词自定义（覆盖式）。见 spec §2。 */
@@ -53,6 +57,8 @@ export const DEFAULT_SETTINGS: Settings = {
     llmTimeoutSec: 60,
     llmMaxRetries: 2,
     maxTokens: 8192,
+    memoryEnabled: true,
+    memoryWritable: true,
   },
   prompt: { custom: '' },
 };

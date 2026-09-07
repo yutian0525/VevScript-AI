@@ -1,5 +1,6 @@
 // tests/agent/mode.test.ts
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { ASK_MODE_TOOLS, filterSchemasForMode, modePrompt, type ToolSchemaLike } from '../../agent/mode';
 import { getToolSchemas } from '../../agent/tools/registry';
 import { executeTool, type ToolCtx } from '../../agent/tools/registry';
@@ -96,5 +97,68 @@ describe('modePrompt', () => {
     const sys = msgs[0]!;
     expect(sys.role).toBe('system');
     expect(String(sys.content)).toContain('ask（只读问答）');
+  });
+});
+
+describe('记忆 cap 过滤与守卫', () => {
+  beforeEach(() => fakeBrowser.reset());
+
+  it("cap='full' → 三个记忆工具都在", () => {
+    const names = getToolSchemas('agent', 'full').map((s) => s.function.name);
+    expect(names).toContain('memory_list');
+    expect(names).toContain('memory_write');
+    expect(names).toContain('memory_delete');
+  });
+
+  it("cap='read' → 只留 memory_list", () => {
+    const names = getToolSchemas('agent', 'read').map((s) => s.function.name);
+    expect(names).toContain('memory_list');
+    expect(names).not.toContain('memory_write');
+    expect(names).not.toContain('memory_delete');
+  });
+
+  it("cap='off' → 三个都不下发，其余工具不受影响", () => {
+    const names = getToolSchemas('agent', 'off').map((s) => s.function.name);
+    expect(names).not.toContain('memory_list');
+    expect(names).not.toContain('memory_write');
+    expect(names).not.toContain('memory_delete');
+    expect(names).toContain('take_snapshot');
+    expect(names).toHaveLength(27);
+  });
+
+  it('缺省 cap = full（调试台等既有调用点不受影响）', () => {
+    expect(getToolSchemas('agent')).toHaveLength(30);
+  });
+
+  it('cap 与 mode 二维叠加：ask + read', () => {
+    const names = getToolSchemas('ask', 'read').map((s) => s.function.name);
+    expect(names).toContain('memory_list');
+    expect(names).not.toContain('memory_write');
+    expect(names).not.toContain('click');
+  });
+
+  it("executeTool 硬闸：cap='off' 拒全部记忆工具", async () => {
+    const ctx: ToolCtx = { tabId: 1, sessionId: 's', signal: new AbortController().signal, memory: 'off' };
+    for (const t of ['memory_list', 'memory_write', 'memory_delete']) {
+      const r = await executeTool(t, { content: 'x', id: 'y' }, ctx);
+      expect(r.ok).toBe(false);
+      if (r.ok) continue;
+      expect(r.error).toContain('记忆');
+    }
+  });
+
+  it("executeTool 硬闸：cap='read' 拒写、放读", async () => {
+    const ctx: ToolCtx = { tabId: 1, sessionId: 's', signal: new AbortController().signal, memory: 'read' };
+    const w = await executeTool('memory_write', { content: 'x' }, ctx);
+    expect(w.ok).toBe(false);
+    const d = await executeTool('memory_delete', { id: 'y' }, ctx);
+    expect(d.ok).toBe(false);
+    const l = await executeTool('memory_list', {}, ctx);
+    expect(l.ok).toBe(true);
+  });
+
+  it('不传 memory cap → 不设限（默认 full）', async () => {
+    const ctx: ToolCtx = { tabId: 1, sessionId: 's', signal: new AbortController().signal };
+    expect((await executeTool('memory_list', {}, ctx)).ok).toBe(true);
   });
 });

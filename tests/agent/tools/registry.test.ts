@@ -171,9 +171,10 @@ describe('记忆工具分发', () => {
     expect((await executeTool('memory_list', {}, ctx) as { data: { total: number } }).data.total).toBe(0);
   });
 
-  it('记忆工具豁免受限页预检（chrome:// 上也能用）', async () => {
-    const ctx = { tabId: 999, sessionId: 'c1', signal: new AbortController().signal };
+  it('记忆工具豁免受限页预检（受限页 URL 上仍能用）', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'chrome://extensions' }) as never;
+    const ctx = { tabId: 1, sessionId: 'c1', signal: new AbortController().signal };
     const r = await executeTool('memory_list', {}, ctx);
-    expect(r.ok).toBe(true);
+    expect(r.ok).toBe(true); // 记忆工具在 RESTRICTED 检查之前分发,受限页也放行
   });
 });

@@ -41,7 +41,7 @@ describe('settings storage', () => {
     await saveSettings({ agent: { confirmGate: false, screenshotPolicy: 'never' } });
     await saveSettings({ agent: { screenshotPolicy: 'on-demand' } });
     const s = await getSettings();
-    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted', llmTimeoutSec: 60, llmMaxRetries: 2, maxTokens: 8192 });
+    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted', llmTimeoutSec: 60, llmMaxRetries: 2, maxTokens: 8192, memoryEnabled: true, memoryWritable: true });
   });
 
   it('saveSettings 持久化到 local:settings（fakeBrowser storage 驱动）', async () => {
@@ -68,7 +68,7 @@ describe('settings storage', () => {
     });
     const s = await getSettings();
     expect(s.provider).toEqual({ baseUrl: 'https://old.com/v1', apiKey: '', model: '' });
-    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted', llmTimeoutSec: 60, llmMaxRetries: 2, maxTokens: 8192 });
+    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted', llmTimeoutSec: 60, llmMaxRetries: 2, maxTokens: 8192, memoryEnabled: true, memoryWritable: true });
   });
 
   it('AgentConfig 默认 networkCaptureHeaders=redacted', async () => {
@@ -150,5 +150,33 @@ describe('prompt 段（系统提示词自定义）', () => {
     await saveSettings({ prompt: { custom: '保留我' } });
     await saveSettings({ provider: { model: 'm' } });
     expect((await getSettings()).prompt.custom).toBe('保留我');
+  });
+});
+
+describe('记忆开关', () => {
+  beforeEach(() => fakeBrowser.reset());
+
+  it('默认 memoryEnabled / memoryWritable 均为 true', async () => {
+    const s = await getSettings();
+    expect(s.agent.memoryEnabled).toBe(true);
+    expect(s.agent.memoryWritable).toBe(true);
+  });
+
+  it('可分别关闭', async () => {
+    await saveSettings({ agent: { memoryWritable: false } });
+    let s = await getSettings();
+    expect(s.agent.memoryEnabled).toBe(true);
+    expect(s.agent.memoryWritable).toBe(false);
+    await saveSettings({ agent: { memoryEnabled: false } });
+    s = await getSettings();
+    expect(s.agent.memoryEnabled).toBe(false);
+    expect(s.agent.memoryWritable).toBe(false);
+  });
+
+  it('存量数据缺这两个字段时补 true（前向兼容）', async () => {
+    await storage.setItem('local:settings', { agent: { confirmGate: false } });
+    const s = await getSettings();
+    expect(s.agent.memoryEnabled).toBe(true);
+    expect(s.agent.memoryWritable).toBe(true);
   });
 });

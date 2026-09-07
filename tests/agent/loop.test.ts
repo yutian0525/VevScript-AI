@@ -443,3 +443,90 @@ describe('loop 注入自定义系统提示词', () => {
     expect(String(captured[0]!.messages[0]!.content)).toContain('你是一个能操控浏览器的 AI 助手');
   });
 });
+
+describe('loop 注入记忆', () => {
+  beforeEach(() => fakeBrowser.reset());
+
+  const capture = (captured: ChatParams[]): Provider => ({
+    streamChat(p: ChatParams, onEvent: (e: StreamEvent) => void) {
+      captured.push(p);
+      queueMicrotask(() => onEvent({ type: 'text-delta', text: 'ok' }));
+      queueMicrotask(() => onEvent({ type: 'message-done', finishReason: 'stop' }));
+      return { cancel: vi.fn() };
+    },
+  });
+
+  it('getMemoryState 的条目进 system 消息，且三个记忆工具在工具清单里', async () => {
+    const captured: ChatParams[] = [];
+    await runAgentLoop(
+      { convId: 'cm1', tabId: 1, userMessage: 'hi' },
+      {
+        provider: capture(captured),
+        executeTool: vi.fn<LoopDeps['executeTool']>(),
+        getPageInfo: async () => ({ url: '', title: '' }),
+        emit: vi.fn(),
+        getMemoryState: async () => ({
+          enabled: true, writable: true,
+          entries: [{ id: 'g1', content: '偏好中文回复', matches: [], updatedAt: 1 }],
+        }),
+      },
+    );
+    const sys = String(captured[0]!.messages[0]!.content);
+    expect(sys).toContain('偏好中文回复');
+    const names = (captured[0]!.tools ?? []).map((t) => t.function.name);
+    expect(names).toContain('memory_write');
+  });
+
+  it('enabled:false → 无记忆块且不下发记忆工具', async () => {
+    const captured: ChatParams[] = [];
+    await runAgentLoop(
+      { convId: 'cm2', tabId: 1, userMessage: 'hi' },
+      {
+        provider: capture(captured),
+        executeTool: vi.fn<LoopDeps['executeTool']>(),
+        getPageInfo: async () => ({ url: '', title: '' }),
+        emit: vi.fn(),
+        getMemoryState: async () => ({ enabled: false, writable: false, entries: [] }),
+      },
+    );
+    expect(String(captured[0]!.messages[0]!.content)).not.toContain('## 记忆');
+    const names = (captured[0]!.tools ?? []).map((t) => t.function.name);
+    expect(names).not.toContain('memory_list');
+  });
+
+  it('writable:false → 有记忆块但只下发 memory_list', async () => {
+    const captured: ChatParams[] = [];
+    await runAgentLoop(
+      { convId: 'cm3', tabId: 1, userMessage: 'hi' },
+      {
+        provider: capture(captured),
+        executeTool: vi.fn<LoopDeps['executeTool']>(),
+        getPageInfo: async () => ({ url: '', title: '' }),
+        emit: vi.fn(),
+        getMemoryState: async () => ({
+          enabled: true, writable: false,
+          entries: [{ id: 'g1', content: '人工维护的记忆', matches: [], updatedAt: 1 }],
+        }),
+      },
+    );
+    expect(String(captured[0]!.messages[0]!.content)).toContain('人工维护的记忆');
+    const names = (captured[0]!.tools ?? []).map((t) => t.function.name);
+    expect(names).toContain('memory_list');
+    expect(names).not.toContain('memory_write');
+  });
+
+  it('不提供 getMemoryState → 无记忆块，工具清单仍含记忆工具（默认 full）', async () => {
+    const captured: ChatParams[] = [];
+    await runAgentLoop(
+      { convId: 'cm4', tabId: 1, userMessage: 'hi' },
+      {
+        provider: capture(captured),
+        executeTool: vi.fn<LoopDeps['executeTool']>(),
+        getPageInfo: async () => ({ url: '', title: '' }),
+        emit: vi.fn(),
+      },
+    );
+    expect(String(captured[0]!.messages[0]!.content)).not.toContain('## 记忆');
+    expect((captured[0]!.tools ?? []).map((t) => t.function.name)).toContain('memory_list');
+  });
+});

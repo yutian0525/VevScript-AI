@@ -7,6 +7,7 @@ import { runTurn } from './run-turn';
 import { buildContext, type PageInfo, type SkillBrief } from './context';
 import { getToolSchemas } from './tools/registry';
 import { modePrompt, type AgentMode } from './mode';
+import { memoryStateToCap, type MemoryState } from './memory-prompt';
 import { initGuardState, recordTurn, checkGuards, DEFAULT_GUARD_CONFIG, type GuardState } from './loop-guards';
 import { getConversation, appendMessage, setStatus, setLastPromptTokens, setMode } from '../storage/conversations';
 import { meterRatio, COMPACT_THRESHOLD } from './context-meter';
@@ -31,6 +32,8 @@ export interface LoopDeps {
   getMaxTokens?: () => Promise<number>;
   /** 系统提示词全文（缺省用内置 SYSTEM_PROMPT）。每轮重读，设置页改完下一轮生效。 */
   getSystemPrompt?: () => Promise<string>;
+  /** 记忆状态（全量条目 + 两个开关）。缺省不注入记忆块，工具清单按默认 full 下发。 */
+  getMemoryState?: () => Promise<MemoryState>;
 }
 
 const TAB_OPENING_TOOLS = new Set(['click', 'press_key']);
@@ -101,13 +104,15 @@ async function drive(
     // 模式每轮重读：任务中途用户切 ask/agent，下一轮立即生效（已发出的轮次不回收）
     const mode = (await deps.getMode?.()) ?? 'agent';
     const systemPrompt = await deps.getSystemPrompt?.();
-    const messages = buildContext(conv.messages, page, { summary: conv.summary, skills, mode, systemPrompt });
+    const memory = await deps.getMemoryState?.();
+    const messages = buildContext(conv.messages, page, { summary: conv.summary, skills, mode, systemPrompt, memory });
+    const memoryCap = memory ? memoryStateToCap(memory) : 'full';
 
     const maxTokens = (await deps.getMaxTokens?.()) ?? 0;
     // 参数生成进度节流器：每轮新建，状态不跨轮（下一轮从 0 重新计）
     const onArgs = makeArgsThrottle((name, bytes) => deps.emit({ type: 'tool-args-delta', name, bytes }));
     const result = await runTurn(deps.provider, {
-      messages, tools: getToolSchemas(mode), signal,
+      messages, tools: getToolSchemas(mode, memoryCap), signal,
       ...(maxTokens > 0 ? { maxTokens } : {}),
     }, {
       onTextDelta: (t) => deps.emit({ type: 'text-delta', text: t }),
