@@ -1,0 +1,35 @@
+docs/superpowers/plans/2026-09-07-gm-api-expansion-tier-ab.md
+  s_914db53b60ecdf::t_36b0d530bf968c 1235-1478
+  s_914db53b60ecdf::t_158801ed9afb0f 491-568
+  s_914db53b60ecdf::t_02b457ab8db0ea 983-1234
+  s_914db53b60ecdf::t_5f4133ed3d1b16 569-673
+  s_914db53b60ecdf::t_1031d472965f6d 2164-2225
+  s_914db53b60ecdf::t_5314da44b85393 819-982
+  s_914db53b60ecdf::t_aaa9745e06b98f 1479-1653
+  s_914db53b60ecdf::t_1d86be4598b97a 1975-2163
+  s_914db53b60ecdf::t_e2297663669444 312-419
+  s_914db53b60ecdf::t_56c660dd8e4361 19-142
+  s_914db53b60ecdf::t_f2d058f08f9b1c 143-311
+  s_914db53b60ecdf::t_b4e51a678d1645 420-490
+  s_914db53b60ecdf::t_f4435f0af66c96 1-18
+  s_914db53b60ecdf::t_3d13c6fc7abfbf 1726-1865
+  s_914db53b60ecdf::t_2afb587b4080c1 674-818
+  s_914db53b60ecdf::t_0989fecdbafee7 1654-1725
+  s_914db53b60ecdf::t_883cebff450483 1866-1974
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "8cf43d144e5388229ecdc807aa6221b437000423",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
