@@ -1,5 +1,7 @@
 # GM_* API 全集目录（ecosystem 盘点 + 本扩展支持状态）
 
+> **面向脚本作者的使用手册**（已支持 API 的签名/参数/返回/示例）见 [gm-api-reference.md](gm-api-reference.md)。本文件是**生态盘点 + 支持状态目录**。
+>
 > 定位：**GM_* API 的完整清单**——聚合 Tampermonkey / Violentmonkey / ScriptCat 三家生态（源码调研 2026-09-02），逐个标注本扩展的支持状态。
 > 面向脚本作者的签名/示例/差异细节见下方「Phase 5 实现说明」与「Tier A+B 实现说明」；Phase 5 设计见 `docs/superpowers/specs/2026-09-02-ai-browser-extension-phase5-gm-api-design.md`，Tier A+B 设计见 `docs/superpowers/specs/2026-09-07-gm-api-expansion-tier-ab-design.md`。
 > 状态图例：**Phase 5**（首批实现，15 个）· **Tier A+B**（2026-09-07 扩充实现，14 个函数型 + 3 特殊 grant）· **后续候选**（架构可容纳，按需排期）· **明确不做**（架构不匹配或 YAGNI，附理由与替代）。
