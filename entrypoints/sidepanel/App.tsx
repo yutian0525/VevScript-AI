@@ -6,6 +6,7 @@ import { useUi, type Page } from '../../stores/ui';
 import { ChatView } from '../../components/chat/ChatView';
 import { ScriptsView } from '../../components/scripts/ScriptsView';
 import { SettingsView } from '../../components/settings/SettingsView';
+import { Tooltip } from '../../components/ui/Tooltip';
 import type { UiNavNotification } from '../../shared/messages';
 
 /** 消费 popup 落下的待航标记：侧边栏挂载时切到目标页，然后清除（一次性）。 */
@@ -52,22 +53,24 @@ export default function App() {
           aria-hidden
         />
         {NAV.map(({ page: p, label, Icon }) => (
-          <button
-            key={p}
-            className="railnav__btn"
-            title={label}
-            aria-label={label}
-            aria-current={page === p}
-            onClick={() => setPage(p)}
-          >
-            <Icon size={18} strokeWidth={1.8} />
-          </button>
+          <Tooltip key={p} label={label} placement="right">
+            <button
+              className="railnav__btn"
+              aria-label={label}
+              aria-current={page === p}
+              onClick={() => setPage(p)}
+            >
+              <Icon size={18} strokeWidth={1.8} />
+            </button>
+          </Tooltip>
         ))}
       </nav>
       <main style={{ flex: 1, minWidth: 0, height: '100%' }}>
-        {page === 'chat' && <ChatView />}
-        {page === 'scripts' && <ScriptsView />}
-        {page === 'settings' && <SettingsView />}
+        <div className="view-swap" key={page}>
+          {page === 'chat' && <ChatView />}
+          {page === 'scripts' && <ScriptsView />}
+          {page === 'settings' && <SettingsView />}
+        </div>
       </main>
     </div>
   );

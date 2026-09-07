@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Paperclip, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, ChevronDown, Brain, SquarePen, ArrowUp, ArrowDown, Square, ArrowDownToLine } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
+import { Tooltip } from '../ui/Tooltip';
 import { Gauge } from '../ui/Gauge';
 import { ContextRing } from './ContextRing';
 import { Markdown } from './Markdown';
@@ -270,16 +271,17 @@ export function ChatView() {
             )}
           </div>
           {!follow && messages.length > 0 && (
-            <button
-              type="button"
-              className="chat__tobottom"
-              // 流式中用瞬时：smooth 的下落会被下一次增量的瞬时贴底截断，不如一步到位
-              onClick={() => { setFollow(true); scrollToBottom(status !== 'running'); }}
-              aria-label="滚动到底部"
-              title="滚动到底部"
-            >
-              <ArrowDownToLine size={15} />
-            </button>
+            <Tooltip label="滚动到底部">
+              <button
+                type="button"
+                className="chat__tobottom"
+                // 流式中用瞬时：smooth 的下落会被下一次增量的瞬时贴底截断，不如一步到位
+                onClick={() => { setFollow(true); scrollToBottom(status !== 'running'); }}
+                aria-label="滚动到底部"
+              >
+                <ArrowDownToLine size={15} />
+              </button>
+            </Tooltip>
           )}
         </div>
         <div className="composer">
@@ -337,16 +339,17 @@ export function ChatView() {
               style={{ display: 'none' }}
               onChange={onPickFiles}
             />
-            <button
-              type="button"
-              className="composer__attach"
-              disabled={attachDisabled}
-              title={attachments.length >= MAX_ATTACHMENTS ? `最多 ${MAX_ATTACHMENTS} 个附件` : '上传附件（文本 / 图片，也可 Ctrl+V 粘贴）'}
-              aria-label="上传附件"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip size={16} />
-            </button>
+            <Tooltip label={attachments.length >= MAX_ATTACHMENTS ? `最多 ${MAX_ATTACHMENTS} 个附件` : '上传附件（文本 / 图片，也可 Ctrl+V 粘贴）'}>
+              <button
+                type="button"
+                className="composer__attach"
+                disabled={attachDisabled}
+                aria-label="上传附件"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip size={16} />
+              </button>
+            </Tooltip>
             <ModeSelect disabled={status === 'running' ? false : compacting} />
             <div className="composer__actions">
               <ContextRing
@@ -426,11 +429,11 @@ function MessageRow({ item, index, streaming }: { item: ChatItem; index: number;
   const open = !!item.expanded;
   return (
     <div className="rise">
+      <Tooltip label={item.args} disabled={!item.args}>
       <button
         className={`toolcard toolcard--btn toolcard--${state}`}
         aria-expanded={canExpand ? open : undefined}
         onClick={() => canExpand && toggleExpand(index)}
-        title={item.args}
       >
         <span className="toolcard__icon">
           {item.status === 'running' ? (
@@ -451,6 +454,7 @@ function MessageRow({ item, index, streaming }: { item: ChatItem; index: number;
           <ChevronRight size={13} className={`toolcard__chev${open ? ' toolcard__chev--open' : ''}`} />
         )}
       </button>
+      </Tooltip>
       {open && canExpand && (
         <div className="toolcard__detail rise">
           {item.args && (

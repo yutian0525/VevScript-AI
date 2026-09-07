@@ -87,15 +87,17 @@ describe('DetailApp', () => {
     expect(screen.getByRole('button', { name: '删除脚本' })).toBeTruthy();
   });
 
-  it('详情 Tab：中文字段标签 + title tooltip 保留原键名', async () => {
+  it('详情 Tab：中文字段标签 + hover tooltip 显示原键名', async () => {
     mockBackend(mkScript({ meta: { version: '1.0', grants: ['GM_getValue'] } }));
     render(<DetailApp id="s1" />);
     await screen.findByText('测试脚本');
     expect(screen.getByText('版本')).toBeTruthy();
     expect(screen.getByText('匹配规则')).toBeTruthy();
     expect(screen.getByText('权限申请')).toBeTruthy();
-    expect(screen.getByTitle('version')).toBeTruthy();
-    expect(screen.getByTitle('match')).toBeTruthy();
+    // 原键名从原生 title 迁移到自定义 Tooltip：hover 中文标签，气泡显示原键名
+    fireEvent.mouseEnter(screen.getByText('版本'));
+    const tip = await screen.findByRole('tooltip');
+    expect(tip.textContent).toContain('version');
   });
 
   it('详情 Tab 操作区：启停按钮显示反向操作，点击调 SCRIPTS_SET_ENABLED', async () => {

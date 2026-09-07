@@ -199,12 +199,28 @@ body {
   justify-content: space-between;
   gap: 12px;
 }
+/* 标题引区：返回钮 + 标题栈整块垂直居中，与右侧 actions 分列 */
+.shell__lead { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .shell__titles { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .shell__title {
   margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2;
-  /* 单行截断：侧边栏窄，长会话标题不该挤走右侧仪表条/按钮（完整标题走 title 属性的 tooltip） */
+  /* 单行截断：侧边栏窄，长会话标题不该挤走右侧仪表条/按钮（完整标题走 tooltip） */
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* 统一返回钮：标题左侧的方形，hover 为正方形底色 + 左箭头。
+   负左边距抵消 head padding，使返回钮到 head 上/下/左三边留白视觉等宽 */
+.shell__back {
+  flex-shrink: 0;
+  width: 28px; height: 28px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: var(--r-md);
+  background: transparent; color: var(--ink-2); cursor: pointer;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+  margin-left: -5px;
+}
+.shell__back:hover { background: var(--sunken); color: var(--ink); }
+.shell__back:active { transform: translateY(1px); }
+.shell__back:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
 .shell__actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 .shell__body { flex: 1; overflow: auto; padding: 16px; min-height: 0; min-width: 0; }
 
@@ -282,9 +298,63 @@ body {
 .md--live > ol:last-child::after,
 .md--live > blockquote:last-child::after { content: none; }
 
+/* 视图切换入场（大 tab / 小 tab 共用）：纯淡入 */
+@keyframes view-swap {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.view-swap { height: 100%; min-height: 0; animation: view-swap var(--t-mid) var(--ease); }
+
+/* ============ Tooltip（全局替换原生 title） ============ */
+.tt {
+  position: fixed;
+  z-index: 1000;
+  max-width: 240px;
+  padding: 5px 9px;
+  border-radius: var(--r-md);
+  background: var(--ink);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  white-space: normal;
+  word-break: break-word;
+  box-shadow: 0 4px 14px rgba(28, 28, 34, 0.22), 0 1px 3px rgba(28, 28, 34, 0.16);
+  pointer-events: none;
+  opacity: 0;
+  /* 未定位（两遍测量首帧）时先藏在初始态，ready 后播入场 */
+}
+.tt--ready { animation: tt-in-top var(--t-fast) var(--ease) both; }
+.tt--top.tt--ready { animation-name: tt-in-top; }
+.tt--bottom.tt--ready { animation-name: tt-in-bottom; }
+.tt--left.tt--ready { animation-name: tt-in-left; }
+.tt--right.tt--ready { animation-name: tt-in-right; }
+@keyframes tt-in-top { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes tt-in-bottom { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes tt-in-left { from { opacity: 0; transform: translateX(3px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes tt-in-right { from { opacity: 0; transform: translateX(-3px); } to { opacity: 1; transform: translateX(0); } }
+/* 箭头：--tt-arrow = 沿交叉轴相对气泡对应边缘的偏移 */
+.tt__arrow {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--ink);
+}
+.tt--top .tt__arrow,
+.tt--bottom .tt__arrow { left: var(--tt-arrow, 50%); transform: translateX(-50%) rotate(45deg); }
+.tt--left .tt__arrow,
+.tt--right .tt__arrow { top: var(--tt-arrow, 50%); transform: translateY(-50%) rotate(45deg); }
+.tt--top .tt__arrow { bottom: -4px; }
+.tt--bottom .tt__arrow { top: -4px; }
+.tt--left .tt__arrow { right: -4px; }
+.tt--right .tt__arrow { left: -4px; }
+
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
   .railnav__marker { transition: none; }
+  .view-swap { animation: none; }
 }
 
 /* ============ 会话 ============ */
@@ -870,7 +940,8 @@ body {
 .setting-card__icon { color: var(--signal-ink); flex-shrink: 0; display: flex; }
 .setting-card__body { min-width: 0; }
 .setting-card__title { font-size: 13px; font-weight: 600; color: var(--ink); }
-.setting-card__desc { font-size: 11.5px; color: var(--ink-3); line-height: 1.5; }
+/* 副标题单行截断：窄侧边栏里长简述折行会把卡片撑高、参差不齐（完整文本走 tooltip） */
+.setting-card__desc { font-size: 11.5px; color: var(--ink-3); line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .setting-card__chev { color: var(--ink-3); flex-shrink: 0; margin-left: auto; }
 
 /* ============ 脚本运行时调试台 GM API 行 ============ */
@@ -1113,6 +1184,8 @@ body {
 .detail__grant { display: flex; align-items: center; gap: 4px; color: var(--ink-2); }
 .detail__grant--bad { color: var(--warn); }
 .detail__actions { display: flex; gap: 6px; margin-top: 6px; }
+/* 包住 disabled 按钮以承接 hover（disabled 元素自身不触发鼠标事件），作为 flex item 表现同按钮 */
+.detail__btnwrap { display: inline-flex; }
 /* Tab 节头（2026-09-04 重设计：主标题+灰副题，全左对齐） */
 .detail__thead { display: grid; gap: 4px; }
 .detail__thead-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); display: flex; align-items: baseline; gap: 8px; }

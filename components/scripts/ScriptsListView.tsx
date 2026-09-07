@@ -6,6 +6,7 @@ import { CircleAlert, Link, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { Tooltip } from '../ui/Tooltip';
 import { filterSummaries, openScriptTab, sendScriptsRequest, useScripts } from '../../stores/scripts';
 import type { ScriptSummary } from '../../shared/types';
 
@@ -187,19 +188,20 @@ export function ScriptsListView() {
           >
             <div className="scripts-card__top">
               <span className="scripts-card__name">{s.name}</span>
-              <button
-                type="button"
-                className="scripts-card__delbtn"
-                aria-label={`删除 ${s.name}`}
-                title="删除脚本"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void remove(s.id, s.name);
-                }}
-                onKeyDown={(e) => e.stopPropagation()}
-              >
-                <Trash2 size={14} aria-hidden />
-              </button>
+              <Tooltip label="删除脚本">
+                <button
+                  type="button"
+                  className="scripts-card__delbtn"
+                  aria-label={`删除 ${s.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void remove(s.id, s.name);
+                  }}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <Trash2 size={14} aria-hidden />
+                </button>
+              </Tooltip>
               <button
                 type="button"
                 role="switch"
@@ -218,20 +220,21 @@ export function ScriptsListView() {
               <span className="scripts-card__match mono">{s.matches.join(' ') || '（无匹配规则）'}</span>
               <span className="scripts-card__badges">
                 {(s.grantSupported.length > 0 || s.grantUnsupported.length > 0) && (
-                  <span
-                    className={`scripts-badge ${s.grantUnsupported.length > 0 ? 'scripts-badge--warn' : 'scripts-badge--signal'}`}
-                    title={`可用：${s.grantSupported.join(', ') || '无'}${s.grantUnsupported.length > 0 ? `；不支持：${s.grantUnsupported.join(', ')}` : ''}`}
-                  >
-                    GM {s.grantSupported.length}{s.grantUnsupported.length > 0 ? `/${s.grantUnsupported.length}!` : ''}
-                  </span>
+                  <Tooltip label={`可用：${s.grantSupported.join(', ') || '无'}${s.grantUnsupported.length > 0 ? `；不支持：${s.grantUnsupported.join(', ')}` : ''}`}>
+                    <span className={`scripts-badge ${s.grantUnsupported.length > 0 ? 'scripts-badge--warn' : 'scripts-badge--signal'}`}>
+                      GM {s.grantSupported.length}{s.grantUnsupported.length > 0 ? `/${s.grantUnsupported.length}!` : ''}
+                    </span>
+                  </Tooltip>
                 )}
                 {s.errorCount > 0 && (
-                  <span className="scripts-badge scripts-badge--warn" title="脚本运行报错（进详情页查看）">{s.errorCount} errors</span>
+                  <Tooltip label="脚本运行报错（进详情页查看）">
+                    <span className="scripts-badge scripts-badge--warn">{s.errorCount} errors</span>
+                  </Tooltip>
                 )}
                 {hasUpdate && (
-                  <span className="scripts-badge scripts-badge--signal mono" title="有可用更新，确认后从更新源下载">
-                    ↑ v{upd!.remoteVersion}
-                  </span>
+                  <Tooltip label="有可用更新，确认后从更新源下载">
+                    <span className="scripts-badge scripts-badge--signal mono">↑ v{upd!.remoteVersion}</span>
+                  </Tooltip>
                 )}
               </span>
             </div>

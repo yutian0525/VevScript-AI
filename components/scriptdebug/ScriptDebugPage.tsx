@@ -2,9 +2,10 @@
 // 脚本运行时调试台（设置二级页，spec §3）：白名单视图 + GM API 列表 + 经真实桥链路直调。
 // 直调 api 用点形式短名（SetValue/XmlHttpRequest…），与 wrapper 实际发出形式一致。
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ChevronRight, Play, Loader2, Globe, Check, X } from 'lucide-react';
+import { ChevronRight, Play, Loader2, Globe, Check, X } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
+import { Tooltip } from '../ui/Tooltip';
 import { GM_API_REGISTRY } from '../../shared/gm-apis';
 import { sendScriptsRequest } from '../../stores/scripts';
 import type { DebugExecResponse, GmDebugInfoData } from '../../shared/messages';
@@ -86,13 +87,15 @@ export function ScriptDebugPage({ onBack }: { onBack: () => void }) {
     <PageShell
       title="脚本运行时调试台"
       eyebrow="SCRIPTDEBUG"
+      onBack={onBack}
       right={
-        <span className="gauge" title={info?.tabUrl}>
-          <Globe size={12} color="var(--ink-3)" />
-          <span className="gauge__label mono" style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{targetHost}</span>
-        </span>
+        <Tooltip label={info?.tabUrl}>
+          <span className="gauge">
+            <Globe size={12} color="var(--ink-3)" />
+            <span className="gauge__label mono" style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{targetHost}</span>
+          </span>
+        </Tooltip>
       }
-      actions={<Button variant="ghost" onClick={onBack} aria-label="返回"><ArrowLeft size={14} /></Button>}
     >
       {scripts.length === 0 ? (
         <div className="chat__empty">脚本池为空——先在脚本池新建或导入脚本</div>

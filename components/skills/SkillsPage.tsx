@@ -1,10 +1,11 @@
 // components/skills/SkillsPage.tsx
 // 技能管理二级页（spec §4）：列表（搜索/导入/导出/启停/删除）↔ 详情（仅查看）。无新建无编辑。
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, Download, Search, Trash2, Upload } from 'lucide-react';
+import { Download, Search, Trash2, Upload } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { Tooltip } from '../ui/Tooltip';
 import { useSkills, sendSkillsRequest } from '../../stores/skills';
 import type { Skill, SkillSummary } from '../../shared/types';
 
@@ -160,11 +161,8 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
       <PageShell
         title={detail?.name ?? '技能详情'}
         eyebrow="SKILL"
-        actions={
-          <Button variant="ghost" className="btn--icon" aria-label="返回列表" onClick={() => setDetailId(null)}>
-            <ChevronLeft size={16} />
-          </Button>
-        }
+        onBack={() => setDetailId(null)}
+        backLabel="返回列表"
       >
         {detail && (
           <div className="skills-detail">
@@ -209,23 +207,25 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
     <PageShell
       title="技能管理"
       eyebrow="SKILLS"
+      onBack={onBack}
+      backLabel="返回设置"
       actions={
         <>
-          <Button variant="ghost" className="btn--icon" aria-label="导入技能" onClick={() => fileRef.current?.click()}>
-            <Upload size={16} />
-          </Button>
-          <Button
-            variant="ghost"
-            className="btn--icon"
-            aria-label={exportLabel}
-            title={exportLabel}
-            onClick={() => void exportMd(exportIds)}
-          >
-            <Download size={16} />
-          </Button>
-          <Button variant="ghost" className="btn--icon" aria-label="返回设置" onClick={onBack}>
-            <ChevronLeft size={16} />
-          </Button>
+          <Tooltip label="导入技能">
+            <Button variant="ghost" className="btn--icon" aria-label="导入技能" onClick={() => fileRef.current?.click()}>
+              <Upload size={16} />
+            </Button>
+          </Tooltip>
+          <Tooltip label={exportLabel}>
+            <Button
+              variant="ghost"
+              className="btn--icon"
+              aria-label={exportLabel}
+              onClick={() => void exportMd(exportIds)}
+            >
+              <Download size={16} />
+            </Button>
+          </Tooltip>
         </>
       }
     >
@@ -280,21 +280,26 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
                 onChange={() => toggleSelected(s.id)}
               />
               <span className="scripts-card__name">{s.name}</span>
-              {s.builtin && <span className="token" title="内置技能：不可删除，可停用">内置</span>}
+              {s.builtin && (
+                <Tooltip label="内置技能：不可删除，可停用">
+                  <span className="token">内置</span>
+                </Tooltip>
+              )}
               {!s.builtin && (
-                <button
-                  type="button"
-                  className="scripts-card__delbtn"
-                  aria-label={`删除 ${s.name}`}
-                  title="删除技能"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteSkillEntry(s);
-                  }}
-                  onKeyDown={(e) => e.stopPropagation()}
-                >
-                  <Trash2 size={14} aria-hidden />
-                </button>
+                <Tooltip label="删除技能">
+                  <button
+                    type="button"
+                    className="scripts-card__delbtn"
+                    aria-label={`删除 ${s.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteSkillEntry(s);
+                    }}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    <Trash2 size={14} aria-hidden />
+                  </button>
+                </Tooltip>
               )}
               <button
                 type="button"

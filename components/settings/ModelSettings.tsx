@@ -1,7 +1,6 @@
 // components/settings/ModelSettings.tsx
 // 模型设置（设置二级页）：AI 服务表单（原 SettingsView 内容平移，加 onBack 返回钮）。
 import { useEffect, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -39,15 +38,9 @@ export function ModelSettings({ onBack }: { onBack: () => void }) {
     });
   }, []);
 
-  const back = (
-    <Button variant="ghost" onClick={onBack} aria-label="返回">
-      <ArrowLeft size={14} />
-    </Button>
-  );
-
   if (!settings) {
     return (
-      <PageShell title="模型设置" eyebrow="MODEL" actions={back}>
+      <PageShell title="模型设置" eyebrow="MODEL" onBack={onBack}>
         <div className="hint">加载中…</div>
       </PageShell>
     );
@@ -89,7 +82,7 @@ export function ModelSettings({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <PageShell title="模型设置" eyebrow="MODEL" actions={back}>
+    <PageShell title="模型设置" eyebrow="MODEL" onBack={onBack}>
       <section className="section">
         <h2 className="section__title">AI 服务（OpenAI 兼容）</h2>
         <div className="field">

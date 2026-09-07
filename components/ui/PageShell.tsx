@@ -1,12 +1,16 @@
 // components/ui/PageShell.tsx
 import type { ReactNode } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useTruncated } from './useTruncated';
+import { Tooltip } from './Tooltip';
 
 export function PageShell({
   title,
   eyebrow,
   right,
   actions,
+  onBack,
+  backLabel = '返回',
   children,
 }: {
   title: string;
@@ -16,16 +20,31 @@ export function PageShell({
   right?: ReactNode;
   /** 页眉右侧操作按钮 */
   actions?: ReactNode;
+  /** 传入则在标题左侧渲染统一的方形返回钮（二级页/详情页） */
+  onBack?: () => void;
+  /** 返回钮的无障碍标签与 tooltip 文案 */
+  backLabel?: string;
   children: ReactNode;
 }) {
-  // 只有真被截断才挂 title：否则短标题也会弹一个和眼前一模一样的 tooltip
+  // 只有真被截断才挂 tooltip：否则短标题也会弹一个和眼前一模一样的提示
   const [titleRef, titleTruncated] = useTruncated<HTMLHeadingElement>(title);
   return (
     <div className="shell">
       <header className="shell__head">
-        <div className="shell__titles">
-          {eyebrow && <span className="eyebrow">{eyebrow}</span>}
-          <h1 className="shell__title" ref={titleRef} title={titleTruncated ? title : undefined}>{title}</h1>
+        <div className="shell__lead">
+          {onBack && (
+            <Tooltip label={backLabel}>
+              <button type="button" className="shell__back" aria-label={backLabel} onClick={onBack}>
+                <ArrowLeft size={16} />
+              </button>
+            </Tooltip>
+          )}
+          <div className="shell__titles">
+            {eyebrow && <span className="eyebrow">{eyebrow}</span>}
+            <Tooltip label={title} disabled={!titleTruncated}>
+              <h1 className="shell__title" ref={titleRef}>{title}</h1>
+            </Tooltip>
+          </div>
         </div>
         <div className="shell__actions">
           {right}
