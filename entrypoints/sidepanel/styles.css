@@ -1159,17 +1159,19 @@ body {
   padding: 12px 8px; border-right: 1px solid var(--line); background: var(--surface);
 }
 .detail__navitem {
-  display: flex; align-items: center; gap: 6px; padding: 7px 10px;
+  display: flex; align-items: center; gap: 8px; padding: 9px 12px;
   border: none; border-left: 2px solid transparent; background: transparent;
-  color: var(--ink-2); cursor: pointer; font-family: var(--sans); font-size: 13px; text-align: left;
-  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  color: var(--ink-2); cursor: pointer; font-family: var(--sans); font-size: 14px; font-weight: 500;
+  letter-spacing: 0.01em; text-align: left;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
 .detail__navitem:hover { background: var(--sunken); color: var(--ink); }
-.detail__navitem.is-active { border-left-color: var(--signal); color: var(--signal-ink); background: var(--signal-wash); }
+.detail__navitem.is-active { border-left-color: var(--signal); color: var(--signal-ink); background: var(--signal-wash); font-weight: 600; }
 .detail__navitem--danger { color: var(--warn); margin-top: auto; }
 .detail__navitem--danger:hover { background: var(--warn-wash); color: var(--warn); }
 .detail__side-spacer { flex: 1; }
-.detail__navcount { margin-left: auto; font-size: 10px; color: var(--ink-3); }
+.detail__navcount { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
 .detail__content { flex: 1; min-width: 0; overflow: auto; padding: 20px 24px; }
 .detail__info { max-width: 840px; margin: 0 auto; display: grid; gap: 10px; align-content: start; }
 .detail__inforow { display: grid; grid-template-columns: 96px 1fr; gap: 10px; font-size: 13px; line-height: 1.6; align-items: baseline; }
@@ -1187,6 +1189,8 @@ body {
 .detail__actions { display: flex; gap: 6px; margin-top: 6px; }
 /* 包住 disabled 按钮以承接 hover（disabled 元素自身不触发鼠标事件），作为 flex item 表现同按钮 */
 .detail__btnwrap { display: inline-flex; }
+/* 检查更新推到操作区最右 */
+.detail__btnwrap--end { margin-left: auto; }
 /* Tab 节头（2026-09-04 重设计：主标题+灰副题，全左对齐） */
 .detail__thead { display: grid; gap: 4px; }
 .detail__thead-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); display: flex; align-items: baseline; gap: 8px; }

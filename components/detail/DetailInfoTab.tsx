@@ -179,9 +179,13 @@ export function DetailInfoTab({ script, onChanged, onDelete }: Props) {
         </div>
       )}
       <div className="detail__actions">
-        {/* disabled 按钮不触发 hover 事件，tooltip 挂外层 span 才能在「无更新源」时提示 */}
+        <Button variant="signal" disabled={busy} onClick={() => void toggleEnabled()}>
+          {script.enabled ? '禁用脚本' : '启用脚本'}
+        </Button>
+        <Button variant="danger" onClick={() => void onDelete()}>删除脚本</Button>
+        {/* 检查更新为次要操作，推到最右；disabled 按钮不触发 hover，tooltip 挂外层 span 才能在「无更新源」时提示 */}
         <Tooltip label="无更新源（@updateURL/@downloadURL）" disabled={hasSource}>
-          <span className="detail__btnwrap">
+          <span className="detail__btnwrap detail__btnwrap--end">
             <Button
               variant="ghost"
               disabled={!hasSource || checking || updating}
@@ -191,10 +195,6 @@ export function DetailInfoTab({ script, onChanged, onDelete }: Props) {
             </Button>
           </span>
         </Tooltip>
-        <Button variant="signal" disabled={busy} onClick={() => void toggleEnabled()}>
-          {script.enabled ? '禁用脚本' : '启用脚本'}
-        </Button>
-        <Button variant="danger" onClick={() => void onDelete()}>删除脚本</Button>
       </div>
     </div>
   );
