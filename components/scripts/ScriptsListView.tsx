@@ -219,13 +219,6 @@ export function ScriptsListView() {
             <div className="scripts-card__meta">
               <span className="scripts-card__match mono">{s.matches.join(' ') || '（无匹配规则）'}</span>
               <span className="scripts-card__badges">
-                {(s.grantSupported.length > 0 || s.grantUnsupported.length > 0) && (
-                  <Tooltip label={`可用：${s.grantSupported.join(', ') || '无'}${s.grantUnsupported.length > 0 ? `；不支持：${s.grantUnsupported.join(', ')}` : ''}`}>
-                    <span className={`scripts-badge ${s.grantUnsupported.length > 0 ? 'scripts-badge--warn' : 'scripts-badge--signal'}`}>
-                      GM {s.grantSupported.length}{s.grantUnsupported.length > 0 ? `/${s.grantUnsupported.length}!` : ''}
-                    </span>
-                  </Tooltip>
-                )}
                 {s.errorCount > 0 && (
                   <Tooltip label="脚本运行报错（进详情页查看）">
                     <span className="scripts-badge scripts-badge--warn">{s.errorCount} errors</span>
