@@ -16,6 +16,7 @@ import { OpenAICompatProvider } from '../agent/provider/openai-compat';
 import type { ChatMessage, ContentPart, StreamEvent } from '../agent/provider/types';
 import { getSettings } from '../storage/settings';
 import { getLlmTier } from './gm-permissions';
+import { listCookies, setCookie, deleteCookie, cookieTargetUrl, type CookieDetails } from './gm-cookie';
 
 export interface GmErrorEntry {
   at: number;
@@ -374,6 +375,55 @@ async function doXmlHttpRequest(
   }
 }
 
+// ---- GM_cookie 实现（chrome.cookies 透传 + @connect 门控，spec §5.2）----
+
+async function doCookie(
+  scriptId: string, op: 'list' | 'set' | 'delete', params: unknown[], sender: Sender,
+): Promise<{ ok: true; data?: unknown } | { ok: false; error: string }> {
+  const details = (params[0] ?? {}) as CookieDetails;
+  const script = await getScript(scriptId);
+  if (!script) return { ok: false, error: '脚本不存在' };
+  const targetUrl = cookieTargetUrl(details);
+  if (!targetUrl) return { ok: false, error: 'GM_cookie 缺少 url 或 domain' };
+  const pageUrl = sender?.tab?.url ?? '';
+  const decision = await matchConnectWithPermissions(script.meta?.connects ?? [], targetUrl, pageUrl, scriptId);
+  if (decision === ConnectDecision.CONFIRM) {
+    const host = hostOf(targetUrl);
+    const choice = await enqueueConfirm({
+      kind: 'connect',
+      title: 'Cookie 访问确认',
+      message: `脚本「${script.name}」请求读写 cookie`,
+      rows: [
+        { label: '主机', value: host, mono: true },
+        { label: '操作', value: op, mono: true },
+        { label: '来源', value: pageUrl || '（未知）', mono: true },
+      ],
+      actions: [
+        { decision: 'allow-once', label: '允许一次', variant: 'primary' },
+        { decision: 'always', label: '总是允许' },
+        { decision: 'deny', label: '拒绝', variant: 'danger', countdown: true },
+      ],
+      timeoutMs: 60_000,
+    });
+    if (choice === 'always') {
+      const { setAlwaysAllow } = await import('./gm-permissions');
+      await setAlwaysAllow(scriptId, host);
+    } else if (choice !== 'allow-once') {
+      return { ok: false, error: 'permission denied（用户拒绝或超时；可加 @connect 或在确认页批准）' };
+    }
+  } else if (decision === ConnectDecision.DENY) {
+    return { ok: false, error: `Refused：cookie 主机「${hostOf(targetUrl)}」不在 @connect 列表` };
+  }
+  try {
+    if (op === 'list') return { ok: true, data: await listCookies(details) };
+    if (op === 'set') { await setCookie(details); return { ok: true, data: null }; }
+    await deleteCookie(details);
+    return { ok: true, data: null };
+  } catch (e) {
+    return { ok: false, error: `GM_cookie.${op} 失败：${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
 // ---- GM_llmChat（脚本调用大模型，spec docs/superpowers/specs/2026-09-05-gm-llm-chat-design.md）----
 
 // 「本会话内允许」：SW 内存态，重启失效（与菜单表同款取舍）。档位变更时由 SCRIPTS_SET_LLM_TIER 清（scripts.ts handler 调用）。
@@ -712,6 +762,12 @@ export async function handleGmCall(
       return doLlmChat(scriptId, params, sender);
     case 'XmlHttpRequest':
       return doXmlHttpRequest(scriptId, params, sender);
+    case 'CookieList':
+      return doCookie(scriptId, 'list', params, sender);
+    case 'CookieSet':
+      return doCookie(scriptId, 'set', params, sender);
+    case 'CookieDelete':
+      return doCookie(scriptId, 'delete', params, sender);
     case 'AbortRequest':
       return { ok: true, data: null }; // 一次性请求模型：abort 后到的响应由 content 宿主/wrapper 侧忽略（简化语义，文档明示）
     case 'GetTab': {
