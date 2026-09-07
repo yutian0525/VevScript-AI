@@ -1,0 +1,26 @@
+shared/gm-apis.ts
+  s_914db53b60ecdf::t_c80b8b3f421284 12-13,32-47,51
+tests/shared/gm-apis.test.ts
+  s_914db53b60ecdf::t_ebba964666bc5a 28,30-35
+  s_914db53b60ecdf::t_0cade7d1e3ebb6 6,8-13
+wxt.config.ts
+  s_914db53b60ecdf::t_6a1215fe0d0b3b 22
+shared/gm-bridge.ts
+  s_914db53b60ecdf::t_0dd9509b1d219f 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b21ab293061ee475e4cf777f2e5cfcfa64245994",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
