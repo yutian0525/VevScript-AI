@@ -211,3 +211,50 @@ describe('buildContext opts.systemPrompt', () => {
     expect(sys).toContain('你是一个能操控浏览器的 AI 助手');
   });
 });
+
+describe('buildContext opts.memory', () => {
+  const memState = {
+    enabled: true,
+    writable: true,
+    entries: [{ id: 'g1', content: '偏好中文回复', matches: [], updatedAt: 1 }],
+  };
+
+  it('记忆块进 system 消息，位置在技能块之后、模式块之前', () => {
+    const sys = String(buildContext([], page, {
+      skills: [{ name: 'N', command: 'c', description: 'd' }],
+      memory: memState,
+      mode: 'agent',
+    })[0]!.content);
+    expect(sys).toContain('偏好中文回复');
+    expect(sys.indexOf('可用技能')).toBeLessThan(sys.indexOf('## 记忆'));
+    expect(sys.indexOf('## 记忆')).toBeLessThan(sys.indexOf('当前模式'));
+  });
+
+  it('不传 memory → 无记忆块', () => {
+    expect(String(buildContext([], page)[0]!.content)).not.toContain('## 记忆');
+  });
+
+  it('记忆块按当前页 URL 过滤（命中出全文，未命中只出站点清单）', () => {
+    const sys = String(buildContext([], { url: 'https://www.bilibili.com/x', title: 'B' }, {
+      memory: {
+        enabled: true, writable: true,
+        entries: [
+          { id: 's1', content: 'B 站专属经验', matches: ['*://*.bilibili.com/*'], updatedAt: 1 },
+          { id: 'o1', content: 'GitHub 专属经验', matches: ['*://github.com/*'], updatedAt: 1 },
+        ],
+      },
+    })[0]!.content);
+    expect(sys).toContain('B 站专属经验');
+    expect(sys).not.toContain('GitHub 专属经验');
+    expect(sys).toContain('*://github.com/*');
+  });
+
+  it('自定义提示词 + 记忆并存（覆盖提示词不影响记忆块）', () => {
+    const sys = String(buildContext([], page, {
+      systemPrompt: '【自定义】',
+      memory: memState,
+    })[0]!.content);
+    expect(sys).toContain('【自定义】');
+    expect(sys).toContain('偏好中文回复');
+  });
+});

@@ -2,6 +2,7 @@
 // 上下文组装（设计 §2、§8）：system prompt + 页面信息 + 简单截断。
 import type { ChatMessage, ContentPart } from './provider/types';
 import { modePrompt, type AgentMode } from './mode';
+import { buildMemoryPrompt, type MemoryState } from './memory-prompt';
 
 export const SYSTEM_PROMPT = `你是一个能操控浏览器的 AI 助手。你可以调用工具查看和操作当前网页。
 
@@ -76,6 +77,8 @@ export interface BuildContextOptions {
   mode?: AgentMode;
   /** 系统提示词全文（缺省用内置 SYSTEM_PROMPT）。覆盖只替换该常量，动态块照旧追加。 */
   systemPrompt?: string;
+  /** 记忆状态（全量条目 + 两个开关）。按 page.url 在 buildMemoryPrompt 内做三层过滤。 */
+  memory?: MemoryState;
 }
 
 export function buildContext(
@@ -83,13 +86,17 @@ export function buildContext(
   page: PageInfo,
   opts: BuildContextOptions = {},
 ): ChatMessage[] {
-  const { keepRecent = 60, summary, skills, mode = 'agent', systemPrompt } = opts;
+  const { keepRecent = 60, summary, skills, mode = 'agent', systemPrompt, memory } = opts;
   const pageBlock = page.url
     ? `\n\n当前页面：\n- URL: ${page.url}\n- 标题: ${page.title}`
     : '';
   const skillsBlock = buildSkillsPrompt(skills ?? []);
+  const memoryBlock = memory ? buildMemoryPrompt(memory, page.url) : '';
   const base = resolveSystemPrompt(systemPrompt);
-  const system: ChatMessage = { role: 'system', content: base + pageBlock + skillsBlock + modePrompt(mode) };
+  const system: ChatMessage = {
+    role: 'system',
+    content: base + pageBlock + skillsBlock + memoryBlock + modePrompt(mode),
+  };
 
   if (summary) {
     // coversUpTo 之后的原始消息为保留段；剥掉头部孤立 tool 消息（其 assistant(toolCalls)
