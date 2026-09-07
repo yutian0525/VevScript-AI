@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import type { SnapNode } from '../../../content/snapshot/build';
 import { INTERACTIVE_ROLES, isInteractiveRole, keepAtDetail } from '../../../content/snapshot/filter';
 
-const node = (role: string, over: Record<string, unknown> = {}) =>
-  ({ role, name: '', states: [], description: '', extras: {}, children: [], ...over }) as never;
+const node = (role: string, over: Partial<SnapNode> = {}): SnapNode =>
+  ({ role, name: '', states: [], description: '', extras: {}, children: [], ...over });
 
 describe('快照分级过滤', () => {
   it('白名单含全部可交互角色 + heading + RootWebArea', () => {
@@ -22,6 +23,14 @@ describe('快照分级过滤', () => {
   it('interactive 档保留可交互角色', () => {
     expect(keepAtDetail(node('button'), 'interactive')).toBe(true);
     expect(keepAtDetail(node('heading'), 'interactive')).toBe(true);
+  });
+
+  it('interactive 档保留显式 ARIA 交互角色与模态锚点', () => {
+    // computeRole 的显式 role 属性路径是开放集合，白名单漏掉即整行消失且折叠行无法恢复其名
+    expect(keepAtDetail(node('searchbox'), 'interactive')).toBe(true);
+    expect(keepAtDetail(node('treeitem'), 'interactive')).toBe(true);
+    // 模态边界：子树按钮仍在，但「属于哪个弹窗」的 aria-label 上下文只能靠这行本身
+    expect(keepAtDetail(node('dialog'), 'interactive')).toBe(true);
   });
 
   it('interactive 档丢弃容器角色', () => {

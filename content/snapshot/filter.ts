@@ -9,6 +9,13 @@ export type SnapshotDetail = 'interactive' | 'full';
 export const INTERACTIVE_ROLES = new Set([
   'link', 'button', 'textbox', 'combobox', 'checkbox', 'radio', 'option',
   'tab', 'switch', 'menuitem', 'slider', 'heading', 'RootWebArea',
+  // 显式 ARIA 的纯交互角色：computeRole 的 role 属性路径是开放集合（任意 ARIA 角色都能进来），
+  // 这些角色标签路径不产出、页面却会显式标注，白名单漏掉即 interactive 档整行消失，
+  // 且折叠计数行不含 name，agent 无从定位（如 React Aria 的 searchbox 无从 fill）。
+  'searchbox', 'spinbutton', 'menuitemcheckbox', 'menuitemradio', 'treeitem',
+  // 模态边界：弹窗内的 button/link 因子树继续遍历仍在，但「这些按钮属于哪个模态」
+  // 的 aria-label 上下文只在这一行——缺了 agent 会错判自己在哪个弹窗，导致后续操作出错。
+  'dialog', 'alertdialog',
 ]);
 
 export function isInteractiveRole(role: string): boolean {
