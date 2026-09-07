@@ -1,0 +1,26 @@
+components/settings/MemoryPage.tsx
+  s_b4a0c595677b1b::t_369b80db76b5e5 5,10,21-48,131,134-136,138,140-143
+  s_b4a0c595677b1b::t_903f76e1df737b 145-157,160-171,173,193-203,207-210,215-221
+  s_b4a0c595677b1b::t_c154aa0b88de65 144
+components/settings/SystemPromptPage.tsx
+  s_b4a0c595677b1b::t_60990233e7a084 8
+  s_b4a0c595677b1b::t_d6b93a9a8ce90c 89-98
+entrypoints/sidepanel/styles.css
+  s_b4a0c595677b1b::t_69492827017562 1397-1422,1424,1432,1434-1455
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e4dc246a33fac25b09e34bb377d961986ecdd12a",
+  "prompts": {},
+  "sessions": {
+    "s_b4a0c595677b1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01db4937-1c12-4f2d-be27-e819f2e93fc0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
