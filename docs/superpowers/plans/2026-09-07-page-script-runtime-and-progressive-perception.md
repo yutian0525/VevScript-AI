@@ -369,8 +369,16 @@ export type SnapshotDetail = 'interactive' | 'full';
 
 /** 可交互角色白名单 + heading（结构锚点）+ RootWebArea（根必留）。 */
 export const INTERACTIVE_ROLES = new Set([
+  // 标签路径（computeRole 的 switch）会产出的可交互角色
   'link', 'button', 'textbox', 'combobox', 'checkbox', 'radio', 'option',
   'tab', 'switch', 'menuitem', 'slider', 'heading', 'RootWebArea',
+  // 显式 role 属性路径是【开放集合】——computeRole 直接取 role 属性首个 token，
+  // 故任意 ARIA 角色都可能进来。以下是纯交互角色，漏掉则 interactive 档整行消失，
+  // 且折叠计数行不带 name、无法恢复（React Aria 等设计系统会显式标注 searchbox）。
+  'searchbox', 'spinbutton', 'menuitemcheckbox', 'menuitemradio', 'treeitem',
+  // 模态边界：弹窗内的 button/link 因子树继续遍历仍在，但「这些按钮属于哪个模态」
+  // 的上下文只在这一行。缺了 agent 会在多步任务里错判自己在哪个弹窗，导致后续操作出错。
+  'dialog', 'alertdialog',
 ]);
 
 export function isInteractiveRole(role: string): boolean {
@@ -405,7 +413,7 @@ Expected: PASS（7 个用例）。
     document.body.innerHTML = '<div><section><p>正文</p></section></div><button>按钮</button>';
     const { text } = buildSnapshot(document.body);
     expect(text).toContain('button "按钮"');
-    expect(text).toMatch(/… \[\d+ 个纯文本\/容器节点已折叠\]/);
+    expect(text).toMatch(/… \[\d+ 个未展开节点\]/);
   });
 
   it('interactive 档仍保留可交互后代（容器折叠不丢子节点）', () => {
@@ -522,7 +530,9 @@ function serialize(
 /** 输出并清空折叠计数。相邻多个被滤节点合并成一行。 */
 function flushFold(lines: string[], depth: number, fold: { n: number }): void {
   if (fold.n === 0) return;
-  lines.push('  '.repeat(depth) + `… [${fold.n} 个纯文本/容器节点已折叠]`);
+  // 措辞刻意中性：被滤掉的可能是 img/navigation/list 这类非交互元素，
+  // 也可能是白名单外的 ARIA 角色，说成「纯文本/容器」以偏概全。
+  lines.push('  '.repeat(depth) + `… [${fold.n} 个未展开节点]`);
   fold.n = 0;
 }
 ```
