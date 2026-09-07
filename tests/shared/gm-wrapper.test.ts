@@ -75,6 +75,25 @@ describe('buildWrappedCode', () => {
     expect(code).toContain('function __GM_plain(v)');
   });
 
+  it('桥类 API：setValues/deleteValues/unregisterMenu/通知管理/getTab 系/download', () => {
+    const s = mkScript({ meta: { grants: [
+      'GM_setValues', 'GM_deleteValues', 'GM_unregisterMenuCommand',
+      'GM_closeNotification', 'GM_updateNotification', 'GM_getTab', 'GM_saveTab', 'GM_getTabs', 'GM_download',
+    ] } });
+    const code = buildWrappedCode(s, { token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0' });
+    expect(code).toContain('__GM_post("SetValues"');
+    expect(code).toContain('__GM_post("DeleteValues"');
+    expect(code).toContain('__GM_post("UnregisterMenu"');
+    expect(code).toContain('__GM_post("CloseNotification"');
+    expect(code).toContain('__GM_post("UpdateNotification"');
+    expect(code).toContain('__GM_post("GetTab"');
+    expect(code).toContain('__GM_post("SaveTab"');
+    expect(code).toContain('__GM_post("GetTabs"');
+    // download：url/details 双签名归一化 + onload/onerror 留闭包（过桥用 __GM_plain）
+    expect(code).toContain('__GM_post("Download"');
+    expect(code).toContain('typeof arg === "string"');
+  });
+
   it('@require 内容在用户代码之前、preamble 之后', () => {
     const code = buildWrappedCode(mkScript(), {
       token: 't', values: {}, resources: {}, requireCodes: ['libBody();'], extensionVersion: '1.0.0',

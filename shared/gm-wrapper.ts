@@ -192,17 +192,26 @@ const GM_INSTALLS: ReadonlyArray<readonly [string, string]> = [
   ['GM_getResourceText', 'function (name) { return __resources[name]; }'],
   ['GM_getValues', 'function (keys) { var out = {}; if (Array.isArray(keys)) { for (var i = 0; i < keys.length; i++) { var k = keys[i]; out[k] = __values[k]; } } else if (keys && typeof keys === "object") { for (var k2 in keys) { if (Object.prototype.hasOwnProperty.call(keys, k2)) { out[k2] = __values[k2] === undefined ? keys[k2] : __values[k2]; } } } else { for (var k3 in __values) { if (Object.prototype.hasOwnProperty.call(__values, k3)) out[k3] = __values[k3]; } } return out; }'],
   ['GM_removeValueChangeListener', 'function (id) { var i = String(id).lastIndexOf(":"); if (i < 0) return; var key = String(id).slice(0, i); var idx = parseInt(String(id).slice(i + 1), 10); var arr = __GM_valueHooks.get(key); if (arr && arr[idx]) arr[idx] = null; }'],
+  ['GM_setValues', 'function (obj) { if (obj && typeof obj === "object") { for (var k in obj) { if (Object.prototype.hasOwnProperty.call(obj, k)) __values[k] = obj[k]; } } return __GM_post("SetValues", [__GM_plain(obj)]); }'],
+  ['GM_deleteValues', 'function (keys) { if (Array.isArray(keys)) { for (var i = 0; i < keys.length; i++) delete __values[keys[i]]; } return __GM_post("DeleteValues", [keys]); }'],
   ['GM_addElement', 'function (a, b, c) { var parent, tag, attrs; if (typeof a === "string") { parent = null; tag = a; attrs = b || {}; } else { parent = a; tag = b; attrs = c || {}; } var el = document.createElement(tag); for (var k in attrs) { if (!Object.prototype.hasOwnProperty.call(attrs, k)) continue; if (k === "textContent") el.textContent = attrs[k]; else if (k === "innerHTML") el.innerHTML = attrs[k]; else el.setAttribute(k, attrs[k]); } (parent || document.head || document.documentElement).appendChild(el); return el; }'],
   ['GM_getResourceURL', 'function (name) { return __resourceUrls[name]; }'],
   ['GM_log', 'function () { var a = [].slice.call(arguments); a.unshift(GM_info.script.name); console.log.apply(console, a); }'],
   ['GM_registerMenuCommand', 'function (name, fn) { var key = "m" + (++__GM_reqSeq); __GM_listeners.set("menu:" + key, fn); __GM_post("RegisterMenu", [key, name]); return key; }'],
+  ['GM_unregisterMenuCommand', 'function (key) { __GM_listeners.delete("menu:" + key); return __GM_post("UnregisterMenu", [key]); }'],
   ['GM_setClipboard', 'function (text) { return __GM_post("SetClipboard", [text]); }'],
   ['GM_notification', 'function (details, ondone) { var id = "n" + (++__GM_reqSeq); if (ondone) __GM_listeners.set("notif:" + id, ondone); __GM_post("Notification", [__GM_plain(details), id]); }'],
+  ['GM_closeNotification', 'function (id) { return __GM_post("CloseNotification", [id]); }'],
+  ['GM_updateNotification', 'function (id, details) { return __GM_post("UpdateNotification", [id, __GM_plain(details)]); }'],
   ['GM_openInTab', 'function (url, opts) { opts = opts || {}; var h = { closed: false, onclose: null, __tabId: null, close: function () { if (h.__tabId != null) { __GM_post("CloseTab", [h.__tabId]); } else { h.__closePending = true; } } }; __GM_post("OpenInTab", [url, __GM_plain(opts)]).then(function (tabId) { h.__tabId = tabId; if (h.__closePending) { __GM_post("CloseTab", [tabId]); } __GM_listeners.set("tab:" + tabId, function (d) { h.closed = !!d.closed; if (d.closed && h.onclose) h.onclose(); }); }); return h; }'],
+  ['GM_getTab', 'function (cb) { var p = __GM_post("GetTab", []); if (typeof cb === "function") p.then(cb); return p; }'],
+  ['GM_saveTab', 'function (data) { return __GM_post("SaveTab", [__GM_plain(data)]); }'],
+  ['GM_getTabs', 'function (cb) { var p = __GM_post("GetTabs", []); if (typeof cb === "function") p.then(cb); return p; }'],
   // details 经 __GM_plain 摘除回调函数再过桥：CustomEvent detail 跨 world（USER_SCRIPT→ISOLATED）
   // 走结构化克隆，函数不可克隆会使 detail 变 null（宿主静默丢弃，请求永挂无任何回显）。
   // onload/onerror/ontimeout 留在闭包里，由 .then 分支调用。
   ['GM_xmlhttpRequest', 'function (details) { var d = __GM_plain(details); __GM_post("XmlHttpRequest", [d]).then(function (resp) { if (resp && resp.error) { details.onerror && details.onerror(resp); } else { details.onload && details.onload(resp); } }, function (err) { details.onerror && details.onerror({ error: String(err) }); }); return { abort: function () {} }; }'],
+  ['GM_download', 'function (arg, name) { var details = typeof arg === "string" ? { url: arg, name: name } : (arg || {}); var d = __GM_plain(details); __GM_post("Download", [d]).then(function (r) { if (r && r.error) { details.onerror && details.onerror(r); } else { details.onload && details.onload(r); } }, function (e) { details.onerror && details.onerror({ error: String(e) }); }); return { abort: function () {} }; }'],
   // LLM 调用：onChunk 先摘出存闭包（函数不可过桥），chan = 页实例id:reqId 供 SW 下行 LLM_CHUNK 配对。
   // chan 与请求 reqId 共用同一次 ++__GM_reqSeq 自增（不二次自增）。成功/失败都清监听；
   // 不提供 abort（一次性语义，文档明示）。
