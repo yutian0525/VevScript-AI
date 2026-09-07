@@ -199,15 +199,16 @@ body {
   justify-content: space-between;
   gap: 12px;
 }
-/* 标题引区：返回钮 + 标题栈成组靠左，与右侧 actions 分列 */
-.shell__lead { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
+/* 标题引区：返回钮 + 标题栈整块垂直居中，与右侧 actions 分列 */
+.shell__lead { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .shell__titles { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .shell__title {
   margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2;
   /* 单行截断：侧边栏窄，长会话标题不该挤走右侧仪表条/按钮（完整标题走 tooltip） */
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* 统一返回钮：标题左侧的方形，hover 为正方形底色 + 左箭头 */
+/* 统一返回钮：标题左侧的方形，hover 为正方形底色 + 左箭头。
+   负左边距抵消 head padding，使返回钮到 head 上/下/左三边留白视觉等宽 */
 .shell__back {
   flex-shrink: 0;
   width: 28px; height: 28px; padding: 0;
@@ -215,8 +216,7 @@ body {
   border: none; border-radius: var(--r-md);
   background: transparent; color: var(--ink-2); cursor: pointer;
   transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
-  /* 图标光学对齐标题基线：方形底部略沉一点，与 flex-end 的标题贴合 */
-  margin-bottom: -3px;
+  margin-left: -5px;
 }
 .shell__back:hover { background: var(--sunken); color: var(--ink); }
 .shell__back:active { transform: translateY(1px); }
