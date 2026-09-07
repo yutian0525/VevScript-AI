@@ -79,7 +79,6 @@ export async function prefetchResources(script: UserScript): Promise<string[]> {
       }
       cache[url] = { content, fetchedAt: now, mime: r.mime, encoding: r.encoding };
       fetched += content.length;
-      fetched += content.length;
     } catch (e) {
       warnings.push(`依赖下载失败：${url}（${e instanceof Error ? e.message : String(e)}）`);
     }
