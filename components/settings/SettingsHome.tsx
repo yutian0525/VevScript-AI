@@ -1,5 +1,5 @@
 // components/settings/SettingsHome.tsx
-// 设置列表页（spec §1）：四入口卡片，点卡走 onOpen 切二级页。
+// 设置列表页（spec §1）：六入口卡片，点卡走 onOpen 切二级页。
 import { SlidersHorizontal, SquareTerminal, FlaskConical, ChevronRight, Sparkles, ScrollText, Brain } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Tooltip } from '../ui/Tooltip';

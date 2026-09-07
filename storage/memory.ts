@@ -6,13 +6,14 @@ import { nanoid } from 'nanoid';
 import type { MemoryEntry } from '../shared/types';
 import { isValidMatchPattern } from '../shared/match-pattern';
 
-const KEY = 'local:memory:index' as const;
+// 导出给 UI 侧 storage.watch 用——键名只此一处，改键不会让 watch 静默失效。
+export const MEMORY_KEY = 'local:memory:index' as const;
 
 export const MAX_ENTRIES = 100;
 export const MAX_CONTENT_LENGTH = 500;
 
 export async function listMemories(): Promise<MemoryEntry[]> {
-  return (await storage.getItem<MemoryEntry[]>(KEY)) ?? [];
+  return (await storage.getItem<MemoryEntry[]>(MEMORY_KEY)) ?? [];
 }
 
 export async function getMemoryEntry(id: string): Promise<MemoryEntry | undefined> {
@@ -42,13 +43,13 @@ export async function saveMemory(entry: MemoryEntry): Promise<void> {
     throw new Error(`非法 match pattern：${bad}（形如 *://*.example.com/* 或 <all_urls>）`);
   }
   const next = exists ? all.map((m) => (m.id === entry.id ? entry : m)) : [...all, entry];
-  await storage.setItem(KEY, next);
+  await storage.setItem(MEMORY_KEY, next);
 }
 
 /** 幂等：不存在也成功。 */
 export async function deleteMemory(id: string): Promise<void> {
   const all = await listMemories();
-  await storage.setItem(KEY, all.filter((m) => m.id !== id));
+  await storage.setItem(MEMORY_KEY, all.filter((m) => m.id !== id));
 }
 
 /** 新条目工厂（AI 工具与设置页共用）。 */

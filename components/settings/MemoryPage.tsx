@@ -8,7 +8,7 @@ import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import {
-  listMemories, saveMemory, deleteMemory, newMemory, MAX_CONTENT_LENGTH,
+  listMemories, saveMemory, deleteMemory, newMemory, MAX_CONTENT_LENGTH, MEMORY_KEY,
 } from '../../storage/memory';
 import { getSettings, saveSettings } from '../../storage/settings';
 import type { MemoryEntry } from '../../shared/types';
@@ -38,7 +38,7 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
       setWritable(s.agent.memoryWritable);
     })();
     // AI 在任务中写记忆时，正开着这一页也能看到列表刷新
-    const unwatch = storage.watch<MemoryEntry[]>('local:memory:index', (next) => {
+    const unwatch = storage.watch<MemoryEntry[]>(MEMORY_KEY, (next) => {
       setList(next ?? []);
     });
     return () => unwatch();
@@ -47,13 +47,25 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
   const toggleEnabled = async (): Promise<void> => {
     const next = !enabled;
     setEnabled(next);
-    await saveSettings({ agent: { memoryEnabled: next } });
+    try {
+      await saveSettings({ agent: { memoryEnabled: next } });
+      setError(null);
+    } catch (e) {
+      setEnabled(!next); // 回滚
+      setError(`保存失败：${e instanceof Error ? e.message : String(e)}`);
+    }
   };
 
   const toggleWritable = async (): Promise<void> => {
     const next = !writable;
     setWritable(next);
-    await saveSettings({ agent: { memoryWritable: next } });
+    try {
+      await saveSettings({ agent: { memoryWritable: next } });
+      setError(null);
+    } catch (e) {
+      setWritable(!next); // 回滚
+      setError(`保存失败：${e instanceof Error ? e.message : String(e)}`);
+    }
   };
 
   const remove = async (m: MemoryEntry): Promise<void> => {

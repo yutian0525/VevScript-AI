@@ -102,7 +102,7 @@ function broadcast(convId: string, e: AgentEvent): void {
  *  注：loop 用它过滤 schema、executeTool 又独立读一次做硬闸，两处各读一次同一份设置。
  *  用户在一轮进行中拨开关，最坏情况是这一轮清单与守卫松紧不一致，下一轮即对齐——
  *  守卫是防幻觉的兜底，不追求与清单严格同帧。 */
-async function readMemoryState(): Promise<MemoryState> {
+export async function readMemoryState(): Promise<MemoryState> {
   const off: MemoryState = { enabled: false, writable: false, entries: [] };
   try {
     const { agent } = await getSettings();
