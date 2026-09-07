@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { storage } from 'wxt/utils/storage';
 import { PanelLeft, ScrollText, SquarePen } from 'lucide-react';
+import { Tooltip } from '../ui/Tooltip';
 import { openScriptTab, sendScriptsRequest } from '../../stores/scripts';
 import type { GmMenuEntry, GmErrorItem } from '../../stores/scripts';
 import type { ScriptsRuntimeEntry } from '../../shared/messages';
@@ -117,40 +118,42 @@ export function PopupApp() {
         ) : (
           rows.map((row) => (
             <div key={row.scriptId} className="popup__runwrap">
-              <div
-                className="popup__runrow"
-                role="button"
-                tabIndex={0}
-                title={row.commands.length === 0 ? '无菜单命令' : row.commands.length === 1 ? `执行：${row.commands[0]?.name ?? ''}` : '展开命令列表'}
-                onClick={() => onRowClick(row)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRowClick(row); } }}
-              >
-                <span className="popup__runname">{row.name}</span>
-                <button
-                  type="button"
-                  className="popup__editbtn"
-                  aria-label={`编辑 ${row.name}`}
-                  title="编辑脚本"
-                  onClick={(e) => { e.stopPropagation(); openScriptTab(row.scriptId); }}
+              <Tooltip label={row.commands.length === 0 ? '无菜单命令' : row.commands.length === 1 ? `执行：${row.commands[0]?.name ?? ''}` : '展开命令列表'}>
+                <div
+                  className="popup__runrow"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onRowClick(row)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRowClick(row); } }}
                 >
-                  <SquarePen size={13} aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={enabledIds.get(row.scriptId) ?? true}
-                  aria-label={`${enabledIds.get(row.scriptId) ?? true ? '禁用' : '启用'} ${row.name}`}
-                  className={`switch${enabledIds.get(row.scriptId) ?? true ? ' switch--on' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const next = !(enabledIds.get(row.scriptId) ?? true);
-                    setEnabledIds((prev) => new Map(prev).set(row.scriptId, next));
-                    void setEnabled(row.scriptId, next);
-                  }}
-                >
-                  <span className="switch__thumb" aria-hidden />
-                </button>
-              </div>
+                  <span className="popup__runname">{row.name}</span>
+                  <Tooltip label="编辑脚本">
+                    <button
+                      type="button"
+                      className="popup__editbtn"
+                      aria-label={`编辑 ${row.name}`}
+                      onClick={(e) => { e.stopPropagation(); openScriptTab(row.scriptId); }}
+                    >
+                      <SquarePen size={13} aria-hidden />
+                    </button>
+                  </Tooltip>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={enabledIds.get(row.scriptId) ?? true}
+                    aria-label={`${enabledIds.get(row.scriptId) ?? true ? '禁用' : '启用'} ${row.name}`}
+                    className={`switch${enabledIds.get(row.scriptId) ?? true ? ' switch--on' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const next = !(enabledIds.get(row.scriptId) ?? true);
+                      setEnabledIds((prev) => new Map(prev).set(row.scriptId, next));
+                      void setEnabled(row.scriptId, next);
+                    }}
+                  >
+                    <span className="switch__thumb" aria-hidden />
+                  </button>
+                </div>
+              </Tooltip>
               {expanded === row.scriptId && row.commands.length > 1 && (
                 <div className="popup__cmdlist">
                   {row.commands.map((c) => (

@@ -2,6 +2,7 @@
 // 独立小圆环 = 上下文占比指示器 ⊕ 压缩按钮（设计 §3.2）。放发送钮左侧。
 // 颜色即信息：normal/warn/danger 分档；hover 出详情，点击压缩历史。
 import { Loader2 } from 'lucide-react';
+import { Tooltip } from '../ui/Tooltip';
 import { meterRatio, meterZone } from '../../agent/context-meter';
 import { RING_CIRCUMFERENCE, RING_RADIUS, dashOffset } from './context-ring';
 
@@ -24,29 +25,30 @@ export function ContextRing({
     : `上下文上限 ${winText} · 点击压缩`;
 
   return (
-    <button
-      type="button"
-      className={`ctxring ctxring--${zone}${disabled ? ' ctxring--disabled' : ''}`}
-      title={tip}
-      aria-label={tip}
-      disabled={disabled || compacting}
-      onClick={onCompact}
-    >
-      {compacting ? (
-        <Loader2 size={13} className="spin" />
-      ) : (
-        <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden>
-          <circle className="ctxring__track" cx="11" cy="11" r={RING_RADIUS} fill="none" strokeWidth="2" />
-          <circle
-            className="ctxring__fill"
-            cx="11" cy="11" r={RING_RADIUS} fill="none" strokeWidth="2"
-            strokeLinecap="round"
-            strokeDasharray={RING_CIRCUMFERENCE}
-            strokeDashoffset={dashOffset(ratio)}
-            transform="rotate(-90 11 11)"
-          />
-        </svg>
-      )}
-    </button>
+    <Tooltip label={tip} placement="top">
+      <button
+        type="button"
+        className={`ctxring ctxring--${zone}${disabled ? ' ctxring--disabled' : ''}`}
+        aria-label={tip}
+        disabled={disabled || compacting}
+        onClick={onCompact}
+      >
+        {compacting ? (
+          <Loader2 size={13} className="spin" />
+        ) : (
+          <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden>
+            <circle className="ctxring__track" cx="11" cy="11" r={RING_RADIUS} fill="none" strokeWidth="2" />
+            <circle
+              className="ctxring__fill"
+              cx="11" cy="11" r={RING_RADIUS} fill="none" strokeWidth="2"
+              strokeLinecap="round"
+              strokeDasharray={RING_CIRCUMFERENCE}
+              strokeDashoffset={dashOffset(ratio)}
+              transform="rotate(-90 11 11)"
+            />
+          </svg>
+        )}
+      </button>
+    </Tooltip>
   );
 }

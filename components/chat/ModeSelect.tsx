@@ -3,6 +3,7 @@
 // 展开态浮层与 slash-menu 同视觉语言；Esc/点外关闭；键盘 ↑↓ + Enter 可选。
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Eye, Bot } from 'lucide-react';
+import { Tooltip } from '../ui/Tooltip';
 import type { AgentMode } from '../../agent/mode';
 import { useChat } from '../../stores/chat';
 import { useConversations } from '../../stores/conversations';
@@ -64,20 +65,21 @@ export function ModeSelect({ disabled }: { disabled?: boolean }) {
 
   return (
     <div className="modeselect" ref={rootRef}>
-      <button
-        type="button"
-        className={`modeselect__trigger${mode === 'ask' ? ' modeselect__trigger--ask' : ''}`}
-        disabled={disabled}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        title={`行为模式：${current.label} — ${current.desc}`}
-        onClick={() => setOpen((v) => !v)}
-        onKeyDown={onTriggerKey}
-      >
-        {mode === 'ask' ? <Eye size={12} /> : <Bot size={12} />}
-        <span className="modeselect__label">{current.label}</span>
-        <ChevronDown size={12} className={`modeselect__chev${open ? ' modeselect__chev--open' : ''}`} />
-      </button>
+      <Tooltip label={`行为模式：${current.label} — ${current.desc}`} disabled={open}>
+        <button
+          type="button"
+          className={`modeselect__trigger${mode === 'ask' ? ' modeselect__trigger--ask' : ''}`}
+          disabled={disabled}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          onKeyDown={onTriggerKey}
+        >
+          {mode === 'ask' ? <Eye size={12} /> : <Bot size={12} />}
+          <span className="modeselect__label">{current.label}</span>
+          <ChevronDown size={12} className={`modeselect__chev${open ? ' modeselect__chev--open' : ''}`} />
+        </button>
+      </Tooltip>
       {open && (
         <div className="modeselect__pop" role="listbox" aria-label="行为模式">
           {OPTIONS.map((o, i) => (

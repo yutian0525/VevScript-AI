@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { Download, House, LifeBuoy, RefreshCw, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '../ui/Button';
+import { Tooltip } from '../ui/Tooltip';
+import { useTruncated } from '../ui/useTruncated';
 import { sendScriptsRequest } from '../../stores/scripts';
 import type { UserScript } from '../../shared/types';
 import { useScriptDetail } from './useScriptDetail';
@@ -22,6 +24,8 @@ export function DetailApp({ id }: { id: string }) {
   const [iconFailed, setIconFailed] = useState(false);
   // 切换脚本时重置头像加载失败标记
   useEffect(() => { setIconFailed(false); }, [id]);
+  // 标题过长才挂 tooltip（早返回前声明，保持 hook 顺序稳定）
+  const [titleRef, titleTruncated] = useTruncated<HTMLHeadingElement>(script?.name);
 
   function onScriptChanged(next: UserScript, note: string): void {
     setScript(next);
@@ -77,22 +81,24 @@ export function DetailApp({ id }: { id: string }) {
           <span className="detail__avatar detail__avatar--fallback" aria-hidden>{avatarChar}</span>
         )}
         <div className="detail__headtext">
-          <h1 className="detail__h1" title={script.name}>{script.name || '未命名脚本'}</h1>
+          <Tooltip label={script.name} disabled={!titleTruncated}>
+            <h1 className="detail__h1" ref={titleRef}>{script.name || '未命名脚本'}</h1>
+          </Tooltip>
           {subtitleParts.length > 0 && <div className="detail__subtitle">{subtitleParts.join(' · ')}</div>}
         </div>
         {links.length > 0 && (
           <div className="detail__links">
             {links.map((l) => (
-              <Button
-                key={l.label}
-                variant="ghost"
-                className="btn--icon"
-                aria-label={l.label}
-                title={`${l.label}：${l.url}`}
-                onClick={() => void browser.tabs.create({ url: l.url })}
-              >
-                {l.icon}
-              </Button>
+              <Tooltip key={l.label} label={`${l.label}：${l.url}`}>
+                <Button
+                  variant="ghost"
+                  className="btn--icon"
+                  aria-label={l.label}
+                  onClick={() => void browser.tabs.create({ url: l.url })}
+                >
+                  {l.icon}
+                </Button>
+              </Tooltip>
             ))}
           </div>
         )}

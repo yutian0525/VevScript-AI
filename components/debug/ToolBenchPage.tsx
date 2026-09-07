@@ -2,9 +2,10 @@
 // 工具调试台（设置二级页）：按能力域分组列出全部工具（27 个），绕过 LLM 直接对当前标签页调用。
 // 走后台 DEBUG_EXEC_TOOL → handleDebugExec → executeTool（与真实链路一致）。
 import { useEffect, useState } from 'react';
-import { ChevronRight, Play, Loader2, Globe, ArrowLeft } from 'lucide-react';
+import { ChevronRight, Play, Loader2, Globe } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
+import { Tooltip } from '../ui/Tooltip';
 import { TOOL_SCHEMAS } from '../../agent/tools/schemas';
 import type { ToolSchema } from '../../agent/provider/types';
 import type { DebugExecResponse } from '../../shared/messages';
@@ -81,15 +82,17 @@ export function ToolBenchPage({ onBack }: { onBack: () => void }) {
     <PageShell
       title="工具调试台"
       eyebrow="TOOLBENCH"
+      onBack={onBack}
       right={
-        <span className="gauge" title={targetHost}>
-          <Globe size={12} color="var(--ink-3)" />
-          <span className="gauge__label mono" style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {targetHost}
+        <Tooltip label={targetHost}>
+          <span className="gauge">
+            <Globe size={12} color="var(--ink-3)" />
+            <span className="gauge__label mono" style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {targetHost}
+            </span>
           </span>
-        </span>
+        </Tooltip>
       }
-      actions={<Button variant="ghost" onClick={onBack} aria-label="返回"><ArrowLeft size={14} /></Button>}
     >
       <div className="hint" style={{ marginBottom: 14 }}>
         直接对当前标签页调用工具，不经模型。共 {TOOL_SCHEMAS.length} 个工具。
