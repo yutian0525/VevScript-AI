@@ -1,0 +1,23 @@
+tests/ui/tooltip.test.tsx
+  s_840f160323f95f::t_7451c47b9a3382 4
+  s_840f160323f95f::t_234182ff999783 61-90
+components/ui/Tooltip.tsx
+  s_840f160323f95f::t_d0eadfda42fcf9 9
+  s_840f160323f95f::t_b88ef1e9cb4393 131-146,156,173-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "1441a5a305d4e57a677beb0a75017b6bf6f2ae59",
+  "prompts": {},
+  "sessions": {
+    "s_840f160323f95f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c330af2-4a83-43f9-9869-68b8b3ffa74f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
