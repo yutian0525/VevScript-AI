@@ -1,0 +1,24 @@
+tests/background/gm-resources.test.ts
+  s_914db53b60ecdf::t_b6e37a2fb4f2cd 49-72
+  s_914db53b60ecdf::t_7ef4bed16ca987 42
+background/gm-resources.ts
+  s_914db53b60ecdf::t_61c8a9bc9a5835 15,17-18,26-38,44-52
+  s_914db53b60ecdf::t_38b3838f0862c0 92,99,102,105-112,114
+  s_914db53b60ecdf::t_32283645d384d5 74-75,80-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "279056af96a06a2afc3b41107345710ca69b02f2",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
