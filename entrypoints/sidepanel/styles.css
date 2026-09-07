@@ -1371,3 +1371,24 @@ body {
 .argsprog__name { color: var(--signal-ink); font-weight: 600; }
 .argsprog__text { color: var(--ink-3); }
 .argsprog__size { color: var(--ink-3); margin-left: auto; }
+
+/* ---------- 系统提示词页 ---------- */
+/* 高度链照搬 DetailCodeTab：.detail-code > .detail-code__editor-host（flex:1; min-height:0），
+   此处给 editor-host 一个视口定值让百分比链成立——编辑器有界、内部滚动，
+   不会随长提示词无限撑高把动作条顶出屏。 */
+.prompt-editor { display: flex; flex-direction: column; }
+.prompt-editor .detail-code { display: flex; }
+.prompt-editor .detail-code__editor-host { height: 55vh; min-height: 320px; }
+.prompt-preview {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--surface);
+  height: 55vh;
+  min-height: 320px;
+  overflow: auto;
+}
+.prompt-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.prompt-stale { font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
+.prompt-stale > summary { cursor: pointer; }
+.prompt-stale .well { margin-top: 6px; max-height: 240px; overflow: auto; }

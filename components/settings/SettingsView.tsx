@@ -6,6 +6,7 @@ import { ModelSettings } from './ModelSettings';
 import { ToolBenchPage } from '../debug/ToolBenchPage';
 import { ScriptDebugPage } from '../scriptdebug/ScriptDebugPage';
 import { SkillsPage } from '../skills/SkillsPage';
+import { SystemPromptPage } from './SystemPromptPage';
 
 export function SettingsView() {
   const [sub, setSub] = useState<SettingsSub | null>(null);
@@ -15,6 +16,8 @@ export function SettingsView() {
     <div className="view-swap" key={sub ?? 'home'}>
       {sub === 'model' ? (
         <ModelSettings onBack={back} />
+      ) : sub === 'prompt' ? (
+        <SystemPromptPage onBack={back} />
       ) : sub === 'toolbench' ? (
         <ToolBenchPage onBack={back} />
       ) : sub === 'scriptdebug' ? (

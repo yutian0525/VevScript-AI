@@ -13,9 +13,10 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('SettingsView 壳', () => {
-  it('默认渲染列表页三入口', async () => {
+  it('默认渲染列表页各入口', async () => {
     render(<SettingsView />);
     expect(await screen.findByText('模型设置')).toBeTruthy();
+    expect(screen.getByText('系统提示词')).toBeTruthy();
     expect(screen.getByText('工具调试台')).toBeTruthy();
     expect(screen.getByText('脚本运行时调试台')).toBeTruthy();
   });
