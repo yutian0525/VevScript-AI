@@ -216,12 +216,16 @@ export function ChatView() {
       right={<Gauge state={status} />}
       actions={
         <>
-          <Button variant="ghost" className="btn--icon" aria-label="新建会话" onClick={() => void useConversations.getState().newConversation()}>
-            <SquarePen size={16} />
-          </Button>
-          <Button variant="ghost" className="btn--icon" aria-label="会话列表" aria-expanded={menuOpen} onClick={() => { if (!menuOpen) void useConversations.getState().refreshList(); setMenuOpen(!menuOpen); }}>
-            <ChevronDown size={16} />
-          </Button>
+          <Tooltip label="新建会话">
+            <Button variant="ghost" className="btn--icon" aria-label="新建会话" onClick={() => void useConversations.getState().newConversation()}>
+              <SquarePen size={16} />
+            </Button>
+          </Tooltip>
+          <Tooltip label="会话列表" disabled={menuOpen}>
+            <Button variant="ghost" className="btn--icon" aria-label="会话列表" aria-expanded={menuOpen} onClick={() => { if (!menuOpen) void useConversations.getState().refreshList(); setMenuOpen(!menuOpen); }}>
+              <ChevronDown size={16} />
+            </Button>
+          </Tooltip>
         </>
       }
     >

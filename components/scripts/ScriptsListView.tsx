@@ -113,15 +113,21 @@ export function ScriptsListView() {
       eyebrow="SCRIPTS"
       actions={
         <>
-          <Button variant="ghost" className="btn--icon" aria-label="新建脚本" onClick={() => void createNew()}>
-            <Plus size={16} />
-          </Button>
-          <Button variant="ghost" className="btn--icon" aria-label="导入脚本" onClick={() => fileRef.current?.click()}>
-            <Upload size={16} />
-          </Button>
-          <Button variant="ghost" className="btn--icon" aria-label="从 URL 导入" aria-expanded={urlBarOpen} onClick={() => setUrlBarOpen((v) => !v)}>
-            <Link size={16} />
-          </Button>
+          <Tooltip label="新建脚本">
+            <Button variant="ghost" className="btn--icon" aria-label="新建脚本" onClick={() => void createNew()}>
+              <Plus size={16} />
+            </Button>
+          </Tooltip>
+          <Tooltip label="导入脚本（.user.js 文件）">
+            <Button variant="ghost" className="btn--icon" aria-label="导入脚本" onClick={() => fileRef.current?.click()}>
+              <Upload size={16} />
+            </Button>
+          </Tooltip>
+          <Tooltip label="从 URL 导入">
+            <Button variant="ghost" className="btn--icon" aria-label="从 URL 导入" aria-expanded={urlBarOpen} onClick={() => setUrlBarOpen((v) => !v)}>
+              <Link size={16} />
+            </Button>
+          </Tooltip>
         </>
       }
     >
