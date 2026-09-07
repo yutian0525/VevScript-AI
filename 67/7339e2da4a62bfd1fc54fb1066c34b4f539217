@@ -1,0 +1,24 @@
+docs/gm-api.md
+  s_914db53b60ecdf::t_ec2b46ec8f3e1f 3-4
+docs/gm-api-reference.md
+  s_914db53b60ecdf::t_5c6265662cd7ef 171-246
+  s_914db53b60ecdf::t_19e1ac35180b5f 77-170
+  s_914db53b60ecdf::t_19465b3adaca15 1-76
+  s_914db53b60ecdf::t_5dc4cdc9fc346f 247-412
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "677339e2da4a62bfd1fc54fb1066c34b4f539217",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
