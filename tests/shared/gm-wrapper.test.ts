@@ -177,6 +177,18 @@ describe('buildWrappedCode', () => {
     // 全为 local/snapshot：无 __GM_post（无这些 API 的桥调用）
     expect(code).not.toContain('__GM_post("SetValues"');
   });
+
+  it('对象型 GM_cookie：@grant 一次装齐三方法，GM.cookie 同引用（非 Promise 包装）', () => {
+    const s = mkScript({ meta: { grants: ['GM_cookie'] } });
+    const code = buildWrappedCode(s, { token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0' });
+    expect(code).toContain('install("GM_cookie"');
+    expect(code).toContain('__GM_post("CookieList"');
+    expect(code).toContain('__GM_post("CookieSet"');
+    expect(code).toContain('__GM_post("CookieDelete"');
+    // 点形式同引用（对象），不生成通用 Promise 包装函数
+    expect(code).toContain('GM.cookie = GM_cookie;');
+    expect(code).not.toContain('install("GM.cookie", function ()');
+  });
 });
 
 describe('GM_llmChat wrapper', () => {

@@ -216,6 +216,8 @@ const GM_INSTALLS: ReadonlyArray<readonly [string, string]> = [
   // chan 与请求 reqId 共用同一次 ++__GM_reqSeq 自增（不二次自增）。成功/失败都清监听；
   // 不提供 abort（一次性语义，文档明示）。
   ['GM_llmChat', 'function (details) { var onChunk = details && typeof details.onChunk === "function" ? details.onChunk : null; var d = __GM_plain_llm(details); var reqId = ++__GM_reqSeq; var chan = __GM_inst + ":" + reqId; if (onChunk) __GM_listeners.set("llmchan:" + chan, onChunk); return __GM_post_id("LlmChat", [d, chan], reqId).then(function (r) { if (onChunk) __GM_listeners.delete("llmchan:" + chan); return r; }, function (e) { if (onChunk) __GM_listeners.delete("llmchan:" + chan); throw e; }); }'],
+  // 对象型 API：@grant 一次装齐三方法（对象字面量，delete 是保留字作键需加引号——ES5 防御）。
+  ['GM_cookie', '{ list: function (d) { return __GM_post("CookieList", [__GM_plain(d)]); }, set: function (d) { return __GM_post("CookieSet", [__GM_plain(d)]); }, "delete": function (d) { return __GM_post("CookieDelete", [__GM_plain(d)]); } }'],
 ] as const;
 
 function installLines(script: UserScript): { code: string; vars: string[] } {
@@ -230,7 +232,11 @@ function installLines(script: UserScript): { code: string; vars: string[] } {
     lines.push(`  ${name} = install(${J(name)}, ${syncExpr});`);
     vars.push(name);
     const def = GM_API_REGISTRY[name];
-    if (def?.promiseForm) {
+    if (def?.objectApi) {
+      // 对象型：点形式同引用（GM.cookie = GM_cookie），三方法本身已返回 Promise
+      const dot = name.replace(/^GM_/, 'GM.');
+      lines.push(`  ${dot} = ${name};`);
+    } else if (def?.promiseForm) {
       const dot = name.replace(/^GM_/, 'GM.');
       lines.push(`  install(${J(dot)}, function () { var a = [].slice.call(arguments); var r = GM[${J(name)}].apply(null, a); return r && typeof r.then === 'function' ? r : Promise.resolve(r); });`);
     }
