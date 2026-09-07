@@ -8,6 +8,7 @@ import { Tooltip } from '../ui/Tooltip';
 import { openScriptTab, sendScriptsRequest } from '../../stores/scripts';
 import type { GmMenuEntry, GmErrorItem } from '../../stores/scripts';
 import type { ScriptsRuntimeEntry } from '../../shared/messages';
+import { matchUrl } from '../../shared/match-pattern';
 
 interface RunRow {
   scriptId: string;
@@ -16,7 +17,7 @@ interface RunRow {
 }
 
 /** 当前活动标签：currentWindow 取不到时退化到 lastFocusedWindow（对齐 stores/scripts refresh 惯例）。 */
-async function activeTab(): Promise<{ id?: number } | undefined> {
+async function activeTab(): Promise<{ id?: number; url?: string } | undefined> {
   let [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   if (!tab) [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true });
   return tab;
@@ -36,27 +37,30 @@ export function PopupApp() {
       try {
         const tab = await activeTab();
         const tabId = tab?.id;
+        const url = tab?.url ?? '';
         const rtResp = await sendScriptsRequest<{ ok: boolean; data?: { entry: ScriptsRuntimeEntry | null }; error?: string }>({
           type: 'SCRIPTS_GET_RUNTIME_FOR_TAB', tabId: tabId ?? -1,
         });
         const gmResp = await sendScriptsRequest<{ ok: boolean; data?: { menus: GmMenuEntry[]; errors: Record<string, GmErrorItem[]> }; error?: string }>({
           type: 'SCRIPTS_GET_GM_STATE',
         });
-        const listResp = await sendScriptsRequest<{ ok: boolean; data?: { scripts: Array<{ id: string; name: string; enabled: boolean }> }; error?: string }>({
+        const listResp = await sendScriptsRequest<{ ok: boolean; data?: { scripts: Array<{ id: string; name: string; enabled: boolean; matches?: string[] }> }; error?: string }>({
           type: 'SCRIPTS_LIST',
         });
         if (cancelled) return;
         const entry = rtResp.data?.entry ?? null;
         const listed = listResp.data?.scripts ?? [];
-        const names = new Map(listed.map((s) => [s.id, s.name]));
-        const enabled = new Map(listed.map((s) => [s.id, s.enabled]));
-        setEnabledIds(enabled);
+        setEnabledIds(new Map(listed.map((s) => [s.id, s.enabled])));
         const menus = gmResp.data?.menus ?? [];
-        const runRows: RunRow[] = (entry?.scriptIds ?? []).map((scriptId) => ({
-          scriptId,
-          name: names.get(scriptId) ?? scriptId,
-          commands: menus.find((m) => m.scriptId === scriptId)?.commands ?? [],
-        }));
+        // 行集合 = 已注入（运行中）∪ 匹配当前页 URL 的脚本（含被禁用的——供一键启用）
+        const injected = new Set(entry?.scriptIds ?? []);
+        const runRows: RunRow[] = listed
+          .filter((s) => injected.has(s.id) || matchUrl(s.matches ?? [], url))
+          .map((s) => ({
+            scriptId: s.id,
+            name: s.name,
+            commands: menus.find((m) => m.scriptId === s.id)?.commands ?? [],
+          }));
         setRows(runRows);
       } catch {
         if (!cancelled) setRows([]);
@@ -107,14 +111,16 @@ export function PopupApp() {
         </button>
       </div>
       <div className="popup__run">
-        <div className="popup__runhead">
-          <span className={`scripts-run__dot${rows.length > 0 ? '' : ' scripts-run__dot--off'}`} aria-hidden />
-          <span className="mono">RUNNING · {rows.length}</span>
-        </div>
+        {loaded && rows.length > 0 && (
+          <div className="popup__runhead">
+            <span className="scripts-run__dot" aria-hidden />
+            <span className="mono">RUNNING · {rows.length}</span>
+          </div>
+        )}
         {!loaded ? (
-          <div className="popup__empty">加载中…</div>
+          <div className="popup__empty popup__empty--center">加载中…</div>
         ) : rows.length === 0 ? (
-          <div className="popup__empty">无脚本在此页运行</div>
+          <div className="popup__empty popup__empty--center">无脚本在此页运行</div>
         ) : (
           rows.map((row) => (
             <div key={row.scriptId} className="popup__runwrap">

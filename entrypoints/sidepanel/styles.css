@@ -1242,7 +1242,7 @@ body {
 }
 
 /* ============ 扩展图标 popup（popup.html，宽 360px） ============ */
-.popup { width: 360px; display: flex; flex-direction: column; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+.popup { width: 288px; display: flex; flex-direction: column; background: var(--paper); color: var(--ink); font-family: var(--sans); }
 .popup__nav { display: flex; flex-direction: column; padding: 8px; gap: 2px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .popup__navbtn {
   display: flex; align-items: center; gap: 8px; padding: 9px 10px;
@@ -1253,6 +1253,8 @@ body {
 .popup__run { padding: 10px 12px 12px; }
 .popup__runhead { display: flex; align-items: center; gap: 6px; color: var(--ink-2); margin-bottom: 6px; font-size: 11px; }
 .popup__empty { color: var(--ink-3); font-size: 12px; padding: 4px 0 2px; }
+/* 空态：无 RUNNING 头，文案居中留白 */
+.popup__empty--center { text-align: center; padding: 22px 0; }
 .popup__runwrap { border: 1px solid var(--line); border-radius: var(--r-md); margin-bottom: 6px; background: var(--surface); }
 .popup__runrow {
   display: flex; align-items: center; gap: 6px; padding: 8px 10px; cursor: pointer;
@@ -1265,12 +1267,14 @@ body {
   padding: 4px; border-radius: var(--r-sm); display: inline-flex; flex-shrink: 0;
 }
 .popup__editbtn:hover { background: var(--line-strong); color: var(--ink); }
-.popup__cmdlist { display: grid; gap: 2px; padding: 0 6px 6px; }
+/* 命令列表：与标题行留出间距（多命令展开时不贴脸） */
+.popup__cmdlist { display: grid; gap: 2px; padding: 6px 6px 6px; margin-top: 2px; border-top: 1px solid var(--line); }
 .popup__cmdbtn {
   text-align: left; padding: 6px 8px; border: none; border-radius: var(--r-sm);
-  background: var(--sunken); color: var(--ink); cursor: pointer; font-size: 12px; font-family: var(--sans);
+  background: var(--paper); color: var(--ink-2); cursor: pointer; font-size: 12px; font-family: var(--sans);
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
-.popup__cmdbtn:hover { background: var(--line-strong); }
+.popup__cmdbtn:hover { background: var(--sunken); color: var(--ink); }
 
 /* ---------- 斜杠浮层（spec §3）---------- */
 .composer__wrap { position: relative; }
