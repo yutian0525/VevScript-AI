@@ -50,15 +50,7 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
     return uidCounter;
   }
 
-  /** 文本是否被父节点 name 覆盖（含 name 被截至 100 字符的前缀情形）。 */
-  function coveredByName(parentName: string, t: string): boolean {
-    if (!parentName) return false;
-    if (parentName === t) return true;
-    // computeName 截断到 100：name 是 t 的前缀即视为同一段文字
-    return parentName.length === 100 && t.startsWith(parentName);
-  }
-
-  function walkChildren(el: Element, parent: SnapNode, out: SnapNode[]): void {
+  function walkChildren(el: Element, parent: SnapNode & { uid: number }, out: SnapNode[]): void {
     const kids: ChildNode[] = [];
     const shadow = (el as HTMLElement).shadowRoot;
     if (shadow) kids.push(...Array.from(shadow.childNodes));
@@ -91,7 +83,8 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
     if (nodeCount >= cfg.maxNodes) { truncated = true; return null; }
     nodeCount += 1;
     const uid = assignUid(elem);
-    const node: SnapNode = {
+    // 收紧为必带 uid：walkChildren 依赖它保证 StaticText 行必带 [uid]（agent 定位元素的唯一入口）
+    const node: SnapNode & { uid: number } = {
       role: computeRole(elem),
       name: computeName(elem),
       states: computeStates(elem),
@@ -107,7 +100,7 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
   const rootUid = assignUid(root);
   nodeCount += 1;
   const view = root.ownerDocument.defaultView;
-  const rootNode: SnapNode = {
+  const rootNode: SnapNode & { uid: number } = {
     role: 'RootWebArea',
     name: root.ownerDocument.title ?? '',
     states: [],
@@ -122,6 +115,17 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
   serialize(rootNode, 0, lines);
   if (truncated) lines.push(`… [还有更多节点未显示，快照已达节点上限 ${cfg.maxNodes} 被截断]`);
   return { text: lines.join('\n') };
+}
+
+/** 文本是否被父节点 name 覆盖（含 name 被截至 100 字符的前缀情形）。
+ *  代价：文本超 100 字符时，其 100~200 段随去重一起丢弃（原本 t.slice(0,200) 会保留）。
+ *  这是刻意取舍——长标题重复正是去重收益的主要来源，且 name 里已有前 100 字符。 */
+function coveredByName(parentName: string, t: string): boolean {
+  if (!parentName) return false;
+  if (parentName === t) return true;
+  // computeName 截断到 100：name 是 t 的前缀即视为同一段文字。
+  // 上限 100 与 roles.ts 的 normalize(s, 100) 耦合，改那边的截断长度必须同步这里。
+  return parentName.length === 100 && t.startsWith(parentName);
 }
 
 function serialize(node: SnapNode, depth: number, lines: string[]): void {

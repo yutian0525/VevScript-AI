@@ -192,9 +192,9 @@ describe('快照组装', () => {
   });
 
   it('多段文本只去重与 name 相同的那段', () => {
-    document.body.innerHTML = '<a href="/x">主文字<span> 副文字</span></a>';
+    document.body.innerHTML = '<button aria-label="标签">标签<span>其他</span></button>';
     const { text } = buildSnapshot(document.body);
-    // name 由 visibleText 聚合成 "主文字 副文字"，两段单独文本都是其子串但都不等于它
-    expect(text).toContain('StaticText "主文字"');
+    expect(text).not.toContain('StaticText "标签"');
+    expect(text).toContain('StaticText "其他"');
   });
 });
