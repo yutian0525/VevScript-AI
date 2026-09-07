@@ -12,8 +12,10 @@ const MAX_TOTAL = 10 * 1024 * 1024;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface CacheEntry {
-  content: string;
+  content: string;               // encoding=text: 原文；encoding=base64: base64 串
   fetchedAt: number;
+  mime?: string;
+  encoding?: 'text' | 'base64';  // 旧缓存无此字段 → 惰性视为 'text'
 }
 type Cache = Record<string, CacheEntry>;
 
@@ -21,15 +23,33 @@ async function readCache(): Promise<Cache> {
   return (await storage.getItem<Cache>(CACHE_KEY)) ?? {};
 }
 
-async function fetchText(url: string): Promise<string> {
+/** content-type 判文本：text/* 或常见文本类 application/*，否则二进制。 */
+function isTextContentType(ct: string): boolean {
+  return /(^text\/|application\/(json|xml|javascript|x-www-form-urlencoded|ecmascript)|\+json|\+xml|\bcss\b)/i.test(ct);
+}
+
+function toBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
+  return btoa(bin);
+}
+
+async function fetchResource(url: string): Promise<{ content: string; mime: string; encoding: 'text' | 'base64' }> {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(new Error('timeout')), FETCH_TIMEOUT_MS);
   try {
     const resp = await fetch(url, { signal: ac.signal });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const text = await resp.text();
-    if (text.length > MAX_SINGLE) throw new Error(`超过单文件上限（${MAX_SINGLE} 字符）`);
-    return text;
+    const mime = (resp.headers.get('content-type') ?? '').split(';')[0]!.trim() || 'application/octet-stream';
+    if (isTextContentType(mime)) {
+      const text = await resp.text();
+      if (text.length > MAX_SINGLE) throw new Error(`超过单文件上限（${MAX_SINGLE} 字符）`);
+      return { content: text, mime, encoding: 'text' };
+    }
+    const buf = await resp.arrayBuffer();
+    if (buf.byteLength > MAX_SINGLE) throw new Error(`超过单文件上限（${MAX_SINGLE} 字节）`);
+    return { content: toBase64(buf), mime, encoding: 'base64' };
   } finally {
     clearTimeout(timer);
   }
@@ -51,12 +71,14 @@ export async function prefetchResources(script: UserScript): Promise<string[]> {
     const hit = cache[url];
     if (hit && now - hit.fetchedAt < CACHE_TTL_MS) continue;
     try {
-      const content = await fetchText(url);
+      const r = await fetchResource(url);
+      const content = r.content;
       if (fetched + content.length > MAX_TOTAL) {
         warnings.push(`依赖下载失败：${url}（超过资源总量上限）`);
         continue;
       }
-      cache[url] = { content, fetchedAt: now };
+      cache[url] = { content, fetchedAt: now, mime: r.mime, encoding: r.encoding };
+      fetched += content.length;
       fetched += content.length;
     } catch (e) {
       warnings.push(`依赖下载失败：${url}（${e instanceof Error ? e.message : String(e)}）`);
@@ -67,19 +89,27 @@ export async function prefetchResources(script: UserScript): Promise<string[]> {
 }
 
 /** wrapper 拼装时的资源包：requireCodes 按 meta.requires 顺序、resources name→text（缺段跳过，spec §9.4）。 */
-export async function getResourceBundle(script: UserScript): Promise<{ requireCodes: string[]; resources: Record<string, string> }> {
+export async function getResourceBundle(script: UserScript): Promise<{ requireCodes: string[]; resources: Record<string, string>; resourceUrls: Record<string, string> }> {
   const cache = await readCache();
   const requires = script.meta?.requires ?? [];
   const resources = script.meta?.resources ?? {};
   const requireCodes: string[] = [];
   for (const url of requires) {
     const hit = cache[url];
-    if (hit) requireCodes.push(hit.content);
+    if (hit) requireCodes.push(hit.content); // @require 一律当代码文本（TM 语义）
   }
   const resourceTexts: Record<string, string> = {};
+  const resourceUrls: Record<string, string> = {};
   for (const [name, url] of Object.entries(resources)) {
     const hit = cache[url];
-    if (hit) resourceTexts[name] = hit.content;
+    if (!hit) continue;
+    const enc = hit.encoding ?? 'text'; // 惰性迁移：旧缓存无字段视为 text
+    if (enc === 'text') {
+      resourceTexts[name] = hit.content;
+      resourceUrls[name] = `data:${hit.mime ?? 'text/plain'};charset=utf-8,${encodeURIComponent(hit.content)}`;
+    } else {
+      resourceUrls[name] = `data:${hit.mime ?? 'application/octet-stream'};base64,${hit.content}`;
+    }
   }
-  return { requireCodes, resources: resourceTexts };
+  return { requireCodes, resources: resourceTexts, resourceUrls };
 }
