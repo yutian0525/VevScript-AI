@@ -1,0 +1,34 @@
+docs/superpowers/plans/2026-09-07-system-prompt-and-agent-memory.md
+  s_b4a0c595677b1b::t_9d7d589ba5af15 2059
+  s_b4a0c595677b1b::t_868a041a873a70 2250,2252-2270
+  s_b4a0c595677b1b::t_61fc225eb3273e 2975-2986,2988
+  s_b4a0c595677b1b::t_d86c7dc7dee3c2 2713-2714
+  s_b4a0c595677b1b::t_36a4addeea87bc 3060-3066
+  s_b4a0c595677b1b::t_a7e6a3e5eea9e8 940,942-943,949,952,955,958,974
+  s_b4a0c595677b1b::t_eea8e8b174ffb1 1-864,867-917,919-939,941,944-948,950-951,953-954,956-957,959-973,975-987,989-995,997-1003
+  s_b4a0c595677b1b::t_0ee77454062a0e 988,996
+  s_b4a0c595677b1b::t_7c493023b71b04 2987
+  s_b4a0c595677b1b::t_9560e259ad5768 1004-1684
+  s_b4a0c595677b1b::t_5a764abc3f9887 918
+  s_b4a0c595677b1b::t_3326cf3f926187 3199,3208-3210
+  s_b4a0c595677b1b::t_3718b39beb8a63 865-866
+  s_b4a0c595677b1b::t_29211df1cb1505 1685-2058,2060-2249,2251,2271-2290,3437
+  s_b4a0c595677b1b::t_4a36e484c14dfe 2291-2712,2715-2974,2989-3059,3067-3198,3200-3207,3211-3226,3228-3237,3240-3436
+  s_b4a0c595677b1b::t_555f939c43d22c 3227,3238-3239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "0450e492fc1ddc5e85510e37d85df4a0d1c71a87",
+  "prompts": {},
+  "sessions": {
+    "s_b4a0c595677b1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01db4937-1c12-4f2d-be27-e819f2e93fc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
