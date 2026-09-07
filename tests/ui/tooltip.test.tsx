@@ -1,6 +1,7 @@
 // tests/ui/tooltip.test.tsx
 // 全局 Tooltip：默认不渲染气泡、hover 显示、disabled 恒不显示、保留子元素事件、aria-describedby 关联。
 // @vitest-environment jsdom
+import { useState } from 'react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import { Tooltip } from '../../components/ui/Tooltip';
@@ -55,6 +56,36 @@ describe('Tooltip', () => {
     );
     fireEvent.click(screen.getByRole('button'));
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('点击后关闭：即使触发元素随即变 disabled（收不到 mouseleave）也不卡住', async () => {
+    // 复现 bug：hover 打开 → 点击触发动作使按钮 disabled → 旧实现靠 mouseleave 关闭，disabled 元素不再发事件 → 卡住
+    function Harness() {
+      const [busy, setBusy] = useState(false);
+      return (
+        <Tooltip label="提示">
+          <button disabled={busy} onClick={() => setBusy(true)}>执行</button>
+        </Tooltip>
+      );
+    }
+    render(<Harness />);
+    const btn = screen.getByRole('button');
+    fireEvent.mouseEnter(btn);
+    await screen.findByRole('tooltip'); // 已打开
+    fireEvent.click(btn); // 点击 → 按钮变 disabled
+    expect(screen.queryByRole('tooltip')).toBeNull(); // 点击即关，不残留
+  });
+
+  it('打开后页面滚动：tooltip 关闭（不随滚动漂移滞留）', async () => {
+    render(
+      <Tooltip label="提示">
+        <button>触发</button>
+      </Tooltip>,
+    );
+    fireEvent.mouseEnter(screen.getByRole('button'));
+    await screen.findByRole('tooltip');
+    fireEvent.scroll(window);
+    expect(screen.queryByRole('tooltip')).toBeNull();
   });
 
   it('打开时子元素经 aria-describedby 关联气泡 id', async () => {

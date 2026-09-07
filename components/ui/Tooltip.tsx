@@ -6,6 +6,7 @@ import {
   cloneElement,
   isValidElement,
   useCallback,
+  useEffect,
   useId,
   useLayoutEffect,
   useRef,
@@ -127,6 +128,22 @@ export function Tooltip({ label, placement = 'top', disabled, delay = 120, child
 
   useLayoutEffect(() => () => clearTimer(), []);
 
+  // 打开期间的全局兜底：滚动/别处按下时关闭。
+  // 关键防呆——点击后触发元素若变 disabled，就不再发 mouseleave，tooltip 会卡住；
+  // 这里用捕获期 pointerdown/scroll 作为额外收口（onClick 链式关闭是主路径）。
+  useEffect(() => {
+    if (!open) return;
+    const close = () => hide();
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('pointerdown', close, true);
+    window.addEventListener('blur', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('pointerdown', close, true);
+      window.removeEventListener('blur', close);
+    };
+  }, [open, hide]);
+
   if (!isValidElement(children)) return children;
   if (inert) return children;
 
@@ -136,6 +153,7 @@ export function Tooltip({ label, placement = 'top', disabled, delay = 120, child
     onMouseLeave?: (e: unknown) => void;
     onFocus?: (e: unknown) => void;
     onBlur?: (e: unknown) => void;
+    onClick?: (e: unknown) => void;
     'aria-describedby'?: string;
     ref?: Ref<HTMLElement>;
   };
@@ -152,6 +170,8 @@ export function Tooltip({ label, placement = 'top', disabled, delay = 120, child
     onMouseLeave: chain(hide, childProps.onMouseLeave),
     onFocus: chain(show, childProps.onFocus),
     onBlur: chain(hide, childProps.onBlur),
+    // 点击即关：覆盖「点击后触发元素变 disabled → 收不到 mouseleave」的卡死
+    onClick: chain(hide, childProps.onClick),
     'aria-describedby': open
       ? [childProps['aria-describedby'], id].filter(Boolean).join(' ')
       : childProps['aria-describedby'],
