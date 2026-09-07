@@ -456,7 +456,7 @@ describe('wrapper 接线（Phase 5）', () => {
 
   it('handleCreate 后预取 @require（fetch mock 落缓存，getResourceBundle 可取）', async () => {
     installFakeUserScripts();
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, headers: new Map(), text: async () => 'lib();' })));
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, headers: new Map([['content-type', 'text/javascript']]), text: async () => 'lib();' })));
     const src = '// ==UserScript==\n// @name t\n// @match https://a.com/*\n// @grant GM_getValue\n// @require https://cdn/lib.js\n// ==/UserScript==\nx();';
     const { script } = await handleCreate({ text: src });
     expect(script.meta?.requires).toEqual(['https://cdn/lib.js']);
