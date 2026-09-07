@@ -27,7 +27,7 @@ export function resolveUid(uid: number): Element | null {
   return el;
 }
 
-interface SnapNode {
+export interface SnapNode {
   role: string;
   name: string;
   states: string[];
@@ -35,6 +35,8 @@ interface SnapNode {
   extras: NodeExtras;
   uid?: number;
   isText?: boolean;
+  /** 是否与视口相交。undefined = 未知（jsdom / 0 尺寸元素），过滤时按保留处理。 */
+  inViewport?: boolean;
   children: SnapNode[];
 }
 
