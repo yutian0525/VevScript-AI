@@ -1,0 +1,27 @@
+background/gm-urlchange.ts
+  s_914db53b60ecdf::t_2801c1703a33ca 1-35
+background/gm-api.ts
+  s_914db53b60ecdf::t_c9a7a9aab5a0a0 968-970
+  s_914db53b60ecdf::t_84ec9489ca8c22 836-847
+  s_914db53b60ecdf::t_bc7f0979bd6783 21
+tests/background/gm-api.test.ts
+  s_914db53b60ecdf::t_e9ab1cd9ff18fb 569-578
+tests/background/gm-urlchange.test.ts
+  s_914db53b60ecdf::t_e5ae0b55cc0b1a 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c9b65a7c1f86bbc85229c0ae722ec85af0802bc4",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
