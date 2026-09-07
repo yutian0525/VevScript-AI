@@ -1,0 +1,27 @@
+background/gm-api.ts
+  s_914db53b60ecdf::t_b169140bbf2490 378-426
+  s_914db53b60ecdf::t_c34f2ed7871d55 19
+  s_914db53b60ecdf::t_b5eea62c5a53ca 765-770
+background/gm-cookie.ts
+  s_914db53b60ecdf::t_632353f40c6ac7 1-57
+tests/background/gm-cookie.test.ts
+  s_914db53b60ecdf::t_0b86726bb1c911 1-3,8-29
+  s_914db53b60ecdf::t_f6615152c7e08e 4-7
+  s_914db53b60ecdf::t_48677702c90660 30-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "4bd93f6f389bfa2ba53c3d8a3587b1ee44571cf2",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
