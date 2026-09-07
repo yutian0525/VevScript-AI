@@ -35,17 +35,17 @@ function toBase64(buf: ArrayBuffer): string {
   return btoa(bin);
 }
 
-async function fetchResource(url: string): Promise<{ content: string; mime: string; encoding: 'text' | 'base64' }> {
+async function fetchResource(url: string, forceText = false): Promise<{ content: string; mime: string; encoding: 'text' | 'base64' }> {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(new Error('timeout')), FETCH_TIMEOUT_MS);
   try {
     const resp = await fetch(url, { signal: ac.signal });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const mime = (resp.headers.get('content-type') ?? '').split(';')[0]!.trim() || 'application/octet-stream';
-    if (isTextContentType(mime)) {
+    if (forceText || isTextContentType(mime)) {
       const text = await resp.text();
       if (text.length > MAX_SINGLE) throw new Error(`超过单文件上限（${MAX_SINGLE} 字符）`);
-      return { content: text, mime, encoding: 'text' };
+      return { content: text, mime: forceText && !isTextContentType(mime) ? 'text/plain' : mime, encoding: 'text' };
     }
     const buf = await resp.arrayBuffer();
     if (buf.byteLength > MAX_SINGLE) throw new Error(`超过单文件上限（${MAX_SINGLE} 字节）`);
@@ -55,34 +55,36 @@ async function fetchResource(url: string): Promise<{ content: string; mime: stri
   }
 }
 
-/** 预取脚本声明的全部资源。返回 warnings（空 = 全成功/无资源）。 */
+/** 预取脚本声明的全部资源。返回 warnings（空 = 全成功/无资源）。@require 一律当文本（spec §5.5），@resource 按 content-type 分流。 */
 export async function prefetchResources(script: UserScript): Promise<string[]> {
   const requires = script.meta?.requires ?? [];
   const resources = script.meta?.resources ?? {};
-  const urls = [...requires, ...Object.values(resources)];
-  if (urls.length === 0) return [];
+  if (requires.length === 0 && Object.keys(resources).length === 0) return [];
 
   const cache = await readCache();
   const now = Date.now();
   const warnings: string[] = [];
   let fetched = 0;
 
-  for (const url of urls) {
+  const fetchInto = async (url: string, forceText: boolean): Promise<void> => {
     const hit = cache[url];
-    if (hit && now - hit.fetchedAt < CACHE_TTL_MS) continue;
+    if (hit && now - hit.fetchedAt < CACHE_TTL_MS) return;
     try {
-      const r = await fetchResource(url);
-      const content = r.content;
-      if (fetched + content.length > MAX_TOTAL) {
+      const r = await fetchResource(url, forceText);
+      if (fetched + r.content.length > MAX_TOTAL) {
         warnings.push(`依赖下载失败：${url}（超过资源总量上限）`);
-        continue;
+        return;
       }
-      cache[url] = { content, fetchedAt: now, mime: r.mime, encoding: r.encoding };
-      fetched += content.length;
+      cache[url] = { content: r.content, fetchedAt: now, mime: r.mime, encoding: r.encoding };
+      fetched += r.content.length;
     } catch (e) {
       warnings.push(`依赖下载失败：${url}（${e instanceof Error ? e.message : String(e)}）`);
     }
-  }
+  };
+
+  for (const url of requires) await fetchInto(url, true);                   // @require 强制文本
+  for (const url of Object.values(resources)) await fetchInto(url, false); // @resource 按 content-type
+
   if (Object.keys(cache).length > 0) await storage.setItem(CACHE_KEY, cache);
   return warnings;
 }

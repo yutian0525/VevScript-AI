@@ -40,6 +40,14 @@ describe('gm-download', () => {
     f.emit({ id: 42, state: { current: 'interrupted' }, error: { current: 'NETWORK_FAILED' } });
     expect(await p).toEqual({ ok: false, error: 'NETWORK_FAILED' });
   });
+
+  it('超时未达终态 → ok:false + 摘监听', async () => {
+    const f = fakeDownloads();
+    const r = await runDownload({ url: 'https://c.com/f.zip', timeout: 20 });
+    expect(r.ok).toBe(false);
+    expect((r as { error: string }).error).toContain('超时');
+    expect(f.removeListener).toHaveBeenCalled();
+  });
 });
 
 function mkScript(over: Partial<UserScript> = {}): UserScript {

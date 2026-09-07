@@ -47,6 +47,19 @@ describe('gm-resources', () => {
     vi.unstubAllGlobals();
   });
 
+  it('@require 无论 content-type 都当文本（不 base64）', async () => {
+    // 无 content-type header → 现实现会落二进制分支 base64 化，注入的就不是 JS 了
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, status: 200, headers: new Map(),
+      text: async () => 'libCode();', arrayBuffer: async () => new ArrayBuffer(4),
+    })));
+    const s = mkScript({ meta: { requires: ['https://cdn/lib.js'], resources: {} } });
+    await prefetchResources(s);
+    const bundle = await getResourceBundle(s);
+    expect(bundle.requireCodes).toEqual(['libCode();']);
+    vi.unstubAllGlobals();
+  });
+
   it('二进制资源走 base64；getResourceBundle 产 data: URL', async () => {
     const png = new Uint8Array([137, 80, 78, 71]); // PNG 魔数片段
     const fetchMock = vi.fn(async (url: string) => {
