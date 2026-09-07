@@ -1,0 +1,25 @@
+fixtures/userscripts/gmt-selftest.user.js
+  s_914db53b60ecdf::t_4e2f983b1ece3d 30-46
+  s_914db53b60ecdf::t_7bc72732b3d75d 277-279
+  s_914db53b60ecdf::t_c5bedb1aeb1918 6
+tests/shared/gmt-selftest-fixture.test.ts
+  s_914db53b60ecdf::t_3ce72f2200a0a0 52
+  s_914db53b60ecdf::t_5d556d8819fbc3 36
+  s_914db53b60ecdf::t_8d8bcf8aaf22ef 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5fa1854989bf15eeeda655aec5f1012acc8d761a",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
