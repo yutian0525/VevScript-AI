@@ -409,11 +409,22 @@ Expected: PASS（7 个用例）。
 追加到 `tests/content/snapshot/build.test.ts`：
 
 ```ts
-  it('默认档（interactive）折叠容器节点为计数行', () => {
-    document.body.innerHTML = '<div><section><p>正文</p></section></div><button>按钮</button>';
+  it('默认档（interactive）折叠非白名单容器为计数行', () => {
+    // 必须用【非 generic 且不在白名单】的容器角色（ul→list、li→listitem）才测得出折叠。
+    // 用 div/section/p 测不出来——它们在 computeRole 里都落 default → generic，
+    // 无名 generic 的 shouldEmit 本就返 false（纯布局折叠、子节点上提），两档都不出行，
+    // 故 structural 口径下不计数。这个坑实施时踩过。
+    document.body.innerHTML = '<ul><li>项目</li></ul><button>按钮</button>';
     const { text } = buildSnapshot(document.body);
     expect(text).toContain('button "按钮"');
     expect(text).toMatch(/… \[\d+ 个未展开节点\]/);
+  });
+
+  it('纯布局 generic 不计入折叠数（它们在 full 档也不出行，计进去只是噪声）', () => {
+    document.body.innerHTML = '<div><section><p>正文</p></section></div>';
+    const { text } = buildSnapshot(document.body);
+    expect(text).toContain('StaticText "正文"');
+    expect(text).not.toContain('未展开节点');
   });
 
   it('interactive 档仍保留可交互后代（容器折叠不丢子节点）', () => {
@@ -426,13 +437,14 @@ Expected: PASS（7 个用例）。
     document.body.innerHTML = '<div><section><p>正文</p></section></div>';
     const { text } = buildSnapshot(document.body, { detail: 'full' });
     expect(text).toContain('StaticText "正文"');
-    expect(text).not.toContain('已折叠');
+    expect(text).not.toContain('未展开节点');
   });
 
   it('相邻多个被折叠节点合并成一行计数', () => {
-    document.body.innerHTML = '<div></div><div></div><div></div><button>b</button>';
+    // 同上：空 div 是无名 generic，structural 恒 false 不计数。用 nav（→navigation）。
+    document.body.innerHTML = '<nav></nav><nav></nav><nav></nav><button>b</button>';
     const { text } = buildSnapshot(document.body);
-    const foldLines = text.split('\n').filter((l) => l.includes('已折叠'));
+    const foldLines = text.split('\n').filter((l) => l.includes('未展开节点'));
     expect(foldLines.length).toBe(1);
     expect(foldLines[0]).toContain('3');
   });
@@ -520,7 +532,10 @@ function serialize(
     flushFold(lines, depth, fold);
     lines.push('  '.repeat(depth) + renderLine(node, baseOrigin));
   } else if (structural) {
-    // 结构上该出但被档位滤掉 → 计入折叠计数
+    // 结构上该出但被档位滤掉 → 计入折叠计数。
+    // 【口径】只计「full 档会显示、interactive 档藏了」的节点，故数字 = 切到 full 能多看
+    // 几行，agent 可据此决策。不要改成 !keepAtDetail(...)——那会把无名 generic（full 档
+    // 也不出行的纯布局 div）也计进去，真实页面几百个布局 div 会让数字变成噪声。
     fold.n += 1;
   }
   const nextDepth = emit ? depth + 1 : depth;
@@ -2091,7 +2106,7 @@ git commit -m "feat(query): query_page 的 CS 侧实现（快照同格式行 + �
     document.body.innerHTML = '<div><section><p>正文</p></section></div><button>钮</button>';
     const resp = await handleCsRequest(createRequest('SNAPSHOT', {}));
     const text = (resp.result as { ok: true; data: { text: string } }).data.text;
-    expect(text).toContain('已折叠');
+    expect(text).toContain('未展开节点');
   });
 
   it('SNAPSHOT 的 detail=full 透传', async () => {
@@ -2310,7 +2325,7 @@ Expected: FAIL（4 处）。
     function: {
       name: 'take_snapshot',
       description:
-        '获取页面内容树，每行带 [uid]，用 uid 做 click/fill/hover。默认 detail="interactive"：只出可交互元素、标题与视口内文本，容器折叠为「… [N 个…已折叠]」计数行（体量约为全量的一半）。需要完整文本时用 detail="full"；只关心某个区域时用 region 限定（比 full 便宜得多）。已知目标是什么时，优先用 query_page 定向查询而非倒整棵树。穿透同源 iframe；跨域 iframe 内容无法读取，返回值的 skippedFrames 会计数。页面变化后 uid 失效，需重新调用。',
+        '获取页面内容树，每行带 [uid]，用 uid 做 click/fill/hover。默认 detail="interactive"：只出可交互元素、标题与视口内文本，容器折叠为「… [N 个未展开节点]」计数行（体量约为全量的一半）。需要完整文本时用 detail="full"；只关心某个区域时用 region 限定（比 full 便宜得多）。已知目标是什么时，优先用 query_page 定向查询而非倒整棵树。穿透同源 iframe；跨域 iframe 内容无法读取，返回值的 skippedFrames 会计数。页面变化后 uid 失效，需重新调用。',
       parameters: obj({
         detail: {
           type: 'string',
