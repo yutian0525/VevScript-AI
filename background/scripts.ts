@@ -161,8 +161,8 @@ async function toRegisterDetailsAsync(s: UserScript): Promise<RegisterUserScript
     getResourceBundle(s),
   ]);
   const code = buildWrappedCode(s, {
-    token, values, resources: bundle.resources, requireCodes: bundle.requireCodes,
-    extensionVersion: extensionVersion(),
+    token, values, resources: bundle.resources, resourceUrls: bundle.resourceUrls,
+    requireCodes: bundle.requireCodes, extensionVersion: extensionVersion(),
   });
   return { ...base, js: [{ code }] };
 }

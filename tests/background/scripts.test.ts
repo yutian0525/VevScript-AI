@@ -555,3 +555,34 @@ describe('更新接线（spec §2）', () => {
     expect((await readUpdateStates())[script.id]).toBeUndefined();
   });
 });
+
+describe('注册产物：@resource 的 GM_getResourceURL 快照', () => {
+  beforeEach(() => {
+    fakeBrowser.reset();
+    vi.restoreAllMocks();
+  });
+
+  it('文本 @resource → wrapper 内嵌 data: URL', async () => {
+    // 预取：文本资源落缓存（fetchResource 读 resp.headers.get('content-type')，Map 形状即够）
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, status: 200,
+      headers: new Map([['content-type', 'text/css']]),
+      text: async () => 'body{color:red}',
+    })));
+    const { prefetchResources } = await import('../../background/gm-resources');
+    const api = installFakeUserScripts();
+    const s = {
+      id: 'r1', text: '', name: 't', enabled: true, matches: ['https://a.com/*'],
+      code: 'x();', runAt: 'document_idle', world: 'USER_SCRIPT', source: 'user', createdAt: 1, updatedAt: 1,
+      meta: { grants: ['GM_getResourceURL'], resources: { theme: 'https://cdn/t.css' } },
+    } as never;
+    await saveScript(s);
+    await prefetchResources(s);
+    await syncRegistrations();
+    // wrapper 产物里 __resourceUrls 快照必须带上 theme 的 data: URL（缺省 {} 则 GM_getResourceURL 落空）
+    const reg = api.register.mock.calls[0]![0] as Array<{ js: Array<{ code: string }> }>;
+    const captured = reg[0]!.js[0]!.code;
+    expect(captured).toContain('__resourceUrls = {"theme":"data:text/css');
+    vi.unstubAllGlobals();
+  });
+});
