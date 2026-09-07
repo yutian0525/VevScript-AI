@@ -1,5 +1,5 @@
 // agent/tools/schemas.ts
-// 27 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个。描述对齐 chrome-devtools-mcp。
+// 30 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个 + 记忆的 3 个。描述对齐 chrome-devtools-mcp。
 import type { ToolSchema } from '../provider/types';
 
 // 显式声明返回 Record<string, unknown>，避免 type:'object' 字面量收窄导致的赋值报错。
@@ -395,6 +395,50 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
       parameters: obj(
         { command: { type: 'string', description: '技能的斜杠命令名（不含 /），来自系统提示中的可用技能清单' } },
         ['command'],
+      ),
+    },
+  },
+  // ---- Memory（跨会话长期记忆，spec §3.4）----
+  {
+    type: 'function',
+    function: {
+      name: 'memory_list',
+      description:
+        '列出长期记忆（含未在系统提示里出现的其他站点记忆）。用途：① 写入前查重，避免记两条矛盾的；② 导航到某站点【之前】提前取该站经验——系统提示只会列出当前页命中的记忆全文，其他站点只给站点清单。scope 可传完整 URL（精确匹配作用域）或站点关键词如 bilibili（对作用域做子串匹配）；不传 scope 则返回全库。注意：带 scope 时不返回全局记忆，因为全局记忆已常驻在系统提示里。',
+      parameters: obj({
+        scope: { type: 'string', description: '完整 URL 或站点关键词；缺省返回全库' },
+        limit: { type: 'number', description: `返回条数上限，默认 ${30}，最大 100` },
+      }),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'memory_write',
+      description:
+        '记录或改写一条长期记忆（跨会话持久保留）。不传 id = 新增；传 id = 改写那一条（content 必传；matches 传了才改、不传保持原作用域）。该记：用户的偏好与习惯、某站点的固定操作路径、踩过的坑与解法、账号与环境的稳定事实。不该记：本轮的中间结果、页面上随时会变的数字、马上就用完的临时数据。matches 是站点作用域（Chrome match pattern，如 *://*.bilibili.com/*），留空则为全局记忆、任何页面都会注入——只在某站适用的经验务必填 matches，否则会在别的站误导你自己。正文上限 500 字符，写不下就拆成两条。',
+      parameters: obj(
+        {
+          content: { type: 'string', description: '记忆正文，≤500 字符，一条只说一件事' },
+          matches: {
+            type: 'array',
+            items: { type: 'string' },
+            description: '站点作用域（Chrome match pattern）。留空 = 全局记忆',
+          },
+          id: { type: 'string', description: '要改写的记忆 id（来自系统提示的 [id …] 或 memory_list）；不传则新增' },
+        },
+        ['content'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'memory_delete',
+      description: '删除一条长期记忆。记忆过时或与新发现矛盾时，改写（memory_write 带 id）优先于删除；确认无用再删。幂等：id 不存在也返回成功。',
+      parameters: obj(
+        { id: { type: 'string', description: '记忆 id（来自系统提示的 [id …] 或 memory_list）' } },
+        ['id'],
       ),
     },
   },

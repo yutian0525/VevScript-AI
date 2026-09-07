@@ -7,6 +7,9 @@ import { buildContext } from '../../agent/context';
 
 describe('ASK_MODE_TOOLS 白名单', () => {
   it('只含只读工具：不含任何写操作', () => {
+    // 注意：memory_write / memory_delete 虽名为「写」，但刻意在白名单内——
+    // ask 的语义是「不改网页/浏览器状态」，记忆只改扩展自己的本地笔记（spec §3.4）。
+    // 不要把它们加进下面这个列表。
     const writeTools = ['click', 'fill', 'fill_form', 'hover', 'scroll', 'press_key', 'navigate_page',
       'new_page', 'close_page', 'select_page', 'evaluate_script', 'http_request',
       'create_script', 'update_script', 'delete_script', 'toggle_script'];
@@ -26,12 +29,18 @@ describe('ASK_MODE_TOOLS 白名单', () => {
   it('grep_script 属只读，ask 模式可用', () => {
     expect(ASK_MODE_TOOLS.has('grep_script')).toBe(true);
   });
+
+  it('记忆三工具在 ask 白名单内（本地笔记不算改浏览器状态）', () => {
+    for (const t of ['memory_list', 'memory_write', 'memory_delete']) {
+      expect(ASK_MODE_TOOLS.has(t)).toBe(true);
+    }
+  });
 });
 
 describe('filterSchemasForMode / getToolSchemas', () => {
-  it('agent 模式返回全量 27 个（schemas.ts 当前 27 工具）', () => {
-    expect(getToolSchemas('agent')).toHaveLength(27);
-    expect(getToolSchemas()).toHaveLength(27); // 缺省 = agent
+  it('agent 模式返回全量 30 个（schemas.ts 当前 30 工具）', () => {
+    expect(getToolSchemas('agent')).toHaveLength(30);
+    expect(getToolSchemas()).toHaveLength(30); // 缺省 = agent
   });
 
   it('ask 模式只返回白名单内的 schema', () => {

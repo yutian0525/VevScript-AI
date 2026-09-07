@@ -12,7 +12,7 @@ describe('工具 registry', () => {
   });
 
   it('getToolSchemas 返回全部 schema', () => {
-    expect(getToolSchemas().length).toBe(27);
+    expect(getToolSchemas().length).toBe(30);
   });
 
   it('content script 类工具经 tabs.sendMessage 分发到主帧 frameId:0', async () => {
@@ -149,6 +149,31 @@ describe('工具 registry', () => {
     const r = await executeTool('grep_script', { pattern: 'box' }, {
       tabId: 1, sessionId: 'c1', signal: new AbortController().signal,
     });
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe('记忆工具分发', () => {
+  beforeEach(() => fakeBrowser.reset());
+
+  it('memory_write → 落库；memory_list → 读回；memory_delete → 删除', async () => {
+    const ctx = { tabId: 1, sessionId: 'c1', signal: new AbortController().signal };
+    const w = await executeTool('memory_write', { content: '偏好中文' }, ctx);
+    expect(w.ok).toBe(true);
+    const id = (w as { data: { id: string } }).data.id;
+
+    const l = await executeTool('memory_list', {}, ctx);
+    expect(l.ok).toBe(true);
+    expect((l as { data: { total: number } }).data.total).toBe(1);
+
+    const d = await executeTool('memory_delete', { id }, ctx);
+    expect(d.ok).toBe(true);
+    expect((await executeTool('memory_list', {}, ctx) as { data: { total: number } }).data.total).toBe(0);
+  });
+
+  it('记忆工具豁免受限页预检（chrome:// 上也能用）', async () => {
+    const ctx = { tabId: 999, sessionId: 'c1', signal: new AbortController().signal };
+    const r = await executeTool('memory_list', {}, ctx);
     expect(r.ok).toBe(true);
   });
 });

@@ -910,6 +910,7 @@ body {
 .chip--net { color: var(--ok); border-color: #bfe0cb; background: var(--ok-wash); }
 .chip--script { color: var(--warn); border-color: #e4c169; background: var(--warn-wash); }
 .chip--skill { color: #fff; border-color: var(--signal); background: var(--signal); }
+.chip--memory { color: var(--signal-ink); border-color: var(--signal); background: var(--signal-wash); }
 
 .param { display: flex; gap: 7px; font-size: 11.5px; line-height: 1.5; padding: 2px 0; }
 .param__key { font-family: var(--mono); font-weight: 600; color: var(--ink); flex-shrink: 0; }

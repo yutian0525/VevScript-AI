@@ -15,6 +15,7 @@ import {
 } from './script-pool';
 import { doGrepScript } from './script-grep';
 import { doLoadSkill } from './skills-tool';
+import { doMemoryList, doMemoryWrite, doMemoryDelete } from './memory';
 import type { ScriptPatch } from '../../shared/messages';
 
 export interface ToolCtx {
@@ -92,6 +93,13 @@ export async function executeTool(
 
   // load_skill：纯 storage 读取，不碰页面，豁免受限页预检（spec §2.4）。
   if (name === 'load_skill') return doLoadSkill((args as { command: string }).command);
+
+  // 记忆三工具：纯 storage 读写，不碰页面，豁免受限页预检（spec §3.4）。
+  if (name === 'memory_list') return doMemoryList(args as { scope?: string; limit?: number });
+  if (name === 'memory_write') {
+    return doMemoryWrite(args as { content?: string; matches?: string[]; id?: string });
+  }
+  if (name === 'memory_delete') return doMemoryDelete(args as { id: string });
 
   // ---- 以下工具操作当前目标页，需受限页预检 ----
   const tab = await browser.tabs.get(ctx.tabId).catch(() => undefined);
