@@ -1,0 +1,23 @@
+components/scriptdebug/ScriptDebugPage.tsx
+  s_914db53b60ecdf::t_0430c76ad4a6f6 37-53
+tests/shared/userscript-meta.test.ts
+  s_914db53b60ecdf::t_821f75ece608d9 177-178
+tests/background/scripts.test.ts
+  s_914db53b60ecdf::t_b9459dd94c96b6 350,354
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "aeccab90fe816e10666e28103b7f967e87b1999d",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
