@@ -189,6 +189,23 @@ describe('buildWrappedCode', () => {
     expect(code).toContain('GM.cookie = GM_cookie;');
     expect(code).not.toContain('install("GM.cookie", function ()');
   });
+
+  it('特殊 grant：window.close/focus 覆写 unsafeWindow，onurlchange 占位 + URL_CHANGE 分发', () => {
+    const s = mkScript({ meta: { grants: ['window.close', 'window.focus', 'window.onurlchange'] } });
+    const code = buildWrappedCode(s, { token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0' });
+    expect(code).toContain('unsafeWindow.close = function () { __GM_post("WindowClose", []); };');
+    expect(code).toContain('unsafeWindow.focus = function () { __GM_post("WindowFocus", []); };');
+    expect(code).toContain('unsafeWindow.onurlchange = null;');
+    // URL_CHANGE 分支在 preamble（始终存在，未 grant 则 SW 不下行）
+    expect(code).toContain("d.kind === 'URL_CHANGE'");
+    expect(code).toContain("new CustomEvent('urlchange'");
+  });
+
+  it('未 grant 特殊项：不覆写 unsafeWindow.close/focus/onurlchange', () => {
+    const code = buildWrappedCode(mkScript(), { token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0' });
+    expect(code).not.toContain('unsafeWindow.close = function');
+    expect(code).not.toContain('unsafeWindow.onurlchange = null;');
+  });
 });
 
 describe('GM_llmChat wrapper', () => {

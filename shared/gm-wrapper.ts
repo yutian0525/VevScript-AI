@@ -120,6 +120,9 @@ function preamble(scriptId: string): string {
     } else if (d.kind === 'LLM_CHUNK') {
       var lc = __GM_listeners.get('llmchan:' + d.data.chan);
       if (lc) lc(d.data.delta);
+    } else if (d.kind === 'URL_CHANGE') {
+      try { if (typeof unsafeWindow.onurlchange === 'function') unsafeWindow.onurlchange({ url: d.data.url }); } catch (e) { /* 回调异常不阻断 */ }
+      try { unsafeWindow.dispatchEvent(new CustomEvent('urlchange', { detail: { url: d.data.url } })); } catch (e) { /* ignore */ }
     }
   });
   function __GM_report(message, stack, line) {
@@ -247,6 +250,16 @@ function installLines(script: UserScript): { code: string; vars: string[] } {
   return { code: lines.join('\n'), vars };
 }
 
+/** 特殊 grant（window.close/focus/onurlchange）：改 unsafeWindow 而非 GM 对象，按 grant 条件 emit。 */
+function specialGrantLines(script: UserScript): string {
+  const grants = script.meta?.grants ?? [];
+  const lines: string[] = [];
+  if (grants.includes('window.close')) lines.push('  unsafeWindow.close = function () { __GM_post("WindowClose", []); };');
+  if (grants.includes('window.focus')) lines.push('  unsafeWindow.focus = function () { __GM_post("WindowFocus", []); };');
+  if (grants.includes('window.onurlchange')) lines.push('  unsafeWindow.onurlchange = null;');
+  return lines.join('\n');
+}
+
 /** 拼装完整注入代码。无 grant 且无 @require → 返回裸 code（spec §5 零开销）。 */
 export function buildWrappedCode(script: UserScript, deps: WrapperDeps): string {
   const grants = script.meta?.grants ?? [];
@@ -271,6 +284,7 @@ export function buildWrappedCode(script: UserScript, deps: WrapperDeps): string 
   // （Function 构造体只认全局作用域，闭包变量必须显式注入才能对用户代码可见）。
   // GM/GM_info/unsafeWindow 始终可见（preamble 无条件定义；GM.info 同引用）；下划线 API 按 grant 精确注入。
   const { code: installs, vars } = installLines(script);
+  const specials = specialGrantLines(script);
   const apiVars = vars.filter((n) => n !== 'GM_info');
   const params = ['GM', 'GM_info', 'unsafeWindow', ...apiVars];
   const paramList = params.map((n) => J(n)).join(', ');
@@ -294,5 +308,5 @@ export function buildWrappedCode(script: UserScript, deps: WrapperDeps): string 
 })();
 `;
 
-  return [head, varDecl, installs + '\n', tail].join('\n');
+  return [head, varDecl, installs + '\n', specials + '\n', tail].join('\n');
 }
