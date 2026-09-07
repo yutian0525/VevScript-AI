@@ -673,7 +673,6 @@ body {
 .composer__bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 2px 3px 2px 5px;
 }
 .composer__attach {
@@ -964,7 +963,8 @@ body {
 }
 
 /* ============ 右侧操作簇：上下文小环 + 圆形发送钮 ============ */
-.composer__actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+/* 右侧操作区（上下文环 + 发送）推到最右；附件钮 + 模式选择器成组靠左 */
+.composer__actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; }
 
 /* 上下文占比小环 = 压缩按钮 */
 .ctxring {
