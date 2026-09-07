@@ -1,0 +1,24 @@
+storage/memory.ts
+  s_b4a0c595677b1b::t_f8c355f6cc2b64 1-60
+shared/types.ts
+  s_b4a0c595677b1b::t_b6e36e9b2627a6 138-152
+tests/storage/memory.test.ts
+  s_b4a0c595677b1b::t_803410b4fa70f7 51,57-93
+  s_b4a0c595677b1b::t_890cb9dfb7ce7a 1-50,52-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "892249df59a36d9a593af4aad2d0add3399a7162",
+  "prompts": {},
+  "sessions": {
+    "s_b4a0c595677b1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01db4937-1c12-4f2d-be27-e819f2e93fc0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
