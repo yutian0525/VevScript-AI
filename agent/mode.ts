@@ -20,6 +20,9 @@ export const ASK_MODE_TOOLS = new Set([
 
 export type AgentMode = 'ask' | 'agent';
 
+/** 记忆工具的可用档位：off = 不下发、read = 只给 memory_list、full = 三个都给。 */
+export type MemoryCap = 'off' | 'read' | 'full';
+
 /** 按模式过滤工具 schema。 */
 export function filterSchemasForMode(schemas: ToolSchemaLike[], mode: AgentMode): ToolSchemaLike[] {
   if (mode === 'agent') return schemas;
