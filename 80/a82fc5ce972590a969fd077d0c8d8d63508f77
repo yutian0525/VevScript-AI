@@ -1,0 +1,25 @@
+docs/superpowers/specs/2026-09-07-gm-api-expansion-tier-ab-design.md
+  s_914db53b60ecdf::t_84521781123d5c 24
+  s_914db53b60ecdf::t_dc027e0b9e35ac 1-10,12-23,25-61
+  s_914db53b60ecdf::t_62fa16fd47f8af 11
+  s_914db53b60ecdf::t_ebd870face4279 67
+  s_914db53b60ecdf::t_44b2ff4b74c44a 62-66,68-93
+  s_914db53b60ecdf::t_791c0a8553dd50 94-137
+  s_914db53b60ecdf::t_6f287f5d5e6786 138-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "80a82fc5ce972590a969fd077d0c8d8d63508f77",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
