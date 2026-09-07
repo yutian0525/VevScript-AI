@@ -1,0 +1,45 @@
+// ==UserScript==
+// @name         GM 手测·Cookie
+// @namespace    ai-browser-extend/gmt-manual
+// @version      1.0.0
+// @description  GM_cookie 人工测试：自域 list/set/delete（自域直通不弹卡）
+// @match        *://*/*
+// @run-at       document-end
+// @grant        GM_cookie
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_deleteValue
+// @grant        GM_addStyle
+// @noframes
+// ==/UserScript==
+
+(function () {
+  var actions = {
+    'c1-list': function (log) {
+      GM_cookie.list({ url: location.href }).then(function (cs) {
+        log('c1', 'list → ' + (Array.isArray(cs) ? cs.length + ' 条：' + cs.slice(0, 3).map(function (c) { return c.name; }).join(',') : JSON.stringify(cs)));
+      }, function (e) { log('c1', 'list 失败：' + e.message); });
+    },
+    'c2-set': function (log) {
+      GM_cookie.set({ url: location.origin + '/', name: '__gmt_ck', value: 'v' + (Date.now() % 1000) }).then(function () {
+        log('c2', 'set 成功，再 list 找 __gmt_ck');
+      }, function (e) { log('c2', 'set 失败：' + e.message); });
+    },
+    'c3-del': function (log) {
+      GM_cookie.delete({ url: location.origin + '/', name: '__gmt_ck' }).then(function () {
+        log('c3', 'delete 成功');
+      }, function (e) { log('c3', 'delete 失败：' + e.message); });
+    }
+  };
+
+  GMT.render({
+    module: 'cookie',
+    title: 'GM 手测·Cookie',
+    cards: [
+      { id: 'c1', api: 'GM_cookie.list(details)', desc: '读当前页 cookie（自域直通，不弹卡）。', steps: [{ id: 'c1-list', label: 'list 当前页 cookie' }], expect: '日志列出 cookie 条数/名（无 permission 报错）' },
+      { id: 'c2', api: 'GM_cookie.set(details)', desc: '在自域写一个测试 cookie。', steps: [{ id: 'c2-set', label: 'set __gmt_ck' }, '再点 c1 的 list 确认出现 __gmt_ck'], expect: 'set 成功；list 能看到 __gmt_ck' },
+      { id: 'c3', api: 'GM_cookie.delete(details)', desc: '删除测试 cookie。', steps: [{ id: 'c3-del', label: 'delete __gmt_ck' }, '再 list 确认消失'], expect: 'delete 成功；list 不再含 __gmt_ck' }
+    ],
+    actions: actions
+  });
+})();

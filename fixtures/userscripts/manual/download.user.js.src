@@ -1,0 +1,38 @@
+// ==UserScript==
+// @name         GM 手测·下载
+// @namespace    ai-browser-extend/gmt-manual
+// @version      1.0.0
+// @description  GM_download 人工测试：跨域下载（首次弹确认卡）
+// @match        *://*/*
+// @run-at       document-end
+// @grant        GM_download
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_deleteValue
+// @grant        GM_addStyle
+// @connect      cdn.jsdelivr.net
+// @noframes
+// ==/UserScript==
+
+(function () {
+  var actions = {
+    'w1-dl': function (log) {
+      log('w1', '触发下载…（首次跨域会弹确认卡，允许后看浏览器下载条）');
+      GM_download({
+        url: 'https://cdn.jsdelivr.net/npm/lodash@4.17.21/package.json',
+        name: 'gmt-download-probe.json',
+        onload: function () { GMT.log('w1', 'onload：下载完成'); },
+        onerror: function (e) { GMT.log('w1', 'onerror：' + JSON.stringify(e)); }
+      });
+    }
+  };
+
+  GMT.render({
+    module: 'download',
+    title: 'GM 手测·下载',
+    cards: [
+      { id: 'w1', api: 'GM_download(details)', desc: '下载文件到本地（chrome.downloads，跨域首次弹确认卡）。', steps: [{ id: 'w1-dl', label: '下载探针文件' }, '允许确认卡后看浏览器下载条'], expect: '下载条出现 gmt-download-probe.json；日志 onload' }
+    ],
+    actions: actions
+  });
+})();
