@@ -1,0 +1,44 @@
+tests/agent/mode.test.ts
+  s_b4a0c595677b1b::t_89372de763c531 102-164
+  s_b4a0c595677b1b::t_1c3a9ae3da8745 2-3
+agent/loop.ts
+  s_b4a0c595677b1b::t_9b8bcc2d80e44f 35-36
+  s_b4a0c595677b1b::t_b331cca23c9573 107-109,115
+  s_b4a0c595677b1b::t_f76a2d23731c7c 10
+background/agent-port.ts
+  s_b4a0c595677b1b::t_5707a792157832 99-122,126-132,141-142,144
+  s_b4a0c595677b1b::t_e7a303851392e0 7-8
+tests/agent/tools/registry.test.ts
+  s_b4a0c595677b1b::t_4cbb2d70d521aa 174-176,178
+tests/storage/settings.test.ts
+  s_b4a0c595677b1b::t_862ecddba98567 155-182
+  s_b4a0c595677b1b::t_b025eefa77db19 71
+  s_b4a0c595677b1b::t_1e751c3dcfac65 44
+agent/tools/registry.ts
+  s_b4a0c595677b1b::t_f0fd19f64ab96e 7
+  s_b4a0c595677b1b::t_d3d52b2bea9883 29-30,33-37
+  s_b4a0c595677b1b::t_5fd9cb4c713299 63-65
+tests/agent/loop.test.ts
+  s_b4a0c595677b1b::t_2ce522901b23e4 446-532
+agent/mode.ts
+  s_b4a0c595677b1b::t_fb824008776a85 31-55
+storage/settings.ts
+  s_b4a0c595677b1b::t_8ea8c0680f425e 28-31
+  s_b4a0c595677b1b::t_57507b1f303de7 60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "d2f08784c4ab4a15d7fe3d0a6966e8a22a73ed32",
+  "prompts": {},
+  "sessions": {
+    "s_b4a0c595677b1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01db4937-1c12-4f2d-be27-e819f2e93fc0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
