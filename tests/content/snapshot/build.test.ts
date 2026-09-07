@@ -76,7 +76,9 @@ describe('快照组装', () => {
 
   it('地标角色（nav）抑制 name-from-content，不显示聚合的后代文本名', () => {
     document.body.innerHTML = '<nav><a href="/a">首页</a></nav>';
-    const { text } = buildSnapshot(document.body);
+    // navigation 不在 interactive 白名单（plan 明确归入被折叠类），本用例测的是
+    // 全量结构行为（nav 行自身的 name 聚合抑制），故显式 detail:'full'
+    const { text } = buildSnapshot(document.body, { detail: 'full' });
     const navLine = text.split('\n').find((l) => l.includes('navigation'))!;
     // nav 行不应把子链接文本"首页"当成自己的名字
     expect(navLine).not.toContain('"首页"');
@@ -134,7 +136,8 @@ describe('快照组装', () => {
 
   it('generic 有 description 时保留成行', () => {
     document.body.innerHTML = '<div role="group" aria-describedby="h">菜单</div><span id="h">帮助</span>';
-    const { text } = buildSnapshot(document.body);
+    // group 不在 interactive 白名单；本用例测的是 description 通路（全量行为），故 detail:'full'
+    const { text } = buildSnapshot(document.body, { detail: 'full' });
     expect(text).toMatch(/description="帮助"/);
   });
 
@@ -275,6 +278,34 @@ describe('快照组装', () => {
     expect(u.startsWith('docs.google.com…')).toBe(true);
     expect(u.length).toBe(40);
     expect(u.endsWith('/edit')).toBe(true);
+  });
+
+  it('默认档（interactive）折叠容器节点为计数行', () => {
+    document.body.innerHTML = '<div><section><p>正文</p></section></div><button>按钮</button>';
+    const { text } = buildSnapshot(document.body);
+    expect(text).toContain('button "按钮"');
+    expect(text).toMatch(/… \[\d+ 个未展开节点\]/);
+  });
+
+  it('interactive 档仍保留可交互后代（容器折叠不丢子节点）', () => {
+    document.body.innerHTML = '<div><div><div><a href="/x">深层链接</a></div></div></div>';
+    const { text } = buildSnapshot(document.body);
+    expect(text).toContain('link "深层链接"');
+  });
+
+  it('detail=full 恢复全量（不折叠）', () => {
+    document.body.innerHTML = '<div><section><p>正文</p></section></div>';
+    const { text } = buildSnapshot(document.body, { detail: 'full' });
+    expect(text).toContain('StaticText "正文"');
+    expect(text).not.toContain('未展开节点');
+  });
+
+  it('相邻多个被折叠节点合并成一行计数', () => {
+    document.body.innerHTML = '<div></div><div></div><div></div><button>b</button>';
+    const { text } = buildSnapshot(document.body);
+    const foldLines = text.split('\n').filter((l) => l.includes('未展开节点'));
+    expect(foldLines.length).toBe(1);
+    expect(foldLines[0]).toContain('3');
   });
 
   describe('shortenUrl 纯函数边界', () => {

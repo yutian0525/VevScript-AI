@@ -3,13 +3,16 @@
 // → RootWebArea 根 → 折叠纯布局 → 缩进序列化 → open shadow DOM 递归。
 import { computeRole, computeName, computeStates, computeDescription, computeExtras, type NodeExtras } from './roles';
 import { isHidden } from './visibility';
+import { keepAtDetail, type SnapshotDetail } from './filter';
 
 export interface SnapshotOptions {
   maxChildrenPerLevel?: number;
   maxNodes?: number;
+  /** 详细档位。缺省 'interactive'（spec §6.2 新默认）：只留可交互角色 + 标题 + 视口内文本，其余折叠为计数行。 */
+  detail?: SnapshotDetail;
 }
 
-const DEFAULTS: Required<SnapshotOptions> = { maxChildrenPerLevel: 200, maxNodes: 1200 };
+const DEFAULTS: Required<SnapshotOptions> = { maxChildrenPerLevel: 200, maxNodes: 1200, detail: 'interactive' };
 
 let uidMap = new Map<number, WeakRef<Element>>();
 let uidCounter = 0;
@@ -52,6 +55,17 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
     return uidCounter;
   }
 
+  /** 元素是否与视口相交。rect 全 0（jsdom / 0 尺寸）返回 undefined 表示未知——
+   *  缺信息时 keepAtDetail 按保留处理，不让内容因测量不到而消失。 */
+  function inViewport(el: Element): boolean | undefined {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) return undefined;
+    const view = el.ownerDocument.defaultView;
+    const vh = view?.innerHeight ?? 0;
+    const vw = view?.innerWidth ?? 0;
+    return r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw;
+  }
+
   function walkChildren(el: Element, parent: SnapNode & { uid: number }, out: SnapNode[]): void {
     const kids: ChildNode[] = [];
     const shadow = (el as HTMLElement).shadowRoot;
@@ -70,7 +84,7 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
         if (coveredByName(parent.name, t)) continue;
         if (nodeCount >= cfg.maxNodes) { truncated = true; break; }
         nodeCount += 1;
-        out.push({ role: 'StaticText', name: t.slice(0, 200), states: [], description: '', extras: {}, uid: parent.uid, isText: true, children: [] });
+        out.push({ role: 'StaticText', name: t.slice(0, 200), states: [], description: '', extras: {}, uid: parent.uid, isText: true, inViewport: inViewport(el), children: [] });
         emitted += 1;
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         const child = walkElement(node as Element);
@@ -93,6 +107,7 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
       description: computeDescription(elem),
       extras: computeExtras(elem),
       uid,
+      inViewport: inViewport(elem),
       children: [],
     };
     walkChildren(elem, node, node.children);
@@ -118,7 +133,9 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
   walkChildren(root, rootNode, rootNode.children);
 
   const lines: string[] = [];
-  serialize(rootNode, 0, lines, baseOrigin);
+  const fold = { n: 0 };
+  serialize(rootNode, 0, lines, baseOrigin, cfg.detail, fold);
+  flushFold(lines, 0, fold);   // 残留计数
   if (truncated) lines.push(`… [还有更多节点未显示，快照已达节点上限 ${cfg.maxNodes} 被截断]`);
   return { text: lines.join('\n') };
 }
@@ -173,13 +190,39 @@ export function shortenUrl(raw: string, baseOrigin: string): string {
   return `…${s.slice(-39)}`;
 }
 
-function serialize(node: SnapNode, depth: number, lines: string[], baseOrigin: string): void {
-  const emit = shouldEmit(node);
+function serialize(
+  node: SnapNode, depth: number, lines: string[], baseOrigin: string,
+  detail: SnapshotDetail, fold: { n: number },
+): void {
+  // 两层判定：先按既有结构规则（纯布局 generic 折叠、子节点上提），再叠加档位过滤。
+  // 两层都通过才出行——shouldEmit 与 keepAtDetail 口径不同是设计使然：full 档仍需
+  // 宽松的结构规则保留全量，不是要把两者收敛成一套。
+  const structural = shouldEmit(node);
+  const keep = keepAtDetail(node, detail);
+  const emit = structural && keep;
+
   if (emit) {
+    flushFold(lines, depth, fold);
     lines.push('  '.repeat(depth) + renderLine(node, baseOrigin));
+  } else if (!keep) {
+    // 计数条件是「被档位滤掉」而非「structural 且被档位滤掉」：interactive 档下无名
+    // generic（structural 已先行滤掉的那批）同样占页面体积，agent 需要知道「那里有
+    // 东西没展开」；若按 structural 限定，div/section/p 堆出的页面在 interactive 档
+    // 会一行折叠痕迹都不留，计数行「保留结构感」的目的就落空了。full 档 keep 恒
+    // true，永不计数，天然恢复全量。
+    fold.n += 1;
   }
   const nextDepth = emit ? depth + 1 : depth;
-  for (const c of node.children) serialize(c, nextDepth, lines, baseOrigin);
+  for (const c of node.children) serialize(c, nextDepth, lines, baseOrigin, detail, fold);
+}
+
+/** 输出并清空折叠计数。相邻多个被滤节点合并成一行。
+ *  措辞刻意中性「未展开节点」：被滤的可能是 img/navigation/list 这类非交互元素，
+ *  也可能是白名单外的 ARIA 角色，说成「纯文本/容器」以偏概全。 */
+function flushFold(lines: string[], depth: number, fold: { n: number }): void {
+  if (fold.n === 0) return;
+  lines.push('  '.repeat(depth) + `… [${fold.n} 个未展开节点]`);
+  fold.n = 0;
 }
 
 function renderLine(node: SnapNode, baseOrigin: string): string {
