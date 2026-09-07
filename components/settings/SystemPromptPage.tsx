@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Eye, Pencil, RotateCcw } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
+import { Tooltip } from '../ui/Tooltip';
 import { Markdown } from '../chat/Markdown';
 import { CodeEditor } from '../detail/CodeEditor';
 import { SYSTEM_PROMPT } from '../../agent/context';
@@ -85,15 +86,16 @@ export function SystemPromptPage({ onBack }: { onBack: () => void }) {
       onBack={onBack}
       backLabel="返回设置"
       actions={
-        <Button
-          variant="ghost"
-          className="btn--icon"
-          aria-label={preview ? '编辑' : '预览'}
-          title={preview ? '编辑' : '预览'}
-          onClick={() => setPreview((v) => !v)}
-        >
-          {preview ? <Pencil size={16} /> : <Eye size={16} />}
-        </Button>
+        <Tooltip label={preview ? '编辑' : '预览'}>
+          <button
+            type="button"
+            className="btn btn--ghost btn--icon"
+            aria-label={preview ? '编辑' : '预览'}
+            onClick={() => setPreview((v) => !v)}
+          >
+            {preview ? <Pencil size={16} /> : <Eye size={16} />}
+          </button>
+        </Tooltip>
       }
     >
       {isBuiltin && (

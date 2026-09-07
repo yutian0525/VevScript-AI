@@ -2,11 +2,12 @@
 // AI 记忆二级页（spec §3.6）：列表 ↔ 详情。面板直接读写 storage/memory.ts，
 // 不走 background 编排层——记忆无 md 解析、无注入引擎、无 tabs 监听，那层间接没有收益。
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Search, Trash2 } from 'lucide-react';
+import { Brain, Info, Plus, Search, Trash2 } from 'lucide-react';
 import { storage } from 'wxt/utils/storage';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { Tooltip } from '../ui/Tooltip';
 import {
   listMemories, saveMemory, deleteMemory, newMemory, MAX_CONTENT_LENGTH, MEMORY_KEY,
 } from '../../storage/memory';
@@ -16,6 +17,34 @@ import { parsePatternLines, invalidPatterns, filterMemories } from './memory-pag
 
 /** 详情态：'new' = 新建，字符串 id = 编辑那一条。 */
 type Editing = { kind: 'new' } | { kind: 'edit'; entry: MemoryEntry };
+
+/** 面板卡内的一行开关：左侧标签 + info 图标（Tooltip 收纳长说明），右侧 switch。 */
+function ToggleRow({
+  label, hint, checked, onToggle,
+}: { label: string; hint: string; checked: boolean; onToggle: () => void }) {
+  return (
+    <div className="mem-toggle">
+      <span className="mem-toggle__label">
+        {label}
+        <Tooltip label={hint}>
+          <button type="button" className="mem-info" aria-label={`${label}说明`}>
+            <Info size={13} aria-hidden />
+          </button>
+        </Tooltip>
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        className={`switch${checked ? ' switch--on' : ''}`}
+        onClick={onToggle}
+      >
+        <span className="switch__thumb" aria-hidden />
+      </button>
+    </div>
+  );
+}
 
 export function MemoryPage({ onBack }: { onBack: () => void }) {
   const [list, setList] = useState<MemoryEntry[]>([]);
@@ -99,64 +128,49 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
       onBack={onBack}
       backLabel="返回设置"
       actions={
-        <Button
-          variant="ghost"
-          className="btn--icon"
-          aria-label="新建记忆"
-          title="新建记忆"
-          onClick={() => setEditing({ kind: 'new' })}
-        >
-          <Plus size={16} />
-        </Button>
+        <Tooltip label="新建记忆">
+          <button
+            type="button"
+            className="btn btn--ghost btn--icon"
+            aria-label="新建记忆"
+            onClick={() => setEditing({ kind: 'new' })}
+          >
+            <Plus size={16} />
+          </button>
+        </Tooltip>
       }
     >
       {error && <div className="scripts-warnline" role="status">{error}</div>}
 
-      <div className="field">
-        <div className="mem-switch">
-          <span className="field-label">启用记忆</span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
-            aria-label="启用记忆"
-            className={`switch${enabled ? ' switch--on' : ''}`}
-            onClick={() => void toggleEnabled()}
-          >
-            <span className="switch__thumb" aria-hidden />
-          </button>
-        </div>
-        <span className="hint">关闭后不再把记忆注入对话，也不给 AI 记忆工具。</span>
-      </div>
-      <div className="field">
-        <div className="mem-switch">
-          <span className="field-label">允许 AI 写入</span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={writable}
-            aria-label="允许 AI 写入"
-            className={`switch${writable ? ' switch--on' : ''}`}
-            onClick={() => void toggleWritable()}
-          >
-            <span className="switch__thumb" aria-hidden />
-          </button>
-        </div>
-        <span className="hint">关闭后 AI 只能读已有记忆，增删改全部由你在这一页维护。</span>
+      <div className="mem-panel">
+        <ToggleRow
+          label="启用记忆"
+          hint="关闭后不再把记忆注入对话，也不给 AI 记忆工具。"
+          checked={enabled}
+          onToggle={() => void toggleEnabled()}
+        />
+        <ToggleRow
+          label="允许 AI 写入"
+          hint="关闭后 AI 只能读已有记忆，增删改全部由你在这一页维护。"
+          checked={writable}
+          onToggle={() => void toggleWritable()}
+        />
       </div>
 
-      <div className="scripts-toolbar">
-        <div style={{ position: 'relative', flex: 1 }}>
-          <Search size={13} style={{ position: 'absolute', left: 8, top: 8, color: 'var(--ink-3)' }} aria-hidden />
-          <Input
-            aria-label="搜索记忆"
-            placeholder="搜索正文 / 作用域…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            style={{ paddingLeft: 26 }}
-          />
+      {list.length > 0 && (
+        <div className="scripts-toolbar">
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Search size={13} style={{ position: 'absolute', left: 8, top: 8, color: 'var(--ink-3)' }} aria-hidden />
+            <Input
+              aria-label="搜索记忆"
+              placeholder="搜索正文 / 作用域…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              style={{ paddingLeft: 26 }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="scripts-list">
         {visible.map((m) => (
@@ -176,31 +190,35 @@ export function MemoryPage({ onBack }: { onBack: () => void }) {
           >
             <div className="scripts-card__top">
               <span className="mem-card__content">{m.content}</span>
-              <button
-                type="button"
-                className="scripts-card__delbtn"
-                aria-label={`删除这条记忆：${m.content}`}
-                title="删除记忆"
-                onClick={(e) => { e.stopPropagation(); void remove(m); }}
-                onKeyDown={(e) => e.stopPropagation()}
-              >
-                <Trash2 size={14} aria-hidden />
-              </button>
+              <Tooltip label="删除记忆">
+                <button
+                  type="button"
+                  className="scripts-card__delbtn"
+                  aria-label={`删除这条记忆：${m.content}`}
+                  onClick={(e) => { e.stopPropagation(); void remove(m); }}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <Trash2 size={14} aria-hidden />
+                </button>
+              </Tooltip>
             </div>
             <div className="scripts-card__meta">
               {m.matches.length === 0
-                ? <span className="token">全局</span>
-                : m.matches.map((p) => <span key={p} className="mono slash-chip">{p}</span>)}
-              <span className="token">{m.source === 'ai' ? 'AI' : '手工'}</span>
-              <span className="scripts-card__match">{new Date(m.updatedAt).toLocaleString()}</span>
+                ? <span className="mem-chip">全局</span>
+                : m.matches.map((p) => <span key={p} className="mem-chip mem-chip--scope">{p}</span>)}
+              <span className={`mem-src mem-src--${m.source}`}>{m.source === 'ai' ? 'AI' : '手工'}</span>
+              <span className="mem-card__time">{new Date(m.updatedAt).toLocaleDateString()}</span>
             </div>
           </div>
         ))}
         {visible.length === 0 && (
-          <div className="chat__empty">
-            {list.length === 0
-              ? '还没有记忆。AI 在对话中发现值得长期保留的信息时会自己记下，你也可以点右上角手工添加。'
-              : '没有匹配的记忆'}
+          <div className="mem-empty">
+            <Brain size={30} strokeWidth={1.5} className="mem-empty__icon" aria-hidden />
+            <div className="mem-empty__text">
+              {list.length === 0
+                ? '还没有记忆。AI 在对话中发现值得长期保留的信息时会自己记下，你也可以点右上角手工添加。'
+                : '没有匹配的记忆'}
+            </div>
           </div>
         )}
       </div>
