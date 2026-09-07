@@ -100,8 +100,9 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
   const rootUid = assignUid(root);
   nodeCount += 1;
   const view = root.ownerDocument.defaultView;
-  // 同源省 origin 的基准。jsdom 下 location.origin 存在（http://localhost:3000）；
-  // about:blank 等取不到时退空串——此时跨源分支生效，host 会保留（对 agent 反而更完整）。
+  // 同源省 origin 的基准。真实 about:blank 的 origin 序列化为字符串 "null"（不缺失），
+  // 此处退空串的真实来源是 implementation.createHTMLDocument() 这类 defaultView 为 null 的文档
+  // （jsdom 单测里 mock document 的场景同理）——退空串走跨源分支，host 保留，对 agent 反而更完整。
   const baseOrigin = view?.location?.origin ?? '';
   const rootNode: SnapNode & { uid: number } = {
     role: 'RootWebArea',
@@ -131,27 +132,43 @@ function coveredByName(parentName: string, t: string): boolean {
   return parentName.length === 100 && t.startsWith(parentName);
 }
 
-/** URL 瘦身：同源省 origin、跨源留 host+path、查询串截 30、总长超 40 前缀省略号。
- *  代价：hash 与超长 path 的中段会被丢弃——agent 需要 hash 锚点或完整深链时可读 href 补全，
- *  而绝对 URL 的域名前缀对模型零价值（当前页 origin 已在 system prompt 页面信息块给过），
- *  url 属性占快照 28~31% 字符，是仅次于 StaticText 去重的瘦身点，值得这点信息损失。
- *  注意：javascript:/mailto:/tel: 等非 http(s) scheme 在 WHATWG URL 下解析成功不抛错，
- *  但 host 为空、pathname 吞掉 scheme——直接套用瘦身公式会把 scheme 一起删掉（实测踩过），
- *  故只对 http(s) 做 origin 瘦身，其余原样保留（仍吃总长截断）。 */
+/** URL 瘦身：同源省 origin、跨源留 host+path、查询串截 30（带 … 标记）、总长上限 40。
+ *  代价：hash 一律丢弃——锚点定位对快照读者价值极低，需要时 agent 可经 evaluate_script 读 href；
+ *  超长时同源丢前缀、跨源丢 path 中段。url 属性占快照 28~31% 字符，是仅次于 StaticText
+ *  去重的瘦身点，值得这点信息损失（当前页 origin 已在 system prompt 页面信息块给过）。
+ *  两个实测踩过的坑：
+ *  1. javascript:/mailto:/tel: 等非 http(s) scheme 在 WHATWG URL 下解析成功不抛错，但 host 为空、
+ *     pathname 吞掉 scheme——直接套瘦身公式会把 scheme 一起删掉，故只对 http(s) 瘦身，其余原样保留。
+ *  2. 跨源超长时截断只作用于 host 之后的部分——host 是跨源分支存在的唯一理由（模型靠它区分站点），
+ *     丢了它模型会把外链误判成同源路径；host 自身就超预算的极端情况才整体截断。 */
 export function shortenUrl(raw: string, baseOrigin: string): string {
   let s: string;
+  let host = '';
+  let sameOrigin = false;
   try {
     const u = new URL(raw);
     if (u.protocol === 'http:' || u.protocol === 'https:') {
-      const q = u.search ? u.search.slice(0, 30) : '';
-      s = u.origin === baseOrigin ? `${u.pathname}${q}` : `${u.host}${u.pathname}${q}`;
+      // 截断必须带 … 标记：否则残缺查询与「恰好 30 字符的完整查询」不可区分，模型会把残缺当完整 URL 抄进脚本
+      const q = u.search.length > 30 ? `${u.search.slice(0, 30)}…` : u.search;
+      if (u.origin === baseOrigin) {
+        sameOrigin = true;
+        s = `${u.pathname}${q}`;
+      } else {
+        host = u.host;
+        s = `${host}${u.pathname}${q}`;
+      }
     } else {
       s = raw;
     }
   } catch {
     s = raw;
   }
-  return s.length > 40 ? `…${s.slice(-39)}` : s;
+  if (s.length <= 40) return s;
+  // 跨源：host + … + rest 尾部，总长恰 40。host ≥ 39 时尾部一个字符都塞不下，退回整体截断
+  if (!sameOrigin && host.length + 1 < 40) {
+    return `${host}…${s.slice(host.length).slice(-(40 - host.length - 1))}`;
+  }
+  return `…${s.slice(-39)}`;
 }
 
 function serialize(node: SnapNode, depth: number, lines: string[], baseOrigin: string): void {

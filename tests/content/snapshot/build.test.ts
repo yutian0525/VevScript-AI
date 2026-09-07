@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { buildSnapshot, resolveUid, resetUidMap } from '../../../content/snapshot/build';
+import { buildSnapshot, resolveUid, resetUidMap, shortenUrl } from '../../../content/snapshot/build';
 
 // 反查某元素被分配的 uid（遍历 1..N）
 function resolveUidByElement(el: Element): number {
@@ -237,5 +237,93 @@ describe('快照组装', () => {
     document.body.innerHTML = '<a href="javascript:void(0)">脚本链</a>';
     const { text } = buildSnapshot(document.body);
     expect(text).toContain('url="javascript:void(0)"');
+  });
+
+  // RootWebArea 行的 url 会被同源规则压成 "/"，若对全文取第一个匹配会锚到根行。必须先定位 link 行。
+  const urlOfLinkLine = (text: string): string => {
+    const line = text.split('\n').find((l) => l.includes('link '))!;
+    return /url="([^"]*)"/.exec(line)![1]!;
+  };
+
+  it('超长 path 前缀省略号截断到 40 字符', () => {
+    document.body.innerHTML = `<a href="/${'seg/'.repeat(30)}end">长链</a>`;
+    const u = urlOfLinkLine(buildSnapshot(document.body).text);
+    expect(u.length).toBeLessThanOrEqual(41); // 40 + 省略号
+    expect(u.startsWith('…')).toBe(true);
+    expect(u.endsWith('end')).toBe(true);
+  });
+
+  it('查询串截断到 30 字符，带 … 标记', () => {
+    document.body.innerHTML = `<a href="/s?q=${'x'.repeat(60)}">查</a>`;
+    const u = urlOfLinkLine(buildSnapshot(document.body).text);
+    expect(u).toContain('?q=');
+    expect(u.endsWith('…')).toBe(true); // 残缺查询不能伪装成完整 URL
+    expect(u.length).toBeLessThanOrEqual(41);
+  });
+
+  it('查询串恰好 30 字符（?q= + 27x）不截断，无 … 标记', () => {
+    document.body.innerHTML = `<a href="/s?q=${'x'.repeat(27)}">查</a>`;
+    const u = urlOfLinkLine(buildSnapshot(document.body).text);
+    expect(u).toBe(`/s?q=${'x'.repeat(27)}`);
+  });
+
+  it('跨源超长 URL：host 必须保住，只截 host 之后的部分', () => {
+    // 真实场景：云盘/商品深链，host 是跨源分支存在的唯一理由，丢了模型会把外链当同源路径
+    document.body.innerHTML =
+      '<a href="https://docs.google.com/spreadsheets/d/1AbC-dEfGhIjKlMnOpQrStUvWxYz/edit">表</a>';
+    const u = urlOfLinkLine(buildSnapshot(document.body).text);
+    expect(u.startsWith('docs.google.com…')).toBe(true);
+    expect(u.length).toBe(40);
+    expect(u.endsWith('/edit')).toBe(true);
+  });
+
+  describe('shortenUrl 纯函数边界', () => {
+    it('空 baseOrigin 走跨源分支，host 保留（createHTMLDocument 等 defaultView 为 null 的退化路径）', () => {
+      expect(shortenUrl('https://example.com/a', '')).toBe('example.com/a');
+      expect(shortenUrl('/rel', '')).toBe('/rel');
+    });
+
+    it('host 自身就超预算（≥39 字符）退回整体截断', () => {
+      const host = `${'a'.repeat(30)}.example.com`; // 42 字符
+      const out = shortenUrl(`https://${host}/x/y`, 'http://localhost:3000');
+      expect(out.startsWith('…')).toBe(true);
+      expect(out.length).toBe(40);
+      expect(out).not.toContain(host); // 整体截断下 host 也保不全，可接受
+    });
+
+    it('host 恰好 38 字符：h+1=39 < 40，host 保留 + … + 1 字符尾部', () => {
+      const host = `${'a'.repeat(26)}.example.com`; // 38 字符
+      const out = shortenUrl(`https://${host}/xyz`, 'http://localhost:3000');
+      expect(out.startsWith(host)).toBe(true);
+      expect(out.length).toBe(40);
+      expect(out).toContain('…');
+    });
+
+    it('总长恰好 40 / 41 的跨源边界', () => {
+      // host 15 + path 25 = 40 → 不截断
+      expect(shortenUrl(`https://docs.google.com/${'a'.repeat(24)}`, '')).toBe(
+        `docs.google.com/${'a'.repeat(24)}`,
+      );
+      // host 15 + path 26 = 41 → 截成 40
+      const out = shortenUrl(`https://docs.google.com/${'a'.repeat(25)}`, '');
+      expect(out.length).toBe(40);
+      expect(out.startsWith('docs.google.com…')).toBe(true);
+    });
+
+    it('查询串截断在纯函数层带 … 标记；percent 编码截中段可接受', () => {
+      // shortenUrl 的入参是 computeExtras 已解析成绝对地址的 href，这里同样要给绝对地址
+      // search = '?q=' + 30x = 33 > 30 → 截到 30（'?q='+27x）+ …
+      expect(shortenUrl(`http://localhost:3000/s?q=${'x'.repeat(30)}`, 'http://localhost:3000')).toBe(
+        `/s?q=${'x'.repeat(27)}…`,
+      );
+      // search = '?q=' + 27x = 30 → 不截断、无 …
+      expect(shortenUrl(`http://localhost:3000/s?q=${'x'.repeat(27)}`, 'http://localhost:3000')).toBe(
+        `/s?q=${'x'.repeat(27)}`,
+      );
+      // %E4 被截在编码中间——模型对截断 URL 容忍度高，对齐编码边界属过度打磨
+      expect(shortenUrl('http://localhost:3000/s?q=%E4%B8%AD%E6%96%87', 'http://localhost:3000')).toBe(
+        '/s?q=%E4%B8%AD%E6%96%87',
+      );
+    });
   });
 });
