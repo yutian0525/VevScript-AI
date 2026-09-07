@@ -1,0 +1,24 @@
+tests/agent/memory-prompt.test.ts
+  s_b4a0c595677b1b::t_8da425015481b0 1-157
+agent/memory-prompt.ts
+  s_b4a0c595677b1b::t_c03750b4390c37 1-106,108-127,130,132-138
+  s_b4a0c595677b1b::t_82fc753e632d0e 107,128-129,131
+agent/mode.ts
+  s_b4a0c595677b1b::t_a076cf2b72bddd 23-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "aa468db388bdd440abd09e0913212e1a56780d4e",
+  "prompts": {},
+  "sessions": {
+    "s_b4a0c595677b1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01db4937-1c12-4f2d-be27-e819f2e93fc0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
