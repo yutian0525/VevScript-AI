@@ -280,8 +280,11 @@ describe('快照组装', () => {
     expect(u.endsWith('/edit')).toBe(true);
   });
 
-  it('默认档（interactive）折叠容器节点为计数行', () => {
-    document.body.innerHTML = '<div><section><p>正文</p></section></div><button>按钮</button>';
+  it('默认档（interactive）折叠非白名单容器为计数行', () => {
+    // ul→list、li→listitem 都是非 generic（structural=true）且不在白名单，
+    // 故被档位滤掉并计数。用 div/section/p 测不出来——它们是无名 generic，
+    // shouldEmit 本就返 false（纯布局折叠、子节点上提），两档都不出行。
+    document.body.innerHTML = '<ul><li>项目</li></ul><button>按钮</button>';
     const { text } = buildSnapshot(document.body);
     expect(text).toContain('button "按钮"');
     expect(text).toMatch(/… \[\d+ 个未展开节点\]/);
@@ -301,11 +304,18 @@ describe('快照组装', () => {
   });
 
   it('相邻多个被折叠节点合并成一行计数', () => {
-    document.body.innerHTML = '<div></div><div></div><div></div><button>b</button>';
+    document.body.innerHTML = '<nav></nav><nav></nav><nav></nav><button>b</button>';
     const { text } = buildSnapshot(document.body);
     const foldLines = text.split('\n').filter((l) => l.includes('未展开节点'));
     expect(foldLines.length).toBe(1);
     expect(foldLines[0]).toContain('3');
+  });
+
+  it('纯布局 generic 不计入折叠数（它们在 full 档也不出行，计进去只是噪声）', () => {
+    document.body.innerHTML = '<div><section><p>正文</p></section></div>';
+    const { text } = buildSnapshot(document.body);
+    expect(text).toContain('StaticText "正文"');
+    expect(text).not.toContain('未展开节点');
   });
 
   describe('shortenUrl 纯函数边界', () => {

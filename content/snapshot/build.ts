@@ -204,12 +204,10 @@ function serialize(
   if (emit) {
     flushFold(lines, depth, fold);
     lines.push('  '.repeat(depth) + renderLine(node, baseOrigin));
-  } else if (!keep) {
-    // 计数条件是「被档位滤掉」而非「structural 且被档位滤掉」：interactive 档下无名
-    // generic（structural 已先行滤掉的那批）同样占页面体积，agent 需要知道「那里有
-    // 东西没展开」；若按 structural 限定，div/section/p 堆出的页面在 interactive 档
-    // 会一行折叠痕迹都不留，计数行「保留结构感」的目的就落空了。full 档 keep 恒
-    // true，永不计数，天然恢复全量。
+  } else if (structural) {
+    // 计数口径 = 「full 档会显示、本档藏了」的节点，数字即切到 full 能多看到的行数，
+    // agent 可据此决策值不值得切档。纯布局 generic（structural 已先行滤掉）不计——
+    // 它们在 full 档也不出行，计进去只是几百个布局 div 堆出的噪声。
     fold.n += 1;
   }
   const nextDepth = emit ? depth + 1 : depth;
