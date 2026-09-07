@@ -174,8 +174,8 @@ describe('parseUserScript', () => {
     expect(ok.warnings.some((w) => w.includes('不支持'))).toBe(false);
     expect(ok.fields.meta.grants).toEqual(['GM_getValue', 'GM_setValue']);
 
-    const bad = parseUserScript('// ==UserScript==\n// @name t\n// @match https://a.com/*\n// @grant GM_getValue\n// @grant GM_download\n// ==/UserScript==\nx();');
-    expect(bad.warnings.some((w) => w.includes('GM_download'))).toBe(true);
+    const bad = parseUserScript('// ==UserScript==\n// @name t\n// @match https://a.com/*\n// @grant GM_getValue\n// @grant GM_fakeApi\n// ==/UserScript==\nx();');
+    expect(bad.warnings.some((w) => w.includes('GM_fakeApi'))).toBe(true);
     expect(bad.warnings.some((w) => w.includes('GM_getValue'))).toBe(false);
   });
 });

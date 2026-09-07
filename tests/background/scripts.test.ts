@@ -347,11 +347,11 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
 
   it('handleImport：原文存 text + TM 元数据解析 + unsupported grant 警告透传', async () => {
     installFakeUserScripts();
-    const src = '// ==UserScript==\n// @name imp\n// @match https://i.com/*\n// @grant GM_log\n// @grant GM_download\n// ==/UserScript==\nlog();';
+    const src = '// ==UserScript==\n// @name imp\n// @match https://i.com/*\n// @grant GM_log\n// @grant GM_fakeApi\n// ==/UserScript==\nlog();';
     const { script, warnings } = await handleImport(src, 'imp.user.js');
     expect(script.text).toBe(src);
     expect(script).toMatchObject({ name: 'imp', enabled: true, source: 'import', matches: ['https://i.com/*'] });
-    expect(warnings.some((w) => w.includes('GM_download'))).toBe(true);
+    expect(warnings.some((w) => w.includes('GM_fakeApi'))).toBe(true);
   });
 
   it('handleImport：@include pattern 形式并入 matches 生效', async () => {
