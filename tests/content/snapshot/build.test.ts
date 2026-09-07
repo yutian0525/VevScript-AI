@@ -197,4 +197,45 @@ describe('快照组装', () => {
     expect(text).not.toContain('StaticText "标签"');
     expect(text).toContain('StaticText "其他"');
   });
+
+  it('同源 url 省略 origin，只留 path', () => {
+    document.body.innerHTML = '<a href="/en-US/docs/Web/HTML">文档</a>';
+    const { text } = buildSnapshot(document.body);
+    expect(text).toContain('url="/en-US/docs/Web/HTML"');
+    expect(text).not.toContain('localhost');
+  });
+
+  it('跨源 url 保留 host + path', () => {
+    document.body.innerHTML = '<a href="https://example.com/a/b">外链</a>';
+    const { text } = buildSnapshot(document.body);
+    expect(text).toContain('url="example.com/a/b"');
+    expect(text).not.toContain('https://');
+  });
+
+  it('超长 path 前缀省略号截断到 40 字符', () => {
+    document.body.innerHTML = `<a href="/${'seg/'.repeat(30)}end">长链</a>`;
+    const { text } = buildSnapshot(document.body);
+    // 全文第一个 url=" 是 RootWebArea 的（已被压成 "/"），必须先定位到 link 行再取
+    const line = text.split('\n').find((l) => l.includes('长链'))!;
+    const m = /url="([^"]*)"/.exec(line)!;
+    expect(m[1]!.length).toBeLessThanOrEqual(41); // 40 + 省略号
+    expect(m[1]!.startsWith('…')).toBe(true);
+    expect(m[1]!.endsWith('end')).toBe(true);
+  });
+
+  it('查询串截断到 30 字符', () => {
+    document.body.innerHTML = `<a href="/s?q=${'x'.repeat(60)}">查</a>`;
+    const { text } = buildSnapshot(document.body);
+    // 同上：跳过 RootWebArea 行，只看 link 行
+    const line = text.split('\n').find((l) => l.includes('link'))!;
+    const m = /url="([^"]*)"/.exec(line)!;
+    expect(m[1]).toContain('?q=');
+    expect(m[1]!.length).toBeLessThanOrEqual(41);
+  });
+
+  it('非法/特殊 scheme 的 href 原样截断，不抛错', () => {
+    document.body.innerHTML = '<a href="javascript:void(0)">脚本链</a>';
+    const { text } = buildSnapshot(document.body);
+    expect(text).toContain('url="javascript:void(0)"');
+  });
 });

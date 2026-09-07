@@ -100,6 +100,9 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
   const rootUid = assignUid(root);
   nodeCount += 1;
   const view = root.ownerDocument.defaultView;
+  // 同源省 origin 的基准。jsdom 下 location.origin 存在（http://localhost:3000）；
+  // about:blank 等取不到时退空串——此时跨源分支生效，host 会保留（对 agent 反而更完整）。
+  const baseOrigin = view?.location?.origin ?? '';
   const rootNode: SnapNode & { uid: number } = {
     role: 'RootWebArea',
     name: root.ownerDocument.title ?? '',
@@ -112,7 +115,7 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
   walkChildren(root, rootNode, rootNode.children);
 
   const lines: string[] = [];
-  serialize(rootNode, 0, lines);
+  serialize(rootNode, 0, lines, baseOrigin);
   if (truncated) lines.push(`… [还有更多节点未显示，快照已达节点上限 ${cfg.maxNodes} 被截断]`);
   return { text: lines.join('\n') };
 }
@@ -128,16 +131,39 @@ function coveredByName(parentName: string, t: string): boolean {
   return parentName.length === 100 && t.startsWith(parentName);
 }
 
-function serialize(node: SnapNode, depth: number, lines: string[]): void {
-  const emit = shouldEmit(node);
-  if (emit) {
-    lines.push('  '.repeat(depth) + renderLine(node));
+/** URL 瘦身：同源省 origin、跨源留 host+path、查询串截 30、总长超 40 前缀省略号。
+ *  代价：hash 与超长 path 的中段会被丢弃——agent 需要 hash 锚点或完整深链时可读 href 补全，
+ *  而绝对 URL 的域名前缀对模型零价值（当前页 origin 已在 system prompt 页面信息块给过），
+ *  url 属性占快照 28~31% 字符，是仅次于 StaticText 去重的瘦身点，值得这点信息损失。
+ *  注意：javascript:/mailto:/tel: 等非 http(s) scheme 在 WHATWG URL 下解析成功不抛错，
+ *  但 host 为空、pathname 吞掉 scheme——直接套用瘦身公式会把 scheme 一起删掉（实测踩过），
+ *  故只对 http(s) 做 origin 瘦身，其余原样保留（仍吃总长截断）。 */
+export function shortenUrl(raw: string, baseOrigin: string): string {
+  let s: string;
+  try {
+    const u = new URL(raw);
+    if (u.protocol === 'http:' || u.protocol === 'https:') {
+      const q = u.search ? u.search.slice(0, 30) : '';
+      s = u.origin === baseOrigin ? `${u.pathname}${q}` : `${u.host}${u.pathname}${q}`;
+    } else {
+      s = raw;
+    }
+  } catch {
+    s = raw;
   }
-  const nextDepth = emit ? depth + 1 : depth;
-  for (const c of node.children) serialize(c, nextDepth, lines);
+  return s.length > 40 ? `…${s.slice(-39)}` : s;
 }
 
-function renderLine(node: SnapNode): string {
+function serialize(node: SnapNode, depth: number, lines: string[], baseOrigin: string): void {
+  const emit = shouldEmit(node);
+  if (emit) {
+    lines.push('  '.repeat(depth) + renderLine(node, baseOrigin));
+  }
+  const nextDepth = emit ? depth + 1 : depth;
+  for (const c of node.children) serialize(c, nextDepth, lines, baseOrigin);
+}
+
+function renderLine(node: SnapNode, baseOrigin: string): string {
   if (node.role.startsWith('…')) return node.role;
   const esc = (s: string) => s.replace(/\s+/g, ' ').replace(/"/g, '\\"');
   const uid = node.uid != null ? `[${node.uid}] ` : '';
@@ -146,7 +172,7 @@ function renderLine(node: SnapNode): string {
   const ac = node.extras.autocomplete ? ` autocomplete="${esc(node.extras.autocomplete)}"` : '';
   const states = node.states.length ? ` {${node.states.join(',')}}` : '';
   const desc = node.description ? ` description="${esc(node.description)}"` : '';
-  const url = node.extras.url ? ` url="${esc(node.extras.url)}"` : '';
+  const url = node.extras.url ? ` url="${esc(shortenUrl(node.extras.url, baseOrigin))}"` : '';
   return `${uid}${node.role}${name}${hp}${ac}${states}${desc}${url}`;
 }
 
