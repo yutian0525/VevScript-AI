@@ -135,6 +135,21 @@ export interface SkillSummary {
   updatedAt: number;
 }
 
+// ---------- Agent 记忆（跨会话长期记忆，spec §3）----------
+
+export interface MemoryEntry {
+  /** nanoid(8)：短 id 省注入 token，且足够唯一（本地 ≤100 条） */
+  id: string;
+  /** 记忆正文，≤500 字符 */
+  content: string;
+  /** 站点作用域（Chrome match pattern）。空数组 = 全局记忆，始终注入 */
+  matches: string[];
+  /** 来源：AI 自主记录 / 用户手工添加。事实记录，不因后续编辑而改写 */
+  source: 'ai' | 'user';
+  createdAt: number;
+  updatedAt: number;
+}
+
 // ---------- 输入框附件（聊天上传：纯文本 / 图片）----------
 
 /** 用户在输入框上传的附件。text：读出的文件正文；image：压缩后的 dataURL。

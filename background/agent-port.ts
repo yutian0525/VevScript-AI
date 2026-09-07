@@ -4,10 +4,13 @@ import type { AgentEvent, PortMsgFromPanel } from '../shared/messages';
 import type { Provider } from '../agent/provider/types';
 import { OpenAICompatProvider } from '../agent/provider/openai-compat';
 import { getSettings } from '../storage/settings';
+import { listMemories } from '../storage/memory';
+import { memoryStateToCap, type MemoryState } from '../agent/memory-prompt';
 import { runAgentLoop, resumeAgentLoop, type LoopDeps } from '../agent/loop';
 import { executeTool } from '../agent/tools/registry';
 import { compactConversation } from '../agent/compact';
 import { resolveContextWindow } from '../agent/model-windows';
+import { resolveSystemPrompt } from '../agent/context';
 import { getConversation, setLastPromptTokens, setStatus, setMode as storeSetMode } from '../storage/conversations';
 import { listSkills } from '../storage/skills';
 import type { Skill } from '../shared/types';
@@ -93,11 +96,40 @@ function broadcast(convId: string, e: AgentEvent): void {
   for (const p of panelPorts) postTo(p, convId, e);
 }
 
+/** 读记忆状态：总开关关闭时直接返回空且不可写；storage 故障同样降级为 off
+ *  （任务不因记忆读不出来而中断，代价是该轮拿不到记忆也不能写——瞬时故障可接受）。
+ *
+ *  注：loop 用它过滤 schema、executeTool 又独立读一次做硬闸，两处各读一次同一份设置。
+ *  用户在一轮进行中拨开关，最坏情况是这一轮清单与守卫松紧不一致，下一轮即对齐——
+ *  守卫是防幻觉的兜底，不追求与清单严格同帧。 */
+export async function readMemoryState(): Promise<MemoryState> {
+  const off: MemoryState = { enabled: false, writable: false, entries: [] };
+  try {
+    const { agent } = await getSettings();
+    if (!agent.memoryEnabled) return off;
+    const all = await listMemories();
+    return {
+      enabled: true,
+      writable: agent.memoryWritable,
+      entries: all.map((m) => ({
+        id: m.id, content: m.content, matches: m.matches, updatedAt: m.updatedAt,
+      })),
+    };
+  } catch {
+    return off;
+  }
+}
+
 function makeDeps(provider: Provider, convId: string): LoopDeps {
   return {
     provider,
-    executeTool: (name, args, tabId, signal) =>
-      executeTool(name, args, { tabId, sessionId: convId, signal, waitForReady: (t) => waitForCsReady(t), mode: convModeRef.mode }),
+    executeTool: async (name, args, tabId, signal) =>
+      executeTool(name, args, {
+        tabId, sessionId: convId, signal,
+        waitForReady: (t) => waitForCsReady(t),
+        mode: convModeRef.mode,
+        memory: memoryStateToCap(await readMemoryState()),
+      }),
     getPageInfo,
     resolveOpenedTab: (_name, openerTabId) => resolveOpenedTab(openerTabId, (t) => waitForCsReady(t)),
     getContextWindow: async () => {
@@ -105,6 +137,11 @@ function makeDeps(provider: Provider, convId: string): LoopDeps {
       return resolveContextWindow(p.model, p.contextWindow);
     },
     getMaxTokens: async () => (await getSettings()).agent.maxTokens,
+    getSystemPrompt: async () => {
+      const s = await getSettings().catch(() => null);
+      return resolveSystemPrompt(s?.prompt.custom);
+    },
+    getMemoryState: readMemoryState,
     compact: (id) => compactConversation(id, { provider }),
     getSkills: async () =>
       (await listSkills().catch(() => [] as Skill[]))

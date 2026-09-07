@@ -6,6 +6,7 @@ import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, type Extension } from '@codemirror/state';
 import { basicSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
+import { markdown } from '@codemirror/lang-markdown';
 import { indentUnit } from '@codemirror/language';
 import { indentWithTab } from '@codemirror/commands';
 
@@ -14,6 +15,8 @@ interface Props {
   onChange: (next: string) => void;
   onSave: () => void;
   ariaLabel: string;
+  /** 语法高亮语言。挂载时决定，不支持运行时切换（extensions 只构建一次）。默认 javascript。 */
+  language?: 'javascript' | 'markdown';
 }
 
 const editorTheme = EditorView.theme(
@@ -54,7 +57,7 @@ const editorTheme = EditorView.theme(
   { dark: false },
 );
 
-export function CodeEditor({ value, onChange, onSave, ariaLabel }: Props) {
+export function CodeEditor({ value, onChange, onSave, ariaLabel, language = 'javascript' }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   // 最新回调放 ref：updateListener/keymap 闭包捕获 ref，不捕获过期 props
@@ -69,7 +72,7 @@ export function CodeEditor({ value, onChange, onSave, ariaLabel }: Props) {
       doc: value,
       extensions: [
         basicSetup,
-        javascript(),
+        language === 'markdown' ? markdown() : javascript(),
         EditorView.lineWrapping,
         indentUnit.of('  '),
         keymap.of([

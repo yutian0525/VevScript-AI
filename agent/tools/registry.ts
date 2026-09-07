@@ -4,7 +4,7 @@ import type { ToolResult } from '../../shared/types';
 import type { ToolSchema } from '../provider/types';
 import { createRequest, type BgToCsRequestMap } from '../../shared/messages';
 import { TOOL_SCHEMAS } from './schemas';
-import { ASK_MODE_TOOLS, type AgentMode } from '../mode';
+import { ASK_MODE_TOOLS, filterSchemasForMemory, memoryToolDenial, type AgentMode, type MemoryCap } from '../mode';
 import { doListPages, doNewPage, doClosePage, doSelectPage } from './tabs';
 import { doScreenshot } from './screenshot';
 import { doEvaluate } from './evaluate';
@@ -15,6 +15,7 @@ import {
 } from './script-pool';
 import { doGrepScript } from './script-grep';
 import { doLoadSkill } from './skills-tool';
+import { doMemoryList, doMemoryWrite, doMemoryDelete } from './memory';
 import type { ScriptPatch } from '../../shared/messages';
 
 export interface ToolCtx {
@@ -25,12 +26,15 @@ export interface ToolCtx {
   waitForReady?: (tabId: number) => Promise<void>;
   /** 行为模式守卫：ask 模式拒执行只读白名单外的工具（默认 'agent' 不设限）。 */
   mode?: AgentMode;
+  /** 记忆档位守卫：off 拒全部记忆工具、read 拒写（默认 'full' 不设限）。 */
+  memory?: MemoryCap;
 }
 
-/** 全量 schema（调试台/默认用）。ask 模式清单见 agent/mode.ts。 */
-export function getToolSchemas(mode: AgentMode = 'agent'): ToolSchema[] {
-  if (mode === 'agent') return TOOL_SCHEMAS;
-  return TOOL_SCHEMAS.filter((s) => ASK_MODE_TOOLS.has(s.function.name));
+/** 全量 schema（调试台/默认用）。ask 模式清单见 agent/mode.ts。
+ *  memory 缺省 'full'：调试台等既有调用点不受记忆开关影响。 */
+export function getToolSchemas(mode: AgentMode = 'agent', memory: MemoryCap = 'full'): ToolSchema[] {
+  const byMode = mode === 'agent' ? TOOL_SCHEMAS : TOOL_SCHEMAS.filter((s) => ASK_MODE_TOOLS.has(s.function.name));
+  return filterSchemasForMemory(byMode, memory);
 }
 
 const RESTRICTED = /^(chrome|edge|about|chrome-extension|moz-extension|devtools):|^https:\/\/(chrome\.google\.com\/webstore|chromewebstore\.google\.com)/;
@@ -56,6 +60,9 @@ export async function executeTool(
   if (ctx.mode === 'ask' && !ASK_MODE_TOOLS.has(name)) {
     return { ok: false, error: `当前为 ask（只读）模式，工具 ${name} 不可用；如需执行该操作请切换到 agent 模式` };
   }
+  // ---- 记忆档位守卫：工具清单已按档位下发，这里兜底拦幻觉调用 ----
+  const memDenial = memoryToolDenial(name, ctx.memory ?? 'full');
+  if (memDenial) return { ok: false, error: memDenial };
   // ---- 豁免受限页预检的工具（不碰当前页内容 / background 独立发起）----
   // navigate_page 走 tabs API，可跨受限页工作（如从 chrome://newtab 导航到普通页）。
   if (name === 'navigate_page') {
@@ -92,6 +99,13 @@ export async function executeTool(
 
   // load_skill：纯 storage 读取，不碰页面，豁免受限页预检（spec §2.4）。
   if (name === 'load_skill') return doLoadSkill((args as { command: string }).command);
+
+  // 记忆三工具：纯 storage 读写，不碰页面，豁免受限页预检（spec §3.4）。
+  if (name === 'memory_list') return doMemoryList(args as { scope?: string; limit?: number });
+  if (name === 'memory_write') {
+    return doMemoryWrite(args as { content?: string; matches?: string[]; id?: string });
+  }
+  if (name === 'memory_delete') return doMemoryDelete(args as { id: string });
 
   // ---- 以下工具操作当前目标页，需受限页预检 ----
   const tab = await browser.tabs.get(ctx.tabId).catch(() => undefined);
