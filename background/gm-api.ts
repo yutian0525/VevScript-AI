@@ -17,6 +17,7 @@ import type { ChatMessage, ContentPart, StreamEvent } from '../agent/provider/ty
 import { getSettings } from '../storage/settings';
 import { getLlmTier } from './gm-permissions';
 import { listCookies, setCookie, deleteCookie, cookieTargetUrl, type CookieDetails } from './gm-cookie';
+import { runDownload, type DownloadDetails } from './gm-download';
 
 export interface GmErrorEntry {
   at: number;
@@ -424,6 +425,52 @@ async function doCookie(
   }
 }
 
+// ---- GM_download 实现（chrome.downloads + @connect 门控，spec §5.3）----
+
+async function doDownload(
+  scriptId: string, params: unknown[], sender: Sender,
+): Promise<{ ok: true; data?: unknown } | { ok: false; error: string }> {
+  const details = (params[0] ?? {}) as DownloadDetails;
+  if (!details.url) return { ok: false, error: 'GM_download 缺少 url' };
+  const script = await getScript(scriptId);
+  if (!script) return { ok: false, error: '脚本不存在' };
+  const pageUrl = sender?.tab?.url ?? '';
+  const decision = await matchConnectWithPermissions(script.meta?.connects ?? [], details.url, pageUrl, scriptId);
+  if (decision === ConnectDecision.CONFIRM) {
+    const host = hostOf(details.url);
+    const choice = await enqueueConfirm({
+      kind: 'connect',
+      title: '下载确认',
+      message: `脚本「${script.name}」请求下载文件`,
+      rows: [
+        { label: '主机', value: host, mono: true },
+        { label: 'URL', value: details.url, mono: true },
+        { label: '文件名', value: details.name ?? '（默认）', mono: true },
+        { label: '来源', value: pageUrl || '（未知）', mono: true },
+      ],
+      actions: [
+        { decision: 'allow-once', label: '允许一次', variant: 'primary' },
+        { decision: 'always', label: '总是允许' },
+        { decision: 'deny', label: '拒绝', variant: 'danger', countdown: true },
+      ],
+      timeoutMs: 60_000,
+    });
+    if (choice === 'always') {
+      const { setAlwaysAllow } = await import('./gm-permissions');
+      await setAlwaysAllow(scriptId, host);
+    } else if (choice !== 'allow-once') {
+      return { ok: false, error: 'permission denied（用户拒绝或超时）' };
+    }
+  } else if (decision === ConnectDecision.DENY) {
+    return { ok: false, error: `Refused：下载主机「${hostOf(details.url)}」不在 @connect 列表` };
+  }
+  try {
+    return await runDownload(details);
+  } catch (e) {
+    return { ok: false, error: `GM_download 失败：${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
 // ---- GM_llmChat（脚本调用大模型，spec docs/superpowers/specs/2026-09-05-gm-llm-chat-design.md）----
 
 // 「本会话内允许」：SW 内存态，重启失效（与菜单表同款取舍）。档位变更时由 SCRIPTS_SET_LLM_TIER 清（scripts.ts handler 调用）。
@@ -768,6 +815,8 @@ export async function handleGmCall(
       return doCookie(scriptId, 'set', params, sender);
     case 'CookieDelete':
       return doCookie(scriptId, 'delete', params, sender);
+    case 'Download':
+      return doDownload(scriptId, params, sender);
     case 'AbortRequest':
       return { ok: true, data: null }; // 一次性请求模型：abort 后到的响应由 content 宿主/wrapper 侧忽略（简化语义，文档明示）
     case 'GetTab': {
