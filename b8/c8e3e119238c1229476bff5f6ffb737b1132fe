@@ -1,0 +1,35 @@
+fixtures/userscripts/manual/storage.user.js.src
+  s_914db53b60ecdf::t_3bb83f1a412eac 14,16-18
+  s_914db53b60ecdf::t_e7146abefcafb1 79-82
+  s_914db53b60ecdf::t_1b6fcd48a67bca 46-59
+fixtures/userscripts/manual/dom-resource.user.js.src
+  s_914db53b60ecdf::t_d6896704bbea27 53-62
+  s_914db53b60ecdf::t_e813f2028d87c2 74-76
+  s_914db53b60ecdf::t_fab9c4c3748357 15-18
+fixtures/userscripts/manual/gmt-manual-dom-resource.user.js
+  s_914db53b60ecdf::t_fadf6025bff0ee 15-18,240-249,261-263
+fixtures/userscripts/manual/gmt-manual-storage.user.js
+  s_914db53b60ecdf::t_fadf6025bff0ee 14,16-18,233-246,266-269
+fixtures/userscripts/manual/gmt-manual-tabs.user.js
+  s_914db53b60ecdf::t_fadf6025bff0ee 13-18,222-234,243-246
+fixtures/userscripts/manual/tabs.user.js.src
+  s_914db53b60ecdf::t_9ad9180327347f 13-18
+  s_914db53b60ecdf::t_6d020b3ffc284f 35-47
+  s_914db53b60ecdf::t_6aeefe630cf421 56-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b8c8e3e119238c1229476bff5f6ffb737b1132fe",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
