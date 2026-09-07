@@ -1,0 +1,33 @@
+background/agent-port.ts
+  s_b4a0c595677b1b::t_b7c13332c1e39d 105
+storage/memory.ts
+  s_b4a0c595677b1b::t_fa1586e3e577c0 9-10
+  s_b4a0c595677b1b::t_45f53b9c3b8d7e 46
+  s_b4a0c595677b1b::t_a630c9e8cca3b5 16
+  s_b4a0c595677b1b::t_9e4f2efc17c481 52
+tests/background/agent-port-memory.test.ts
+  s_b4a0c595677b1b::t_0d702bc1251ea0 1-18,21-36
+  s_b4a0c595677b1b::t_9d445a0acce2f7 19-20
+components/settings/MemoryPage.tsx
+  s_b4a0c595677b1b::t_6af45c0366dbc1 41
+  s_b4a0c595677b1b::t_130cd5dbc59d7f 50-56,62-68
+  s_b4a0c595677b1b::t_2c00687c471b88 11
+components/settings/SettingsHome.tsx
+  s_b4a0c595677b1b::t_79f59d7c1f18ad 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3756f38a79e3d432275c90fe63d7f8a9679c8c20",
+  "prompts": {},
+  "sessions": {
+    "s_b4a0c595677b1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01db4937-1c12-4f2d-be27-e819f2e93fc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
