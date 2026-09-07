@@ -1,0 +1,99 @@
+components/scriptdebug/ScriptDebugPage.tsx
+  s_840f160323f95f::t_ba424060413d34 5,8
+  s_840f160323f95f::t_12fe544bc3279c 90,92-97
+components/detail/DetailInfoTab.tsx
+  s_840f160323f95f::t_c8805b96803f74 24-37
+  s_840f160323f95f::t_f1879c02a1fb8f 142
+  s_840f160323f95f::t_f71d3a4299c73f 159
+  s_840f160323f95f::t_2bd8b15921eecb 130
+  s_840f160323f95f::t_10d09e65f2e481 182-193
+  s_840f160323f95f::t_fe145dc9273c0e 4,8
+  s_840f160323f95f::t_b4539437a6ebbc 112
+  s_840f160323f95f::t_44ca2a610cd5f7 136
+  s_840f160323f95f::t_298d01f44c8545 106
+  s_840f160323f95f::t_f10e752831afb3 148
+  s_840f160323f95f::t_be59a87ba9878e 154
+  s_840f160323f95f::t_5906490043e5aa 163
+  s_840f160323f95f::t_06dea94ea36503 168
+components/chat/AttachmentChips.tsx
+  s_840f160323f95f::t_908616a90a46c5 4
+  s_840f160323f95f::t_ebd09e9d7d0348 20-39
+components/settings/ModelSettings.tsx
+  s_840f160323f95f::t_3e23d675775113 43
+  s_840f160323f95f::t_1fa9ffc276d727 85
+components/ui/PageShell.tsx
+  s_840f160323f95f::t_27cfc17c44492e 3,5,12-13,23-26,29,34-47
+tests/detail/detail-app.test.tsx
+  s_840f160323f95f::t_068b01ae4323da 90,97-98
+  s_840f160323f95f::t_820ff78a50f5d3 99-100
+entrypoints/sidepanel/styles.css
+  s_840f160323f95f::t_2a58d8efa6a927 301-328,330-331,339-344,349-350,353,357
+  s_840f160323f95f::t_c323ae94f27ceb 943-944
+  s_840f160323f95f::t_b0b50fa873f42c 1187-1188
+  s_840f160323f95f::t_17b7f698b6a151 329,332-338,345-348,351-352
+  s_840f160323f95f::t_2ddabaddbe8544 202-203,207,210-223
+components/chat/ChatView.tsx
+  s_840f160323f95f::t_ebd7c139674bc9 274-284
+  s_840f160323f95f::t_b209ff6ed5ea4b 432
+  s_840f160323f95f::t_1329dcb37f7c7f 6
+  s_840f160323f95f::t_0c98b3bed6cd82 457
+  s_840f160323f95f::t_69097685240651 342-352
+tests/ui/tooltip.test.tsx
+  s_840f160323f95f::t_4b5103946ad602 1-71
+components/scripts/ScriptsListView.tsx
+  s_840f160323f95f::t_a40de8a875e45f 9
+  s_840f160323f95f::t_08a8edb6c65e45 223-227,230-232,235-237
+  s_840f160323f95f::t_d93c33d38f4c04 191-204
+components/settings/SettingsHome.tsx
+  s_840f160323f95f::t_1246a4dcd8f7e6 5-6,17-35,40
+components/ui/Tooltip.tsx
+  s_840f160323f95f::t_d1170803d1d65a 97-106,108,110-123
+  s_840f160323f95f::t_9662259bfad5b5 19
+  s_840f160323f95f::t_649509da05d0be 1-18,20-42,44-57
+  s_840f160323f95f::t_e93d74f54b2f9c 43
+  s_840f160323f95f::t_4c44edbb37e350 58-96,107,109,124-184
+entrypoints/sidepanel/App.tsx
+  s_840f160323f95f::t_7d4681a200e6f5 57-65,69-73
+  s_840f160323f95f::t_2ac7af2ab97c69 56
+  s_840f160323f95f::t_c104d61ced588d 9
+components/skills/SkillsPage.tsx
+  s_840f160323f95f::t_333f5738ee9d37 164-165
+  s_840f160323f95f::t_3aab91c7fe5b92 210-211,214-228
+  s_840f160323f95f::t_6fd8622ff829f3 283-287,289-302
+  s_840f160323f95f::t_62259034eb667b 4,8
+components/settings/SettingsView.tsx
+  s_840f160323f95f::t_b7b67c4e7cbeea 14-28
+components/chat/ContextRing.tsx
+  s_840f160323f95f::t_93e340120a59b8 5
+  s_840f160323f95f::t_f4cacf1287fbf2 28-52
+components/debug/ToolBenchPage.tsx
+  s_840f160323f95f::t_1f53fe88eea40a 5,8
+  s_840f160323f95f::t_b03c7c2a043996 85,87-92,94
+components/chat/ModeSelect.tsx
+  s_840f160323f95f::t_6ed50a1ced866e 6
+  s_840f160323f95f::t_3ed10f4776929d 68-82
+components/popup/PopupApp.tsx
+  s_840f160323f95f::t_846085a3cfdcd4 140-156
+  s_840f160323f95f::t_51749373b83589 121-127,129-139
+  s_840f160323f95f::t_6c46d70b9c71c3 7
+components/detail/DetailApp.tsx
+  s_840f160323f95f::t_b3279621084a1e 27-28
+  s_840f160323f95f::t_90714b4e6fde7b 84-86,92-101
+  s_840f160323f95f::t_b6882f0f4659d3 8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "72f2ce3e507fbbecb0876763e82e23ffd40f1222",
+  "prompts": {},
+  "sessions": {
+    "s_840f160323f95f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c330af2-4a83-43f9-9869-68b8b3ffa74f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
