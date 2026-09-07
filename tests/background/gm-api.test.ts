@@ -557,4 +557,13 @@ describe('批量值 + 菜单注销 + 通知管理', () => {
     await handleGmCall({ scriptId: 's1', api: 'UpdateNotification', reqId: 2, params: ['n1', { title: 'T', text: 'X' }] }, { tab: { id: 1, url: 'https://a.com/' } } as never);
     expect(update).toHaveBeenCalledWith('n1', expect.objectContaining({ title: 'T', message: 'X' }));
   });
+
+  it('GetTab/SaveTab/GetTabs 经 handleGmCall 往返', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_getTab', 'GM_saveTab', 'GM_getTabs'] } }));
+    const sender = { tab: { id: 7, url: 'https://a.com/' } } as never;
+    expect((await handleGmCall({ scriptId: 's1', api: 'GetTab', reqId: 1, params: [] }, sender) as { data: unknown }).data).toEqual({});
+    await handleGmCall({ scriptId: 's1', api: 'SaveTab', reqId: 2, params: [{ hits: 5 }] }, sender);
+    expect((await handleGmCall({ scriptId: 's1', api: 'GetTab', reqId: 3, params: [] }, sender) as { data: unknown }).data).toEqual({ hits: 5 });
+    expect((await handleGmCall({ scriptId: 's1', api: 'GetTabs', reqId: 4, params: [] }, sender) as { data: unknown }).data).toEqual({ '7': { hits: 5 } });
+  });
 });

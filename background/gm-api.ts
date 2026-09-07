@@ -8,6 +8,7 @@ import { storage } from 'wxt/utils/storage';
 import { getScript } from '../storage/scripts';
 import { matchUrl } from '../shared/match-pattern';
 import { bridgeTokensForUrl } from './gm-token';
+import { getTabData, saveTabData, getAllTabData, cleanupTabData } from './gm-tab-store';
 import { classifyGrants } from '../shared/gm-apis';
 import { enqueueConfirm } from './confirm-queue';
 import { createRequest, type CsResponse, type GmDebugInfoData } from '../shared/messages';
@@ -170,6 +171,7 @@ export async function cleanupScriptState(scriptId: string): Promise<void> {
   menuTable.delete(scriptId);
   for (const [id, t] of notifTargets) if (t.scriptId === scriptId) notifTargets.delete(id);
   await storage.removeItem(valuesKey(scriptId));
+  await cleanupTabData(scriptId);
   broadcastMenus();
 }
 
@@ -712,6 +714,19 @@ export async function handleGmCall(
       return doXmlHttpRequest(scriptId, params, sender);
     case 'AbortRequest':
       return { ok: true, data: null }; // 一次性请求模型：abort 后到的响应由 content 宿主/wrapper 侧忽略（简化语义，文档明示）
+    case 'GetTab': {
+      const tabId = sender?.tab?.id;
+      if (tabId == null) return { ok: false, error: 'GetTab 缺少 tab 上下文' };
+      return { ok: true, data: await getTabData(scriptId, tabId) };
+    }
+    case 'SaveTab': {
+      const tabId = sender?.tab?.id;
+      if (tabId == null) return { ok: false, error: 'SaveTab 缺少 tab 上下文' };
+      await saveTabData(scriptId, tabId, (params[0] ?? {}) as Record<string, unknown>);
+      return { ok: true, data: null };
+    }
+    case 'GetTabs':
+      return { ok: true, data: await getAllTabData(scriptId) };
     default:
       return { ok: false, error: `未知 GM API：${api}` };
   }
