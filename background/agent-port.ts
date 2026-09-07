@@ -8,6 +8,7 @@ import { runAgentLoop, resumeAgentLoop, type LoopDeps } from '../agent/loop';
 import { executeTool } from '../agent/tools/registry';
 import { compactConversation } from '../agent/compact';
 import { resolveContextWindow } from '../agent/model-windows';
+import { resolveSystemPrompt } from '../agent/context';
 import { getConversation, setLastPromptTokens, setStatus, setMode as storeSetMode } from '../storage/conversations';
 import { listSkills } from '../storage/skills';
 import type { Skill } from '../shared/types';
@@ -105,6 +106,10 @@ function makeDeps(provider: Provider, convId: string): LoopDeps {
       return resolveContextWindow(p.model, p.contextWindow);
     },
     getMaxTokens: async () => (await getSettings()).agent.maxTokens,
+    getSystemPrompt: async () => {
+      const { prompt } = await getSettings().catch(() => ({ prompt: { custom: '' } }));
+      return resolveSystemPrompt(prompt.custom);
+    },
     compact: (id) => compactConversation(id, { provider }),
     getSkills: async () =>
       (await listSkills().catch(() => [] as Skill[]))

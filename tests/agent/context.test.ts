@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildContext, truncateMessages, SYSTEM_PROMPT } from '../../agent/context';
+import { buildContext, truncateMessages, SYSTEM_PROMPT, resolveSystemPrompt } from '../../agent/context';
 import type { ChatMessage, ContentPart } from '../../agent/provider/types';
 
 const u = (c: string): ChatMessage => ({ role: 'user', content: c });
@@ -176,5 +176,38 @@ describe('buildContext opts 签名', () => {
     expect(out[0]!.role).toBe('system');
     expect(String(out[0]!.content)).toContain('agent（完整操控）');
     expect(out[1]).toEqual({ role: 'user', content: 'hi' });
+  });
+});
+
+describe('resolveSystemPrompt', () => {
+  it('空串 / undefined / 纯空白 → 内置全文', () => {
+    expect(resolveSystemPrompt('')).toBe(SYSTEM_PROMPT);
+    expect(resolveSystemPrompt(undefined)).toBe(SYSTEM_PROMPT);
+    expect(resolveSystemPrompt('   \n  ')).toBe(SYSTEM_PROMPT);
+  });
+
+  it('有内容 → 原样返回（不 trim 正文，只用 trim 判空）', () => {
+    expect(resolveSystemPrompt('  我的提示词  ')).toBe('  我的提示词  ');
+  });
+});
+
+describe('buildContext opts.systemPrompt', () => {
+  it('传自定义 → system 消息用它，且动态块仍在（页面/技能/模式）', () => {
+    const msgs = buildContext([], page, {
+      systemPrompt: '【自定义】只听我的',
+      skills: [{ name: 'N', command: 'c', description: 'd' }],
+      mode: 'ask',
+    });
+    const sys = String(msgs[0]!.content);
+    expect(sys).toContain('【自定义】只听我的');
+    expect(sys).not.toContain('你是一个能操控浏览器的 AI 助手');
+    expect(sys).toContain('当前页面');
+    expect(sys).toContain('/c');
+    expect(sys).toContain('ask（只读问答）');
+  });
+
+  it('不传 → 用内置全文', () => {
+    const sys = String(buildContext([], page)[0]!.content);
+    expect(sys).toContain('你是一个能操控浏览器的 AI 助手');
   });
 });

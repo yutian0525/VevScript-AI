@@ -29,6 +29,8 @@ export interface LoopDeps {
   getMode?: () => Promise<AgentMode>;
   /** 单轮 token 上限（0/缺省 = 不下发 max_tokens）。 */
   getMaxTokens?: () => Promise<number>;
+  /** 系统提示词全文（缺省用内置 SYSTEM_PROMPT）。每轮重读，设置页改完下一轮生效。 */
+  getSystemPrompt?: () => Promise<string>;
 }
 
 const TAB_OPENING_TOOLS = new Set(['click', 'press_key']);
@@ -98,7 +100,8 @@ async function drive(
     const skills = (await deps.getSkills?.()) ?? [];
     // 模式每轮重读：任务中途用户切 ask/agent，下一轮立即生效（已发出的轮次不回收）
     const mode = (await deps.getMode?.()) ?? 'agent';
-    const messages = buildContext(conv.messages, page, { summary: conv.summary, skills, mode });
+    const systemPrompt = await deps.getSystemPrompt?.();
+    const messages = buildContext(conv.messages, page, { summary: conv.summary, skills, mode, systemPrompt });
 
     const maxTokens = (await deps.getMaxTokens?.()) ?? 0;
     // 参数生成进度节流器：每轮新建，状态不跨轮（下一轮从 0 重新计）

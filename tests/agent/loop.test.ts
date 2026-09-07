@@ -392,3 +392,54 @@ describe('agent loop', () => {
     expect(calls[calls.length - 1]).toMatchObject({ name: 'create_script', bytes: 1202 });
   });
 });
+
+describe('loop 注入自定义系统提示词', () => {
+  beforeEach(() => fakeBrowser.reset());
+
+  it('deps.getSystemPrompt 的返回值进 system 消息，每轮重读', async () => {
+    const captured: ChatParams[] = [];
+    const provider: Provider = {
+      streamChat(p: ChatParams, onEvent: (e: StreamEvent) => void) {
+        captured.push(p);
+        queueMicrotask(() => onEvent({ type: 'text-delta', text: 'ok' }));
+        queueMicrotask(() => onEvent({ type: 'message-done', finishReason: 'stop' }));
+        return { cancel: vi.fn() };
+      },
+    };
+    await runAgentLoop(
+      { convId: 'c1', tabId: 1, userMessage: 'hi' },
+      {
+        provider,
+        executeTool: vi.fn<LoopDeps['executeTool']>(),
+        getPageInfo: async () => ({ url: '', title: '' }),
+        emit: vi.fn(),
+        getSystemPrompt: async () => '【自定义】听我的',
+      },
+    );
+    const sys = String(captured[0]!.messages[0]!.content);
+    expect(sys).toContain('【自定义】听我的');
+    expect(sys).not.toContain('你是一个能操控浏览器的 AI 助手');
+  });
+
+  it('不提供 getSystemPrompt → 用内置全文', async () => {
+    const captured: ChatParams[] = [];
+    const provider: Provider = {
+      streamChat(p: ChatParams, onEvent: (e: StreamEvent) => void) {
+        captured.push(p);
+        queueMicrotask(() => onEvent({ type: 'text-delta', text: 'ok' }));
+        queueMicrotask(() => onEvent({ type: 'message-done', finishReason: 'stop' }));
+        return { cancel: vi.fn() };
+      },
+    };
+    await runAgentLoop(
+      { convId: 'c2', tabId: 1, userMessage: 'hi' },
+      {
+        provider,
+        executeTool: vi.fn<LoopDeps['executeTool']>(),
+        getPageInfo: async () => ({ url: '', title: '' }),
+        emit: vi.fn(),
+      },
+    );
+    expect(String(captured[0]!.messages[0]!.content)).toContain('你是一个能操控浏览器的 AI 助手');
+  });
+});
