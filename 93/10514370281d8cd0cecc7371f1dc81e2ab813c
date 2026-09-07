@@ -1,0 +1,36 @@
+background/gm-download.ts
+  s_914db53b60ecdf::t_58e87d10e80074 38,42-48,51-54,59
+  s_914db53b60ecdf::t_a4234a8a765a06 10,13
+  s_e9897b2f4ce4f2::t_d82ff26b279883 14
+tests/background/gm-resources.test.ts
+  s_914db53b60ecdf::t_ae6d6f9edc2f0f 50-62
+tests/background/gm-download.test.ts
+  s_914db53b60ecdf::t_e70d5a0e87ddc5 43-50
+background/gm-resources.ts
+  s_914db53b60ecdf::t_2281f54be3efc4 38,45,48
+  s_914db53b60ecdf::t_cf09b653bc6a68 58,62,69,71,73-74,76,78-79,83-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "9310514370281d8cd0cecc7371f1dc81e2ab813c",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    },
+    "s_e9897b2f4ce4f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4a945c8-8b73-49b7-81bf-858d5ff15b9e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
