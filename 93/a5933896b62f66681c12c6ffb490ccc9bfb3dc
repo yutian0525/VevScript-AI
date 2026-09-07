@@ -1,0 +1,32 @@
+docs/gm-api.md
+  s_914db53b60ecdf::t_b5170b9b48bf82 90-91
+  s_914db53b60ecdf::t_9edb5d860b9041 99-101
+  s_914db53b60ecdf::t_aeb68e9f39b5a9 4
+  s_914db53b60ecdf::t_71c1e7928ac32c 110-111
+  s_914db53b60ecdf::t_9244cd7f6e1ad4 55-58
+  s_914db53b60ecdf::t_778d4a5e1fb455 135-139,141,143,145
+  s_914db53b60ecdf::t_66b0b0de98e7be 22-32
+  s_914db53b60ecdf::t_8d19d8f7690489 65
+  s_914db53b60ecdf::t_09d705745fc650 5
+  s_914db53b60ecdf::t_a8efbc4b787aa3 83
+  s_914db53b60ecdf::t_43f689f01774cc 67-69
+  s_914db53b60ecdf::t_0a916515fb3e84 76
+CLAUDE.md
+  s_914db53b60ecdf::t_4939b2abda9b3b 109-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "93a5933896b62f66681c12c6ffb490ccc9bfb3dc",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
