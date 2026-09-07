@@ -7,6 +7,7 @@ import { ToolBenchPage } from '../debug/ToolBenchPage';
 import { ScriptDebugPage } from '../scriptdebug/ScriptDebugPage';
 import { SkillsPage } from '../skills/SkillsPage';
 import { SystemPromptPage } from './SystemPromptPage';
+import { MemoryPage } from './MemoryPage';
 
 export function SettingsView() {
   const [sub, setSub] = useState<SettingsSub | null>(null);
@@ -18,6 +19,8 @@ export function SettingsView() {
         <ModelSettings onBack={back} />
       ) : sub === 'prompt' ? (
         <SystemPromptPage onBack={back} />
+      ) : sub === 'memory' ? (
+        <MemoryPage onBack={back} />
       ) : sub === 'toolbench' ? (
         <ToolBenchPage onBack={back} />
       ) : sub === 'scriptdebug' ? (

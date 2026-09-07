@@ -17,6 +17,7 @@ describe('SettingsView 壳', () => {
     render(<SettingsView />);
     expect(await screen.findByText('模型设置')).toBeTruthy();
     expect(screen.getByText('系统提示词')).toBeTruthy();
+    expect(screen.getByText('AI 记忆')).toBeTruthy();
     expect(screen.getByText('工具调试台')).toBeTruthy();
     expect(screen.getByText('脚本运行时调试台')).toBeTruthy();
   });
@@ -27,5 +28,13 @@ describe('SettingsView 壳', () => {
     expect(await screen.findByText('TOOLBENCH')).toBeTruthy();
     fireEvent.click(screen.getByLabelText('返回'));
     expect(await screen.findByText('脚本运行时调试台')).toBeTruthy(); // 回到了列表
+  });
+
+  it('点「AI 记忆」入口进二级页（MEMORY），返回回列表', async () => {
+    render(<SettingsView />);
+    fireEvent.click(await screen.findByText('AI 记忆'));
+    expect(await screen.findByText('MEMORY')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('返回设置'));
+    expect(await screen.findByText('模型设置')).toBeTruthy();
   });
 });
