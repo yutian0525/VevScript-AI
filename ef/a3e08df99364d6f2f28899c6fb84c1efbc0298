@@ -1,0 +1,24 @@
+background/gm-api.ts
+  s_914db53b60ecdf::t_373f342ca3f909 610-651
+  s_914db53b60ecdf::t_c80886b67c17ae 56-69,74
+tests/background/gm-api.test.ts
+  s_914db53b60ecdf::t_3bf562a324615c 527-528,533-560
+  s_914db53b60ecdf::t_2ce80335a3b761 7
+  s_914db53b60ecdf::t_d93e8b86f19858 529-532
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "efa3e08df99364d6f2f28899c6fb84c1efbc0298",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
