@@ -198,21 +198,26 @@ git commit -m "perf(snapshot): StaticText 与父 name 重复时去重（实测�
     expect(text).not.toContain('https://');
   });
 
+  // 注意取行方式：RootWebArea 行的 url 会被同源规则压成 "/"，若用
+  // /url="([^"]*)"/ 对全文取第一个匹配会锚到根行而非 link 行。必须先定位 link 行。
+  const urlOfLinkLine = (text: string): string => {
+    const line = text.split('\n').find((l) => l.includes('link '))!;
+    return /url="([^"]*)"/.exec(line)![1]!;
+  };
+
   it('超长 path 前缀省略号截断到 40 字符', () => {
     document.body.innerHTML = `<a href="/${'seg/'.repeat(30)}end">长链</a>`;
-    const { text } = buildSnapshot(document.body);
-    const m = /url="([^"]*)"/.exec(text)!;
-    expect(m[1]!.length).toBeLessThanOrEqual(41); // 40 + 省略号
-    expect(m[1]!.startsWith('…')).toBe(true);
-    expect(m[1]!.endsWith('end')).toBe(true);
+    const u = urlOfLinkLine(buildSnapshot(document.body).text);
+    expect(u.length).toBeLessThanOrEqual(41); // 40 + 省略号
+    expect(u.startsWith('…')).toBe(true);
+    expect(u.endsWith('end')).toBe(true);
   });
 
   it('查询串截断到 30 字符', () => {
     document.body.innerHTML = `<a href="/s?q=${'x'.repeat(60)}">查</a>`;
-    const { text } = buildSnapshot(document.body);
-    const m = /url="([^"]*)"/.exec(text)!;
-    expect(m[1]).toContain('?q=');
-    expect(m[1]!.length).toBeLessThanOrEqual(41);
+    const u = urlOfLinkLine(buildSnapshot(document.body).text);
+    expect(u).toContain('?q=');
+    expect(u.length).toBeLessThanOrEqual(41);
   });
 
   it('非法/特殊 scheme 的 href 原样截断，不抛错', () => {
@@ -232,20 +237,28 @@ Expected: FAIL，当前输出是 `url="http://localhost:3000/en-US/docs/Web/HTML
 在 `content/snapshot/build.ts` 加纯函数（放在 `renderLine` 上方），并在 `renderLine` 里改用它：
 
 ```ts
-/** URL 瘦身：同源省 origin、跨源留 host+path、查询串截 30、总长超 40 前缀省略号。
- *  解析失败（javascript: / mailto: 等）原样截断，不抛错。 */
+/** URL 瘦身：同源省 origin、跨源留 host+path、查询串截 30、总长超 40 前缀省略号。 */
 export function shortenUrl(raw: string, baseOrigin: string): string {
   let s: string;
   try {
     const u = new URL(raw);
-    const q = u.search ? u.search.slice(0, 30) : '';
-    s = u.origin === baseOrigin ? `${u.pathname}${q}` : `${u.host}${u.pathname}${q}`;
+    // 只对 http(s) 做 origin 瘦身。javascript:/mailto:/tel:/data: 这些 URL 解析
+    // 【不抛错】——host 为空、pathname 是 "void(0)" 这类内容，套 origin 规则会把
+    // scheme 一起删掉，产出 url="void(0)"。故按协议门控，非 http(s) 原样返回。
+    if (u.protocol === 'http:' || u.protocol === 'https:') {
+      const q = u.search ? u.search.slice(0, 30) : '';
+      s = u.origin === baseOrigin ? `${u.pathname}${q}` : `${u.host}${u.pathname}${q}`;
+    } else {
+      s = raw;
+    }
   } catch {
-    s = raw;
+    s = raw;   // 真正解析不了的（空串等）
   }
   return s.length > 40 ? `…${s.slice(-39)}` : s;
 }
 ```
+
+> 代价（写进注释）：http(s) URL 的 `#fragment` 一律丢弃。spec §6.2 只承诺「path + 查询串前 30 字符」，hash 从未在承诺内，且 SPA 页内锚点对快照读者价值极低。
 
 `buildSnapshot` 内取 base origin 并透传给序列化：
 
