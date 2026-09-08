@@ -3,11 +3,15 @@
 // 设计决策：request/response 模式 + correlation id（设计 §4.4）；
 // 例外：cs→bg 的 fire-and-forget 通知（见 HookConsoleNotification / HookNetworkNotification）。
 
-import type { ChatAttachment, ScriptSource, ScriptSummary, ScriptUpdateState, ToolResult, Uid, UserScript } from './types';
+import type { ChatAttachment, Locator, ScriptSource, ScriptSummary, ScriptUpdateState, ToolResult, Uid, UserScript } from './types';
 import type { ConsoleEntry, HookNetEntry } from './hook-bridge';
 
 export interface BgToCsRequestMap {
-  SNAPSHOT: { verbose?: boolean };
+  /** detail 缺省 'interactive'（spec §6.2 新默认）。region 限定子树（uid 或选择器）。
+   *  原 verbose 字段已删——全项目无人消费，是死字段。 */
+  SNAPSHOT: { detail?: 'interactive' | 'full'; region?: Uid | string };
+  /** 按 locator 定向查询（spec §6.3）。与脚本内 $ 同一套语法。 */
+  QUERY: { locator: Locator; limit?: number; within?: Uid };
   CLICK: { uid: Uid; dblClick?: boolean };
   FILL: { uid: Uid; value: string };
   FILL_FORM: { elements: Array<{ uid: Uid; value: string }> };

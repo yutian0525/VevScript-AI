@@ -42,4 +42,60 @@ describe('content 消息处理器', () => {
     const resp = await handleCsRequest(req);
     expect(resp.correlationId).toBe(req.correlationId);
   });
+
+  it('SNAPSHOT 默认 interactive 档（容器折叠）', async () => {
+    document.body.innerHTML = '<ul><li>项目</li></ul><button>钮</button>';
+    const resp = await handleCsRequest(createRequest('SNAPSHOT', {}));
+    const text = (resp.result as { ok: true; data: { text: string } }).data.text;
+    expect(text).toContain('button "钮"');
+    expect(text).toContain('未展开节点');
+  });
+
+  it('SNAPSHOT 的 detail=full 透传', async () => {
+    document.body.innerHTML = '<ul><li>项目</li></ul>';
+    const resp = await handleCsRequest(createRequest('SNAPSHOT', { detail: 'full' }));
+    const text = (resp.result as { ok: true; data: { text: string } }).data.text;
+    expect(text).toContain('listitem');
+  });
+
+  it('SNAPSHOT 的 region 用 uid 限定子树', async () => {
+    document.body.innerHTML = '<div id="a"><h2>标题A</h2></div><div id="b"><h2>标题B</h2></div>';
+    const { ensureUid } = await import('../../content/snapshot/build');
+    const uid = ensureUid(document.getElementById('b')!);
+    const resp = await handleCsRequest(createRequest('SNAPSHOT', { region: uid }));
+    const text = (resp.result as { ok: true; data: { text: string } }).data.text;
+    expect(text).toContain('标题B');
+    expect(text).not.toContain('标题A');
+  });
+
+  it('SNAPSHOT 的 region 用选择器限定子树', async () => {
+    document.body.innerHTML = '<div id="a"><h2>标题A</h2></div><div id="b"><h2>标题B</h2></div>';
+    const resp = await handleCsRequest(createRequest('SNAPSHOT', { region: '#b' }));
+    const text = (resp.result as { ok: true; data: { text: string } }).data.text;
+    expect(text).toContain('标题B');
+    expect(text).not.toContain('标题A');
+  });
+
+  it('SNAPSHOT 的 region 无法解析时返回 ok:false（不静默退回全页）', async () => {
+    document.body.innerHTML = '<div>x</div>';
+    const resp = await handleCsRequest(createRequest('SNAPSHOT', { region: '#missing' }));
+    expect(resp.result.ok).toBe(false);
+    expect((resp.result as { ok: false; error: string }).error).toContain('region');
+  });
+
+  it('SNAPSHOT 返回 skippedFrames', async () => {
+    document.body.innerHTML = '<button>x</button>';
+    const resp = await handleCsRequest(createRequest('SNAPSHOT', {}));
+    const data = (resp.result as { ok: true; data: { skippedFrames: number } }).data;
+    expect(data.skippedFrames).toBe(0);
+  });
+
+  it('QUERY 路由到 doQuery', async () => {
+    document.body.innerHTML = '<button>提交</button>';
+    const resp = await handleCsRequest(createRequest('QUERY', { locator: { text: '提交' } }));
+    expect(resp.type).toBe('QUERY');
+    expect(resp.result.ok).toBe(true);
+    const data = (resp.result as { ok: true; data: { matched: number } }).data;
+    expect(data.matched).toBe(1);
+  });
 });
