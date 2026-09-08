@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-09-08-hook-exclusion-list-design.md
+  s_a9031e877b78b4::t_3b5c9bcfe9dee9 1-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "0c4580d868c1c8355ce3bea6aa1c9db9291f8660",
+  "prompts": {},
+  "sessions": {
+    "s_a9031e877b78b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbadcd3d-cfd5-4d5e-a20b-639e9111afab",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
