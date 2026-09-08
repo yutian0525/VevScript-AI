@@ -8,6 +8,7 @@ import { ASK_MODE_TOOLS, filterSchemasForMemory, memoryToolDenial, type AgentMod
 import { doListPages, doNewPage, doClosePage, doSelectPage } from './tabs';
 import { doScreenshot } from './screenshot';
 import { doEvaluate } from './evaluate';
+import { doRunPageScript } from './page-script';
 import { doHttpRequest } from './http';
 import { doListConsoleMessages, doListNetworkRequests, doGetNetworkRequest } from './observe';
 import {
@@ -123,6 +124,14 @@ export async function executeTool(
     return doEvaluate(
       ctx.tabId,
       args as { function: string; args?: unknown[]; world?: 'main' | 'isolated'; timeoutMs?: number },
+    );
+  }
+  // run_page_script 与 evaluate_script 同级：SW 直接 scripting.executeScript 注入运行时，
+  // 不经 CS 消息通道，但同样操作当前页 → 保留在上面的受限页预检之后。
+  if (name === 'run_page_script') {
+    return doRunPageScript(
+      ctx.tabId,
+      args as { script: string; world?: 'isolated' | 'main'; timeoutMs?: number; screenshot?: 'never' | 'on-failure' | 'always' },
     );
   }
 

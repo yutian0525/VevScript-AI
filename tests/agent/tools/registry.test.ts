@@ -12,7 +12,37 @@ describe('工具 registry', () => {
   });
 
   it('getToolSchemas 返回全部 schema', () => {
-    expect(getToolSchemas().length).toBe(31);
+    expect(getToolSchemas().length).toBe(32);
+  });
+
+  it('run_page_script 走 SW 分支（不经 CS 消息通道）', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'https://x.com' }) as never;
+    const exec = vi.spyOn(browser.scripting, 'executeScript').mockResolvedValue(
+      [{ result: { ok: true, url: 'https://x.com' } }] as never,
+    );
+    const send = vi.spyOn(browser.tabs, 'sendMessage');
+    const r = await executeTool('run_page_script', { script: 'return 1' },
+      { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+    expect(r.ok).toBe(true);
+    expect(exec).toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('run_page_script 受限页被拦', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'chrome://settings' }) as never;
+    const r = await executeTool('run_page_script', { script: 'return 1' },
+      { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error('预期失败结果');
+    expect(r.error).toContain('受限页面');
+  });
+
+  it('run_page_script 缺 script 参数时走工具自身错误（分发已到达）', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'https://x.com' }) as never;
+    const r = await executeTool('run_page_script', {}, { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error('预期失败结果');
+    expect(r.error).toContain('script');
   });
 
   it('query_page 经 CS 通道分发', async () => {

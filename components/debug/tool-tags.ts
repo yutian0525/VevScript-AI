@@ -5,10 +5,10 @@
 export type ToolTag = 'PAGE' | 'TABS' | 'NET' | 'SCRIPTS' | 'SKILLS' | 'MEMORY';
 
 export const TOOL_TAGS: Record<string, ToolTag> = {
-  // PAGE(11)：9 个 CS 工具 + 2 个 SW 直操作当前页（截图/注入脚本）
+  // PAGE(12)：10 个 CS/定位类 + 2 个 SW 直操作当前页（截图/注入脚本）
   take_snapshot: 'PAGE', query_page: 'PAGE', click: 'PAGE', fill: 'PAGE', fill_form: 'PAGE',
   hover: 'PAGE', scroll: 'PAGE', press_key: 'PAGE', wait_for: 'PAGE',
-  take_screenshot: 'PAGE', evaluate_script: 'PAGE',
+  take_screenshot: 'PAGE', evaluate_script: 'PAGE', run_page_script: 'PAGE',
   // TABS(5)：标签页管理与导航
   navigate_page: 'TABS', list_pages: 'TABS', new_page: 'TABS', close_page: 'TABS', select_page: 'TABS',
   // NET(4)：后台 fetch / console / 网络元数据

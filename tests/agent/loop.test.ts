@@ -111,6 +111,37 @@ describe('agent loop', () => {
     expect(String(toolMsg.content)).toContain('stale');
   });
 
+  it('工具失败但带 data 时，data 进 tool 消息（错误前置 + 换行接诊断详情）', async () => {
+    // run_page_script 的失败诊断（kind/trace/failedAt/hint）都在 data 里——
+    // 失败分支丢 data 的话 spec §5.2「失败极详」到不了模型。
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'run_page_script', argsDelta: '{"script":"return 1"}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: '看了诊断' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({
+      ok: false, error: '定位失败', data: { kind: 'locator-miss', hint: '改定位符' },
+    } as ToolResult);
+    await runAgentLoop({ convId: 'c-data', tabId: 1, userMessage: 'x' }, deps(provider, exec));
+    const conv = await getConversation('c-data');
+    const toolMsg = conv.messages.find((m) => m.role === 'tool')!;
+    const content = String(toolMsg.content);
+    expect(content.startsWith('错误：定位失败\n')).toBe(true);
+    expect(content).toContain('"kind":"locator-miss"');
+    expect(content).toContain('"hint":"改定位符"');
+  });
+
+  it('工具失败且无 data 时，tool 消息只有错误文本（旧行为不变）', async () => {
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":9}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: '换个方法' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: false, error: '受限页面' });
+    await runAgentLoop({ convId: 'c-nodata', tabId: 1, userMessage: 'x' }, deps(provider, exec));
+    const conv = await getConversation('c-nodata');
+    const toolMsg = conv.messages.find((m) => m.role === 'tool')!;
+    expect(String(toolMsg.content)).toBe('错误：受限页面');
+  });
+
   it('length 截断时该轮 tool_calls 判失败喂回', async () => {
     const provider = queuedProvider([
       [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":' }, { type: 'message-done', finishReason: 'length' }],

@@ -2,14 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { TOOL_SCHEMAS } from '../../../agent/tools/schemas';
 
 describe('工具 schema', () => {
-  it('恰好 31 个工具（Phase 2 的 9 + Phase 3a 的 7 + Phase 3b 的 3 + Phase 4 的 6 + Skill 的 1 + 脚本检索的 1 + 记忆的 3 + 页面感知 query_page 的 1）', () => {
+  it('恰好 32 个工具（Phase 2 的 9 + Phase 3a 的 7 + Phase 3b 的 3 + Phase 4 的 6 + Skill 的 1 + 脚本检索的 1 + 记忆的 3 + 页面感知 query_page 的 1 + 页内脚本 run_page_script 的 1）', () => {
     const names = TOOL_SCHEMAS.map((s) => s.function.name).sort();
     expect(names).toEqual([
       'click', 'close_page', 'create_script', 'delete_script', 'evaluate_script', 'fill',
       'fill_form', 'get_network_request', 'get_script', 'grep_script', 'hover', 'http_request',
       'list_console_messages', 'list_network_requests', 'list_pages', 'list_scripts', 'load_skill',
       'memory_delete', 'memory_list', 'memory_write',
-      'navigate_page', 'new_page', 'press_key', 'query_page', 'scroll', 'select_page',
+      'navigate_page', 'new_page', 'press_key', 'query_page', 'run_page_script', 'scroll', 'select_page',
       'take_screenshot', 'take_snapshot', 'toggle_script', 'update_script', 'wait_for',
     ]);
   });
@@ -26,6 +26,25 @@ describe('工具 schema', () => {
     expect(s).toBeDefined();
     const p = s.function.parameters as { required: string[] };
     expect(p.required).toContain('locator');
+  });
+
+  it('run_page_script schema 存在且 script 必填', () => {
+    const s = TOOL_SCHEMAS.find((x) => x.function.name === 'run_page_script')!;
+    expect(s).toBeDefined();
+    expect((s.function.parameters as { required: string[] }).required).toContain('script');
+  });
+
+  it('run_page_script 的 description 含 helper 速查表（不加载文档也不会造 API）', () => {
+    const d = TOOL_SCHEMAS.find((x) => x.function.name === 'run_page_script')!.function.description;
+    for (const name of ['$', '$$', 'click', 'type', 'hover', 'press', 'waitFor', 'text', 'log', 'expect']) {
+      expect(d).toContain(name);
+    }
+    expect(d).toContain('load_skill');
+  });
+
+  it('evaluate_script 的 description 说明与 run_page_script 的分工', () => {
+    const d = TOOL_SCHEMAS.find((x) => x.function.name === 'evaluate_script')!.function.description;
+    expect(d).toContain('run_page_script');
   });
 
   it('load_skill：command 必填 string', () => {

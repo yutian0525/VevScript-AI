@@ -40,12 +40,16 @@ describe('ASK_MODE_TOOLS 白名单', () => {
       expect(ASK_MODE_TOOLS.has(t)).toBe(true);
     }
   });
+
+  it('run_page_script 不在 ask 白名单（执行动作）', () => {
+    expect(ASK_MODE_TOOLS.has('run_page_script')).toBe(false);
+  });
 });
 
 describe('filterSchemasForMode / getToolSchemas', () => {
-  it('agent 模式返回全量 31 个（schemas.ts 当前 31 工具）', () => {
-    expect(getToolSchemas('agent')).toHaveLength(31);
-    expect(getToolSchemas()).toHaveLength(31); // 缺省 = agent
+  it('agent 模式返回全量 32 个（schemas.ts 当前 32 工具）', () => {
+    expect(getToolSchemas('agent')).toHaveLength(32);
+    expect(getToolSchemas()).toHaveLength(32); // 缺省 = agent
   });
 
   it('ask 模式只返回白名单内的 schema', () => {
@@ -127,11 +131,11 @@ describe('记忆 cap 过滤与守卫', () => {
     expect(names).not.toContain('memory_write');
     expect(names).not.toContain('memory_delete');
     expect(names).toContain('take_snapshot');
-    expect(names).toHaveLength(28);
+    expect(names).toHaveLength(29);
   });
 
   it('缺省 cap = full（调试台等既有调用点不受影响）', () => {
-    expect(getToolSchemas('agent')).toHaveLength(31);
+    expect(getToolSchemas('agent')).toHaveLength(32);
   });
 
   it('cap 与 mode 二维叠加：ask + read', () => {

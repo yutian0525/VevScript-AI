@@ -1,5 +1,5 @@
 // agent/tools/schemas.ts
-// 31 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个 + 记忆的 3 个 + 页面感知的 1 个（query_page）。描述对齐 chrome-devtools-mcp。
+// 32 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个 + 记忆的 3 个 + 页面感知的 1 个（query_page）+ 页内脚本的 1 个（run_page_script）。描述对齐 chrome-devtools-mcp。
 import type { ToolSchema } from '../provider/types';
 
 // 显式声明返回 Record<string, unknown>，避免 type:'object' 字面量收窄导致的赋值报错。
@@ -195,7 +195,7 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     type: 'function',
     function: {
       name: 'evaluate_script',
-      description: '在页面中执行一段 JavaScript 并返回其结果（必须可 JSON 序列化）。用于读取 a11y 快照无法覆盖的深层数据。',
+      description: '在页面中执行一段 JavaScript 并返回其结果（必须可 JSON 序列化）。用于读取 a11y 快照无法覆盖的深层数据。【与 run_page_script 的分工】本工具用于单次求值（读一个变量、算一个值），无 helper、默认 5s 超时、返回裸值。多步操作（定位+点击+等待+提取）用 run_page_script，它有 helper 与结构化 trace。',
       parameters: obj(
         {
           function: {
@@ -227,6 +227,42 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
           within: { type: 'number', description: '限定在该 uid 的容器内查找' },
         },
         ['locator'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'run_page_script',
+      description:
+        '在页面里执行一段 JS，一次往返完成多个动作（定位、点击、输入、等待、提取），返回结构化 trace + 你自己埋的 log + return 的数据。多步操作优先用它——比逐个调 click/fill 省掉大量往返与重复快照。\n' +
+        '可用 helper（详细用法与示例调 load_skill("page-script")）：\n' +
+        '$(loc,opts?) $$(loc,opts?) click(el,opts?) type(el,val,opts?) hover(el)\n' +
+        'press(key) waitFor(cond,opts?) text(el) log(...) expect(cond,msg)\n' +
+        'loc = "CSS选择器" | uid数字 | {role,text,near,nth,exact}\n' +
+        'opts.within 限定范围内查找；$ 找不到或命中多个即抛错（带诊断），可能有多个时用 $$ 判 length\n' +
+        'waitFor: {role}出现 {gone}消失 {text}文本 {idle:ms}网络静默 ()=>bool\n' +
+        '脚本体是 async 函数体，可用 await，用 return 交出数据。原生 JS 照常可用（如 window.scrollTo、.map()）——helper 只覆盖难写对的部分。\n' +
+        '失败时看返回的 kind 定修法：locator-miss 看 relaxed/nearMiss 改定位符；locator-ambiguous 加 nth/within；blocked 先处理遮挡物；state 补前置条件；timeout 改等待条件；assert 重新理解页面；script-error 改代码；page-error 换路径。',
+      parameters: obj(
+        {
+          script: {
+            type: 'string',
+            description: 'async 函数体。示例：const box = $({role:"textbox",near:"搜索"}); await type(box,"关键词"); await press("Enter"); await waitFor({idle:600}); return $$(".result").slice(0,5).map(e=>text(e));',
+          },
+          world: {
+            type: 'string',
+            enum: ['isolated', 'main'],
+            description: '缺省 isolated（推荐）。main 用于读写页面自身的 JS 变量，但该世界没有 helper，只能写原生 DOM 代码',
+          },
+          timeoutMs: { type: 'number', description: '整段脚本的超时，缺省 30000，上限 120000' },
+          screenshot: {
+            type: 'string',
+            enum: ['never', 'on-failure', 'always'],
+            description: '缺省 never。结构化诊断通常够用；仅当 trace 各步正常但结果不对时才需要 on-failure',
+          },
+        },
+        ['script'],
       ),
     },
   },
