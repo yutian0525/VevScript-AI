@@ -22,6 +22,8 @@ export interface QueryResult {
   nthApplied: boolean;
   /** 跨域 iframe 跳过数（后续任务填充，此处恒 0）。 */
   skippedFrames: number;
+  /** near 命中经由哪一级判定（仅 near 分支填充）。诊断用。 */
+  nearTier?: 'label' | 'dom' | 'geometry';
 }
 
 /** 折叠空白 + trim。文本比较的统一口径，与 roles.ts 的 normalize 一致。 */
@@ -64,6 +66,111 @@ function dropGenericWhenSpecificExists(candidates: Element[]): Element[] {
   return candidates.filter((el) => computeRole(el) !== 'generic');
 }
 
+/** 由语义 locator 的 role/text/exact 构造元素谓词（不含 near/nth）。
+ *  near 分支与非 near 分支共用，保证两路对 role/text 的口径完全一致。 */
+function makePredicate(loc: SemanticLocator): (el: Element) => boolean {
+  const want = loc.text != null ? norm(loc.text) : null;
+  return (el: Element) => {
+    if (isHidden(el)) return false;
+    if (loc.role && computeRole(el) !== loc.role) return false;
+    if (want != null) {
+      const t = matchText(el);
+      if (loc.exact ? t !== want : !t.includes(want)) return false;
+    }
+    return true;
+  };
+}
+
+/** 找锚点：文本包含 nearText 的最深层元素（排除还有后代也包含该文本的祖先）。
+ *  不排除的话 body 这类含全部文本的祖先也会当锚点，near 会退化成全页搜索。 */
+function findAnchors(nearText: string, root: Element): Element[] {
+  const want = norm(nearText);
+  const hits = Array.from(root.querySelectorAll('*')).filter(
+    (el) => !isHidden(el) && norm(el.textContent ?? '').includes(want),
+  );
+  return hits.filter((el) => !hits.some((other) => other !== el && el.contains(other)));
+}
+
+/** 第一级：显式 label / aria-labelledby 关联。命中返回目标元素。
+ *  覆盖 label[for]（正向）、包裹式 label（label.control）、aria-labelledby（反向）。 */
+function byExplicitLabel(anchor: Element, pred: (el: Element) => boolean): Element | null {
+  const doc = anchor.ownerDocument;
+  const label = anchor.tagName === 'LABEL' ? (anchor as HTMLLabelElement) : anchor.closest('label');
+  if (label) {
+    const forId = label.getAttribute('for');
+    const target = forId ? doc.getElementById(forId) : (label as HTMLLabelElement).control ?? null;
+    if (target && pred(target)) return target;
+    // 包裹式 label 的 control 在部分引擎下可能为 null，退回扫 label 后代
+    const inner = Array.from(label.querySelectorAll('*')).find(pred);
+    if (inner) return inner;
+  }
+  if (anchor.id) {
+    const referrers = Array.from(doc.querySelectorAll(`[aria-labelledby~="${CSS.escape(anchor.id)}"]`));
+    const hit = referrers.find(pred);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** 第三级：几何最近。rect 全 0（jsdom / 0 尺寸）时返回 null，交回 DOM 序决定。
+ *  纵向距离加权 3 倍：表单场景标签几乎总在输入框同一视觉行或正上方，
+ *  横向排布的无关元素不该因 DOM 序靠前而赢过正上方的真标签。 */
+function byGeometry(anchor: Element, candidates: Element[]): Element | null {
+  const a = anchor.getBoundingClientRect();
+  if (a.width === 0 && a.height === 0) return null;
+  const ax = a.left + a.width / 2;
+  const ay = a.top + a.height / 2;
+  let best: Element | null = null;
+  let bestScore = Infinity;
+  for (const c of candidates) {
+    const r = c.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) continue;
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const score = Math.abs(cx - ax) + Math.abs(cy - ay) * 3;
+    if (score < bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  return best;
+}
+
+/** near 主流程：锚点 → 三级判定。返回命中元素与所用级别。
+ *  刻意不走 dropGenericWhenSpecificExists：near 靠 pred 精确定位，
+ *  且第二级「逐层向上」本身已把范围收窄到最近祖先层，再降噪反而会误删锚点兄弟。 */
+function queryNear(
+  loc: SemanticLocator,
+  root: Element,
+): { elements: Element[]; tier?: 'label' | 'dom' | 'geometry' } {
+  const pred = makePredicate(loc);
+  const anchors = findAnchors(loc.near!, root);
+
+  // 第一级：显式关联最可靠，任一锚点命中即止。
+  for (const anchor of anchors) {
+    const explicit = byExplicitLabel(anchor, pred);
+    if (explicit) return { elements: [explicit], tier: 'label' };
+  }
+
+  // 第二级：从锚点逐层向上扩大搜索范围，最近祖先层命中即止。
+  // 同层唯一 → 直接采用；同层多个 → 交几何判定（jsdom rect 全 0 时退回 DOM 序）。
+  for (const anchor of anchors) {
+    let scope: Element | null = anchor.parentElement;
+    while (scope && scope !== root.parentElement) {
+      const found = Array.from(scope.querySelectorAll('*')).filter(pred);
+      if (found.length === 1) return { elements: found, tier: 'dom' };
+      if (found.length > 1) {
+        const geo = byGeometry(anchor, found);
+        return geo
+          ? { elements: [geo, ...found.filter((e) => e !== geo)], tier: 'geometry' }
+          : { elements: found, tier: 'dom' };
+      }
+      scope = scope.parentElement;
+    }
+  }
+  return { elements: [] };
+}
+
 export function queryLocator(loc: Locator, opts: QueryOpts = {}): QueryResult {
   const doc = opts.doc ?? globalThis.document;
   const root = opts.within ?? doc.body;
@@ -88,22 +195,29 @@ export function queryLocator(loc: Locator, opts: QueryOpts = {}): QueryResult {
     throw new Error('语义 locator 至少需要一个条件（role / text / near）');
   }
 
-  // near 分支在下个任务接入；此处先按 role/text 过滤全部候选。
-  let candidates = Array.from(root.querySelectorAll('*')).filter((el) => !isHidden(el));
-  if (loc.role) candidates = candidates.filter((el) => computeRole(el) === loc.role);
-  if (loc.text) {
-    const want = norm(loc.text);
-    candidates = candidates.filter((el) => {
-      const t = matchText(el);
-      return loc.exact ? t === want : t.includes(want);
-    });
+  let candidates: Element[];
+  let nearTier: 'label' | 'dom' | 'geometry' | undefined;
+  if (loc.near) {
+    const r = queryNear(loc, root);
+    candidates = r.elements;
+    nearTier = r.tier;
+  } else {
+    // 非 near 路径保持原样：role/text 过滤 + generic 降噪（Task 5 规则，near 不走）。
+    candidates = Array.from(root.querySelectorAll('*')).filter((el) => !isHidden(el));
+    if (loc.role) candidates = candidates.filter((el) => computeRole(el) === loc.role);
+    if (loc.text) {
+      const want = norm(loc.text);
+      candidates = candidates.filter((el) => {
+        const t = matchText(el);
+        return loc.exact ? t === want : t.includes(want);
+      });
+    }
+    candidates = dropGenericWhenSpecificExists(candidates);
   }
 
-  // nth 前收口：generic 容器/装饰后代不该挤占命中序列，也避免 nth 取到外层容器。
-  const finalCandidates = dropGenericWhenSpecificExists(candidates);
   if (loc.nth != null) {
-    const picked = finalCandidates[loc.nth];
-    return { elements: picked ? [picked] : [], nthApplied: true, skippedFrames: 0 };
+    const picked = candidates[loc.nth];
+    return { elements: picked ? [picked] : [], nthApplied: true, skippedFrames: 0, nearTier };
   }
-  return { elements: finalCandidates, nthApplied: false, skippedFrames: 0 };
+  return { elements: candidates, nthApplied: false, skippedFrames: 0, nearTier };
 }

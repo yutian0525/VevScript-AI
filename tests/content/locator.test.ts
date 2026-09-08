@@ -132,3 +132,85 @@ describe('locator 基础匹配', () => {
     expect(describeLocator({ text: '删', nth: 2 })).toBe('{ text:"删", nth:2 }');
   });
 });
+
+describe('locator 的 near 三级判定', () => {
+  beforeEach(() => { resetUidMap(); document.body.innerHTML = ''; });
+
+  it('第一级：label[for] 显式关联', () => {
+    document.body.innerHTML = `
+      <label for="pw">密码</label><input id="pw" type="text">
+      <label for="un">用户名</label><input id="un" type="text">`;
+    const r = queryLocator({ role: 'textbox', near: '密码' });
+    expect(r.elements.length).toBe(1);
+    expect(r.elements[0]!.id).toBe('pw');
+    expect(r.nearTier).toBe('label');
+  });
+
+  it('第一级：包裹式 label', () => {
+    document.body.innerHTML = '<label>邮箱<input id="em" type="text"></label>';
+    const r = queryLocator({ role: 'textbox', near: '邮箱' });
+    expect(r.elements[0]!.id).toBe('em');
+    expect(r.nearTier).toBe('label');
+  });
+
+  it('第一级：aria-labelledby 反向关联', () => {
+    document.body.innerHTML = `
+      <span id="lbl">验证码</span><input id="code" type="text" aria-labelledby="lbl">`;
+    const r = queryLocator({ role: 'textbox', near: '验证码' });
+    expect(r.elements[0]!.id).toBe('code');
+    expect(r.nearTier).toBe('label');
+  });
+
+  it('第二级：无显式关联时按 DOM 邻近（同容器内优先）', () => {
+    document.body.innerHTML = `
+      <div class="row"><span>手机号</span><input id="phone" type="text"></div>
+      <div class="row"><span>地址</span><input id="addr" type="text"></div>`;
+    const r = queryLocator({ role: 'textbox', near: '手机号' });
+    expect(r.elements[0]!.id).toBe('phone');
+    expect(r.nearTier).toBe('dom');
+  });
+
+  it('第二级：逐层向上扩大搜索，取最近祖先层命中的', () => {
+    document.body.innerHTML = `
+      <section>
+        <div><span>金额</span></div>
+        <div><input id="amount" type="text"></div>
+      </section>
+      <input id="far" type="text">`;
+    const r = queryLocator({ role: 'textbox', near: '金额' });
+    expect(r.elements[0]!.id).toBe('amount');
+  });
+
+  it('near 文本不存在时返回空', () => {
+    document.body.innerHTML = '<input type="text">';
+    expect(queryLocator({ role: 'textbox', near: '不存在的标签' }).elements).toEqual([]);
+  });
+
+  it('near 命中但无满足其余条件的元素时返回空', () => {
+    document.body.innerHTML = '<span>标签</span>';
+    expect(queryLocator({ role: 'textbox', near: '标签' }).elements).toEqual([]);
+  });
+
+  it('锚点取最深层（避免 body 这类含全部文本的祖先当锚点）', () => {
+    document.body.innerHTML = `
+      <div><div><span>目标标签</span><input id="deep" type="text"></div></div>
+      <input id="shallow" type="text">`;
+    const r = queryLocator({ role: 'textbox', near: '目标标签' });
+    expect(r.elements[0]!.id).toBe('deep');
+  });
+
+  it('near 与 nth 组合：在 near 结果上取第 n 个', () => {
+    document.body.innerHTML = `
+      <div><span>组</span><input id="i0" type="text"><input id="i1" type="text"></div>`;
+    const r = queryLocator({ role: 'textbox', near: '组', nth: 1 });
+    expect(r.elements[0]!.id).toBe('i1');
+  });
+
+  it('near 与 text 组合：两个条件都要满足', () => {
+    document.body.innerHTML = `
+      <div><span>操作区</span><button>保存</button><button>取消</button></div>`;
+    const r = queryLocator({ near: '操作区', text: '取消' });
+    expect(r.elements.length).toBe(1);
+    expect(r.elements[0]!.textContent).toBe('取消');
+  });
+});
