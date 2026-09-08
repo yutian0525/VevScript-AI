@@ -1,0 +1,45 @@
+agent/tools/schemas.ts
+  s_90855c46e5bd90::t_74be2a81a3b53a 217-232
+  s_90855c46e5bd90::t_52bf0a7dcd057d 2
+  s_90855c46e5bd90::t_9d1f39d78426d7 22-32
+  s_90855c46e5bd90::t_25b7aa84b8d04e 214-216
+tests/agent/mode.test.ts
+  s_90855c46e5bd90::t_5691bd2ecae535 130
+  s_90855c46e5bd90::t_01983884ca9094 46-48
+  s_90855c46e5bd90::t_20b1e3b29cb6f3 134
+  s_90855c46e5bd90::t_b651f01e87a2ac 34-37
+components/debug/tool-tags.ts
+  s_90855c46e5bd90::t_ac62880cf4f8c3 8-9
+tests/debug/tool-tags.test.ts
+  s_90855c46e5bd90::t_f3a6217a1721ab 27-30
+  s_90855c46e5bd90::t_d0d3b3e56612e6 12,14
+agent/tools/registry.ts
+  s_90855c46e5bd90::t_0775026271b0ad 45
+components/settings/SettingsHome.tsx
+  s_90855c46e5bd90::t_1564ffa01e86fb 14
+tests/agent/tools/registry.test.ts
+  s_90855c46e5bd90::t_00896cf4399baa 15-26
+tests/agent/tools/schemas.test.ts
+  s_90855c46e5bd90::t_f940cacce3f9c5 5,12
+  s_90855c46e5bd90::t_7c69e58fba4841 17-30
+agent/mode.ts
+  s_90855c46e5bd90::t_8526a45bda5192 9
+components/debug/ToolBenchPage.tsx
+  s_90855c46e5bd90::t_5082b7520cf277 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b1592511a0a21c994b728b969054ab1cb33fd67b",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
