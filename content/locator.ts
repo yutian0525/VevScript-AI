@@ -22,7 +22,9 @@ export interface QueryResult {
    *  nth:0 恰好单命中时也是 true。消费方（trace）若要区分，需要的是收窄前的命中数，
    *  届时应加 matchedBeforeNth 字段而非改这个布尔的语义（当前无消费方）。 */
   nthApplied: boolean;
-  /** 跨域 iframe 跳过数（后续任务填充，此处恒 0）。 */
+  /** 本次搜索跳过的跨域 iframe 数。CSS/语义分支填充；uid 分支恒 0——uid 是全局
+   *  uidMap 直查、无「搜索根」概念，0 不代表页面无帧盲区（那由快照层的
+   *  skippedFrames 上报）。消费方勿把 uid 路径的 0 聚合成「无盲区」。 */
   skippedFrames: number;
   /** near 命中经由哪一级判定（仅 near 分支填充）。诊断用。 */
   nearTier?: 'label' | 'dom' | 'geometry';
