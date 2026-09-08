@@ -19,6 +19,7 @@ import { initSkillsModule } from '../background/skills';
 import { seedBuiltinSkills } from '../background/builtin-skills';
 import { maybeRunStartupUpdateCheck } from '../background/scripts-update';
 import { initConfirmQueue } from '../background/confirm-queue';
+import { syncHookRegistration } from '../background/hook-registration';
 
 export default defineBackground(() => {
   const router = new MessageRouter();
@@ -91,6 +92,11 @@ export default defineBackground(() => {
 
   attachAgentPort();
   attachObservers();
+
+  // hook 动态注册对齐（registration:'runtime' 的启动自愈，同 syncRegistrations 时序）。
+  // 失败静默：SW 下次冷启动再试；注册 API 缺失（极旧 Chrome）也不阻断其余初始化。
+  void syncHookRegistration().catch(() => {});
+
   initScriptsModule(router);
   initGmApi(router);
   initSkillsModule(router);
