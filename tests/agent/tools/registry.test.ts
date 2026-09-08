@@ -45,6 +45,14 @@ describe('工具 registry', () => {
     expect(r.error).toContain('script');
   });
 
+  it('ask 模式拒 run_page_script（执行动作，不在白名单）', async () => {
+    const r = await executeTool('run_page_script', { script: 'return 1' },
+      { tabId: 1, sessionId: 's', signal: new AbortController().signal, mode: 'ask' });
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error('预期失败结果');
+    expect(r.error).toContain('ask');
+  });
+
   it('query_page 经 CS 通道分发', async () => {
     const sendMessage = vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(
       { correlationId: 'x', type: 'QUERY', result: { ok: true, data: { matched: 1 } } } as never,
