@@ -208,6 +208,42 @@ describe('type 四路分派', () => {
     expect(keys).toEqual(['h', 'i']);
   });
 
+  it('input：大写字符的 keydown 带 shiftKey=true（真实浏览器 shift+a 的产物）', async () => {
+    document.body.innerHTML = '<input type="text">';
+    const el = document.querySelector('input')!;
+    const shifts: boolean[] = [];
+    el.addEventListener('keydown', (e) => shifts.push((e as KeyboardEvent).shiftKey));
+    await typeInto(el, 'aA');
+    expect(shifts).toEqual([false, true]);
+  });
+
+  it('number input 的非数字值抛 state（原生 setter 静默清洗成空，不报则 agent 误以为成功）', async () => {
+    document.body.innerHTML = '<input type="number">';
+    const err = await catchStepError(typeInto(document.querySelector('input')!, 'abc'));
+    expect(err.kind).toBe('state');
+    expect(err.message).toContain('清洗');
+  });
+
+  it('number input 的合法数字正常写入', async () => {
+    document.body.innerHTML = '<input type="number">';
+    const el = document.querySelector('input')!;
+    await typeInto(el, '-5');
+    expect(el.value).toBe('-5');
+  });
+
+  it('contenteditable="false" 不可输入（显式关闭编辑，误判会静默覆盖富文本岛内容）', async () => {
+    document.body.innerHTML = '<div contenteditable="false">锁死文本</div>';
+    const err = await catchStepError(typeInto(document.querySelector('div')!, 'AI写入'));
+    expect(err.kind).toBe('state');
+  });
+
+  it('contenteditable 裸属性（空值）仍可输入', async () => {
+    document.body.innerHTML = '<div contenteditable>可编辑</div>';
+    const el = document.querySelector('div')!;
+    await typeInto(el, 'ok');
+    expect(el.textContent).toBe('ok');
+  });
+
   it('input：填入前清空既有值', async () => {
     document.body.innerHTML = '<input type="text" value="旧值">';
     const el = document.querySelector('input')!;

@@ -190,10 +190,13 @@ export async function type(el: Element, value: string, opts: TypeOpts = {}): Pro
   }
 
   // —— contenteditable ——（jsdom 的 HTMLElement 原型没有 isContentEditable getter，
-  // 探针确认恒 undefined，故退回 contenteditable 属性判断；注意裸属性 contenteditable=""
-  // 也算可编辑，但属性不存在（null）不算——「元素有该属性」必须显式排除 null）
+  // 探针确认恒 undefined，故退回 contenteditable 属性判断。属性值必须判定：
+  // "false" 是显式关闭编辑——按 hasAttribute 判断会把富文本编辑器里的 mention/
+  // 徽章岛（contenteditable="false" 节点）误判为可编辑，静默覆盖其内容（审查探针实录）。
+  // 可编辑值：true / ""（裸属性）/ "plaintext-only"；"false" 与其它值不可编辑。）
+  const ceAttr = el.getAttribute('contenteditable');
   const editable = el instanceof HTMLElement
-    && (el.isContentEditable || el.hasAttribute('contenteditable'));
+    && (el.isContentEditable || ceAttr === 'true' || ceAttr === '' || ceAttr === 'plaintext-only');
   if (editable) {
     const host = el as HTMLElement;
     host.focus?.();
@@ -236,16 +239,34 @@ export async function type(el: Element, value: string, opts: TypeOpts = {}): Pro
 
     setNativeValue(input, '');
     let acc = '';
+    let i = 0;
     for (const ch of value) {
-      input.dispatchEvent(new KeyboardEvent('keydown', keyInit(ch)));
-      input.dispatchEvent(new KeyboardEvent('keypress', keyInit(ch)));
+      // shiftKey 修正：真实浏览器里产生大写字符的按键 shiftKey 为 true（'A' 是
+      // shift+a 的产物）。固定 false 会让读 shiftKey 的监听方拿到错误状态。
+      const upper = ch !== ch.toLowerCase() && ch === ch.toUpperCase();
+      const init = upper ? keyInit(ch, { shift: true }) : keyInit(ch);
+      input.dispatchEvent(new KeyboardEvent('keydown', init));
+      input.dispatchEvent(new KeyboardEvent('keypress', init));
       acc += ch;
       setNativeValue(input, acc);
       input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new KeyboardEvent('keyup', keyInit(ch)));
+      input.dispatchEvent(new KeyboardEvent('keyup', init));
+      i += 1;
+      // 每 48 字符让一帧：逐字符是同步循环，真实页面每个 input 触发一次框架重渲染
+      //（0.5~2ms），200 字符连发 ≈ 1~4s 主线程冻结且防抖搜索全程不跑。让页喘息后
+      // 挂起的渲染/防抖能中途执行一轮，时序更接近真实逐字输入。
+      if (i % 48 === 0) await raf();
     }
     input.dispatchEvent(new Event('change', { bubbles: true }));
     // 刻意不 blur：blur 可能触发提交或校验逻辑，是否「离开」该由 agent 显式 press('Tab') 决定
+    // number input 的非数字清洗检测：原生 setter 对非数字静默清成 ''（真实 Chrome 同款），
+    // 不报错会让 agent 误以为输入成功（审查探针实录）。value 非 0 但落空即被清洗。
+    if ((input as HTMLInputElement).type === 'number' && input.value === '' && value !== '') {
+      throw new StepError('state', `number 输入框拒绝了 "${value.slice(0, 20)}"（原生 value setter 把非数字值清洗成空）`, {
+        element: briefOf(input),
+        hint: '传纯数字字符串（如 "42"、"-5"）；带单位或符号的值先拆出数字部分。',
+      });
+    }
     return;
   }
 
