@@ -11,6 +11,11 @@ import { ensureUid, resolveUid, renderElementLine } from './snapshot/build';
 const DEFAULT_LIMIT = 5;
 const MAX_LIMIT = 20;
 
+// uid 与「最近一次快照/query_page」绑定（isConnected 防护挡不住错位指向）。
+// 恒带是刻意取舍：只占 ~30 tokens，第一次就出现在 agent 眼前比省这点重要。
+// 提成常量是因为「命中 0」与「命中 N」两个成功分支都要带，两处内联迟早漂移。
+const UID_NOTICE = 'uid 与最近一次快照/查询绑定；页面结构变化后旧 uid 可能失效或错位，操作前若页面已变请重新查询。';
+
 export interface QueryArgs {
   locator: Locator;
   limit?: number;
@@ -39,12 +44,15 @@ export function doQuery(args: QueryArgs): ToolResult {
 
   if (res.elements.length === 0) {
     // 命中 0 个也要给诊断——探查阶段就把定位符调对，不带错进脚本。
+    // uidNotice 恒带（uid 诊断分支也提醒了 uid 时效性，但那是「失效」口径，
+    // 与本条「错位」口径互补；恒带让两个分支的返回形状一致，消费方少一层判断）。
     const diag = diagnoseMiss(args.locator, scope ?? document.body);
     return {
       ok: true,
       data: {
         matched: 0, returned: 0, lines: [], skippedFrames: res.skippedFrames,
         relaxed: diag.relaxed, nearMiss: diag.nearMiss, hint: diag.hint,
+        uidNotice: UID_NOTICE,
       },
     };
   }
@@ -58,9 +66,7 @@ export function doQuery(args: QueryArgs): ToolResult {
     returned: picked.length,
     lines,
     skippedFrames: res.skippedFrames,
-    // uid 与「最近一次快照/query_page」绑定（isConnected 防护挡不住错位指向），
-    // 恒带是刻意取舍：只占 ~30 tokens，第一次就出现在 agent 眼前比省这点重要。
-    uidNotice: 'uid 与最近一次快照/查询绑定；页面结构变化后旧 uid 可能失效或错位，操作前若页面已变请重新查询。',
+    uidNotice: UID_NOTICE,
   };
   if (res.elements.length > picked.length) {
     data.notice = `共命中 ${res.elements.length} 个，只返回前 ${picked.length} 个。加 nth 指定第几个，或用 within 收窄范围，或调大 limit（上限 ${MAX_LIMIT}）。`;
