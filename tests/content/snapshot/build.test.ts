@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { buildSnapshot, resolveUid, resetUidMap, shortenUrl } from '../../../content/snapshot/build';
 
 // 反查某元素被分配的 uid（遍历 1..N）
@@ -316,6 +316,89 @@ describe('快照组装', () => {
     const { text } = buildSnapshot(document.body);
     expect(text).toContain('StaticText "正文"');
     expect(text).not.toContain('未展开节点');
+  });
+
+  describe('视口过滤（桩掉几何）', () => {
+    // 为什么需要桩：jsdom 的 getBoundingClientRect 恒返全 0，build.ts 的 inViewport
+    // 会退成「未知→保留」，几何判定分支（bottom>0 && top<vh …）在生产代码里唯一
+    // 走不到、无任何测试保护。这里按 id 桩出真实 rect，走 buildSnapshot 全链路实测。
+    // inViewport 是闭包内私有函数，只能从产出文本反推行为。
+    type Rect = { top: number; bottom: number; left: number; right: number };
+    const VH = 600;
+    const VW = 800;
+
+    /** 按 id → rect 桩掉 Element.prototype.getBoundingClientRect；
+     *  未登记 id 的元素返全 0（走「未知→保留」分支，与 jsdom 缺省行为一致）。 */
+    function stubRects(rects: Record<string, Rect>): void {
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+        const r = rects[(this as HTMLElement).id ?? ''];
+        const zero = { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 };
+        // 必须由 top/bottom/left/right 反推出非零 width/height：inViewport 的第一道守卫是
+        // 「width===0 && height===0 → 未知（返 undefined）→ 保留」，只给四条边界会先命中它，
+        // 几何判定根本走不到（实测踩过：上方/下方文本都没被折叠）。
+        if (!r) return zero as DOMRect;
+        return {
+          ...zero, ...r,
+          width: r.right - r.left,
+          height: r.bottom - r.top,
+        } as DOMRect;
+      });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: VH });
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: VW });
+    }
+
+    afterEach(() => {
+      // Element.prototype 的 spy 是全局的，漏恢复会让本文件后续用例行为漂移
+      vi.restoreAllMocks();
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 768 });
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
+    });
+
+    it('视口内文本保留', () => {
+      document.body.innerHTML = '<p id="a">视口内</p>';
+      stubRects({ a: { top: 10, bottom: 50, left: 0, right: 100 } });
+      const { text } = buildSnapshot(document.body);
+      expect(text).toContain('StaticText "视口内"');
+    });
+
+    it('完全在视口上方 / 下方的文本被折叠', () => {
+      document.body.innerHTML = '<p id="up">上方文本</p><p id="down">下方文本</p>';
+      stubRects({
+        up: { top: -200, bottom: -100, left: 0, right: 100 },
+        down: { top: 700, bottom: 800, left: 0, right: 100 },
+      });
+      const { text } = buildSnapshot(document.body);
+      expect(text).not.toContain('上方文本');
+      expect(text).not.toContain('下方文本');
+      // 被滤文本折进计数行（p→generic 走 structural 不计数，但 StaticText 是文本行，
+      // 被档位滤掉时按 structural=true 计数——文本 shouldEmit 恒 true）
+      expect(text).toMatch(/… \[\d+ 个未展开节点\]/);
+    });
+
+    it('部分相交（垂直越界）文本保留', () => {
+      document.body.innerHTML = '<p id="half">半出屏文本</p>';
+      stubRects({ half: { top: 580, bottom: 620, left: 0, right: 100 } });
+      const { text } = buildSnapshot(document.body);
+      expect(text).toContain('StaticText "半出屏文本"');
+    });
+
+    it('部分相交（水平越界）文本保留', () => {
+      document.body.innerHTML = '<p id="side">侧出屏文本</p>';
+      stubRects({ side: { top: 10, bottom: 50, left: -50, right: 50 } });
+      const { text } = buildSnapshot(document.body);
+      expect(text).toContain('StaticText "侧出屏文本"');
+    });
+
+    it('视口外的交互元素仍保留（spec §6.2：agent 常需点页面下方的按钮）', () => {
+      document.body.innerHTML = '<p id="t">视口内文本</p><button id="btn">下方按钮</button>';
+      stubRects({
+        t: { top: 10, bottom: 50, left: 0, right: 100 },
+        btn: { top: 700, bottom: 800, left: 0, right: 100 },
+      });
+      const { text } = buildSnapshot(document.body);
+      expect(text).toContain('StaticText "视口内文本"');   // 文本被视口过滤是生效的
+      expect(text).toContain('button "下方按钮"');          // 交互元素不受视口限制
+    });
   });
 
   describe('shortenUrl 纯函数边界', () => {
