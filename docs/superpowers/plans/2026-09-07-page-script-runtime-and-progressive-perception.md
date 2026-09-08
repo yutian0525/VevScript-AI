@@ -732,7 +732,9 @@ function safeFrameDoc(el: Element): Document | null {
   return { text: lines.join('\n'), skippedFrames };
 ```
 
-`walkElement` 里 `inViewport(elem)` 是新增的——Task 3 只给文本节点算了，元素节点也需要（`interactive` 档虽不按视口滤交互元素，但 `element.inViewport` 会进 Task 12 的诊断信息）。
+`walkElement` 里 `inViewport(elem)` 在 Task 3 已存在（Task 3 就给元素节点算了），本任务无需再动它。
+
+> **已完成（`ce020c0`，双审通过）+ 已知小差异**：`computeName` 不读 iframe 的 `title` 属性，故 spec §6.1 提到的 `Iframe "src"` 命名行未实现——无名/纯 src 命名的同源帧都产出裸 `[uid] Iframe` 行，多个并列时不可区分。判定为 nice-to-have 不阻断：帧内元素 uid 可直接交给 click，无功能危害。若日后要区分（如 Stripe 支付帧 vs 广告帧），在 `computeName` 加一支读 `title`/`src` 即可。另：`skippedFrames` 语义比「contentDocument 不可读」略宽——同源但非 HTML 文档（帧内 SVG/image，body 为 null）也计入，属保守多报，可接受。
 
 - [ ] **Step 4: 运行确认通过**
 
