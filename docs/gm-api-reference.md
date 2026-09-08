@@ -216,7 +216,7 @@ GM_xmlhttpRequest({
 ### `GM_download(details | url, name?)` / `GM.download`
 下载文件到本地（`chrome.downloads`，浏览器自带下载条）。两种签名：`GM_download(url, name)` 或 `GM_download({ url, name, headers, saveAs, onload, onerror })`。
 
-- 源 URL 走与 XHR **同一套 @connect 门控**（跨域首次弹确认卡）。
+- 源 URL 走与 XHR **同一套 @connect 门控**：`@connect` 命中或已「总是允许」→ **直接放行不弹卡**；列了 `@connect` 但不命中 → 拒绝；**未列** `@connect` → 弹确认卡（允许一次 / 总是允许 / 拒绝，60s 超时按拒绝）。
 - `state=complete` → `onload()`；`interrupted` → `onerror({error})`；默认 5 分钟未达终态兜底 `onerror`（`details.timeout` 毫秒覆盖）。
 - **暂无 `onprogress`**（首版仅 onload/onerror）。
 

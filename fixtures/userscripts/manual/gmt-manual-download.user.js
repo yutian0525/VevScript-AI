@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         GM 手测·下载
 // @namespace    ai-browser-extend/gmt-manual
-// @version      1.0.0
-// @description  GM_download 人工测试：跨域下载（首次弹确认卡）
+// @version      1.0.1
+// @description  GM_download 人工测试：跨域下载确认卡（刻意不声明 @connect，触发 CONFIRM 弹卡）
 // @match        *://*/*
 // @run-at       document-end
 // @grant        GM_download
@@ -10,7 +10,6 @@
 // @grant        GM_setValue
 // @grant        GM_deleteValue
 // @grant        GM_addStyle
-// @connect      cdn.jsdelivr.net
 // @noframes
 // ==/UserScript==
 
@@ -204,7 +203,7 @@ var GMT = (function () {
 (function () {
   var actions = {
     'w1-dl': function (log) {
-      log('w1', '触发下载…（首次跨域会弹确认卡，允许后看浏览器下载条）');
+      log('w1', '触发下载…（本脚本刻意未声明 @connect → 应弹「下载确认」卡）');
       GM_download({
         url: 'https://cdn.jsdelivr.net/npm/lodash@4.17.21/package.json',
         name: 'gmt-download-probe.json',
@@ -218,7 +217,7 @@ var GMT = (function () {
     module: 'download',
     title: 'GM 手测·下载',
     cards: [
-      { id: 'w1', api: 'GM_download(details)', desc: '下载文件到本地（chrome.downloads，跨域首次弹确认卡）。', steps: [{ id: 'w1-dl', label: '下载探针文件' }, '允许确认卡后看浏览器下载条'], expect: '下载条出现 gmt-download-probe.json；日志 onload' }
+      { id: 'w1', api: 'GM_download(details)', desc: '下载文件（chrome.downloads）。本脚本未声明 @connect——跨域下载应弹确认卡（@connect 命中或已「总是允许」则直接放行不弹卡）。', steps: [{ id: 'w1-dl', label: '下载探针文件' }, '在确认卡点「允许一次」', '看浏览器下载条'], expect: '弹出「下载确认」卡；允许后下载条出现 gmt-download-probe.json；日志 onload' }
     ],
     actions: actions
   });
