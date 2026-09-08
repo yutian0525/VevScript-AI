@@ -19,9 +19,11 @@ function raf(): Promise<void> {
   });
 }
 
-/** 元素简要信息（进错误诊断）。 */
+/** 元素简要信息（进错误诊断）。class 截 60：Tailwind 类名可 300+ 字符，
+ *  不截会放大失败诊断的 token 开销（text 有 40 上限，class 同理要有）。 */
 export function briefOf(el: Element): Record<string, unknown> {
-  const cls = el.getAttribute('class')?.trim();
+  const raw = el.getAttribute('class')?.trim();
+  const cls = raw && raw.length > 60 ? `${raw.slice(0, 60)}…` : raw;
   const text = (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
   const brief: Record<string, unknown> = { tag: el.tagName.toLowerCase(), text };
   if (cls) brief.class = cls;
@@ -70,7 +72,13 @@ export async function click(el: Element, opts: ClickOpts = {}): Promise<void> {
     });
   }
 
-  (el as HTMLElement).scrollIntoView?.({ block: 'center' });
+  // scrollIntoView 包 try/catch：jsdom 30 原型上无此方法（可选链够用），但未来版本
+  // 可能学 scrollBy「定义了但调时抛 Not implemented」——可选链兜不住抛错，会炸掉整个 click。
+  try {
+    (el as HTMLElement).scrollIntoView?.({ block: 'center' });
+  } catch {
+    // 滚动失败不阻断点击（遮挡检测自有兜底）
+  }
   await raf();
 
   const r = el.getBoundingClientRect();
