@@ -29,6 +29,9 @@ export interface RunnerResult {
   url?: string;
   urlFrom?: string;
   elapsed?: number;
+  /** 最后一个成功步的 op（失败时才有）。对「点完 A 后 B 失败」的场景给参照——
+   *  失败步自己的 op 在 failedAt.op（Task 17 的 op 戳随 detail 摊平进入）。 */
+  lastOkOp?: string;
 }
 
 /**
@@ -173,10 +176,18 @@ export async function scriptRunner(src: string): Promise<RunnerResult> {
     // 已对 raw 跑通过一次，此处不会再抛；超限抛错时 data 保持原样、落入下方兜底分支）。
     // plan 原文的「data 超限截断」测试夹具（5000 条小对象）恰好落进该盲区，实测
     // dataTruncated 恒 undefined，与用例断言直接矛盾，故修正而非照抄。
+    // isFinite 守卫：顶层数组含循环引用时 JSON.stringify(raw) 抛错 → fullLen=Infinity
+    // → 误触发截断，产出 returned===total 的假 dataTruncated（审查探针实录）。
+    // serializeSafe 已把循环引用替换成标记字符串，data 本身可安全 stringify，
+    // fullLen=Infinity 只说明「原始值量不出大小」，按未超限放行即可。
     if (Array.isArray(raw) && Array.isArray(data)) {
+      // isFinite 守卫：顶层数组含循环引用时 JSON.stringify(raw) 抛错 → fullLen=Infinity
+      // → 误触发截断，产出 returned===total 的假 dataTruncated（审查探针实录）。
+      // serializeSafe 已把循环引用替换成标记字符串，data 本身可安全 stringify，
+      // fullLen=Infinity 只说明「原始值量不出大小」，按未超限放行即可。
       let fullLen = 0;
       try { fullLen = (JSON.stringify(raw) ?? '').length; } catch { fullLen = Infinity; }
-      if (fullLen > DATA_CHAR_CAP) {
+      if (isFinite(fullLen) && fullLen > DATA_CHAR_CAP) {
         const hint = `返回值超 ${DATA_CHAR_CAP} 字符上限已截断。用 slice 分批取（如脚本内 .slice(0, 20)），或在脚本里先聚合（只回需要的字段、算好统计值）再返回。`;
         let work: unknown[];
         try {
