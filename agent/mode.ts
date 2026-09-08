@@ -6,6 +6,7 @@
 /** ask 模式可用的只读工具：只看不改。截图/观测/脚本读/技能加载/HTTP GET 之外的写能力全部收走。 */
 export const ASK_MODE_TOOLS = new Set([
   'take_snapshot',      // 读页面结构
+  'query_page',        // 定向查询（纯读，与 take_snapshot 同性质）
   'take_screenshot',    // 截图（喂多模态）
   'wait_for',           // 等文本出现（无副作用，轮询读）
   'list_pages',         // 列标签页

@@ -11,7 +11,7 @@ const ENTRIES: Array<{ key: SettingsSub; title: string; desc: string; Icon: type
   { key: 'model', title: '模型设置', desc: 'AI 服务地址 / API Key / 模型 / 上下文窗口', Icon: SlidersHorizontal },
   { key: 'prompt', title: '系统提示词', desc: '查看并改写内置系统提示词（Markdown）', Icon: ScrollText },
   { key: 'memory', title: 'AI 记忆', desc: '跨会话长期记忆，AI 自主记录，可人工编辑', Icon: Brain },
-  { key: 'toolbench', title: '工具调试台', desc: '绕过模型，直接对当前页调用 30 个工具', Icon: SquareTerminal },
+  { key: 'toolbench', title: '工具调试台', desc: '绕过模型，直接对当前页调用 31 个工具', Icon: SquareTerminal },
   { key: 'scriptdebug', title: '脚本运行时调试台', desc: 'GM API 白名单视图 + 经真实桥链路直调', Icon: FlaskConical },
   { key: 'skills', title: '技能管理', desc: '导入 .md 技能，注入会话上下文，斜杠指令调用', Icon: Sparkles },
 ];

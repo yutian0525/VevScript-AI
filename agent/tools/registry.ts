@@ -42,6 +42,7 @@ const RESTRICTED = /^(chrome|edge|about|chrome-extension|moz-extension|devtools)
 // 工具名 → content script 请求类型（未列出的走 chrome API 分支）
 const CS_TOOL_MAP: Record<string, keyof BgToCsRequestMap> = {
   take_snapshot: 'SNAPSHOT',
+  query_page: 'QUERY',
   click: 'CLICK',
   fill: 'FILL',
   fill_form: 'FILL_FORM',

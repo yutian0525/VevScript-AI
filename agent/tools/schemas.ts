@@ -1,5 +1,5 @@
 // agent/tools/schemas.ts
-// 30 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个 + 记忆的 3 个。描述对齐 chrome-devtools-mcp。
+// 31 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个 + 记忆的 3 个 + 页面感知的 1 个（query_page）。描述对齐 chrome-devtools-mcp。
 import type { ToolSchema } from '../provider/types';
 
 // 显式声明返回 Record<string, unknown>，避免 type:'object' 字面量收窄导致的赋值报错。
@@ -19,8 +19,17 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'take_snapshot',
       description:
-        '获取当前页面的完整内容树：根为 RootWebArea，含所有可见元素与文本（StaticText）行，每行带 [uid]。用 uid 做 click/fill/hover。注意 uid 定位到可点击元素，同一元素下多行文本可能共享同一 uid（非逐行唯一）。隐藏子菜单聚合在父节点的 description 里，要操作需先 hover 展开再重新 take_snapshot。页面变化后 uid 会失效，需重新调用。',
-      parameters: obj({}),
+        '获取页面内容树，每行带 [uid]，用 uid 做 click/fill/hover。默认 detail="interactive"：只出可交互元素、标题与视口内文本，容器折叠为「… [N 个未展开节点]」计数行（体量约为全量的一半）。需要完整文本时用 detail="full"；只关心某个区域时用 region 限定（比 full 便宜得多）。已知目标是什么时，优先用 query_page 定向查询而非倒整棵树。穿透同源 iframe；跨域 iframe 内容无法读取，返回值的 skippedFrames 会计数。页面变化后 uid 失效，需重新调用。',
+      parameters: obj({
+        detail: {
+          type: 'string',
+          enum: ['interactive', 'full'],
+          description: '详细档位。缺省 interactive（推荐）；full 为全量含所有文本',
+        },
+        region: {
+          description: '限定子树：元素 uid（数字）或 CSS 选择器（字符串，仅主帧）。传了则只倒该容器内部',
+        },
+      }),
     },
   },
   {
@@ -199,6 +208,25 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
           timeoutMs: { type: 'number', description: '超时毫秒（默认 5000）' },
         },
         ['function'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'query_page',
+      description:
+        '按意图定向查询页面元素，只返回命中的几行（带 uid，可直接给 click/fill）。比 take_snapshot 便宜得多——已知要找什么时优先用它。命中 0 个时返回诊断：relaxed 给出逐级放宽后的命中数、nearMiss 给出最像的候选、hint 给出改法，据此改 locator 再试。locator 语法与 run_page_script 脚本内的 $() 完全一致，试通的 locator 可原样搬进脚本。',
+      parameters: obj(
+        {
+          locator: {
+            description:
+              '三形状之一：CSS 选择器字符串；元素 uid 数字；语义对象 { role, text, near, nth, exact }。role 如 button/link/textbox/combobox/checkbox/tab/heading；text 默认包含匹配，exact:true 转精确；near 找"该文本附近"的元素（如 { role:"textbox", near:"密码" }）；nth 命中多个时取第几个（0-based）',
+          },
+          limit: { type: 'number', description: '最多返回几个，缺省 5，上限 20' },
+          within: { type: 'number', description: '限定在该 uid 的容器内查找' },
+        },
+        ['locator'],
       ),
     },
   },
