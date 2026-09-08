@@ -1,0 +1,22 @@
+shared/script-result.ts
+  s_90855c46e5bd90::t_cabb31ab551e56 1-50
+tests/shared/script-result.test.ts
+  s_90855c46e5bd90::t_5107934fcd1f51 1-45,50-55
+  s_90855c46e5bd90::t_253105027ab4aa 46-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b80040436765b45275fe654d9ee16746194ab651",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
