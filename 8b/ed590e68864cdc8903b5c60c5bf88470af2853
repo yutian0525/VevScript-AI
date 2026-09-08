@@ -1,0 +1,29 @@
+tests/content/snapshot/build.test.ts
+  s_90855c46e5bd90::t_6e20666d72a618 548-550,553
+  s_90855c46e5bd90::t_8e01ebef877953 3
+  s_90855c46e5bd90::t_ca36cf1a1959b9 540-547,551,554-555
+  s_90855c46e5bd90::t_50c6b713450096 520-539,552,557-577
+  s_90855c46e5bd90::t_92c925af4430e9 556
+content/snapshot/build.ts
+  s_90855c46e5bd90::t_fef449f907dba8 83
+  s_90855c46e5bd90::t_3b676e3ac8210e 19-20,41-46,50-53
+  s_90855c46e5bd90::t_1af07f3130d475 24-29
+  s_90855c46e5bd90::t_f9a752b2bc2589 47-49
+  s_90855c46e5bd90::t_69143c06d4033d 54-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "8bed590e68864cdc8903b5c60c5bf88470af2853",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
