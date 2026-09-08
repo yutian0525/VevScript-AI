@@ -46,7 +46,7 @@ describe('hook-registration', () => {
     expect(hook!.excludeMatches).toEqual([
       '*://*.zhipin.com/*', '*://*.lagou.com/*', '*://*.zhaopin.com/*', '*://*.51job.com/*',
     ]);
-    expect(hook!.js).toEqual([{ file: 'content-scripts/hook.js' }]);
+    expect(hook!.js).toEqual(['content-scripts/hook.js']);
   });
 
   it('已注册且名单一致 → 跳过（不再调 register/update）', async () => {
@@ -78,6 +78,6 @@ describe('hook-registration', () => {
   it('HOOK_REGISTRATION 常量形状（导出供测试与 UI 提示共用）', () => {
     expect(HOOK_REGISTRATION_ID).toBe('hook-observe');
     expect(HOOK_REGISTRATION.matches).toEqual(['<all_urls>']);
-    expect(HOOK_REGISTRATION.js).toEqual([{ file: 'content-scripts/hook.js' }]);
+    expect(HOOK_REGISTRATION.js).toEqual(['content-scripts/hook.js']);
   });
 });

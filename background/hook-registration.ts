@@ -8,14 +8,14 @@ import { getHookExclusions } from './hook-exclusions';
 export const HOOK_REGISTRATION_ID = 'hook-observe';
 
 // ---------- scripting.registerContentScripts 局部接口（Chrome 96+）----------
-// 项目里 browser 走 WXT auto-import，Browser.scripting.RegisteredContentScript 的 js 类型是
-// string[]（file 路径裸串），而 hook 用 registration:'runtime' 产物需按 [{file}] 形状登记；
-// 为避免与全局类型冲突，仿 scripts.ts 的 UserScriptsApi 局部接口模式自定形状。
+// 项目里 browser 走 WXT auto-import。scripting 的 RegisteredContentScript.js 是裸路径 string[]
+//（例 ['content-scripts/hook.js']）——注意与 userScripts.register 的 `{ file }`/`{ code }` 对象形状
+// 不同，别混。为避免与全局类型冲突，仿 scripts.ts 的 UserScriptsApi 局部接口模式自定形状。
 interface RegisteredContentScript {
   id: string;
   matches: string[];
   excludeMatches?: string[];
-  js: Array<{ file: string }>;
+  js: string[];
   runAt: 'document_start' | 'document_end' | 'document_idle';
   world: 'MAIN' | 'ISOLATED';
   allFrames: boolean;
@@ -40,10 +40,10 @@ export const HOOK_REGISTRATION = {
   runAt: 'document_start',
   world: 'MAIN',
   allFrames: true,
-  // scripting 的 RegisteredContentScript 默认不跨会话持久（与 userScripts 相反），
-  // 必须显式 true，否则浏览器重启后 hook 不再注册。
+  // persistAcrossSessions 官方默认即 true；显式声明作防御，避免将来默认变更或平台差异导致
+  // 浏览器重启后 hook 不再注册。
   persistAcrossSessions: true,
-  js: [{ file: 'content-scripts/hook.js' }],
+  js: ['content-scripts/hook.js'],
 } as const satisfies Omit<RegisteredContentScript, 'excludeMatches'>;
 
 /** 名单变更 / SW 冷启动时对齐注册。幂等：一致则跳过。 */
