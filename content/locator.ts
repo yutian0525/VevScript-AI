@@ -117,8 +117,10 @@ function byExplicitLabel(anchor: Element, pred: (el: Element) => boolean): Eleme
 }
 
 /** 第三级：几何最近。rect 全 0（jsdom / 0 尺寸）时返回 null，交回 DOM 序决定。
- *  纵向距离加权 3 倍：表单场景标签几乎总在输入框同一视觉行或正上方，
- *  横向排布的无关元素不该因 DOM 序靠前而赢过正上方的真标签。 */
+ *  纵向距离加权 3 倍：保护的是【同一视觉行】——同行横向 40px 的真标签（得分 40）
+ *  要赢过正下方 30px 的无关元素（得分 90）。分界线：纵向偏移 < 横向偏移/3 时正上/正下方赢。
+ *  注意正上方 15px 的标签（45）会输给同行 40px 的元素（40）——加权刻意偏行不偏纵，
+ *  实测过这组对照（审查探针 P3），若要改偏好先想清楚表单布局的多数形态。 */
 function byGeometry(anchor: Element, candidates: Element[]): Element | null {
   const a = anchor.getBoundingClientRect();
   if (a.width === 0 && a.height === 0) return null;
