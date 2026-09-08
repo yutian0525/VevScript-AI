@@ -3,7 +3,7 @@
 // 匹配是热路径要快，诊断是冷路径可以慢但要信息足。
 // 匹配口径必须复用 locator.ts（queryLocator/matchText/norm），不写第二套：诊断给的
 // 「放宽后能命中 N 个」若与真实匹配行为对不上，agent 会按假情报改 locator，越改越偏。
-import { queryLocator, norm, matchText, describeLocator, type Locator, type SemanticLocator } from './locator';
+import { queryLocator, norm, matchText, describeLocator, collectRoots, type Locator, type SemanticLocator } from './locator';
 import { isHidden } from './snapshot/visibility';
 
 export interface ElementBrief {
@@ -132,8 +132,14 @@ function buildMissHint(
 ): string {
   // near 分支先行：锚点文本在不在页面，是两种完全不同的失败——
   // 找不到锚点（去滚动/确认文案）vs 锚点在但附近没目标（结构假设错了）。
+  // 存在性检查用 collectRoots 的多根文本之和：relaxed 计数与真实 near 匹配都跨帧
+  //（queryNear 按 collectRoots 逐根跑），只查 root.textContent 会把「锚点在帧内」
+  // 误判成「锚点不存在」，hint 指去滚动而真实边界是帧（审查探针 P3 实录）。
   if (loc.near) {
-    const anchorExists = norm(root.textContent ?? '').includes(norm(loc.near));
+    const nearText = norm(loc.near);
+    const anchorExists = collectRoots(root).roots.some((r) =>
+      norm(r.textContent ?? '').includes(nearText),
+    );
     if (!anchorExists) {
       return `页面上未找到文本「${loc.near}」，near 无锚点可用。确认该文字是否在当前视图内（可能需要先滚动或展开），或改用 { role, text } 直接定位目标。`;
     }
@@ -146,7 +152,10 @@ function buildMissHint(
   // exact 精确失败但放宽包含能命中：根因是 exact 卡的而非 role——若落到下面的
   // role 分支会产出「它是 <button> 不是 button」这类自相矛盾文案（探针 P4 实录），
   // 必须先分流。去掉 exact 在此必然有效（包含计数 > 0）。
-  if (loc.exact && containCount > 0) {
+  // 前置守卫「exact 档计数为 0」不可省：text 精确全等、失败源是 role 时
+  //（exact=1, contain=1, role=0），落这里会产出「exact 精确匹配未命中」的假话，
+  // 真实根因是 role（探针 P1c 实录）——该场景必须落下面的 role 交叉分支。
+  if (loc.exact && (relaxed['text 精确匹配（忽略 role）'] ?? 0) === 0 && containCount > 0) {
     const nm = nearMiss?.[0];
     return nm
       ? `exact 精确匹配未命中，但放宽为包含匹配能命中 ${containCount} 个元素（最像的：<${nm.tag}> "${nm.text}"）。去掉 exact 改用包含匹配，或把 text 改成元素的实际完整文本。`

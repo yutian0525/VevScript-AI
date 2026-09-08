@@ -76,6 +76,28 @@ describe('定位失败诊断', () => {
     expect(d.hint).toContain('未找到');
   });
 
+  it('near 锚点在同源 iframe 内时不算「锚点不存在」（存在性检查跨帧）', () => {
+    // relaxed 计数与真实 near 匹配都跨帧（collectRoots），锚点存在性检查若只查
+    // 主帧 textContent，会把「锚点在帧内」误判成「锚点不存在」，hint 指去滚动。
+    document.body.innerHTML = '<iframe id="f"></iframe>';
+    const f = document.getElementById('f') as HTMLIFrameElement;
+    f.contentDocument!.body.innerHTML = '<label for="p">密码</label>';
+    // 主帧没有满足 role=textbox 的元素（帧内也没 input），near 真实 miss，
+    // 但锚点「密码」在帧内存在 → hint 必须落「锚点在但附近没目标」分支。
+    const d = diagnoseMiss({ role: 'textbox', near: '密码' }, document.body);
+    expect(d.hint).toContain('附近没有');
+  });
+
+  it('exact 命中但 role 不符时落 role 交叉分支（不产出「exact 未命中」假话）', () => {
+    // exact 分流若无「exact 档计数为 0」守卫，text 全等、role 卡住的场景会
+    // 落 exact 分支说「exact 精确匹配未命中」——与 relaxed 计数（exact=1）自相矛盾。
+    document.body.innerHTML = '<a href="#">删除记录</a>';
+    const d = diagnoseMiss({ role: 'button', text: '删除记录', exact: true }, document.body);
+    expect(d.relaxed!['text 精确匹配（忽略 role）']).toBe(1);
+    expect(d.hint).toContain('不是 button');
+    expect(d.hint).not.toContain('exact 精确匹配未命中');
+  });
+
   it('near 锚点存在但目标不存在时 hint 区分这两种情况', () => {
     document.body.innerHTML = '<span>密码</span>';
     const d = diagnoseMiss({ role: 'textbox', near: '密码' }, document.body);
