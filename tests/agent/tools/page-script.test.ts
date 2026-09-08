@@ -72,13 +72,15 @@ describe('run_page_script', () => {
     vi.spyOn(browser.scripting, 'executeScript').mockImplementation(
       () => new Promise(() => { /* 永不 resolve */ }) as never,
     );
-    // 20ms 低于下限 1000 会被 clamp；用 50s（在 [1s, 120s] 内）验证透传
-    const r = await doRunPageScript(1, { script: 'x', timeoutMs: 50_000 });
+    // 传 1000（clamp 下界）而非更大的透传值：早先的 50s 用例会真实睡眠 50s，占全量套件约
+    // 95% 墙钟。断言 '1000' 同时验证 clamp 下界——实现若把下界抬高（如 5000），error 里的
+    // 生效超时数字会变而挂掉，故 50_000 的「区间内透传」语义由上限用例（999_999→120_000）反向保住。
+    const r = await doRunPageScript(1, { script: 'x', timeoutMs: 1000 });
     expect(r.ok).toBe(false);
     expect((r as unknown as { ok: false; data: Record<string, unknown> }).data.kind).toBe('timeout');
-    expect((r as { error: string }).error).toContain('50');
+    expect((r as { error: string }).error).toContain('1000');
     expect(String((r as unknown as { ok: false; data: Record<string, unknown> }).data.hint)).toContain('waitFor');
-  }, 60_000);
+  }, 15_000);
 
   it('timeoutMs 上限 120s，超限取上限', async () => {
     stubExec({ ok: true, url: 'https://a.com' });
@@ -102,12 +104,16 @@ describe('run_page_script', () => {
   });
 
   it('合并执行期间的页面 error（区分「我的脚本错了」与「触发了页面 bug」）', async () => {
-    // stub 成功脚本但页面在执行窗口内抛错：成功时只给数字（spec §5.4）
     stubExec({ ok: true, url: 'https://a.com' });
+    // 直接用 Date.now() 有竞态：vitest 调度若让 ingestConsole 发生在实现取 startedAt 的
+    // 前一毫秒，filter(e.ts >= startedAt) 会把窗口内两条 error 全滤掉（实测约 3/14 概率）。
+    // ts 取「未来」方向（runAt+10，窗口 [startedAt≈runAt, ∞) 内必真）规避；
+    // 「窗口外不计入」由下方专门用例（runAt-60_000）反向覆盖。
+    const runAt = Date.now();
     ingestConsole(1, [
-      { id: 'n:1', level: 'error', text: 'Uncaught TypeError: x', ts: Date.now() },
-      { id: 'n:2', level: 'error', text: '第二条', ts: Date.now() },
-      { id: 'n:3', level: 'warn', text: '警告不计', ts: Date.now() },
+      { id: 'n:1', level: 'error', text: 'Uncaught TypeError: x', ts: runAt + 10 },
+      { id: 'n:2', level: 'error', text: '第二条', ts: runAt + 10 },
+      { id: 'n:3', level: 'warn', text: '警告不计', ts: runAt + 10 },
     ]);
     const r = await doRunPageScript(1, { script: 'x' });
     const d = (r as { ok: true; data: Record<string, unknown> }).data;
@@ -117,9 +123,10 @@ describe('run_page_script', () => {
 
   it('失败时附窗口内最后一条页面 error 正文', async () => {
     stubExec({ ok: false, kind: 'assert', error: '断言失败', url: 'https://a.com' });
+    const runAt = Date.now();
     ingestConsole(1, [
-      { id: 'm:1', level: 'error', text: 'Uncaught TypeError: x', ts: Date.now() },
-      { id: 'm:2', level: 'error', text: '最后一条', ts: Date.now() },
+      { id: 'm:1', level: 'error', text: 'Uncaught TypeError: x', ts: runAt + 10 },
+      { id: 'm:2', level: 'error', text: '最后一条', ts: runAt + 10 },
     ]);
     const r = await doRunPageScript(1, { script: 'x' });
     expect(r.ok).toBe(false);
