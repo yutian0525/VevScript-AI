@@ -1,0 +1,23 @@
+docs/gm-api-reference.md
+  s_914db53b60ecdf::t_c78308d6d3d5c2 134,142
+tests/shared/gm-wrapper.test.ts
+  s_914db53b60ecdf::t_13133d75b8cfa3 179-180
+shared/gm-wrapper.ts
+  s_914db53b60ecdf::t_fb741ba074335d 200-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c80999d34ce99815cb3c4e5234ce6773e95c58ef",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
