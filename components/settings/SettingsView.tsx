@@ -6,6 +6,7 @@ import { ModelSettings } from './ModelSettings';
 import { ToolBenchPage } from '../debug/ToolBenchPage';
 import { ScriptDebugPage } from '../scriptdebug/ScriptDebugPage';
 import { SkillsPage } from '../skills/SkillsPage';
+import { HookExclusionsPage } from './HookExclusionsPage';
 
 export function SettingsView() {
   const [sub, setSub] = useState<SettingsSub | null>(null);
@@ -21,6 +22,8 @@ export function SettingsView() {
         <ScriptDebugPage onBack={back} />
       ) : sub === 'skills' ? (
         <SkillsPage onBack={back} />
+      ) : sub === 'hookexclusions' ? (
+        <HookExclusionsPage onBack={back} />
       ) : (
         <SettingsHome onOpen={setSub} />
       )}
