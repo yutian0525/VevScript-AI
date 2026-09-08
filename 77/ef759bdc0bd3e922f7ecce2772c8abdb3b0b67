@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-09-07-page-script-runtime-and-progressive-perception.md
+  s_90855c46e5bd90::t_1d1f9e0748c8ca 735-737
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "77ef759bdc0bd3e922f7ecce2772c8abdb3b0b67",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
