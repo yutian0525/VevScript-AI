@@ -3,7 +3,8 @@
 // hook.content.ts 用 registration: 'runtime'，manifest 不再声明，注册责任在本模块：
 // matches=<all_urls> + excludeMatches=敏感站名单，diff 同步（同 scripts.ts 期望注册集自愈模式）。
 
-import { getHookExclusions } from './hook-exclusions';
+import type { MessageRouter } from './router';
+import { DEFAULT_HOOK_EXCLUSIONS, getHookExclusions, saveHookExclusions } from './hook-exclusions';
 
 export const HOOK_REGISTRATION_ID = 'hook-observe';
 
@@ -67,4 +68,28 @@ export async function syncHookRegistration(): Promise<void> {
   if (!same) {
     await scripting().updateContentScripts([desired]);
   }
+}
+
+// ---------- 消息接线（spec 2026-09-08 §3.3）----------
+
+/** 消息接线：GET / SAVE（save 全量覆盖 + 校验 + 注册同步）。 */
+export function initHookRegistration(router: MessageRouter): void {
+  router.on('HOOK_EXCLUSIONS_GET', async () => ({
+    ok: true,
+    data: { patterns: await getHookExclusions(), defaults: DEFAULT_HOOK_EXCLUSIONS },
+  }));
+
+  router.on('HOOK_EXCLUSIONS_SAVE', async (msg) => {
+    const patterns = (msg as unknown as { patterns: string[] }).patterns;
+    // 校验在 saveHookExclusions 内（非法整体拒绝抛错，router 统一转 { ok:false, error }）
+    await saveHookExclusions(patterns);
+    // 注册同步失败不回滚落库（下次 SW 冷启动自愈），返回 warnings 提示
+    let warnings: string[] = [];
+    try {
+      await syncHookRegistration();
+    } catch (e) {
+      warnings = [`名单已保存，但 hook 注册同步失败（刷新扩展后自愈）：${e instanceof Error ? e.message : String(e)}`];
+    }
+    return { ok: true, data: { patterns: await getHookExclusions(), defaults: DEFAULT_HOOK_EXCLUSIONS, warnings } };
+  });
 }

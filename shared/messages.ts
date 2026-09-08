@@ -206,6 +206,18 @@ export type SkillsRequest =
   | { type: 'SKILLS_IMPORT'; text: string; filename?: string }
   | { type: 'SKILLS_EXPORT'; ids?: string[] };   // 缺省 = 全部
 
+// ---------- Hook 排除名单（sidepanel → bg request/response，走 MessageRouter）----------
+
+/** HOOK_EXCLUSIONS_GET 响应 data：patterns=当前名单，defaults=出厂默认（UI 判「已改动」）。 */
+export interface HookExclusionsData {
+  patterns: string[];
+  defaults: string[];
+}
+
+export type HookExclusionsRequest =
+  | { type: 'HOOK_EXCLUSIONS_GET' }
+  | { type: 'HOOK_EXCLUSIONS_SAVE'; patterns: string[] };
+
 /** GM_DEBUG_INFO 响应 data：脚本运行时调试台白名单视图（spec §3.①）。 */
 export interface GmDebugInfoData {
   connects: string[];

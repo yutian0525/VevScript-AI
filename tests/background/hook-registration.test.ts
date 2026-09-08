@@ -1,12 +1,14 @@
 // tests/background/hook-registration.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { saveHookExclusions } from '../../background/hook-exclusions';
+import { saveHookExclusions, DEFAULT_HOOK_EXCLUSIONS } from '../../background/hook-exclusions';
 import {
   HOOK_REGISTRATION_ID,
   HOOK_REGISTRATION,
   syncHookRegistration,
+  initHookRegistration,
 } from '../../background/hook-registration';
+import { MessageRouter } from '../../background/router';
 
 describe('hook-registration', () => {
   beforeEach(() => {
@@ -79,5 +81,56 @@ describe('hook-registration', () => {
     expect(HOOK_REGISTRATION_ID).toBe('hook-observe');
     expect(HOOK_REGISTRATION.matches).toEqual(['<all_urls>']);
     expect(HOOK_REGISTRATION.js).toEqual(['content-scripts/hook.js']);
+  });
+});
+
+describe('hook-registration 消息接线', () => {
+  beforeEach(() => {
+    fakeBrowser.reset();
+    // 与上方 describe 相同的自建注册表 mock：fakeBrowser.scripting 注册族是 notMockedFunction 桩，必须自建。
+    const registry: Array<Record<string, unknown>> = [];
+    fakeBrowser.scripting.registerContentScripts = (async (scripts: Array<Record<string, unknown>>) => { registry.push(...scripts); }) as never;
+    fakeBrowser.scripting.getRegisteredContentScripts = (async () => [...registry]) as never;
+    fakeBrowser.scripting.updateContentScripts = (async (scripts: Array<Record<string, unknown>>) => {
+      for (const s of scripts) {
+        const i = registry.findIndex((r) => r.id === s.id);
+        if (i >= 0) registry[i] = { ...registry[i], ...s };
+      }
+    }) as never;
+    fakeBrowser.scripting.unregisterContentScripts = (async (f?: { ids?: string[] }) => {
+      if (!f?.ids) { registry.length = 0; return; }
+      for (const id of f.ids) {
+        const i = registry.findIndex((r) => r.id === id);
+        if (i >= 0) registry.splice(i, 1);
+      }
+    }) as never;
+  });
+
+  it('HOOK_EXCLUSIONS_GET 返回当前名单 + 默认名单', async () => {
+    const router = new MessageRouter();
+    initHookRegistration(router);
+    const resp = await router.dispatch({ type: 'HOOK_EXCLUSIONS_GET' }) as { ok: boolean; data?: { patterns: string[]; defaults: string[] } };
+    expect(resp.ok).toBe(true);
+    expect(resp.data?.patterns).toEqual(DEFAULT_HOOK_EXCLUSIONS);
+    expect(resp.data?.defaults).toEqual(DEFAULT_HOOK_EXCLUSIONS);
+  });
+
+  it('HOOK_EXCLUSIONS_SAVE 合法路径：落库 + 同步注册', async () => {
+    const router = new MessageRouter();
+    initHookRegistration(router);
+    const resp = await router.dispatch({ type: 'HOOK_EXCLUSIONS_SAVE', patterns: ['*://*.example.com/*'] }) as { ok: boolean; data?: { patterns: string[]; warnings?: string[] } };
+    expect(resp.ok).toBe(true);
+    expect(resp.data?.patterns).toEqual(['*://*.example.com/*']);
+    const registered = await browser.scripting.getRegisteredContentScripts();
+    const hook = registered.find((r) => r.id === 'hook-observe') as Record<string, unknown> | undefined;
+    expect(hook?.excludeMatches).toEqual(['*://*.example.com/*']);
+  });
+
+  it('HOOK_EXCLUSIONS_SAVE 非法 pattern：整体拒绝返回 ok:false', async () => {
+    const router = new MessageRouter();
+    initHookRegistration(router);
+    const resp = await router.dispatch({ type: 'HOOK_EXCLUSIONS_SAVE', patterns: ['bad one'] }) as { ok: boolean; error?: string };
+    expect(resp.ok).toBe(false);
+    expect(resp.error).toContain('非法 match pattern');
   });
 });
