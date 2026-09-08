@@ -353,6 +353,21 @@ describe('快照组装', () => {
     expect(buildSnapshot(document.body).skippedFrames).toBe(0);
   });
 
+  it('iframe 带 role 属性时仍穿透（role 会压过标签名，按 role 判会让帧内容静默消失）', () => {
+    document.body.innerHTML = '<iframe id="f" role="presentation"></iframe>';
+    const f = document.getElementById('f') as HTMLIFrameElement;
+    f.contentDocument!.body.innerHTML = '<button>帧内按钮</button>';
+    const { text, skippedFrames } = buildSnapshot(document.body);
+    expect(text).toContain('button "帧内按钮"');
+    expect(skippedFrames).toBe(0);
+  });
+
+  it('div[role=Iframe] 不误触发穿透（无 contentDocument，不算盲区）', () => {
+    document.body.innerHTML = '<div role="Iframe">假的</div>';
+    const { text, skippedFrames } = buildSnapshot(document.body);
+    expect(skippedFrames).toBe(0);
+  });
+
   it('iframe 子树共享全局节点预算（不因 iframe 翻倍）', () => {
     document.body.innerHTML = '<iframe id="f"></iframe>';
     const f = document.getElementById('f') as HTMLIFrameElement;

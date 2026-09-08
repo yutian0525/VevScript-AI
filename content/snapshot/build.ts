@@ -118,7 +118,13 @@ export function buildSnapshot(
     walkChildren(elem, node, node.children);
     // 同源 iframe 穿透：跨域访问 contentDocument 抛 SecurityError（或返回 null），计数跳过。
     // 节点预算与 uid 序列全局共享，故帧内元素的 uid 同样可经 resolveUid 反查、可直接交给 click。
-    if (node.role === 'Iframe') {
+    // 穿透按【标签名】判定而非 role——computeRole 先查显式 role 属性再查标签名，
+    // 广告/埋点帧常见的 <iframe role="presentation"> 会被标成 presentation，
+    // 按 role 判会让穿透与盲区计数同时静默失效，帧内容在 full 档也彻底消失（审查实测抓出的坑）。
+    // 附带收益：<div role="Iframe"> 这类纯理论组合不再误触发穿透——div 无 contentDocument，
+    // 原逻辑会把它计成 skippedFrames 假阳性。穿透是文档结构层面的行为，与 ARIA 角色无关。
+    const tag = elem.tagName.toLowerCase();
+    if (tag === 'iframe' || tag === 'frame') {
       const doc = safeFrameDoc(elem);
       if (doc?.body) walkChildren(doc.body, node, node.children);
       else skippedFrames += 1;
