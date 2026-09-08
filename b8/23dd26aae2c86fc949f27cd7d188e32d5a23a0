@@ -1,0 +1,28 @@
+background/hook-registration.ts
+  s_a9031e877b78b4::t_8bd3c731155f3f 6-7
+  s_a9031e877b78b4::t_66b51a493df6a9 72-95
+shared/messages.ts
+  s_a9031e877b78b4::t_421095edfc4bc1 209-220
+entrypoints/background.ts
+  s_a9031e877b78b4::t_799fe5f31bd390 22
+  s_a9031e877b78b4::t_87a5ab737c8f7d 103
+tests/background/hook-registration.test.ts
+  s_a9031e877b78b4::t_938d9d6d390813 4,9,11
+  s_a9031e877b78b4::t_d2d101a7cd2af1 86-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b823dd26aae2c86fc949f27cd7d188e32d5a23a0",
+  "prompts": {},
+  "sessions": {
+    "s_a9031e877b78b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbadcd3d-cfd5-4d5e-a20b-639e9111afab",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
