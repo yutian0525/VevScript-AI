@@ -23,10 +23,11 @@ export function validatePatterns(patterns: string[]): string[] {
   return patterns.filter((p) => !isValidMatchPattern(p));
 }
 
-/** 读名单：未存过（用户没改过）时返回出厂默认名单。 */
+/** 读名单：未存过（用户没改过）时返回出厂默认名单的拷贝（防调用方改动模块级默认数组）。
+ *  用 `??` 而非 `||`：已落库的空名单（[]）是「关闭排除」的合法态，不回退默认。 */
 export async function getHookExclusions(): Promise<string[]> {
   const saved = await storage.getItem<{ patterns: string[] }>(KEY);
-  return saved?.patterns ?? DEFAULT_HOOK_EXCLUSIONS;
+  return saved?.patterns ?? [...DEFAULT_HOOK_EXCLUSIONS];
 }
 
 /** 全量覆盖落库。任一条非法则整体拒绝（同步抛错并列出坏条目），不部分落库。
@@ -39,8 +40,8 @@ export function saveHookExclusions(patterns: string[]): Promise<void> {
   return storage.setItem(KEY, { patterns });
 }
 
-/** 删存储键回默认名单，返回默认名单（UI 刷新用）。 */
+/** 删存储键回默认名单，返回默认名单的拷贝（UI 刷新用，防调用方改动模块级默认数组）。 */
 export async function resetHookExclusions(): Promise<string[]> {
   await storage.removeItem(KEY);
-  return DEFAULT_HOOK_EXCLUSIONS;
+  return [...DEFAULT_HOOK_EXCLUSIONS];
 }

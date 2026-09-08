@@ -25,6 +25,11 @@ describe('hook-exclusions', () => {
     expect(await getHookExclusions()).not.toEqual(DEFAULT_HOOK_EXCLUSIONS);
   });
 
+  it('落库空名单后返回 []（关闭排除的合法态，?? 而非 || 兜底）', async () => {
+    await saveHookExclusions([]);
+    expect(await getHookExclusions()).toEqual([]);
+  });
+
   it('saveHookExclusions 拒绝非法 pattern 并列出条目', async () => {
     expect(() => saveHookExclusions(['*://*.ok.com/*', 'not-a-pattern']))
       .toThrow('非法 match pattern：not-a-pattern');
