@@ -1,0 +1,29 @@
+stores/hook-exclusions.ts
+  s_a9031e877b78b4::t_ea03f60e5ca3f7 1-7
+components/settings/SettingsHome.tsx
+  s_a9031e877b78b4::t_f1301ceed0a8ff 3
+  s_a9031e877b78b4::t_528cc9388caace 8
+  s_a9031e877b78b4::t_f93584a88d81f4 15
+components/settings/HookExclusionsPage.tsx
+  s_a9031e877b78b4::t_542afe6d08c3a4 1-53,89
+  s_a9031e877b78b4::t_2d1b8cb6eb9c0d 54-88
+components/settings/SettingsView.tsx
+  s_a9031e877b78b4::t_d5518114d4b5d2 25-26
+  s_a9031e877b78b4::t_d4af6501c30015 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7c11515649d1f8afd87f56f61d4158ae2e7f3696",
+  "prompts": {},
+  "sessions": {
+    "s_a9031e877b78b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbadcd3d-cfd5-4d5e-a20b-639e9111afab",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
