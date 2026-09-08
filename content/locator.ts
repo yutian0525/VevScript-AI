@@ -12,7 +12,7 @@ export type { Locator, SemanticLocator };
 export interface QueryOpts {
   /** 限定搜索根。缺省为 doc.body。 */
   within?: Element;
-  /** 起始文档。缺省 globalThis.document。 */
+  /** 预留：测试注入替身文档用。 */
   doc?: Document;
 }
 
@@ -177,6 +177,31 @@ function queryNear(
   return { elements: [] };
 }
 
+/** 收集 root 及其后代同源 iframe 的搜索根（深度优先，主帧在前）。
+ *  与快照层（snapshot/build.ts 的 safeFrameDoc）同一取舍：跨域 iframe 的
+ *  contentDocument 抛 SecurityError 或返回 null，计入 skipped 让上层知道搜索有盲区。
+ *  推入的是帧的 body 而非 frame 元素——querySelectorAll 不会进入 iframe 的
+ *  内容文档，帧 body 自身就是等价于主帧 body 的搜索根。 */
+export function collectRoots(root: Element): { roots: Element[]; skipped: number } {
+  const roots: Element[] = [root];
+  let skipped = 0;
+
+  const descend = (scope: Element) => {
+    for (const frame of Array.from(scope.querySelectorAll('iframe, frame'))) {
+      let body: Element | null = null;
+      try {
+        body = (frame as HTMLIFrameElement).contentDocument?.body ?? null;
+      } catch {
+        body = null;
+      }
+      if (body) { roots.push(body); descend(body); }
+      else skipped += 1;
+    }
+  };
+  descend(root);
+  return { roots, skipped };
+}
+
 export function queryLocator(loc: Locator, opts: QueryOpts = {}): QueryResult {
   const doc = opts.doc ?? globalThis.document;
   const root = opts.within ?? doc.body;
@@ -187,14 +212,20 @@ export function queryLocator(loc: Locator, opts: QueryOpts = {}): QueryResult {
     return { elements: el ? [el] : [], nthApplied: false, skippedFrames: 0 };
   }
 
+  // CSS / 语义两分支共用的搜索根：主帧在前保证「主帧优先」，skipped 随结果透出。
+  // uid 分支不走这里——uid 序列全局共享（快照已让帧内元素进 uidMap），不按根搜索。
+  const { roots, skipped } = collectRoots(root);
+
   if (typeof loc === 'string') {
-    let found: Element[];
+    // 逐根查询、任一根抛错即整体抛错：选择器非法是全量失败而非部分结果，
+    // 中途吞掉会把「主帧命中的假象」留给调用方。
+    const found: Element[] = [];
     try {
-      found = Array.from(root.querySelectorAll(loc));
+      for (const r of roots) found.push(...Array.from(r.querySelectorAll(loc)));
     } catch {
       throw new Error(`选择器非法：${loc}`);
     }
-    return { elements: found.filter((el) => !isHidden(el)), nthApplied: false, skippedFrames: 0 };
+    return { elements: found.filter((el) => !isHidden(el)), nthApplied: false, skippedFrames: skipped };
   }
 
   if (!hasCondition(loc)) {
@@ -204,26 +235,28 @@ export function queryLocator(loc: Locator, opts: QueryOpts = {}): QueryResult {
   let candidates: Element[];
   let nearTier: 'label' | 'dom' | 'geometry' | undefined;
   if (loc.near) {
-    const r = queryNear(loc, root);
-    candidates = r.elements;
-    nearTier = r.tier;
-  } else {
-    // 非 near 路径保持原样：role/text 过滤 + generic 降噪（Task 5 规则，near 不走）。
-    candidates = Array.from(root.querySelectorAll('*')).filter((el) => !isHidden(el));
-    if (loc.role) candidates = candidates.filter((el) => computeRole(el) === loc.role);
-    if (loc.text) {
-      const want = norm(loc.text);
-      candidates = candidates.filter((el) => {
-        const t = matchText(el);
-        return loc.exact ? t === want : t.includes(want);
-      });
+    // near 按根独立跑三级判定，首个有命中的帧定 tier（nearTier 只在还没有值时赋）。
+    // 不跨帧合并后统一判定：near 的锚点/几何都以「同文档内」为前提，跨文档距离无意义。
+    candidates = [];
+    for (const r of roots) {
+      const res = queryNear(loc, r);
+      if (res.elements.length) {
+        candidates.push(...res.elements);
+        nearTier ??= res.tier;
+      }
     }
+  } else {
+    // 非 near 路径：role/text 过滤 + generic 降噪（Task 5 规则，near 不走）。
+    // 降噪刻意在【合并后】的结果上做——「主帧有非 generic 命中」要能压过帧内的
+    // generic 容器，降噪若按根独立就退化成每帧各自为政，跨帧语义断裂。
+    const pred = makePredicate(loc);
+    candidates = roots.flatMap((r) => Array.from(r.querySelectorAll('*')).filter(pred));
     candidates = dropGenericWhenSpecificExists(candidates);
   }
 
   if (loc.nth != null) {
     const picked = candidates[loc.nth];
-    return { elements: picked ? [picked] : [], nthApplied: true, skippedFrames: 0, nearTier };
+    return { elements: picked ? [picked] : [], nthApplied: true, skippedFrames: skipped, nearTier };
   }
-  return { elements: candidates, nthApplied: false, skippedFrames: 0, nearTier };
+  return { elements: candidates, nthApplied: false, skippedFrames: skipped, nearTier };
 }

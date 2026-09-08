@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { queryLocator, describeLocator } from '../../content/locator';
+import { queryLocator, describeLocator, collectRoots } from '../../content/locator';
 import { buildSnapshot, resetUidMap, resolveUid } from '../../content/snapshot/build';
 
 describe('locator 基础匹配', () => {
@@ -220,5 +220,89 @@ describe('locator 的 near 三级判定', () => {
     const r = queryLocator({ near: '操作区', text: '取消' });
     expect(r.elements.length).toBe(1);
     expect(r.elements[0]!.textContent).toBe('取消');
+  });
+});
+
+describe('locator 的 iframe 穿透', () => {
+  beforeEach(() => { resetUidMap(); document.body.innerHTML = ''; });
+
+  it('CSS 选择器穿透同源 iframe', () => {
+    document.body.innerHTML = '<iframe id="f"></iframe>';
+    const f = document.getElementById('f') as HTMLIFrameElement;
+    f.contentDocument!.body.innerHTML = '<button class="pay">支付</button>';
+    const r = queryLocator('button.pay');
+    expect(r.elements.length).toBe(1);
+    expect(r.elements[0]!.textContent).toBe('支付');
+  });
+
+  it('语义 locator 穿透同源 iframe', () => {
+    document.body.innerHTML = '<iframe id="f"></iframe>';
+    const f = document.getElementById('f') as HTMLIFrameElement;
+    f.contentDocument!.body.innerHTML = '<button>帧内提交</button>';
+    expect(queryLocator({ role: 'button', text: '帧内提交' }).elements.length).toBe(1);
+  });
+
+  it('主帧与 iframe 同时命中时都返回（主帧优先）', () => {
+    document.body.innerHTML = '<button>确定</button><iframe id="f"></iframe>';
+    const f = document.getElementById('f') as HTMLIFrameElement;
+    f.contentDocument!.body.innerHTML = '<button>确定</button>';
+    const r = queryLocator({ role: 'button', text: '确定' });
+    expect(r.elements.length).toBe(2);
+    expect(r.elements[0]!.ownerDocument).toBe(document);
+  });
+
+  it('跨域 iframe 计入 skippedFrames，不抛错', () => {
+    document.body.innerHTML = '<iframe id="f"></iframe><button>主帧</button>';
+    Object.defineProperty(document.getElementById('f')!, 'contentDocument', {
+      get() { throw new DOMException('blocked', 'SecurityError'); },
+    });
+    const r = queryLocator({ role: 'button' });
+    expect(r.skippedFrames).toBe(1);
+    expect(r.elements.length).toBe(1);
+  });
+
+  it('嵌套 iframe 递归穿透', () => {
+    document.body.innerHTML = '<iframe id="f1"></iframe>';
+    const f1 = document.getElementById('f1') as HTMLIFrameElement;
+    f1.contentDocument!.body.innerHTML = '<iframe id="f2"></iframe>';
+    const f2 = f1.contentDocument!.getElementById('f2') as HTMLIFrameElement;
+    f2.contentDocument!.body.innerHTML = '<button>二层</button>';
+    expect(queryLocator({ text: '二层' }).elements.length).toBe(1);
+  });
+
+  it('nth 在跨帧合并后的结果上计算', () => {
+    document.body.innerHTML = '<button>项</button><iframe id="f"></iframe>';
+    const f = document.getElementById('f') as HTMLIFrameElement;
+    f.contentDocument!.body.innerHTML = '<button>项</button>';
+    const r = queryLocator({ text: '项', nth: 1 });
+    expect(r.elements.length).toBe(1);
+    expect(r.elements[0]!.ownerDocument).not.toBe(document);
+  });
+
+  it('generic 降噪跨帧生效（主帧非 generic 命中时帧内 generic 被滤）', () => {
+    document.body.innerHTML = '<button>删</button><iframe id="f"></iframe>';
+    const f = document.getElementById('f') as HTMLIFrameElement;
+    f.contentDocument!.body.innerHTML = '<div>删</div>';
+    const r = queryLocator({ text: '删' });
+    expect(r.elements.length).toBe(1);
+    expect(r.elements[0]!.tagName).toBe('BUTTON');
+  });
+
+  it('near 也穿透（帧内锚点与帧内目标）', () => {
+    document.body.innerHTML = '<iframe id="f"></iframe>';
+    const f = document.getElementById('f') as HTMLIFrameElement;
+    f.contentDocument!.body.innerHTML = '<label for="p">密码</label><input id="p" type="text">';
+    const r = queryLocator({ role: 'textbox', near: '密码' });
+    expect(r.elements.length).toBe(1);
+    expect(r.elements[0]!.id).toBe('p');
+  });
+
+  it('collectRoots 直接导出可用', () => {
+    document.body.innerHTML = '<iframe id="f"></iframe><div>主</div>';
+    const f = document.getElementById('f') as HTMLIFrameElement;
+    f.contentDocument!.body.innerHTML = '<p>帧内</p>';
+    const { roots, skipped } = collectRoots(document.body);
+    expect(roots.length).toBe(2);
+    expect(skipped).toBe(0);
   });
 });
