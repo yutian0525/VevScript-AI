@@ -176,6 +176,8 @@ describe('buildWrappedCode', () => {
     expect(code).toContain('__resourceUrls = {"logo":"data:image/png;base64,AAA"}');
     // 全为 local/snapshot：无 __GM_post（无这些 API 的桥调用）
     expect(code).not.toContain('__GM_post("SetValues"');
+    // addElement 无 parent 时默认落 body（head 的 UA display:none 会吞掉渲染元素——d6/d7 手测教训）
+    expect(code).toContain('document.body || document.head || document.documentElement');
   });
 
   it('对象型 GM_cookie：@grant 一次装齐三方法，GM.cookie 同引用（非 Promise 包装）', () => {
