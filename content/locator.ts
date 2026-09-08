@@ -18,7 +18,9 @@ export interface QueryOpts {
 
 export interface QueryResult {
   elements: Element[];
-  /** 是否因 nth 收窄过（进 trace 用，区分「只命中一个」与「命中多个取其一」）。 */
+  /** nth 参数是否参与过收窄。注意它【不区分】「只命中一个」与「命中多个取其一」——
+   *  nth:0 恰好单命中时也是 true。消费方（trace）若要区分，需要的是收窄前的命中数，
+   *  届时应加 matchedBeforeNth 字段而非改这个布尔的语义（当前无消费方）。 */
   nthApplied: boolean;
   /** 跨域 iframe 跳过数（后续任务填充，此处恒 0）。 */
   skippedFrames: number;
@@ -41,10 +43,12 @@ export function matchText(el: Element): string {
 export function describeLocator(loc: Locator): string {
   if (typeof loc === 'string') return `选择器 "${loc}"`;
   if (typeof loc === 'number') return `uid ${loc}`;
+  // text/near 用 JSON.stringify 包值：locator 的 text 是模型写的，常含引号——
+  // 直接内插会产出 text:"he said "hi"" 这种自嵌套，模型读第二遍就解析错位（审查探针实录）。
   const parts: string[] = [];
-  if (loc.role) parts.push(`role:"${loc.role}"`);
-  if (loc.text) parts.push(`text:"${loc.text}"`);
-  if (loc.near) parts.push(`near:"${loc.near}"`);
+  if (loc.role) parts.push(`role:${JSON.stringify(loc.role)}`);
+  if (loc.text) parts.push(`text:${JSON.stringify(loc.text)}`);
+  if (loc.near) parts.push(`near:${JSON.stringify(loc.near)}`);
   if (loc.exact) parts.push('exact:true');
   if (loc.nth != null) parts.push(`nth:${loc.nth}`);
   return `{ ${parts.join(', ')} }`;

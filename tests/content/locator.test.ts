@@ -128,8 +128,13 @@ describe('locator 基础匹配', () => {
   it('describeLocator 生成可读描述（进 trace 与错误文案）', () => {
     expect(describeLocator('button.b')).toBe('选择器 "button.b"');
     expect(describeLocator(46)).toBe('uid 46');
+    // 字符串值经 JSON.stringify 包裹——text 常含引号，直接内插会自嵌套不可读
     expect(describeLocator({ role: 'button', text: '登录' })).toBe('{ role:"button", text:"登录" }');
     expect(describeLocator({ text: '删', nth: 2 })).toBe('{ text:"删", nth:2 }');
+  });
+
+  it('describeLocator 的 text 含引号时不自嵌套', () => {
+    expect(describeLocator({ text: 'he said "hi"' })).toBe('{ text:"he said \\"hi\\"" }');
   });
 });
 
