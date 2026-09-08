@@ -1,0 +1,22 @@
+background/hook-exclusions.ts
+  s_a9031e877b78b4::t_6aaeb1e5b038ea 26-27,30
+  s_a9031e877b78b4::t_5d0e6bc6c5f670 43,46
+tests/background/hook-exclusions.test.ts
+  s_a9031e877b78b4::t_6a2b79978b980d 28-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "62d391309e7f5860acf6362bf9f81508aec89dd2",
+  "prompts": {},
+  "sessions": {
+    "s_a9031e877b78b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbadcd3d-cfd5-4d5e-a20b-639e9111afab",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
