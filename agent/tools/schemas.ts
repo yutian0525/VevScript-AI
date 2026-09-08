@@ -19,7 +19,7 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'take_snapshot',
       description:
-        '获取页面内容树，每行带 [uid]，用 uid 做 click/fill/hover。默认 detail="interactive"：只出可交互元素、标题与视口内文本，容器折叠为「… [N 个未展开节点]」计数行（体量约为全量的一半）。需要完整文本时用 detail="full"；只关心某个区域时用 region 限定（比 full 便宜得多）。已知目标是什么时，优先用 query_page 定向查询而非倒整棵树。穿透同源 iframe；跨域 iframe 内容无法读取，返回值的 skippedFrames 会计数。页面变化后 uid 失效，需重新调用。',
+        '获取页面内容树，每行带 [uid]，用 uid 做 click/fill/hover。默认 detail="interactive"：只出可交互元素、标题与视口内文本，容器折叠为「… [N 个未展开节点]」计数行（体量约为全量的一半）。需要完整文本时用 detail="full"；只关心某个区域时用 region 限定（比 full 便宜得多）。已知目标是什么时，优先用 query_page 定向查询而非倒整棵树。注意 uid 定位到元素，同一元素下多行文本共享同一 uid（非逐行唯一）；隐藏子菜单聚合在父节点 description 里，要操作需先 hover 展开再重新快照。穿透同源 iframe；跨域 iframe 内容无法读取，返回值的 skippedFrames 会计数。页面变化后 uid 失效，需重新调用。',
       parameters: obj({
         detail: {
           type: 'string',
