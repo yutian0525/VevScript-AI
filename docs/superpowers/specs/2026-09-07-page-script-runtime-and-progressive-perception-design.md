@@ -178,7 +178,7 @@ waitFor(cond, { timeout: 8000, interval: 100 })
 ### 3.6 运行时注入与 world
 
 - **helper 跑在 ISOLATED world**（与现有 `content/interact.ts` 及 uid map 同 world），故 `$(46)` 直接复用 `resolveUid`。DOM 与事件跨 world 共享，ISOLATED 派发的事件页面框架照样收到（React 用事件委托挂 root，冒泡即达，不检查 `isTrusted`）。
-- **MAIN world 作逃生舱**：`world: 'main'` 参数用于读页面 JS 变量。此时 `$(uid)` 不可用（uid map 在 ISOLATED），需用选择器或语义 locator；trace 里显式提示这一限制。
+- **MAIN world 作逃生舱（无 helper）**：`world: 'main'` 用于读写页面自身的 JS 变量（如 `window.__INITIAL_STATE__`）。该世界**不提供 helper**——helper 工厂挂在 ISOLATED 的 `globalThis`，MAIN 是另一个 globalThis。脚本在此只能用原生 DOM/JS；调用 helper 会得到明确报错并引导换 `isolated`（`log()` 例外可用，仅收集埋点）。理由：MAIN 的用途本就是原生访问页面对象，为其维护独立注入 bundle 与版本协商不抵复杂度。若日后 MAIN 场景变多，再补独立 bundle（本节的版本标记设计可直接启用）。
 - **注入时机**：注入时挂版本标记 `globalThis.__ABE_HELPER_V = '<version>'`，每次执行前检查，缺失或版本不符才重注入。导航自然清标记 → 翻页后自动重注入。同一页连续跑 N 段脚本只注入一次。
 - helper 运行时代码**不进 LLM 上下文，0 token**；估计 8~15KB。
 
@@ -452,7 +452,7 @@ command: page-script
 2. **`type()` 默认逐字符慢**：长文本需显式 `{instant:true}`。默认选兼容而非快——搜索联想框依赖 `keydown`。
 3. **`waitFor({idle})` 依赖网络静默**：纯前端渲染（无请求）的变化等不到，需改用谓词形式。文档里明确写这一点。
 4. **ISOLATED 派发事件 `isTrusted` 为 false**：React 等事件委托框架不受影响，少数校验 `isTrusted` 的库会拒。这是扩展的硬边界（只有 CDP/debugger 能发真事件）。
-5. **`world:'main'` 时 `$(uid)` 不可用**（uid map 在 ISOLATED）。trace 显式提示。
+5. **`world:'main'` 无 helper**（含 `$`/`click`/`waitFor` 全部 10 个）。该世界只跑原生 DOM/JS；`log()` 例外可用（仅收集埋点）。schema 与运行时报错都明确说明这一点。
 6. **跨域 iframe 不可穿透**：浏览器限制。仅以 `skippedFrames` 计数告知存在盲区。
 7. **一次往返干 N 步 = 错误也批量发生**：脚本出错可能留下半完成的页面状态（填了一半、点开了弹窗）。缓解：trace 精确到步，让 agent 知道走到哪了；`expect()` 失败即中止，不在错误状态上继续。
 8. **`interactive` 档可能漏掉 agent 需要的非交互文本**（如纯文本价格、状态提示）。缓解：折叠计数行保留结构感，`region` 可深入；必要时退回 `full`。

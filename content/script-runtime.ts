@@ -56,11 +56,35 @@ export async function scriptRunner(src: string): Promise<RunnerResult> {
     '__ABE_HELPERS'
   ] as undefined | (() => { helpers: Record<string, unknown>; ctx: { trace: TraceEntry[]; logs: string[]; stepCount: number } });
 
-  if (typeof factory !== 'function') {
-    return {
-      ok: false, kind: 'script-error', elapsed: Date.now() - started, url: urlBefore,
-      error: '页面脚本运行时未就绪（helper 未安装）',
-      hint: '该页的 content script 可能尚未注入或已被卸载。刷新页面后重试；若页面刚打开，先用 wait_for 等它加载完成。',
+  // helper 缺失有两种情形：(1) MAIN world——helper 工厂挂在 ISOLATED 的 globalThis，
+  // 那里拿不到，这是既定语义（MAIN 只跑原生 DOM/JS）；(2) ISOLATED 但 content script 未就绪。
+  // 两种都不该直接失败——脚本可能只用原生 API。故降级为「调用 helper 才报错」的占位实现：
+  // 原生脚本照常跑完；真调 helper 才得到 script-error + 引导文案（含 missingHint）。
+  const missingHint = '本次执行环境没有 helper（MAIN world 不提供 helper，因为 helper 运行时在 ISOLATED world）。改用原生 DOM API（document.querySelector 等），或把 world 换成 isolated 以获得完整 helper。若已是 isolated，说明该页 content script 未就绪——刷新页面后重试。';
+
+  let helpers: Record<string, unknown>;
+  let ctx: { trace: TraceEntry[]; logs: string[]; stepCount: number };
+
+  if (typeof factory === 'function') {
+    const made = factory();
+    helpers = made.helpers;
+    ctx = made.ctx;
+  } else {
+    ctx = { trace: [], logs: [], stepCount: 0 };
+    // 占位 helper：10 个名字全覆盖（log 除外，见下），调用即抛 StepError（script-error），
+    // 使 detail.hint 携带 missingHint——与真 helper 同一条诊断路径，不另开错误形状。
+    const deny = (name: string) => () => {
+      const err = new Error(`helper ${name}() 在当前执行环境不可用`) as Error & { name: string; kind: string; detail: unknown };
+      err.name = 'StepError';
+      err.kind = 'script-error';
+      err.detail = { hint: missingHint };
+      throw err;
+    };
+    helpers = {};
+    for (const n of HELPERS) helpers[n] = deny(n);
+    // log 例外：只是埋点，无 helper 时也让它工作（收进 ctx.logs），避免脚本因埋点炸掉
+    helpers.log = (...a: unknown[]) => {
+      ctx.logs.push(a.map((x) => (typeof x === 'string' ? x : (() => { try { return JSON.stringify(x) ?? String(x); } catch { return String(x); } })())).join(' '));
     };
   }
 
@@ -115,8 +139,6 @@ export async function scriptRunner(src: string): Promise<RunnerResult> {
     }
     return capStr(String(e));
   };
-
-  const { helpers, ctx } = factory();
 
   const finishTrace = (): { trace: TraceEntry[]; logs: string[]; logsDropped?: number } => {
     const trace = ctx.trace.length > TRACE_CAP

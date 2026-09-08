@@ -16,10 +16,33 @@ describe('scriptRunner', () => {
     delete (globalThis as Record<string, unknown>)[HELPER_GLOBAL];
   });
 
-  it('helper 未安装时报可读错误（不是 undefined is not a function）', async () => {
-    const r = await scriptRunner('return 1');
+  it('helper 未安装时降级执行：原生脚本照常跑通（MAIN world 的正常用法）', async () => {
+    document.title = '测试页';
+    const r = await scriptRunner('return document.title;');
+    expect(r.ok).toBe(true);
+    expect(r.data).toBe('测试页');
+  });
+
+  it('helper 缺失时调用 helper 报 script-error 且 hint 引导 MAIN/isolated', async () => {
+    const r = await scriptRunner('await $("button");');
     expect(r.ok).toBe(false);
-    expect(r.error).toContain('运行时未就绪');
+    expect(r.kind).toBe('script-error');
+    expect(r.hint).toContain('MAIN');
+    expect(r.hint).toContain('isolated');
+  });
+
+  it('helper 缺失时 log 仍可用（埋点收进 logs，脚本不因埋点炸掉）', async () => {
+    const r = await scriptRunner('log("a", 1, { b: 2 }); return "done";');
+    expect(r.ok).toBe(true);
+    expect(r.data).toBe('done');
+    expect(r.logs).toEqual(['a 1 {"b":2}']);
+  });
+
+  it('helper 未安装时报可读错误（不是 undefined is not a function）', async () => {
+    const r = await scriptRunner('await $("button");');
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('helper');
+    expect(r.error).toContain('不可用');
   });
 
   it('执行脚本并返回 data + trace + logs', async () => {
