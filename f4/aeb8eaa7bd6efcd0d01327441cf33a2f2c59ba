@@ -1,0 +1,21 @@
+content/query.ts
+  s_90855c46e5bd90::t_f1f2a9d3254a2f 69
+  s_90855c46e5bd90::t_c71e5bd212842a 47-48,55
+  s_90855c46e5bd90::t_8b1af90135b955 14-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "f4aeb8eaa7bd6efcd0d01327441cf33a2f2c59ba",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
