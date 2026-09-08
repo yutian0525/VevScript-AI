@@ -274,6 +274,25 @@ function flushFold(lines: string[], depth: number, fold: { n: number }): void {
   fold.n = 0;
 }
 
+/**
+ * 渲染单个元素为快照格式行（不含缩进）。query_page 复用，保证两处格式一字不差。
+ * 与快照内的行相比只少缩进——uid/role/name/states/description/url 全部同源。
+ * 关键是调用现有的 renderLine（含 shortenUrl 的同源省 origin 口径），不复制逻辑。
+ */
+export function renderElementLine(el: Element, uid: number): string {
+  const node: SnapNode = {
+    role: computeRole(el),
+    name: computeName(el),
+    states: computeStates(el),
+    description: computeDescription(el),
+    extras: computeExtras(el),
+    uid,
+    children: [],
+  };
+  const origin = el.ownerDocument.defaultView?.location?.origin ?? '';
+  return renderLine(node, origin);
+}
+
 function renderLine(node: SnapNode, baseOrigin: string): string {
   if (node.role.startsWith('…')) return node.role;
   const esc = (s: string) => s.replace(/\s+/g, ' ').replace(/"/g, '\\"');
