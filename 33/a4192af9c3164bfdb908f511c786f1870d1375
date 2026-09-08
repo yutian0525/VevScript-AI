@@ -1,0 +1,21 @@
+entrypoints/sidepanel/styles.css
+  s_a9031e877b78b4::t_de3aa84f0dd5a1 1100-1144
+components/settings/HookExclusionsPage.tsx
+  s_a9031e877b78b4::t_6a07f7568c2bf3 54-55,60-64,71,75-96,98-99,101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "33a4192af9c3164bfdb908f511c786f1870d1375",
+  "prompts": {},
+  "sessions": {
+    "s_a9031e877b78b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbadcd3d-cfd5-4d5e-a20b-639e9111afab",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
