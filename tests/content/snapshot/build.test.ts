@@ -545,6 +545,9 @@ describe('快照组装', () => {
       // 反向重建了，破坏版与正确版行为一致）。
       // 真正锁得住的是【双向校验】这条守卫：reset 清掉正向后，若有人把校验弱化成
       // 「只信反向残留」，existing=2 会被直接复用（旧序号空间的值）。本用例抓住它。
+      // 区分力边界（探针实测）：只删校验条件是 PASS——reset 清反向兜了底（反向已空，
+      // 弱化版读到 undefined 照走分配）；只删清反向也 PASS——校验挡住残留。两道防御
+      // 互为冗余，只有双删才 FAIL。故本用例锁的是「校验与清反向不可同时缺失」。
       document.body.innerHTML = '<button id="a">a</button>';
       buildSnapshot(document.body); // root=1, a=2
       const a = document.getElementById('a')!;
