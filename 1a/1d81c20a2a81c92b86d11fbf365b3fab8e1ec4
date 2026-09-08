@@ -1,0 +1,25 @@
+docs/superpowers/specs/2026-09-07-page-script-runtime-and-progressive-perception-design.md
+  s_90855c46e5bd90::t_aa9b0b2dc2b0b8 455
+  s_90855c46e5bd90::t_04a5143d6bcfb0 181
+content/script-runtime.ts
+  s_90855c46e5bd90::t_84e537cc533083 68
+  s_90855c46e5bd90::t_a73d01605d4d00 59-67,69-87
+tests/content/script-runtime.test.ts
+  s_90855c46e5bd90::t_9d8ce6f17a56cd 19-40,42,44-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "1a1d81c20a2a81c92b86d11fbf365b3fab8e1ec4",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
