@@ -878,6 +878,29 @@ describe('locator 基础匹配', () => {
     expect(describeLocator({ role: 'button', text: '登录' })).toBe('{ role:"button", text:"登录" }');
     expect(describeLocator({ text: '删', nth: 2 })).toBe('{ text:"删", nth:2 }');
   });
+
+  // 纯 text 查询的 generic 降噪：探查试出的 locator 要能原样搬进脚本，故在 locator 层修，
+  // 不靠 query_page 文案（$ 也用同一 locator，文案管不到脚本）。规则见 dropGenericWhenSpecificExists。
+  it('text 命中容器与其交互后代时，丢容器留后代（div>button）', () => {
+    document.body.innerHTML = '<div><button>删除</button></div>';
+    const r = queryLocator({ text: '删除' });
+    expect(r.elements.length).toBe(1);
+    expect(r.elements[0]!.tagName).toBe('BUTTON');
+  });
+
+  it('规则按 role 而非深度：button>span 丢装饰后代、留按钮', () => {
+    document.body.innerHTML = '<button><span>删除</span></button>';
+    const r = queryLocator({ text: '删除' });
+    expect(r.elements.length).toBe(1);
+    expect(r.elements[0]!.tagName).toBe('BUTTON');
+  });
+
+  it('全 generic 候选（纯文本 div 嵌套）规则不触发，保留全部', () => {
+    document.body.innerHTML = '<div><section><p>正文</p></section></div>';
+    // div/section/p 都是 generic，无非 generic 命中 → 规则不触发，「无 name 元素按可见文本匹配」照旧
+    const r = queryLocator({ text: '正文' });
+    expect(r.elements.length).toBeGreaterThan(1);
+  });
 });
 ```
 
@@ -972,6 +995,21 @@ function hasCondition(loc: SemanticLocator): boolean {
   return Boolean(loc.role || loc.text || loc.near);
 }
 
+/**
+ * 候选里存在非 generic 命中时，丢弃所有 generic 命中。
+ * 为什么需要：纯 text 查询会让无名容器（generic）也命中——`<div><button>删除</button></div>`
+ * 上 `{text:'删除'}` 同时命中 div 与 button，nth:0 拿到容器而非按钮。这会破坏
+ * 「探查试出的 locator 原样搬进脚本」的承诺（$ 也用同一 locator，文案管不到脚本）。
+ * 规则是【有非 generic 就丢 generic】而非【排除有更深匹配的祖先】——后者会把
+ * `<button><span>删除</span></button>` 的真 button 也删掉只剩 span（span 更深）。
+ * 只影响「有 text 无 role」场景：role 指定后候选经 computeRole 过滤已全同 role，
+ * 规则永不混合触发。全 generic 时（纯文本 div 嵌套）规则不触发，保留全部。
+ */
+function dropGenericWhenSpecificExists(candidates: Element[]): Element[] {
+  const hasSpecific = candidates.some((el) => computeRole(el) !== 'generic');
+  return hasSpecific ? candidates.filter((el) => computeRole(el) !== 'generic') : candidates;
+}
+
 export function queryLocator(loc: Locator, opts: QueryOpts = {}): QueryResult {
   const doc = opts.doc ?? globalThis.document;
   const root = opts.within ?? doc.body;
@@ -1006,6 +1044,7 @@ export function queryLocator(loc: Locator, opts: QueryOpts = {}): QueryResult {
       return loc.exact ? t === want : t.includes(want);
     });
   }
+  candidates = dropGenericWhenSpecificExists(candidates);
 
   if (loc.nth != null) {
     const picked = candidates[loc.nth];
