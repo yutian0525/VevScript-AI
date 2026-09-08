@@ -1,0 +1,59 @@
+// ==UserScript==
+// @name         GM 手测·通知菜单
+// @namespace    ai-browser-extend/gmt-manual
+// @version      1.0.0
+// @description  通知管理 + 菜单注销人工测试
+// @match        *://*/*
+// @run-at       document-end
+// @grant        GM_notification
+// @grant        GM_closeNotification
+// @grant        GM_updateNotification
+// @grant        GM_registerMenuCommand
+// @grant        GM_unregisterMenuCommand
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_deleteValue
+// @grant        GM_addStyle
+// @noframes
+// ==/UserScript==
+
+(function () {
+  var NID = 'gmt-notif-probe';
+  var menuKey = null;
+  var actions = {
+    'n1-notify': function (log) {
+      GM_notification({ title: 'GMT', text: '通知探针（3s 后自动更新）', tag: NID });
+      log('n1', '已发通知（系统通知区）');
+    },
+    'n2-update': function (log) {
+      GM_updateNotification(NID, { title: 'GMT（已更新）', text: '更新后的正文' });
+      log('n2', '已请求更新通知（部分平台需通知仍在显示）');
+    },
+    'n3-close': function (log) {
+      GM_closeNotification(NID);
+      log('n3', '已请求关闭通知');
+    },
+    'n4-menu': function (log) {
+      menuKey = GM_registerMenuCommand('GMT 探针命令', function () { GMT.log('n4', '菜单命令被点击'); });
+      log('n4', '已注册菜单（侧边栏脚本页「菜单命令」区）；点「注销」后应消失');
+    },
+    'n5-unmenu': function (log) {
+      if (menuKey == null) { log('n5', '先点上一步注册'); return; }
+      GM_unregisterMenuCommand(menuKey);
+      log('n5', '已注销菜单——去侧边栏确认命令项消失');
+    }
+  };
+
+  GMT.render({
+    module: 'notify-menu',
+    title: 'GM 手测·通知菜单',
+    cards: [
+      { id: 'n1', api: 'GM_notification(details)', desc: '发系统通知。', steps: [{ id: 'n1-notify', label: '发通知' }], expect: '系统通知区出现「GMT」通知' },
+      { id: 'n2', api: 'GM_updateNotification(id, details)', desc: '更新已发通知的标题/正文。', steps: [{ id: 'n2-update', label: '更新通知' }], expect: '通知标题变为「GMT（已更新）」' },
+      { id: 'n3', api: 'GM_closeNotification(id)', desc: '关闭已发通知。', steps: [{ id: 'n3-close', label: '关闭通知' }], expect: '通知消失' },
+      { id: 'n4', api: 'GM_registerMenuCommand(name, fn)', desc: '注册菜单命令（侧边栏脚本页）。', steps: [{ id: 'n4-menu', label: '注册菜单' }, '去侧边栏脚本页看「菜单命令」区'], expect: '侧边栏出现「GMT 探针命令」' },
+      { id: 'n5', api: 'GM_unregisterMenuCommand(key)', desc: '注销菜单命令。', steps: [{ id: 'n5-unmenu', label: '注销菜单' }, '去侧边栏确认消失'], expect: '侧边栏菜单命令项消失' }
+    ],
+    actions: actions
+  });
+})();

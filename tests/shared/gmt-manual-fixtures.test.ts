@@ -12,12 +12,20 @@ import domResourceText from '../../fixtures/userscripts/manual/gmt-manual-dom-re
 import interactionText from '../../fixtures/userscripts/manual/gmt-manual-interaction.user.js?raw';
 import tabsText from '../../fixtures/userscripts/manual/gmt-manual-tabs.user.js?raw';
 import networkText from '../../fixtures/userscripts/manual/gmt-manual-network.user.js?raw';
+import cookieText from '../../fixtures/userscripts/manual/gmt-manual-cookie.user.js?raw';
+import downloadText from '../../fixtures/userscripts/manual/gmt-manual-download.user.js?raw';
+import urlchangeText from '../../fixtures/userscripts/manual/gmt-manual-urlchange.user.js?raw';
+import notifyMenuText from '../../fixtures/userscripts/manual/gmt-manual-notify-menu.user.js?raw';
 
 import storageSrc from '../../fixtures/userscripts/manual/storage.user.js.src?raw';
 import domResourceSrc from '../../fixtures/userscripts/manual/dom-resource.user.js.src?raw';
 import interactionSrc from '../../fixtures/userscripts/manual/interaction.user.js.src?raw';
 import tabsSrc from '../../fixtures/userscripts/manual/tabs.user.js.src?raw';
 import networkSrc from '../../fixtures/userscripts/manual/network.user.js.src?raw';
+import cookieSrc from '../../fixtures/userscripts/manual/cookie.user.js.src?raw';
+import downloadSrc from '../../fixtures/userscripts/manual/download.user.js.src?raw';
+import urlchangeSrc from '../../fixtures/userscripts/manual/urlchange.user.js.src?raw';
+import notifyMenuSrc from '../../fixtures/userscripts/manual/notify-menu.user.js.src?raw';
 
 import coreText from '../../fixtures/userscripts/manual/_panel-core.js?raw';
 
@@ -40,16 +48,16 @@ const FIXTURES: ManualFixture[] = [
   {
     mod: 'storage',
     label: '值存储',
-    cards: 7,
-    grants: ['GM_info', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_listValues', 'GM_addValueChangeListener', 'GM_addStyle'],
+    cards: 10,
+    grants: ['GM_info', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_listValues', 'GM_addValueChangeListener', 'GM_addStyle', 'GM_getValues', 'GM_setValues', 'GM_deleteValues', 'GM_removeValueChangeListener'],
     text: storageText,
     src: storageSrc,
   },
   {
     mod: 'dom-resource',
     label: 'DOM资源日志',
-    cards: 5,
-    grants: ['GM_addStyle', 'GM_getResourceText', 'GM_log', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'unsafeWindow'],
+    cards: 7,
+    grants: ['GM_addStyle', 'GM_getResourceText', 'GM_log', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'unsafeWindow', 'GM_addElement', 'GM_getResourceURL'],
     text: domResourceText,
     src: domResourceSrc,
   },
@@ -64,8 +72,8 @@ const FIXTURES: ManualFixture[] = [
   {
     mod: 'tabs',
     label: '标签页',
-    cards: 2,
-    grants: ['GM_openInTab', 'GM_setValue', 'GM_getValue', 'GM_addStyle', 'GM_deleteValue'],
+    cards: 5,
+    grants: ['GM_openInTab', 'GM_setValue', 'GM_getValue', 'GM_addStyle', 'GM_deleteValue', 'GM_getTab', 'GM_saveTab', 'GM_getTabs', 'window.close', 'window.focus', 'unsafeWindow'],
     text: tabsText,
     src: tabsSrc,
   },
@@ -77,6 +85,18 @@ const FIXTURES: ManualFixture[] = [
     text: networkText,
     src: networkSrc,
   },
+  { mod: 'cookie', label: 'Cookie', cards: 3,
+    grants: ['GM_cookie', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_addStyle'],
+    text: cookieText, src: cookieSrc },
+  { mod: 'download', label: '下载', cards: 1,
+    grants: ['GM_download', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_addStyle'],
+    text: downloadText, src: downloadSrc },
+  { mod: 'urlchange', label: 'URL变化', cards: 2,
+    grants: ['window.onurlchange', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_addStyle'],
+    text: urlchangeText, src: urlchangeSrc },
+  { mod: 'notify-menu', label: '通知菜单', cards: 5,
+    grants: ['GM_notification', 'GM_closeNotification', 'GM_updateNotification', 'GM_registerMenuCommand', 'GM_unregisterMenuCommand', 'GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_addStyle'],
+    text: notifyMenuText, src: notifyMenuSrc },
 ];
 
 /** 按 scripts/build-manual.mjs 的拼接公式重算产物文本 */

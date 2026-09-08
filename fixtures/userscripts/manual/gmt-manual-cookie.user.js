@@ -1,21 +1,15 @@
 // ==UserScript==
-// @name         GM 手测·标签页
+// @name         GM 手测·Cookie
 // @namespace    ai-browser-extend/gmt-manual
 // @version      1.0.0
-// @description  GM 标签页模块人工测试：说明 + 步骤 + 人工标记
+// @description  GM_cookie 人工测试：自域 list/set/delete（自域直通不弹卡）
 // @match        *://*/*
 // @run-at       document-end
-// @grant        GM_openInTab
-// @grant        GM_setValue
+// @grant        GM_cookie
 // @grant        GM_getValue
-// @grant        GM_addStyle
+// @grant        GM_setValue
 // @grant        GM_deleteValue
-// @grant        GM_getTab
-// @grant        GM_saveTab
-// @grant        GM_getTabs
-// @grant        window.close
-// @grant        window.focus
-// @grant        unsafeWindow
+// @grant        GM_addStyle
 // @noframes
 // ==/UserScript==
 
@@ -207,46 +201,33 @@ var GMT = (function () {
 })();
 
 (function () {
-  var handle = null;
-
   var actions = {
-    't1-open': function (log) {
-      handle = GM_openInTab(location.origin + location.pathname + '?__gmt_probe=1', { active: false });
-      log('t1', '句柄 closed=' + handle.closed + ' typeof close=' + typeof handle.close);
+    'c1-list': function (log) {
+      GM_cookie.list({ url: location.href }).then(function (cs) {
+        log('c1', 'list → ' + (Array.isArray(cs) ? cs.length + ' 条：' + cs.slice(0, 3).map(function (c) { return c.name; }).join(',') : JSON.stringify(cs)));
+      }, function (e) { log('c1', 'list 失败：' + e.message); });
     },
-    't2-close': function (log) {
-      if (!handle) { log('t2', '先点上一卡的「打开探针页」'); return; }
-      handle.onclose = function () { GMT.log('t2', 'onclose 触发 @ ' + new Date().toLocaleTimeString()); };
-      handle.close();
-      log('t2', 'close() 已调用，等探针页关闭…');
+    'c2-set': function (log) {
+      GM_cookie.set({ url: location.origin + '/', name: '__gmt_ck', value: 'v' + (Date.now() % 1000) }).then(function () {
+        log('c2', 'set 成功，再 list 找 __gmt_ck');
+      }, function (e) { log('c2', 'set 失败：' + e.message); });
     },
-    't3-savetab': function (log) {
-      GM_saveTab({ visited: Date.now() });
-      GM_getTab(function (data) { GMT.log('t3', 'GM_getTab 读回 → ' + JSON.stringify(data)); });
-      log('t3', '已 saveTab + getTab（回调打印读回值）');
-    },
-    't4-gettabs': function (log) {
-      GM_getTabs(function (all) { GMT.log('t4', 'GM_getTabs → ' + JSON.stringify(all)); });
-      log('t4', '已请求 GM_getTabs（回调打印全 tab 数据）');
-    },
-    't5-focus': function (log) {
-      unsafeWindow.focus();
-      log('t5', '已调 window.focus（本 tab 激活；多窗口下更明显）');
+    'c3-del': function (log) {
+      GM_cookie.delete({ url: location.origin + '/', name: '__gmt_ck' }).then(function () {
+        log('c3', 'delete 成功');
+      }, function (e) { log('c3', 'delete 失败：' + e.message); });
     }
   };
 
   GMT.render({
-    module: 'tabs',
-    title: 'GM 手测·标签页',
+    module: 'cookie',
+    title: 'GM 手测·Cookie',
     cards: [
-      { id: 't1', api: 'GM_openInTab(url, opts?)', desc: '开新 tab（active:false 后台开），返回句柄 {closed, close(), onclose}。', steps: [{ id: 't1-open', label: '后台打开探针页' }], expect: '后台出现新 tab；日志 closed=false、close 为 function' },
-      { id: 't2', api: '句柄 close() / onclose', desc: 'close() 关闭探针页；关闭后 onclose 回调触发、closed 翻 true。', steps: [{ id: 't2-close', label: '关闭探针页' }, '切回本页看日志'], expect: '探针页被关；日志出现 onclose 触发时间戳' },
-      { id: 't3', api: 'GM_saveTab(data) / GM_getTab(cb)', desc: '本 tab 私有数据写后读回（回调形态）。', steps: [{ id: 't3-savetab', label: 'saveTab + getTab' }], expect: '日志读回 {"visited":<ts>}' },
-      { id: 't4', api: 'GM_getTabs(cb)', desc: '全部 tab 的本脚本数据 {tabId:data}。', steps: [{ id: 't4-gettabs', label: 'getTabs' }], expect: '日志含当前 tab 的数据条目' },
-      { id: 't5', api: 'window.focus（特殊 grant）', desc: '激活脚本所在 tab。', steps: [{ id: 't5-focus', label: 'focus 本 tab' }], expect: '本 tab 被激活（无报错）' }
+      { id: 'c1', api: 'GM_cookie.list(details)', desc: '读当前页 cookie（自域直通，不弹卡）。', steps: [{ id: 'c1-list', label: 'list 当前页 cookie' }], expect: '日志列出 cookie 条数/名（无 permission 报错）' },
+      { id: 'c2', api: 'GM_cookie.set(details)', desc: '在自域写一个测试 cookie。', steps: [{ id: 'c2-set', label: 'set __gmt_ck' }, '再点 c1 的 list 确认出现 __gmt_ck'], expect: 'set 成功；list 能看到 __gmt_ck' },
+      { id: 'c3', api: 'GM_cookie.delete(details)', desc: '删除测试 cookie。', steps: [{ id: 'c3-del', label: 'delete __gmt_ck' }, '再 list 确认消失'], expect: 'delete 成功；list 不再含 __gmt_ck' }
     ],
-    actions: actions,
-    probe: { mark: '__gmt_probe=1', key: '__gmt_manual_probe_tabs' }
+    actions: actions
   });
 })();
 })();

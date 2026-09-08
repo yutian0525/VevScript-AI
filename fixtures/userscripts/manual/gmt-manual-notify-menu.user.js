@@ -1,21 +1,19 @@
 // ==UserScript==
-// @name         GM 手测·标签页
+// @name         GM 手测·通知菜单
 // @namespace    ai-browser-extend/gmt-manual
 // @version      1.0.0
-// @description  GM 标签页模块人工测试：说明 + 步骤 + 人工标记
+// @description  通知管理 + 菜单注销人工测试
 // @match        *://*/*
 // @run-at       document-end
-// @grant        GM_openInTab
-// @grant        GM_setValue
+// @grant        GM_notification
+// @grant        GM_closeNotification
+// @grant        GM_updateNotification
+// @grant        GM_registerMenuCommand
+// @grant        GM_unregisterMenuCommand
 // @grant        GM_getValue
-// @grant        GM_addStyle
+// @grant        GM_setValue
 // @grant        GM_deleteValue
-// @grant        GM_getTab
-// @grant        GM_saveTab
-// @grant        GM_getTabs
-// @grant        window.close
-// @grant        window.focus
-// @grant        unsafeWindow
+// @grant        GM_addStyle
 // @noframes
 // ==/UserScript==
 
@@ -207,46 +205,43 @@ var GMT = (function () {
 })();
 
 (function () {
-  var handle = null;
-
+  var NID = 'gmt-notif-probe';
+  var menuKey = null;
   var actions = {
-    't1-open': function (log) {
-      handle = GM_openInTab(location.origin + location.pathname + '?__gmt_probe=1', { active: false });
-      log('t1', '句柄 closed=' + handle.closed + ' typeof close=' + typeof handle.close);
+    'n1-notify': function (log) {
+      GM_notification({ title: 'GMT', text: '通知探针（3s 后自动更新）', tag: NID });
+      log('n1', '已发通知（系统通知区）');
     },
-    't2-close': function (log) {
-      if (!handle) { log('t2', '先点上一卡的「打开探针页」'); return; }
-      handle.onclose = function () { GMT.log('t2', 'onclose 触发 @ ' + new Date().toLocaleTimeString()); };
-      handle.close();
-      log('t2', 'close() 已调用，等探针页关闭…');
+    'n2-update': function (log) {
+      GM_updateNotification(NID, { title: 'GMT（已更新）', text: '更新后的正文' });
+      log('n2', '已请求更新通知（部分平台需通知仍在显示）');
     },
-    't3-savetab': function (log) {
-      GM_saveTab({ visited: Date.now() });
-      GM_getTab(function (data) { GMT.log('t3', 'GM_getTab 读回 → ' + JSON.stringify(data)); });
-      log('t3', '已 saveTab + getTab（回调打印读回值）');
+    'n3-close': function (log) {
+      GM_closeNotification(NID);
+      log('n3', '已请求关闭通知');
     },
-    't4-gettabs': function (log) {
-      GM_getTabs(function (all) { GMT.log('t4', 'GM_getTabs → ' + JSON.stringify(all)); });
-      log('t4', '已请求 GM_getTabs（回调打印全 tab 数据）');
+    'n4-menu': function (log) {
+      menuKey = GM_registerMenuCommand('GMT 探针命令', function () { GMT.log('n4', '菜单命令被点击'); });
+      log('n4', '已注册菜单（侧边栏脚本页「菜单命令」区）；点「注销」后应消失');
     },
-    't5-focus': function (log) {
-      unsafeWindow.focus();
-      log('t5', '已调 window.focus（本 tab 激活；多窗口下更明显）');
+    'n5-unmenu': function (log) {
+      if (menuKey == null) { log('n5', '先点上一步注册'); return; }
+      GM_unregisterMenuCommand(menuKey);
+      log('n5', '已注销菜单——去侧边栏确认命令项消失');
     }
   };
 
   GMT.render({
-    module: 'tabs',
-    title: 'GM 手测·标签页',
+    module: 'notify-menu',
+    title: 'GM 手测·通知菜单',
     cards: [
-      { id: 't1', api: 'GM_openInTab(url, opts?)', desc: '开新 tab（active:false 后台开），返回句柄 {closed, close(), onclose}。', steps: [{ id: 't1-open', label: '后台打开探针页' }], expect: '后台出现新 tab；日志 closed=false、close 为 function' },
-      { id: 't2', api: '句柄 close() / onclose', desc: 'close() 关闭探针页；关闭后 onclose 回调触发、closed 翻 true。', steps: [{ id: 't2-close', label: '关闭探针页' }, '切回本页看日志'], expect: '探针页被关；日志出现 onclose 触发时间戳' },
-      { id: 't3', api: 'GM_saveTab(data) / GM_getTab(cb)', desc: '本 tab 私有数据写后读回（回调形态）。', steps: [{ id: 't3-savetab', label: 'saveTab + getTab' }], expect: '日志读回 {"visited":<ts>}' },
-      { id: 't4', api: 'GM_getTabs(cb)', desc: '全部 tab 的本脚本数据 {tabId:data}。', steps: [{ id: 't4-gettabs', label: 'getTabs' }], expect: '日志含当前 tab 的数据条目' },
-      { id: 't5', api: 'window.focus（特殊 grant）', desc: '激活脚本所在 tab。', steps: [{ id: 't5-focus', label: 'focus 本 tab' }], expect: '本 tab 被激活（无报错）' }
+      { id: 'n1', api: 'GM_notification(details)', desc: '发系统通知。', steps: [{ id: 'n1-notify', label: '发通知' }], expect: '系统通知区出现「GMT」通知' },
+      { id: 'n2', api: 'GM_updateNotification(id, details)', desc: '更新已发通知的标题/正文。', steps: [{ id: 'n2-update', label: '更新通知' }], expect: '通知标题变为「GMT（已更新）」' },
+      { id: 'n3', api: 'GM_closeNotification(id)', desc: '关闭已发通知。', steps: [{ id: 'n3-close', label: '关闭通知' }], expect: '通知消失' },
+      { id: 'n4', api: 'GM_registerMenuCommand(name, fn)', desc: '注册菜单命令（侧边栏脚本页）。', steps: [{ id: 'n4-menu', label: '注册菜单' }, '去侧边栏脚本页看「菜单命令」区'], expect: '侧边栏出现「GMT 探针命令」' },
+      { id: 'n5', api: 'GM_unregisterMenuCommand(key)', desc: '注销菜单命令。', steps: [{ id: 'n5-unmenu', label: '注销菜单' }, '去侧边栏确认消失'], expect: '侧边栏菜单命令项消失' }
     ],
-    actions: actions,
-    probe: { mark: '__gmt_probe=1', key: '__gmt_manual_probe_tabs' }
+    actions: actions
   });
 })();
 })();

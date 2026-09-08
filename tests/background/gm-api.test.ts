@@ -4,7 +4,7 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { storage } from 'wxt/utils/storage';
 import {
   gmErrorCounts, getErrorBuffer, clearErrors, getMenuSnapshot, handleGmCall,
-  initGmApi, cleanupScriptState,
+  initGmApi, cleanupScriptState, readValuesForSnapshot,
   __setLlmProviderFactory, __resetLlmSession,
 } from '../../background/gm-api';
 import { __resetConfirmQueue, getPending, resolveConfirm } from '../../background/confirm-queue';
@@ -522,5 +522,58 @@ describe('gm-api LlmChat 流式下行', () => {
     }));
     const r = await call('LlmChat', [{ messages: [{ role: 'user', content: 'hi' }], timeout: 30 }]);
     expect(r).toMatchObject({ ok: false, error: expect.stringContaining('LLM 调用超时') });
+  });
+});
+
+describe('批量值 + 菜单注销 + 通知管理', () => {
+  beforeEach(async () => {
+    fakeBrowser.reset(); vi.restoreAllMocks();
+    await cleanupScriptState('s1'); // 清 menuTable 残留（模块内存态，fakeBrowser.reset 不触及）
+  });
+
+  it('SetValues 批量写；DeleteValues 批量删', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_setValues', 'GM_deleteValues'] } }));
+    await handleGmCall({ scriptId: 's1', api: 'SetValues', reqId: 1, params: [{ a: 1, b: 2, c: 3 }] }, { tab: { id: 1, url: 'https://a.com/' } } as never);
+    expect(await readValuesForSnapshot('s1')).toEqual({ a: 1, b: 2, c: 3 });
+    await handleGmCall({ scriptId: 's1', api: 'DeleteValues', reqId: 2, params: [['a', 'c']] }, { tab: { id: 1, url: 'https://a.com/' } } as never);
+    expect(await readValuesForSnapshot('s1')).toEqual({ b: 2 });
+  });
+
+  it('UnregisterMenu 从菜单表移除', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_registerMenuCommand', 'GM_unregisterMenuCommand'] } }));
+    await handleGmCall({ scriptId: 's1', api: 'RegisterMenu', reqId: 1, params: ['k1', '命令一'] }, { tab: { id: 9, url: 'https://a.com/' } } as never);
+    expect(getMenuSnapshot().find((e) => e.scriptId === 's1')?.commands).toEqual([{ key: 'k1', name: '命令一' }]);
+    await handleGmCall({ scriptId: 's1', api: 'UnregisterMenu', reqId: 2, params: ['k1'] }, { tab: { id: 9, url: 'https://a.com/' } } as never);
+    expect(getMenuSnapshot().find((e) => e.scriptId === 's1')).toBeUndefined();
+  });
+
+  it('CloseNotification/UpdateNotification 调 notifications API', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_closeNotification', 'GM_updateNotification'] } }));
+    const clear = vi.fn(async () => true);
+    const update = vi.fn(async () => true);
+    (browser as unknown as { notifications: Record<string, unknown> }).notifications = { clear, update };
+    await handleGmCall({ scriptId: 's1', api: 'CloseNotification', reqId: 1, params: ['n1'] }, { tab: { id: 1, url: 'https://a.com/' } } as never);
+    expect(clear).toHaveBeenCalledWith('n1');
+    await handleGmCall({ scriptId: 's1', api: 'UpdateNotification', reqId: 2, params: ['n1', { title: 'T', text: 'X' }] }, { tab: { id: 1, url: 'https://a.com/' } } as never);
+    expect(update).toHaveBeenCalledWith('n1', expect.objectContaining({ title: 'T', message: 'X' }));
+  });
+
+  it('GetTab/SaveTab/GetTabs 经 handleGmCall 往返', async () => {
+    await saveScript(mkScript({ meta: { grants: ['GM_getTab', 'GM_saveTab', 'GM_getTabs'] } }));
+    const sender = { tab: { id: 7, url: 'https://a.com/' } } as never;
+    expect((await handleGmCall({ scriptId: 's1', api: 'GetTab', reqId: 1, params: [] }, sender) as { data: unknown }).data).toEqual({});
+    await handleGmCall({ scriptId: 's1', api: 'SaveTab', reqId: 2, params: [{ hits: 5 }] }, sender);
+    expect((await handleGmCall({ scriptId: 's1', api: 'GetTab', reqId: 3, params: [] }, sender) as { data: unknown }).data).toEqual({ hits: 5 });
+    expect((await handleGmCall({ scriptId: 's1', api: 'GetTabs', reqId: 4, params: [] }, sender) as { data: unknown }).data).toEqual({ '7': { hits: 5 } });
+  });
+
+  it('WindowClose 关 tab；WindowFocus 激活 tab', async () => {
+    await saveScript(mkScript({ meta: { grants: ['window.close', 'window.focus'] } }));
+    const remove = vi.spyOn(browser.tabs, 'remove').mockResolvedValue(undefined as never);
+    const update = vi.spyOn(browser.tabs, 'update').mockResolvedValue({} as never);
+    await handleGmCall({ scriptId: 's1', api: 'WindowClose', reqId: 1, params: [] }, { tab: { id: 8, url: 'https://a.com/' } } as never);
+    expect(remove).toHaveBeenCalledWith(8);
+    await handleGmCall({ scriptId: 's1', api: 'WindowFocus', reqId: 2, params: [] }, { tab: { id: 8, url: 'https://a.com/' } } as never);
+    expect(update).toHaveBeenCalledWith(8, { active: true });
   });
 });

@@ -33,7 +33,7 @@ describe('gmt-selftest fixture 元字段解析面', () => {
       namespace: 'ai-browser-extend/gmt-selftest',
       version: '1.0.0',
       author: 'gmt-selftest',
-      description: '本扩展脚本池运行环境全功能自检：元字段解析自证 + 15 个 GM API 可用性',
+      description: '本扩展脚本池运行环境全功能自检：元字段解析自证 + 29 个 GM API 可用性',
       homepage: 'https://example.com/gmt-selftest',
       supportURL: 'https://example.com/gmt-selftest/support',
       iconURL: 'https://example.com/favicon.ico',
@@ -49,7 +49,7 @@ describe('gmt-selftest fixture 元字段解析面', () => {
     expect(fields.world).toBe('USER_SCRIPT');
   });
 
-  it('grants：15 个 API 全部 + unsafeWindow = 16 项', () => {
+  it('grants：29 个 API 全部 + 4 特殊 grant = 33 项', () => {
     const expected = [...Object.keys(GM_API_REGISTRY), ...SPECIAL_GRANTS].sort();
     expect([...fields.meta.grants ?? []].sort()).toEqual(expected);
   });
@@ -68,7 +68,7 @@ describe('gmt-selftest fixture 元字段解析面', () => {
 });
 
 describe('gmt-selftest fixture wrapper 安装面', () => {
-  it('buildWrappedCode 安装全部 15 个 API（下划线 + 点形式）', () => {
+  it('buildWrappedCode 安装全部 29 个 API（下划线 + 点形式）', () => {
     const code = buildWrappedCode(asScript(), {
       token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0',
     });

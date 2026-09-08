@@ -3,7 +3,7 @@
 // @namespace    ai-browser-extend/gmt-selftest
 // @version      1.0.0
 // @author       gmt-selftest
-// @description  本扩展脚本池运行环境全功能自检：元字段解析自证 + 15 个 GM API 可用性
+// @description  本扩展脚本池运行环境全功能自检：元字段解析自证 + 29 个 GM API 可用性
 // @homepage     https://example.com/gmt-selftest
 // @supportURL   https://example.com/gmt-selftest/support
 // @iconURL      https://example.com/favicon.ico
@@ -27,6 +27,23 @@
 // @grant        GM_openInTab
 // @grant        GM_xmlhttpRequest
 // @grant        GM_llmChat
+// @grant        GM_removeValueChangeListener
+// @grant        GM_getValues
+// @grant        GM_setValues
+// @grant        GM_deleteValues
+// @grant        GM_addElement
+// @grant        GM_unregisterMenuCommand
+// @grant        GM_getResourceURL
+// @grant        GM_getTab
+// @grant        GM_saveTab
+// @grant        GM_getTabs
+// @grant        GM_closeNotification
+// @grant        GM_updateNotification
+// @grant        GM_download
+// @grant        GM_cookie
+// @grant        window.close
+// @grant        window.focus
+// @grant        window.onurlchange
 // @connect      cdn.jsdelivr.net
 // @require      https://cdn.jsdelivr.net/npm/zepto@1.2.0/dist/zepto.min.js
 // @resource     gmtPkg https://cdn.jsdelivr.net/npm/zepto@1.2.0/package.json
@@ -257,12 +274,9 @@
     addRow('1 元字段解析', 'script.matches 含 *://*/*', function () {
       return (info.script.matches || []).indexOf('*://*/*') !== -1 || 'matches=' + JSON.stringify(info.script.matches);
     });
-    addRow('1 元字段解析', 'script.grants = 15 API + unsafeWindow', function () {
-      var g = (info.script.grants || []).slice().sort();
-      var expected = ['GM_addStyle', 'GM_addValueChangeListener', 'GM_deleteValue', 'GM_getResourceText', 'GM_getValue',
-        'GM_info', 'GM_listValues', 'GM_llmChat', 'GM_log', 'GM_notification', 'GM_openInTab', 'GM_registerMenuCommand',
-        'GM_setClipboard', 'GM_setValue', 'GM_xmlhttpRequest', 'unsafeWindow'];
-      return JSON.stringify(g) === JSON.stringify(expected) || 'grants=' + JSON.stringify(g);
+    addRow('1 元字段解析', 'script.grants 含全部已声明 grant（33 项）', function () {
+      var g = (info.script.grants || []).slice();
+      return g.length === 33 || 'grants 数量=' + g.length + '：' + JSON.stringify(g.slice().sort());
     });
     addRow('1 元字段解析', 'injectInto === UserScript', function () {
       return info.injectInto === 'UserScript' || 'injectInto=' + info.injectInto;

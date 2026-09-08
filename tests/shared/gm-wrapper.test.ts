@@ -75,6 +75,25 @@ describe('buildWrappedCode', () => {
     expect(code).toContain('function __GM_plain(v)');
   });
 
+  it('桥类 API：setValues/deleteValues/unregisterMenu/通知管理/getTab 系/download', () => {
+    const s = mkScript({ meta: { grants: [
+      'GM_setValues', 'GM_deleteValues', 'GM_unregisterMenuCommand',
+      'GM_closeNotification', 'GM_updateNotification', 'GM_getTab', 'GM_saveTab', 'GM_getTabs', 'GM_download',
+    ] } });
+    const code = buildWrappedCode(s, { token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0' });
+    expect(code).toContain('__GM_post("SetValues"');
+    expect(code).toContain('__GM_post("DeleteValues"');
+    expect(code).toContain('__GM_post("UnregisterMenu"');
+    expect(code).toContain('__GM_post("CloseNotification"');
+    expect(code).toContain('__GM_post("UpdateNotification"');
+    expect(code).toContain('__GM_post("GetTab"');
+    expect(code).toContain('__GM_post("SaveTab"');
+    expect(code).toContain('__GM_post("GetTabs"');
+    // download：url/details 双签名归一化 + onload/onerror 留闭包（过桥用 __GM_plain）
+    expect(code).toContain('__GM_post("Download"');
+    expect(code).toContain('typeof arg === "string"');
+  });
+
   it('@require 内容在用户代码之前、preamble 之后', () => {
     const code = buildWrappedCode(mkScript(), {
       token: 't', values: {}, resources: {}, requireCodes: ['libBody();'], extensionVersion: '1.0.0',
@@ -141,6 +160,51 @@ describe('buildWrappedCode', () => {
     expect(code.match(/__GM_report\(/g)?.length).toBeGreaterThanOrEqual(4);
     // 钩子定义在 preamble 内（先于用户代码执行体注册，保证首帧后的异步异常已被覆盖）
     expect(code.indexOf("window.addEventListener('error'")).toBeLessThan(code.indexOf('userCode();'));
+  });
+
+  it('本地/快照类 API：getValues/addElement/removeValueChangeListener/getResourceURL', () => {
+    const s = mkScript({ meta: { grants: ['GM_getValues', 'GM_addElement', 'GM_removeValueChangeListener', 'GM_getResourceURL'] } });
+    const code = buildWrappedCode(s, {
+      token: 't', values: { a: 1 }, resources: {}, resourceUrls: { logo: 'data:image/png;base64,AAA' },
+      requireCodes: [], extensionVersion: '1.0.0',
+    });
+    expect(code).toContain('install("GM_getValues"');
+    expect(code).toContain('install("GM_addElement"');
+    expect(code).toContain('install("GM_removeValueChangeListener"');
+    expect(code).toContain('install("GM_getResourceURL"');
+    // getResourceURL 数据源：注入时快照 __resourceUrls
+    expect(code).toContain('__resourceUrls = {"logo":"data:image/png;base64,AAA"}');
+    // 全为 local/snapshot：无 __GM_post（无这些 API 的桥调用）
+    expect(code).not.toContain('__GM_post("SetValues"');
+  });
+
+  it('对象型 GM_cookie：@grant 一次装齐三方法，GM.cookie 同引用（非 Promise 包装）', () => {
+    const s = mkScript({ meta: { grants: ['GM_cookie'] } });
+    const code = buildWrappedCode(s, { token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0' });
+    expect(code).toContain('install("GM_cookie"');
+    expect(code).toContain('__GM_post("CookieList"');
+    expect(code).toContain('__GM_post("CookieSet"');
+    expect(code).toContain('__GM_post("CookieDelete"');
+    // 点形式同引用（对象），不生成通用 Promise 包装函数
+    expect(code).toContain('GM.cookie = GM_cookie;');
+    expect(code).not.toContain('install("GM.cookie", function ()');
+  });
+
+  it('特殊 grant：window.close/focus 覆写 unsafeWindow，onurlchange 占位 + URL_CHANGE 分发', () => {
+    const s = mkScript({ meta: { grants: ['window.close', 'window.focus', 'window.onurlchange'] } });
+    const code = buildWrappedCode(s, { token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0' });
+    expect(code).toContain('unsafeWindow.close = function () { __GM_post("WindowClose", []); };');
+    expect(code).toContain('unsafeWindow.focus = function () { __GM_post("WindowFocus", []); };');
+    expect(code).toContain('unsafeWindow.onurlchange = null;');
+    // URL_CHANGE 分支在 preamble（始终存在，未 grant 则 SW 不下行）
+    expect(code).toContain("d.kind === 'URL_CHANGE'");
+    expect(code).toContain("new CustomEvent('urlchange'");
+  });
+
+  it('未 grant 特殊项：不覆写 unsafeWindow.close/focus/onurlchange', () => {
+    const code = buildWrappedCode(mkScript(), { token: 't', values: {}, resources: {}, requireCodes: [], extensionVersion: '1.0.0' });
+    expect(code).not.toContain('unsafeWindow.close = function');
+    expect(code).not.toContain('unsafeWindow.onurlchange = null;');
   });
 });
 

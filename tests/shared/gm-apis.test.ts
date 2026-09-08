@@ -3,11 +3,14 @@ import { describe, it, expect } from 'vitest';
 import { GM_API_REGISTRY, classifyGrants } from '../../shared/gm-apis';
 
 describe('GM_API_REGISTRY', () => {
-  it('首批 15 个 API 全部有 impl 分支', () => {
+  it('全部 29 个 API 有 impl 分支', () => {
     expect(Object.keys(GM_API_REGISTRY).sort()).toEqual([
-      'GM_addStyle', 'GM_addValueChangeListener', 'GM_deleteValue', 'GM_getResourceText',
-      'GM_getValue', 'GM_info', 'GM_listValues', 'GM_llmChat', 'GM_log', 'GM_notification',
-      'GM_openInTab', 'GM_registerMenuCommand', 'GM_setClipboard', 'GM_setValue',
+      'GM_addElement', 'GM_addStyle', 'GM_addValueChangeListener', 'GM_closeNotification',
+      'GM_cookie', 'GM_deleteValue', 'GM_deleteValues', 'GM_download', 'GM_getResourceText',
+      'GM_getResourceURL', 'GM_getTab', 'GM_getTabs', 'GM_getValue', 'GM_getValues', 'GM_info',
+      'GM_listValues', 'GM_llmChat', 'GM_log', 'GM_notification', 'GM_openInTab',
+      'GM_registerMenuCommand', 'GM_removeValueChangeListener', 'GM_saveTab', 'GM_setClipboard',
+      'GM_setValue', 'GM_setValues', 'GM_unregisterMenuCommand', 'GM_updateNotification',
       'GM_xmlhttpRequest',
     ]);
   });
@@ -22,9 +25,14 @@ describe('GM_API_REGISTRY', () => {
 
 describe('classifyGrants', () => {
   it('按注册表二分：supported / unsupported', () => {
-    const r = classifyGrants(['GM_getValue', 'GM_download', 'unsafeWindow', 'none']);
+    const r = classifyGrants(['GM_getValue', 'GM_fakeApi', 'unsafeWindow', 'none']);
     expect(r.supported).toEqual(['GM_getValue', 'unsafeWindow']);
-    expect(r.unsupported).toEqual(['GM_download']);
+    expect(r.unsupported).toEqual(['GM_fakeApi']);
+  });
+
+  it('新特殊 grant：window.close/focus/onurlchange 归 supported', () => {
+    const { supported } = classifyGrants(['window.close', 'window.focus', 'window.onurlchange']);
+    expect(supported).toEqual(['window.close', 'window.focus', 'window.onurlchange']);
   });
 
   it('none 与空数组都归空', () => {

@@ -34,6 +34,23 @@ export const CALL: Record<string, { kind: CallKind; short?: string; hint: string
   GM_addStyle: { kind: 'page', hint: '页面内 API（DOM 本地完成）' },
   GM_log: { kind: 'page', hint: '页面内 API（console 本地完成）' },
   GM_addValueChangeListener: { kind: 'page', hint: '页面内 API（本地注册监听）' },
+  // ---- Tier A/B 扩充（2026-09-07）----
+  GM_setValues: { kind: 'bridge', short: 'SetValues', hint: '[{"k1":"v1","k2":"v2"}]' },
+  GM_deleteValues: { kind: 'bridge', short: 'DeleteValues', hint: '[["k1","k2"]]' },
+  GM_unregisterMenuCommand: { kind: 'bridge', short: 'UnregisterMenu', hint: '["cmdKey"]' },
+  GM_closeNotification: { kind: 'bridge', short: 'CloseNotification', hint: '["notifId"]' },
+  GM_updateNotification: { kind: 'bridge', short: 'UpdateNotification', hint: '["notifId", {"title":"T","text":"X"}]' },
+  GM_getTab: { kind: 'bridge', short: 'GetTab', hint: '[]' },
+  GM_saveTab: { kind: 'bridge', short: 'SaveTab', hint: '[{"k":"v"}]' },
+  GM_getTabs: { kind: 'bridge', short: 'GetTabs', hint: '[]' },
+  GM_download: { kind: 'bridge', short: 'Download', hint: '[{"url":"https://example.com/f.zip","name":"f.zip"}]' },
+  // page 类（local/snapshot，不可远程直调）
+  GM_getValues: { kind: 'page', hint: '页面内 API（注入期值快照）' },
+  GM_removeValueChangeListener: { kind: 'page', hint: '页面内 API（本地移除监听）' },
+  GM_addElement: { kind: 'page', hint: '页面内 API（DOM 本地完成）' },
+  GM_getResourceURL: { kind: 'page', hint: '页面内 API（注入期资源快照）' },
+  // 对象型：三方法（CookieList/CookieSet/CookieDelete）各自过桥，调试台暂不支持对象型直调
+  GM_cookie: { kind: 'page', hint: '对象型 API（GM_cookie.list/set/delete 经桥；调试台暂不支持对象型直调）' },
 };
 
 const KIND_NOTE: Record<CallKind, string> = {

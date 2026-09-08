@@ -12,8 +12,10 @@ const MAX_TOTAL = 10 * 1024 * 1024;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface CacheEntry {
-  content: string;
+  content: string;               // encoding=text: 原文；encoding=base64: base64 串
   fetchedAt: number;
+  mime?: string;
+  encoding?: 'text' | 'base64';  // 旧缓存无此字段 → 惰性视为 'text'
 }
 type Cache = Record<string, CacheEntry>;
 
@@ -21,65 +23,94 @@ async function readCache(): Promise<Cache> {
   return (await storage.getItem<Cache>(CACHE_KEY)) ?? {};
 }
 
-async function fetchText(url: string): Promise<string> {
+/** content-type 判文本：text/* 或常见文本类 application/*，否则二进制。 */
+function isTextContentType(ct: string): boolean {
+  return /(^text\/|application\/(json|xml|javascript|x-www-form-urlencoded|ecmascript)|\+json|\+xml|\bcss\b)/i.test(ct);
+}
+
+function toBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
+  return btoa(bin);
+}
+
+async function fetchResource(url: string, forceText = false): Promise<{ content: string; mime: string; encoding: 'text' | 'base64' }> {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(new Error('timeout')), FETCH_TIMEOUT_MS);
   try {
     const resp = await fetch(url, { signal: ac.signal });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const text = await resp.text();
-    if (text.length > MAX_SINGLE) throw new Error(`超过单文件上限（${MAX_SINGLE} 字符）`);
-    return text;
+    const mime = (resp.headers.get('content-type') ?? '').split(';')[0]!.trim() || 'application/octet-stream';
+    if (forceText || isTextContentType(mime)) {
+      const text = await resp.text();
+      if (text.length > MAX_SINGLE) throw new Error(`超过单文件上限（${MAX_SINGLE} 字符）`);
+      return { content: text, mime: forceText && !isTextContentType(mime) ? 'text/plain' : mime, encoding: 'text' };
+    }
+    const buf = await resp.arrayBuffer();
+    if (buf.byteLength > MAX_SINGLE) throw new Error(`超过单文件上限（${MAX_SINGLE} 字节）`);
+    return { content: toBase64(buf), mime, encoding: 'base64' };
   } finally {
     clearTimeout(timer);
   }
 }
 
-/** 预取脚本声明的全部资源。返回 warnings（空 = 全成功/无资源）。 */
+/** 预取脚本声明的全部资源。返回 warnings（空 = 全成功/无资源）。@require 一律当文本（spec §5.5），@resource 按 content-type 分流。 */
 export async function prefetchResources(script: UserScript): Promise<string[]> {
   const requires = script.meta?.requires ?? [];
   const resources = script.meta?.resources ?? {};
-  const urls = [...requires, ...Object.values(resources)];
-  if (urls.length === 0) return [];
+  if (requires.length === 0 && Object.keys(resources).length === 0) return [];
 
   const cache = await readCache();
   const now = Date.now();
   const warnings: string[] = [];
   let fetched = 0;
 
-  for (const url of urls) {
+  const fetchInto = async (url: string, forceText: boolean): Promise<void> => {
     const hit = cache[url];
-    if (hit && now - hit.fetchedAt < CACHE_TTL_MS) continue;
+    if (hit && now - hit.fetchedAt < CACHE_TTL_MS) return;
     try {
-      const content = await fetchText(url);
-      if (fetched + content.length > MAX_TOTAL) {
+      const r = await fetchResource(url, forceText);
+      if (fetched + r.content.length > MAX_TOTAL) {
         warnings.push(`依赖下载失败：${url}（超过资源总量上限）`);
-        continue;
+        return;
       }
-      cache[url] = { content, fetchedAt: now };
-      fetched += content.length;
+      cache[url] = { content: r.content, fetchedAt: now, mime: r.mime, encoding: r.encoding };
+      fetched += r.content.length;
     } catch (e) {
       warnings.push(`依赖下载失败：${url}（${e instanceof Error ? e.message : String(e)}）`);
     }
-  }
+  };
+
+  for (const url of requires) await fetchInto(url, true);                   // @require 强制文本
+  for (const url of Object.values(resources)) await fetchInto(url, false); // @resource 按 content-type
+
   if (Object.keys(cache).length > 0) await storage.setItem(CACHE_KEY, cache);
   return warnings;
 }
 
 /** wrapper 拼装时的资源包：requireCodes 按 meta.requires 顺序、resources name→text（缺段跳过，spec §9.4）。 */
-export async function getResourceBundle(script: UserScript): Promise<{ requireCodes: string[]; resources: Record<string, string> }> {
+export async function getResourceBundle(script: UserScript): Promise<{ requireCodes: string[]; resources: Record<string, string>; resourceUrls: Record<string, string> }> {
   const cache = await readCache();
   const requires = script.meta?.requires ?? [];
   const resources = script.meta?.resources ?? {};
   const requireCodes: string[] = [];
   for (const url of requires) {
     const hit = cache[url];
-    if (hit) requireCodes.push(hit.content);
+    if (hit) requireCodes.push(hit.content); // @require 一律当代码文本（TM 语义）
   }
   const resourceTexts: Record<string, string> = {};
+  const resourceUrls: Record<string, string> = {};
   for (const [name, url] of Object.entries(resources)) {
     const hit = cache[url];
-    if (hit) resourceTexts[name] = hit.content;
+    if (!hit) continue;
+    const enc = hit.encoding ?? 'text'; // 惰性迁移：旧缓存无字段视为 text
+    if (enc === 'text') {
+      resourceTexts[name] = hit.content;
+      resourceUrls[name] = `data:${hit.mime ?? 'text/plain'};charset=utf-8,${encodeURIComponent(hit.content)}`;
+    } else {
+      resourceUrls[name] = `data:${hit.mime ?? 'application/octet-stream'};base64,${hit.content}`;
+    }
   }
-  return { requireCodes, resources: resourceTexts };
+  return { requireCodes, resources: resourceTexts, resourceUrls };
 }

@@ -1,8 +1,10 @@
 # GM_* API 全集目录（ecosystem 盘点 + 本扩展支持状态）
 
+> **面向脚本作者的使用手册**（已支持 API 的签名/参数/返回/示例）见 [gm-api-reference.md](gm-api-reference.md)。本文件是**生态盘点 + 支持状态目录**。
+>
 > 定位：**GM_* API 的完整清单**——聚合 Tampermonkey / Violentmonkey / ScriptCat 三家生态（源码调研 2026-09-02），逐个标注本扩展的支持状态。
-> 面向脚本作者的签名/示例/差异细节随 Phase 5 实施补齐；实现设计见 `docs/superpowers/specs/2026-09-02-ai-browser-extension-phase5-gm-api-design.md`。
-> 状态图例：**Phase 5**（本阶段实现，15 个）· **后续候选**（架构可容纳，按需排期）· **明确不做**（架构不匹配或 YAGNI，附理由与替代）。
+> 面向脚本作者的签名/示例/差异细节见下方「Phase 5 实现说明」与「Tier A+B 实现说明」；Phase 5 设计见 `docs/superpowers/specs/2026-09-02-ai-browser-extension-phase5-gm-api-design.md`，Tier A+B 设计见 `docs/superpowers/specs/2026-09-07-gm-api-expansion-tier-ab-design.md`。
+> 状态图例：**Phase 5**（首批实现，15 个）· **Tier A+B**（2026-09-07 扩充实现，14 个函数型 + 3 特殊 grant）· **后续候选**（架构可容纳，按需排期）· **明确不做**（架构不匹配或 YAGNI，附理由与替代）。
 
 ## Phase 5 实现说明（本扩展的落地细节）
 
@@ -18,6 +20,17 @@
 - **GM_notification**：图标为扩展内占位 PNG（`/gm-notif.png`，Chrome basic 通知不接受 data: URI）；后续可通过 `details.image` 扩展自定义图标。
 - **unsafeWindow**：MAIN world 下 = `window`（真页面 window）；USER_SCRIPT world 下 = 隔离世界 window（要真页面 window 请 `@world MAIN`）。
 - **GM_llmChat**：脚本调用扩展配置的大模型（OpenAI 兼容，`设置 → 模型设置` 同源配置，脚本不可自选模型/覆盖）。`messages` 数组（system/user/assistant；content 为字符串或多段 `{type:'text'|'image_url',...}`，图片 data URL ≤5MB 或 http(s) URL）；`onChunk(delta)` 可选收流式文本增量；Promise resolve `{ text, usage, finishReason }`。权限档 per-script（默认「每次询问」弹确认卡：允许一次 / 本会话内允许 / 拒绝 60s 超时），脚本详情 → 设置 → 模型调用 可改档。限制：消息载荷 ≤2MB、响应聚合 ≤1MB（超限报错不截断）、整调用超时默认 120s（可传 `timeout` 覆盖）。无 abort、无 tool 角色、reasoning 不下发。已知差异：直调（调试台）为非流式语义（无 onChunk 通道）；「本会话内允许」为 SW 内存态，扩展进程重启后回到档位语义。
+
+## Tier A+B 实现说明（2026-09-07）
+
+补充上面清单里 **Tier A+B** 标注项的落地细节（设计见 `docs/superpowers/specs/2026-09-07-gm-api-expansion-tier-ab-design.md`）：
+
+- **@connect 门控复用**：GM_cookie / GM_download 的域校验与 GM_xmlhttpRequest 共用同一套 `matchConnect` + always-allow 授权库（`local:gm:permissions`）——用户对某脚本「总是允许 host X」会同时覆盖 XHR / cookie / download 三者的确认卡；反之确认卡也可能由三者任一触发。manifest 相应新增 `downloads` / `cookies` / `webNavigation` 三权限。
+- **window.onurlchange**：SW 监听 `webNavigation` 的 `onHistoryStateUpdated`（pushState/replaceState）与 `onReferenceFragmentUpdated`（hash），仅主帧（frameId=0），下行到 @grant window.onurlchange 且 @match 命中的启用脚本；wrapper 侧 `window.onurlchange` 属性回调 + `window.addEventListener('urlchange', ...)` 事件双形态。
+- **GM_getTab / GM_saveTab / GM_getTabs**：per-tab 临时数据存 `chrome.storage.session`（键 `gm-tab:{scriptId}:{tabId}`），tab/浏览器关闭随会话失效，不持久化；getTabs 按前缀枚举回 `{[tabId]: data}`。
+- **GM_getResourceURL**：@resource 预取管线按 content-type 分流——文本类存原文（GM_getResourceText 同源兼容）、二进制存 base64+mime；返回完整 `data:` URL（`data:{mime};base64,…`）。`isBlobUrl` 参数忽略（不做 blob: 生命周期管理）。
+- **GM_cookie 对象型**：`@grant GM_cookie` 一次装齐 list/set/delete 三方法（对象型 grant，注册表 `objectApi` 声明）；点形式 `GM.cookie` 与之同引用。
+- **已知边界**：GM_download 无 onprogress（首版仅 onload/onerror，返回的 `{abort}` 为空实现）；window.close/focus 作用于脚本所在整个 tab（非 window 级）；urlchange 仅主帧（frameId=0），不覆盖 iframe；cookie/download 与 XHR 共用同一 @connect 授权库（耦合见上）。
 
 ## 0. @grant 语义（三家通用，本扩展遵循）
 
@@ -41,43 +54,43 @@
 | `GM_deleteValue(key)` | `GM.deleteValue` | void | 删值 | ✓ | ✓ | ✓ | **Phase 5** |
 | `GM_listValues()` | `GM.listValues` | 同步返回 key[] | 列全部键 | ✓ | ✓ | ✓ | **Phase 5** |
 | `GM_addValueChangeListener(key, fn)` | `GM.addValueChangeListener` | 返回 listenerId | 值变更监听（remote 标记跨 tab） | ✓ | ✓ | ✓ | **Phase 5** |
-| `GM_removeValueChangeListener(id)` | `GM.removeValueChangeListener` | void | 移除监听 | ✓ | ✓ | ✓ | 后续候选（依赖监听注册表，低成本） |
-| `GM_getValues(keysOrDefaults)` | `GM.getValues` | 同步返回 obj | 批量读 | ✓ | ✓ | ✓ | 后续候选（可循环 `GM_getValue` 替代） |
-| `GM_setValues(obj)` | `GM.setValues` | void | 批量写 | ✓ | ✓ | ✓ | 后续候选 |
-| `GM_deleteValues(keys)` | `GM.deleteValues` | void | 批量删 | ✓ | ✓ | ✓ | 后续候选 |
+| `GM_removeValueChangeListener(id)` | `GM.removeValueChangeListener` | void | 移除监听 | ✓ | ✓ | ✓ | **Tier A+B**（listenerId 按 `key:idx` 解析，监听槽置空） |
+| `GM_getValues(keysOrDefaults)` | `GM.getValues` | 同步返回 obj | 批量读 | ✓ | ✓ | ✓ | **Tier A+B**（读注入时值快照，零 RPC；键数组 / 带默认值对象 / 全量三形态） |
+| `GM_setValues(obj)` | `GM.setValues` | void | 批量写 | ✓ | ✓ | ✓ | **Tier A+B**（写快照 + 桥 SetValues 逐键广播） |
+| `GM_deleteValues(keys)` | `GM.deleteValues` | void | 批量删 | ✓ | ✓ | ✓ | **Tier A+B**（删快照 + 桥 DeleteValues 逐键广播） |
 
 ## 3. 页面与 DOM
 
 | API | 点形式 | 语义 | TM | VM | SC | 本扩展 |
 |---|---|---|---|---|---|---|
 | `GM_addStyle(css)` | `GM.addStyle` | 注入 `<style>` 元素，同步返回元素 | ✓ | ✓ | ✓ | **Phase 5**（当前 world 直接 createElement） |
-| `GM_addElement(tag\|parent, attrs?)` | `GM.addElement` | 创建并插入元素（绕扩展 CSP） | ✓ | ✓ | ✓ | 后续候选（本地实现，成本低） |
+| `GM_addElement(tag\|parent, attrs?)` | `GM.addElement` | 创建并插入元素（绕扩展 CSP） | ✓ | ✓ | ✓ | **Tier A+B**（当前 world createElement 本地完成，attrs 支持 textContent/innerHTML/其余 setAttribute） |
 | `unsafeWindow`（特殊 grant） | — | 页面真实 window | ✓ | ✓ | ✓ | **Phase 5**（MAIN world = window；USER_SCRIPT world = 隔离世界 window——要真页面 window 请 `@world MAIN`） |
-| `window.close`（特殊 grant） | — | 关闭脚本所在 tab | ✓ | ✓ | ✓ | 后续候选（桥 → SW tabs） |
-| `window.focus`（特殊 grant） | — | 激活脚本所在 tab | ✓ | ✓ | ✓ | 后续候选（桥 → SW tabs） |
-| `window.onurlchange`（特殊 grant） | — | SPA 路由变化的 urlchange 事件 | ✓ | ✗ | ✓ | 后续候选（需 SPA URL hook，可复用 Phase 3b MAIN world hook 基建） |
+| `window.close`（特殊 grant） | — | 关闭脚本所在 tab | ✓ | ✓ | ✓ | **Tier A+B**（桥 → SW `tabs.remove`，作用于脚本所在整个 tab） |
+| `window.focus`（特殊 grant） | — | 激活脚本所在 tab | ✓ | ✓ | ✓ | **Tier A+B**（桥 → SW `tabs.update({active:true})`） |
+| `window.onurlchange`（特殊 grant） | — | SPA 路由变化的 urlchange 事件 | ✓ | ✗ | ✓ | **Tier A+B**（SW webNavigation onHistoryStateUpdated/onReferenceFragmentUpdated 主帧下行；`window.onurlchange` 属性回调 + `'urlchange'` 事件双形态） |
 
 ## 4. 资源
 
 | API | 点形式 | 语义 | TM | VM | SC | 本扩展 |
 |---|---|---|---|---|---|---|
 | `GM_getResourceText(name)` | `GM.getResourceText` | 同步返回 `@resource` 文本 | ✓ | ✓ | ✓ | **Phase 5**（快照直嵌；随 @resource 预取） |
-| `GM_getResourceURL(name, isBlobUrl?)` | `GM.getResourceUrl` | 资源的 data:/blob: URL | ✓ | ✓ | ✓ | 后续候选（需 blob URL 生命周期管理） |
+| `GM_getResourceURL(name, isBlobUrl?)` | `GM.getResourceUrl` | 资源的 data:/blob: URL | ✓ | ✓ | ✓ | **Tier A+B**（注入时 data: URL 快照直嵌；二进制资源经预取 base64+mime 拼完整 data: URL，blob: 形态不做） |
 
 ## 5. 菜单命令
 
 | API | 点形式 | 语义 | TM | VM | SC | 本扩展 |
 |---|---|---|---|---|---|---|
 | `GM_registerMenuCommand(name, fn, opts?)` | `GM.registerMenuCommand` | 注册菜单命令，返回 key | ✓ | ✓ | ✓ | **Phase 5**（入口在侧边栏脚本页，非右键菜单） |
-| `GM_unregisterMenuCommand(key)` | `GM.unregisterMenuCommand` | 注销命令 | ✓ | ✓ | ✓ | 后续候选（低成本） |
+| `GM_unregisterMenuCommand(key)` | `GM.unregisterMenuCommand` | 注销命令 | ✓ | ✓ | ✓ | **Tier A+B**（删 SW 菜单表条目 + 广播侧边栏刷新） |
 
 ## 6. 网络
 
 | API | 点形式 | 语义 | TM | VM | SC | 本扩展 |
 |---|---|---|---|---|---|---|
 | `GM_xmlhttpRequest(details)` | `GM.xmlHttpRequest` | 跨域请求，返回 `{abort}` | ✓ | ✓ | ✓ | **Phase 5**（@connect 白名单 + 确认卡；无 unsafe header 改写；非流式、响应 ≤1MB） |
-| `GM_download(detailsOrUrl, name?)` | `GM.download` | 下载文件 | ✓ | ✓ | ✓ | 后续候选（需 `downloads` 权限 + 确认 UI；或 `GM_xmlhttpRequest` blob + `a[download]` 替代） |
-| `GM_cookie.list/set/delete(details)` | `GM.cookie.list` 等 | 读写站点 cookie | ✓ | ✓ | ✓ | 后续候选（高敏感：`cookies` 权限 + 目标域须 @match + 确认 UI） |
+| `GM_download(detailsOrUrl, name?)` | `GM.download` | 下载文件 | ✓ | ✓ | ✓ | **Tier A+B**（`chrome.downloads` + downloads 权限；@connect 门控与确认卡；onload/onerror 回调，onprogress 暂缺，返回 `{abort}` 空实现） |
+| `GM_cookie.list/set/delete(details)` | `GM.cookie.list` 等 | 读写站点 cookie | ✓ | ✓ | ✓ | **Tier A+B**（cookies 权限 + @connect 门控复用；对象型 grant `@grant GM_cookie` 一次装齐三方法，点形式 GM.cookie 同引用） |
 | `GM_webRequest(rule)` | — | 注册 webRequest 规则 | ✓ | ✗ | ✗ | **明确不做**（TM 独有；MV3 无 blocking webRequest，需 DNR 重设计） |
 
 ## 7. 标签页
@@ -85,9 +98,9 @@
 | API | 点形式 | 语义 | TM | VM | SC | 本扩展 |
 |---|---|---|---|---|---|---|
 | `GM_openInTab(url, opts?)` | `GM.openInTab` | 开新 tab，返回 `{close(), onclose, closed}` 句柄 | ✓ | ✓ | ✓ | **Phase 5** |
-| `GM_getTab(cb)` | `GM.getTab` | 读本脚本在本 tab 的持久数据 | ✓ | ✗ | ✓ | 后续候选（`local:script-values:<id>` 同款存储模式） |
-| `GM_saveTab(data)` | `GM.saveTab` | 写该数据 | ✓ | ✗ | ✓ | 后续候选 |
-| `GM_getTabs(cb)` | `GM.getTabs` | 全部 tab 的该脚本数据 | ✓ | ✗ | ✓ | 后续候选 |
+| `GM_getTab(cb)` | `GM.getTab` | 读本脚本在本 tab 的持久数据 | ✓ | ✗ | ✓ | **Tier A+B**（`storage.session` per-tab 键 `gm-tab:{scriptId}:{tabId}`，随会话失效；Promise + 回调双形态） |
+| `GM_saveTab(data)` | `GM.saveTab` | 写该数据 | ✓ | ✗ | ✓ | **Tier A+B**（同上存储） |
+| `GM_getTabs(cb)` | `GM.getTabs` | 全部 tab 的该脚本数据 | ✓ | ✗ | ✓ | **Tier A+B**（前缀枚举 session 存储，`{[tabId]: data}`） |
 | `GM_closeInTab(tabId)` | — | 按 id 关 tab | ✗ | ✗ | ✓ | **明确不做**（SC 扩展；用 `GM_openInTab` 返回句柄的 `close()`） |
 
 ## 8. 通知与剪贴板
@@ -96,8 +109,8 @@
 |---|---|---|---|---|---|---|
 | `GM_notification(details, ondone?)` | `GM.notification` | 系统通知，点击/关闭回调 | ✓ | ✓ | ✓ | **Phase 5**（SW `chrome.notifications`） |
 | `GM_setClipboard(data, type?)` | `GM.setClipboard` | 写剪贴板 | ✓ | ✓ | ✓ | **Phase 5**（offscreen 文档 + execCommand；仅文本） |
-| `GM_closeNotification(id)` | — | 关闭/更新已发通知 | ✗ | ✗ | ✓ | 后续候选（SC 扩展，依赖通知 id 注册表） |
-| `GM_updateNotification(id, details)` | — | 同上 | ✗ | ✗ | ✓ | 后续候选（SC 扩展） |
+| `GM_closeNotification(id)` | — | 关闭/更新已发通知 | ✗ | ✗ | ✓ | **Tier A+B**（SW `notifications.clear`，id 为 GM_notification 的返回 id） |
+| `GM_updateNotification(id, details)` | — | 同上 | ✗ | ✗ | ✓ | **Tier A+B**（SW `notifications.update`，仅 title/text） |
 
 ## 9. 日志
 
@@ -121,10 +134,14 @@
 | unsafe header 改写（`user-agent`/`referer`/`cookie` 等被 fetch 禁的头） | TM/VM/SC（DNR session 规则实现） | 本阶段不引入 DNR；忽略禁头并记 warning | 后续若做，按 VM `dnr.js` 的 per-request session rule 模式 |
 | 流式响应 / `responseType: 'stream'` | TM/SC（MessageConnect 分块流） | 首批一次性桥足够；响应 ≤1MB 截断 | 大文件场景后续升级长连接通道 |
 
-## 11. Phase 5 首批 15 个速览
+## 11. 已实现速览（Phase 5 的 15 + Tier A+B 的 14）
 
-`GM_info` · `GM_getValue` · `GM_setValue` · `GM_deleteValue` · `GM_listValues` · `GM_addValueChangeListener` · `GM_addStyle` · `GM_getResourceText` · `GM_log` · `GM_registerMenuCommand` · `GM_setClipboard` · `GM_notification` · `GM_openInTab` · `GM_xmlhttpRequest` · `GM_llmChat`
+Phase 5 首批 15 个：`GM_info` · `GM_getValue` · `GM_setValue` · `GM_deleteValue` · `GM_listValues` · `GM_addValueChangeListener` · `GM_addStyle` · `GM_getResourceText` · `GM_log` · `GM_registerMenuCommand` · `GM_setClipboard` · `GM_notification` · `GM_openInTab` · `GM_xmlhttpRequest` · `GM_llmChat`
 
-外加特殊 grant：`unsafeWindow`（语义见 §3）。
+Tier A+B 扩充 14 个（2026-09-07）：`GM_removeValueChangeListener` · `GM_getValues` · `GM_setValues` · `GM_deleteValues` · `GM_addElement` · `GM_unregisterMenuCommand` · `GM_getResourceURL` · `GM_getTab` · `GM_saveTab` · `GM_getTabs` · `GM_closeNotification` · `GM_updateNotification` · `GM_download` · `GM_cookie`（对象型，一次装齐 list/set/delete）
 
-各家 API 总量参考：VM `GM_API_NAMES` 26 项（不含点别名与特殊 grant）；SC content 侧公开方法 30+（含 CAT_* 与通知管理扩展）；TM 文档面与 VM 大体相当另有少量独有（`GM_webRequest` 等）。本目录以三家并集为准，共 **35 个函数型 API + 4 个特殊 grant 名**。
+外加特殊 grant 4 个：`unsafeWindow`（Phase 5，语义见 §3）、`window.close` / `window.focus` / `window.onurlchange`（Tier A+B，语义见 §3 与 Tier A+B 实现说明）。
+
+即本扩展已实现 **29 个函数型 API + 4 个特殊 grant**。
+
+各家 API 总量参考：VM `GM_API_NAMES` 26 项（不含点别名与特殊 grant）；SC content 侧公开方法 30+（含 CAT_* 与通知管理扩展）；TM 文档面与 VM 大体相当另有少量独有（`GM_webRequest` 等）。本目录以三家并集为准，共 **35 个函数型 API + 4 个特殊 grant 名**（并集口径，非本扩展支持数）。

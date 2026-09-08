@@ -11,7 +11,11 @@
 // @grant        GM_deleteValue
 // @grant        GM_listValues
 // @grant        GM_addValueChangeListener
+// @grant        GM_removeValueChangeListener
 // @grant        GM_addStyle
+// @grant        GM_getValues
+// @grant        GM_setValues
+// @grant        GM_deleteValues
 // @noframes
 // ==/UserScript==
 
@@ -226,6 +230,20 @@ var GMT = (function () {
     },
     's7-emit': function () {
       GM_setValue(K + '.evt', 'x' + (Date.now() % 1000));
+    },
+    's8-batch': function (log) {
+      GM_setValues({ '__gmt_b.x': 1, '__gmt_b.y': 2 });
+      log('s8', 'GM_getValues(["__gmt_b.x","__gmt_b.y"]) → ' + JSON.stringify(GM_getValues(['__gmt_b.x', '__gmt_b.y'])));
+    },
+    's9-batchdel': function (log) {
+      GM_deleteValues(['__gmt_b.x', '__gmt_b.y']);
+      log('s9', '删后 GM_getValues → ' + JSON.stringify(GM_getValues(['__gmt_b.x', '__gmt_b.y'])));
+    },
+    's10-remove': function (log) {
+      var id = GM_addValueChangeListener('__gmt_b.evt', function () { GMT.log('s10', '不该触发：监听已移除'); });
+      GM_removeValueChangeListener(id);
+      GM_setValue('__gmt_b.evt', 'z' + (Date.now() % 1000));
+      log('s10', '已注册后立即移除并触发 setValue；若下方无「不该触发」行即通过');
     }
   };
 
@@ -245,7 +263,10 @@ var GMT = (function () {
       { id: 's4', api: 'GM_getValue 默认值分支', desc: '读不存在的键返回调用方默认值。', steps: [{ id: 's4-def', label: '读缺失键（默认 "def"）' }], expect: '日志显示 "def"' },
       { id: 's5', api: 'GM_deleteValue(key)', desc: '删除后读回 undefined。', steps: [{ id: 's5-del', label: '删除 s2 写入的键并读回' }], expect: '日志显示 undefined' },
       { id: 's6', api: 'GM_listValues()', desc: '列本脚本命名空间全部键。', steps: [{ id: 's6-list', label: '列出全部键' }], expect: '日志数组含 __gmt_manual_storage_probe.obj / .evt 等键' },
-      { id: 's7', api: 'GM_addValueChangeListener(key, fn)', desc: '值变更监听；本 tab 触发的事件 remote=false。', steps: [{ id: 's7-emit', label: '触发一次 setValue' }, '核对日志事件行 old/new/remote'], expect: '出现 remote=false 的事件行，old/new 值正确' }
+      { id: 's7', api: 'GM_addValueChangeListener(key, fn)', desc: '值变更监听；本 tab 触发的事件 remote=false。', steps: [{ id: 's7-emit', label: '触发一次 setValue' }, '核对日志事件行 old/new/remote'], expect: '出现 remote=false 的事件行，old/new 值正确' },
+      { id: 's8', api: 'GM_setValues(obj) / GM_getValues(keys)', desc: '批量写 + 批量读（下划线同步）。', steps: [{ id: 's8-batch', label: '批量写两键并读回' }], expect: '日志 {"__gmt_b.x":1,"__gmt_b.y":2}' },
+      { id: 's9', api: 'GM_deleteValues(keys)', desc: '批量删。', steps: [{ id: 's9-batchdel', label: '批量删两键并读回' }], expect: '日志两键均 undefined' },
+      { id: 's10', api: 'GM_removeValueChangeListener(id)', desc: '移除监听后事件不再触发。', steps: [{ id: 's10-remove', label: '注册→移除→触发' }, '确认下方无「不该触发」行'], expect: '无「不该触发」日志行' }
     ],
     actions: actions
   });
