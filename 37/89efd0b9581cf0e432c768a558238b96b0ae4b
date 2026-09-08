@@ -1,0 +1,24 @@
+content/locator-diagnose.ts
+  s_90855c46e5bd90::t_b1cccb2cc6796c 139,141
+  s_90855c46e5bd90::t_972ba45c5808ee 135-137,140,142
+  s_90855c46e5bd90::t_39eb5bcc4e6b9d 6
+  s_90855c46e5bd90::t_b0eee8c4ebdd06 155-158
+tests/content/locator-diagnose.test.ts
+  s_90855c46e5bd90::t_81e565719b8c93 79-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3789efd0b9581cf0e432c768a558238b96b0ae4b",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
