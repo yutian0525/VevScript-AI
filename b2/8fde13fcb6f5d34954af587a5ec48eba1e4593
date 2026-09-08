@@ -1,0 +1,34 @@
+content/helpers/events.ts
+  s_90855c46e5bd90::t_b7eb1eee147e28 1-30,46-51,53-103,105-107,109-110,116
+  s_90855c46e5bd90::t_7da3120cdb4351 31-45,52
+  s_90855c46e5bd90::t_45cf1440ad36eb 104
+  s_90855c46e5bd90::t_8fa4281b12af34 108,111,113-115
+  s_90855c46e5bd90::t_47596276da494b 112
+tests/content/helpers/events.test.ts
+  s_90855c46e5bd90::t_2033ae2d8dbba5 40,45-47
+  s_90855c46e5bd90::t_9d62ba20b409b9 103,111
+  s_90855c46e5bd90::t_738061a23d3c4d 18-24
+  s_90855c46e5bd90::t_78af8dbb751d1d 25-32
+  s_90855c46e5bd90::t_a60cc34665e794 34-38
+  s_90855c46e5bd90::t_b80bb68a08f3ac 1-17,33,39,41-44,48-102,104-110,112-120,123-132,134-140,142,144-154,156-158,160-162,172-183
+  s_90855c46e5bd90::t_fc88485977ae38 121,133,141,143,155,159,163-171
+  s_90855c46e5bd90::t_18b93329470f61 122
+content/helpers/step-error.ts
+  s_90855c46e5bd90::t_b928597b8fc5b7 1-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b28fde13fcb6f5d34954af587a5ec48eba1e4593",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
