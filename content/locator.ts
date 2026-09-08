@@ -53,6 +53,17 @@ function hasCondition(loc: SemanticLocator): boolean {
   return Boolean(loc.role || loc.text || loc.near);
 }
 
+/** 存在非 generic 命中时，丢弃所有 generic 命中。
+ *  规则是「有非 generic 就丢 generic」，不是「按深度排除祖先」——后者会把
+ *  <button><span>删除</span></button> 里的真 button 当祖先删掉，只剩 span。
+ *  只影响「有 text 无 role」场景：role 一旦指定，computeRole 过滤后候选全是同一 role
+ *  （要么全 generic 要么全非 generic），规则永不混合触发。 */
+function dropGenericWhenSpecificExists(candidates: Element[]): Element[] {
+  const hasSpecific = candidates.some((el) => computeRole(el) !== 'generic');
+  if (!hasSpecific) return candidates;
+  return candidates.filter((el) => computeRole(el) !== 'generic');
+}
+
 export function queryLocator(loc: Locator, opts: QueryOpts = {}): QueryResult {
   const doc = opts.doc ?? globalThis.document;
   const root = opts.within ?? doc.body;
@@ -88,9 +99,11 @@ export function queryLocator(loc: Locator, opts: QueryOpts = {}): QueryResult {
     });
   }
 
+  // nth 前收口：generic 容器/装饰后代不该挤占命中序列，也避免 nth 取到外层容器。
+  const finalCandidates = dropGenericWhenSpecificExists(candidates);
   if (loc.nth != null) {
-    const picked = candidates[loc.nth];
+    const picked = finalCandidates[loc.nth];
     return { elements: picked ? [picked] : [], nthApplied: true, skippedFrames: 0 };
   }
-  return { elements: candidates, nthApplied: false, skippedFrames: 0 };
+  return { elements: finalCandidates, nthApplied: false, skippedFrames: 0 };
 }

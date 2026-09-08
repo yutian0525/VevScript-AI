@@ -73,6 +73,26 @@ describe('locator 基础匹配', () => {
     expect(queryLocator({ text: '纯文本容器' }).elements.length).toBe(1);
   });
 
+  it('有非 generic 命中时丢弃 generic 容器（div 包 button）', () => {
+    document.body.innerHTML = '<div><button>删除</button></div>';
+    const r = queryLocator({ text: '删除' });
+    expect(r.elements.length).toBe(1);
+    expect(r.elements[0]!.tagName).toBe('BUTTON');
+  });
+
+  it('有非 generic 命中时丢弃 generic 后代（button 包 span）', () => {
+    document.body.innerHTML = '<button><span>删除</span></button>';
+    const r = queryLocator({ text: '删除' });
+    expect(r.elements.length).toBe(1);
+    expect(r.elements[0]!.tagName).toBe('BUTTON');
+  });
+
+  it('全 generic 命中时规则不触发（纯文本嵌套容器全保留）', () => {
+    document.body.innerHTML = '<div><section><p>正文</p></section></div>';
+    const r = queryLocator({ text: '正文' });
+    expect(r.elements.length).toBe(3);
+  });
+
   it('nth 取第 n 个（0-based）', () => {
     document.body.innerHTML = '<button>删</button><button>删</button><button>删</button>';
     const r = queryLocator({ text: '删', nth: 2 });
