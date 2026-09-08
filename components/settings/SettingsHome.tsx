@@ -1,11 +1,11 @@
 // components/settings/SettingsHome.tsx
-// 设置列表页（spec §1）：六入口卡片，点卡走 onOpen 切二级页。
-import { SlidersHorizontal, SquareTerminal, FlaskConical, ChevronRight, Sparkles, ScrollText, Brain } from 'lucide-react';
+// 设置列表页（spec §1）：七入口卡片，点卡走 onOpen 切二级页。
+import { SlidersHorizontal, SquareTerminal, FlaskConical, ChevronRight, Sparkles, ScrollText, Brain, ShieldOff } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Tooltip } from '../ui/Tooltip';
 import { useTruncated } from '../ui/useTruncated';
 
-export type SettingsSub = 'model' | 'prompt' | 'memory' | 'toolbench' | 'scriptdebug' | 'skills';
+export type SettingsSub = 'model' | 'prompt' | 'memory' | 'toolbench' | 'scriptdebug' | 'skills' | 'hookexclusions';
 
 const ENTRIES: Array<{ key: SettingsSub; title: string; desc: string; Icon: typeof SlidersHorizontal }> = [
   { key: 'model', title: '模型设置', desc: 'AI 服务地址 / API Key / 模型 / 上下文窗口', Icon: SlidersHorizontal },
@@ -14,6 +14,7 @@ const ENTRIES: Array<{ key: SettingsSub; title: string; desc: string; Icon: type
   { key: 'toolbench', title: '工具调试台', desc: '绕过模型，直接对当前页调用 30 个工具', Icon: SquareTerminal },
   { key: 'scriptdebug', title: '脚本运行时调试台', desc: 'GM API 白名单视图 + 经真实桥链路直调', Icon: FlaskConical },
   { key: 'skills', title: '技能管理', desc: '导入 .md 技能，注入会话上下文，斜杠指令调用', Icon: Sparkles },
+  { key: 'hookexclusions', title: '敏感站点排除', desc: '风控站（如 Boss直聘）不注入观测 hook，防止被指纹检测拒开', Icon: ShieldOff },
 ];
 
 function SettingCard({

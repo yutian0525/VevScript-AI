@@ -131,7 +131,7 @@ var el = GM_addStyle('body { background: #efefef }');
 ```
 
 ### `GM_addElement(tagName, attrs?)` / `GM_addElement(parent, tagName, attrs?)` / `GM.addElement`
-创建元素并插入，返回该元素。两种签名：仅 `(tag, attrs)` 插入到 `<head>`；`(parent, tag, attrs)` 插入到指定父节点。`attrs` 里 `textContent`/`innerHTML` 特判，其余走 `setAttribute`。
+创建元素并插入，返回该元素。两种签名：仅 `(tag, attrs)` 插入到 **`document.body`**；`(parent, tag, attrs)` 插入到指定父节点。`attrs` 里 `textContent`/`innerHTML` 特判，其余走 `setAttribute`。
 
 ```js
 // @grant GM_addElement
@@ -139,7 +139,7 @@ var div = GM_addElement('div', { id: 'x', textContent: 'hi', style: 'color:red' 
 GM_addElement(document.body, 'img', { src: 'https://…/a.png' });
 ```
 
-> 注：`<script>` 元素注入受页面 CSP 约束（与 TM 行为一致）。
+> 注：无 parent 时落 `body`（head 的 UA 样式 `display:none` 会吞掉其中的渲染元素）。`<script>` 元素注入受页面 CSP 约束（与 TM 行为一致）。
 
 ---
 
