@@ -1,0 +1,21 @@
+fixtures/userscripts/manual/gmt-manual-download.user.js
+  s_914db53b60ecdf::t_5fcb4b2719d72c 4-5,206,220
+fixtures/userscripts/manual/download.user.js.src
+  s_914db53b60ecdf::t_9799d7e620f3e7 4-5,19,33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c82a3d87ed0845823bbe5c737c5655189dd1dc19",
+  "prompts": {},
+  "sessions": {
+    "s_914db53b60ecdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a59cb53-b79e-40b1-862b-a26b43b43357",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
