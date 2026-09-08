@@ -1,0 +1,23 @@
+content/locator.ts
+  s_90855c46e5bd90::t_787b32b1173bae 69-173
+  s_90855c46e5bd90::t_58fb8a58090575 198-215,219-220,222
+  s_90855c46e5bd90::t_2e28978aed3aac 25-26
+tests/content/locator.test.ts
+  s_90855c46e5bd90::t_33604836d08b9c 135-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b4f5ecda9988cdb9cc3b6f46a21ec92e44f9f462",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
