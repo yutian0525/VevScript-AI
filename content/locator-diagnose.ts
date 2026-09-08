@@ -143,6 +143,16 @@ function buildMissHint(
   const containCount = relaxed['text 包含匹配（忽略 role）'] ?? 0;
   const roleCount = loc.role ? (relaxed[`role=${loc.role} 全部`] ?? 0) : 0;
 
+  // exact 精确失败但放宽包含能命中：根因是 exact 卡的而非 role——若落到下面的
+  // role 分支会产出「它是 <button> 不是 button」这类自相矛盾文案（探针 P4 实录），
+  // 必须先分流。去掉 exact 在此必然有效（包含计数 > 0）。
+  if (loc.exact && containCount > 0) {
+    const nm = nearMiss?.[0];
+    return nm
+      ? `exact 精确匹配未命中，但放宽为包含匹配能命中 ${containCount} 个元素（最像的：<${nm.tag}> "${nm.text}"）。去掉 exact 改用包含匹配，或把 text 改成元素的实际完整文本。`
+      : `exact 精确匹配未命中，但放宽为包含匹配能命中 ${containCount} 个元素。去掉 exact 改用包含匹配。`;
+  }
+
   // 最强线索：文本在页面上、候选也挑出来了，只是 role 卡住——直接点名那个元素。
   if (loc.role && containCount > 0 && nearMiss?.length) {
     const nm = nearMiss[0]!;
