@@ -51,6 +51,14 @@ export function createHelpers(): { helpers: Record<string, unknown>; ctx: Helper
     return (op, fields = {}) => { ctx.trace.push({ i, op, ...fields }); };
   };
 
+  /** 给 StepError 盖上失败步的 op 戳。失败步不进 trace，failedAt（Task 18 组装）
+   *  的 op 全靠它——Task 18 层只能按 kind 猜，而 state/blocked 由四个动作共享抛出，
+   *  仅凭 kind 无法归因（审查裁定：op 是 Task 17 层的静态已知量，必须在此带上）。 */
+  const stampOp = (e: unknown, op: string): unknown => {
+    if (e instanceof StepError && e.detail.op == null) e.detail.op = op;
+    return e;
+  };
+
   const $ = (loc: Locator, opts: QueryOpts = {}): Element => {
     const rec = step();
     let res: ReturnType<typeof queryLocator>;
@@ -58,6 +66,7 @@ export function createHelpers(): { helpers: Record<string, unknown>; ctx: Helper
       res = queryLocator(loc, opts);
     } catch (e) {
       throw new StepError('script-error', `locator 非法：${e instanceof Error ? e.message : String(e)}`, {
+        op: '$',
         hint: '修正 locator 语法。CSS 选择器要合法；语义 locator 至少要有 role/text/near 之一。',
       });
     }
@@ -66,13 +75,13 @@ export function createHelpers(): { helpers: Record<string, unknown>; ctx: Helper
     if (res.elements.length === 0) {
       const d = diagnoseMiss(loc, root);
       throw new StepError('locator-miss', `未找到匹配 ${describeLocator(loc)} 的元素`, {
-        matched: 0, relaxed: d.relaxed, nearMiss: d.nearMiss, hint: d.hint,
+        op: '$', matched: 0, relaxed: d.relaxed, nearMiss: d.nearMiss, hint: d.hint,
       });
     }
     if (res.elements.length > 1) {
       const d = diagnoseAmbiguous(loc, res.elements);
       throw new StepError('locator-ambiguous', `${describeLocator(loc)} 命中 ${res.elements.length} 个元素，无法确定操作哪个`, {
-        matched: d.matched, ambiguous: d.ambiguous, hint: d.hint,
+        op: '$', matched: d.matched, ambiguous: d.ambiguous, hint: d.hint,
       });
     }
     const el = res.elements[0]!;
@@ -90,6 +99,7 @@ export function createHelpers(): { helpers: Record<string, unknown>; ctx: Helper
       res = queryLocator(loc, opts);
     } catch (e) {
       throw new StepError('script-error', `locator 非法：${e instanceof Error ? e.message : String(e)}`, {
+        op: '$$',
         hint: '修正 locator 语法。CSS 选择器要合法；语义 locator 至少要有 role/text/near 之一。',
       });
     }
@@ -100,36 +110,50 @@ export function createHelpers(): { helpers: Record<string, unknown>; ctx: Helper
     return res.elements;
   };
 
+  /** async 动作的统一包裹：StepError 盖 op 戳后原样重抛。 */
+  const stamped = async (op: string, fn: () => Promise<void>): Promise<void> => {
+    try {
+      await fn();
+    } catch (e) {
+      throw stampOp(e, op);
+    }
+  };
+
   const helpers = {
     $, $$,
 
     click: async (el: Element, opts?: ClickOpts): Promise<void> => {
       const rec = step();
-      await click(el, opts);
+      await stamped('click', () => click(el, opts));
       rec('click', { on: onOf(el) });
     },
 
     type: async (el: Element, value: string, opts?: TypeOpts): Promise<void> => {
       const rec = step();
-      await typeInto(el, value, opts);
+      await stamped('type', () => typeInto(el, value, opts));
       rec('type', { on: onOf(el), value: cap(value) });
     },
 
     hover: async (el: Element): Promise<void> => {
       const rec = step();
-      await hover(el);
+      await stamped('hover', () => hover(el));
       rec('hover', { on: onOf(el) });
     },
 
     press: async (arg: PressArg, mods?: PressMods): Promise<void> => {
       const rec = step();
-      await press(arg, mods);
+      await stamped('press', () => press(arg, mods));
       rec('press', { key: typeof arg === 'string' ? arg : arg.key });
     },
 
     waitFor: async (cond: WaitCond, opts?: WaitOpts): Promise<{ waited: number }> => {
       const rec = step();
-      const r = await waitFor(cond, opts);
+      let r: { waited: number };
+      try {
+        r = await waitFor(cond, opts);
+      } catch (e) {
+        throw stampOp(e, 'waitFor');
+      }
       rec('waitFor', { cond: describeCond(cond), waited: r.waited });
       return r;
     },
@@ -144,6 +168,7 @@ export function createHelpers(): { helpers: Record<string, unknown>; ctx: Helper
     expect: (cond: unknown, msg: string): void => {
       if (cond) return;
       throw new StepError('assert', `断言失败：${msg}`, {
+        op: 'expect',
         hint: '预期与实际不符，说明对页面状态的理解有误。用 query_page 看当前实际内容；若 trace 各步都正常但结果不对，重跑时传 screenshot:"on-failure" 看页面实况。',
       });
     },

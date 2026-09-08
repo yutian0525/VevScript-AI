@@ -119,6 +119,25 @@ describe('helper 工厂', () => {
     expect(ctx.trace).toHaveLength(1);   // 失败步不进 trace（进 failedAt）
   });
 
+  it('StepError 带 op 戳（失败步不进 trace，failedAt 的 op 全靠它——Task 18 消费）', async () => {
+    const { helpers } = setup();
+    // $ 的 miss 直接带 op（查一个不存在的元素）
+    document.body.innerHTML = '<button>别的</button>';
+    const miss = syncErr(() => (helpers.$ as (l: unknown) => Element)({ role: 'button', text: '不存在' }));
+    expect(miss.detail.op).toBe('$');
+    // 动作抛错（state/blocked 由四个动作共享抛出，仅凭 kind 无法归因）经 stamped 盖戳
+    document.body.innerHTML = '<div id="p">普通</div>';
+    const stErr = await (helpers.type as (e: Element, v: string) => Promise<void>)(
+      document.getElementById('p')!, 'x',
+    ).then(() => null, (e: unknown) => e as StepError);
+    expect(stErr).toBeInstanceOf(StepError);
+    expect(stErr!.kind).toBe('state');
+    expect(stErr!.detail.op).toBe('type');
+    // expect 也带 op
+    const as = syncErr(() => (helpers.expect as (c: unknown, m: string) => void)(false, 'x'));
+    expect(as.detail.op).toBe('expect');
+  });
+
   it('text 归一化取文本，不记 trace（纯读）', () => {
     const { helpers, ctx } = setup();
     document.body.innerHTML = '<div>  多  空白\n 文本 </div>';
