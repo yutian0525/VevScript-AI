@@ -1,0 +1,21 @@
+tests/agent/tools/page-script.test.ts
+  s_90855c46e5bd90::t_8cae240b487e35 108-111,114-116,128-129
+  s_90855c46e5bd90::t_1c49510fbc83e6 112,126
+  s_90855c46e5bd90::t_d28ed10fa0baa3 75-78,81,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "83b1a04ed5e17218fd79a8127c27a9252af0682e",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
