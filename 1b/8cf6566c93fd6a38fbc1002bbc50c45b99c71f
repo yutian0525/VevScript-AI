@@ -1,0 +1,32 @@
+tests/agent/tools/page-script.test.ts
+  s_90855c46e5bd90::t_56cf2f948a03f1 1-4,8-18,25-63,65-70,72-74,77,82-104,106-114,129-149,151-165,167-168
+  s_90855c46e5bd90::t_7a5dc4c60f9766 64,78,80,126,150,166
+  s_90855c46e5bd90::t_4599c20845ea86 71,75-76,79,81
+  s_90855c46e5bd90::t_3ab0542aa12786 105,115-125,127-128
+  s_90855c46e5bd90::t_9ed5866e9e35ae 19-24
+  s_90855c46e5bd90::t_5d8ffff325ad0b 5-7
+agent/tools/page-script.ts
+  s_90855c46e5bd90::t_649118a956f94d 28
+  s_90855c46e5bd90::t_b51fb20a373af4 29-30
+  s_90855c46e5bd90::t_7346a724ab7dcc 35-36,38
+  s_90855c46e5bd90::t_06b9b01ce2f228 103
+  s_90855c46e5bd90::t_3fa03cb17d527f 115-117,120
+  s_90855c46e5bd90::t_6c5b37139e569a 101-102,105
+  s_90855c46e5bd90::t_630673c351c1e3 1-27,31-34,37,39-100,104,106-114,118-119,121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "1b8cf6566c93fd6a38fbc1002bbc50c45b99c71f",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
