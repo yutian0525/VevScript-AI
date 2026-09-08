@@ -196,6 +196,9 @@ describe('locator 的 near 三级判定', () => {
       <div><div><span>目标标签</span><input id="deep" type="text"></div></div>
       <input id="shallow" type="text">`;
     const r = queryLocator({ role: 'textbox', near: '目标标签' });
+    // length 断言必须：只查 elements[0] 的话，祖先锚点把搜索圈放大到 body
+    // （deep/shallow 全命中）时 [0] 仍是 deep，缺陷会漏网。
+    expect(r.elements.length).toBe(1);
     expect(r.elements[0]!.id).toBe('deep');
   });
 
