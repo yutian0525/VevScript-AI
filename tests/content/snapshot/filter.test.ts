@@ -15,6 +15,10 @@ describe('快照分级过滤', () => {
     expect(isInteractiveRole('listitem')).toBe(false);
   });
 
+  it('Iframe 在白名单内（边界行是结构锚点，interactive 档必须保留）', () => {
+    expect(keepAtDetail(node('Iframe'), 'interactive')).toBe(true);
+  });
+
   it('full 档保留一切', () => {
     expect(keepAtDetail(node('generic'), 'full')).toBe(true);
     expect(keepAtDetail(node('StaticText', { isText: true }), 'full')).toBe(true);

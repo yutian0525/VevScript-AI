@@ -29,6 +29,7 @@ export function computeRole(el: Element): string {
     }
     case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6': return 'heading';
     case 'img': return 'img';
+    case 'iframe': case 'frame': return 'Iframe';
     case 'nav': return 'navigation';
     case 'ul': case 'ol': return 'list';
     case 'li': return 'listitem';

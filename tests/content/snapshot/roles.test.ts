@@ -19,6 +19,10 @@ describe('role 计算', () => {
   it('input[type=checkbox] → checkbox', () => expect(computeRole(el('<input type="checkbox">'))).toBe('checkbox'));
   it('select → combobox', () => expect(computeRole(el('<select></select>'))).toBe('combobox'));
   it('textarea → textbox', () => expect(computeRole(el('<textarea></textarea>'))).toBe('textbox'));
+  it('iframe 角色为 Iframe（不是 generic，否则会被当纯布局折叠）', () => {
+    document.body.innerHTML = '<iframe></iframe>';
+    expect(computeRole(document.querySelector('iframe')!)).toBe('Iframe');
+  });
   it('div → generic', () => expect(computeRole(el('<div>x</div>'))).toBe('generic'));
   it('h1 → heading', () => expect(computeRole(el('<h1>x</h1>'))).toBe('heading'));
 });

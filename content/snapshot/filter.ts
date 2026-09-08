@@ -16,6 +16,9 @@ export const INTERACTIVE_ROLES = new Set([
   // 模态边界：弹窗内的 button/link 因子树继续遍历仍在，但「这些按钮属于哪个模态」
   // 的 aria-label 上下文只在这一行——缺了 agent 会错判自己在哪个弹窗，导致后续操作出错。
   'dialog', 'alertdialog',
+  // 结构锚点：Iframe 边界行标记「下面的元素属于某个帧」。它本身不可点，但不保留的话
+  // 无名帧在 shouldEmit 被当纯布局折叠，帧内元素会出现却看不出属于哪个帧，agent 无法定位。
+  'Iframe',
 ]);
 
 export function isInteractiveRole(role: string): boolean {

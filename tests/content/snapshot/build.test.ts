@@ -318,6 +318,58 @@ describe('快照组装', () => {
     expect(text).not.toContain('未展开节点');
   });
 
+  it('穿透同源 iframe：内部元素出现在快照，并有 Iframe 边界行', () => {
+    document.body.innerHTML = '<iframe id="f"></iframe>';
+    const f = document.getElementById('f') as HTMLIFrameElement;
+    f.contentDocument!.body.innerHTML = '<button>帧内按钮</button>';
+    const { text } = buildSnapshot(document.body);
+    expect(text).toContain('Iframe');
+    expect(text).toContain('button "帧内按钮"');
+  });
+
+  it('iframe 内元素的 uid 可解析回该元素（能直接交给 click）', () => {
+    document.body.innerHTML = '<iframe id="f"></iframe>';
+    const f = document.getElementById('f') as HTMLIFrameElement;
+    f.contentDocument!.body.innerHTML = '<button id="inner">帧内</button>';
+    buildSnapshot(document.body);
+    const inner = f.contentDocument!.getElementById('inner')!;
+    const uid = resolveUidByElement(inner);
+    expect(resolveUid(uid)).toBe(inner);
+  });
+
+  it('跨域 iframe（contentDocument 抛错）计入 skippedFrames，不崩', () => {
+    document.body.innerHTML = '<iframe id="f"></iframe>';
+    const f = document.getElementById('f')!;
+    Object.defineProperty(f, 'contentDocument', {
+      get() { throw new DOMException('blocked', 'SecurityError'); },
+    });
+    const r = buildSnapshot(document.body);
+    expect(r.skippedFrames).toBe(1);
+    expect(r.text).toContain('Iframe');
+  });
+
+  it('无 iframe 时 skippedFrames 为 0', () => {
+    document.body.innerHTML = '<button>x</button>';
+    expect(buildSnapshot(document.body).skippedFrames).toBe(0);
+  });
+
+  it('iframe 子树共享全局节点预算（不因 iframe 翻倍）', () => {
+    document.body.innerHTML = '<iframe id="f"></iframe>';
+    const f = document.getElementById('f') as HTMLIFrameElement;
+    f.contentDocument!.body.innerHTML = Array.from({ length: 50 }, (_, i) => `<button>b${i}</button>`).join('');
+    const { text } = buildSnapshot(document.body, { maxNodes: 10, detail: 'full' });
+    expect(text).toContain('快照已达节点上限');
+  });
+
+  it('嵌套 iframe 递归穿透', () => {
+    document.body.innerHTML = '<iframe id="f1"></iframe>';
+    const f1 = document.getElementById('f1') as HTMLIFrameElement;
+    f1.contentDocument!.body.innerHTML = '<iframe id="f2"></iframe>';
+    const f2 = f1.contentDocument!.getElementById('f2') as HTMLIFrameElement;
+    f2.contentDocument!.body.innerHTML = '<button>二层</button>';
+    expect(buildSnapshot(document.body).text).toContain('button "二层"');
+  });
+
   describe('视口过滤（桩掉几何）', () => {
     // 为什么需要桩：jsdom 的 getBoundingClientRect 恒返全 0，build.ts 的 inViewport
     // 会退成「未知→保留」，几何判定分支（bottom>0 && top<vh …）在生产代码里唯一

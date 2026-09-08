@@ -43,11 +43,16 @@ export interface SnapNode {
   children: SnapNode[];
 }
 
-export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text: string } {
+export function buildSnapshot(
+  root: Element, opts: SnapshotOptions = {},
+): { text: string; skippedFrames: number } {
   const cfg = { ...DEFAULTS, ...opts };
   resetUidMap();
   let nodeCount = 0;
   let truncated = false;
+  // 跨域 iframe 数：contentDocument 不可读（抛 SecurityError 或返回 null）时 +1，
+  // 让 agent 知道快照不完整是帧不可及、而非帧是空的。
+  let skippedFrames = 0;
 
   function assignUid(el: Element): number {
     uidCounter += 1;
@@ -111,6 +116,13 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
       children: [],
     };
     walkChildren(elem, node, node.children);
+    // 同源 iframe 穿透：跨域访问 contentDocument 抛 SecurityError（或返回 null），计数跳过。
+    // 节点预算与 uid 序列全局共享，故帧内元素的 uid 同样可经 resolveUid 反查、可直接交给 click。
+    if (node.role === 'Iframe') {
+      const doc = safeFrameDoc(elem);
+      if (doc?.body) walkChildren(doc.body, node, node.children);
+      else skippedFrames += 1;
+    }
     return node;
   }
 
@@ -137,7 +149,16 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
   serialize(rootNode, 0, lines, baseOrigin, cfg.detail, fold);
   flushFold(lines, 0, fold);   // 残留计数
   if (truncated) lines.push(`… [还有更多节点未显示，快照已达节点上限 ${cfg.maxNodes} 被截断]`);
-  return { text: lines.join('\n') };
+  return { text: lines.join('\n'), skippedFrames };
+}
+
+/** 取 iframe 的同源 document。跨域时浏览器抛 SecurityError 或返回 null，统一返回 null。 */
+function safeFrameDoc(el: Element): Document | null {
+  try {
+    return (el as HTMLIFrameElement).contentDocument ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** 文本是否被父节点 name 覆盖（含 name 被截至 100 字符的前缀情形）。
