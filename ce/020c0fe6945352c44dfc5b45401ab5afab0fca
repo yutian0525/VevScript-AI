@@ -1,0 +1,33 @@
+content/snapshot/roles.ts
+  s_90855c46e5bd90::t_fae07a3b7c400e 32
+tests/content/snapshot/filter.test.ts
+  s_90855c46e5bd90::t_fb022cea1920b6 18-21
+content/snapshot/build.ts
+  s_90855c46e5bd90::t_1952a679aabb4c 46-48,53-55
+  s_90855c46e5bd90::t_06833d6575070d 152
+  s_90855c46e5bd90::t_c4cd283fcc4f4f 155-161
+  s_90855c46e5bd90::t_4ada4e895bf35e 119-125
+  s_90855c46e5bd90::t_05c10f9bf51917 153-154
+tests/content/snapshot/roles.test.ts
+  s_90855c46e5bd90::t_db149202ba956c 22-25
+content/snapshot/filter.ts
+  s_90855c46e5bd90::t_1866557eead364 19-21
+tests/content/snapshot/build.test.ts
+  s_90855c46e5bd90::t_bcf056e7b93260 321-372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ce020c0fe6945352c44dfc5b45401ab5afab0fca",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
