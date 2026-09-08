@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { buildSnapshot, resolveUid, resetUidMap, shortenUrl } from '../../../content/snapshot/build';
+import { buildSnapshot, ensureUid, resolveUid, resetUidMap, shortenUrl } from '../../../content/snapshot/build';
 
 // 反查某元素被分配的 uid（遍历 1..N）
 function resolveUidByElement(el: Element): number {
@@ -515,6 +515,64 @@ describe('快照组装', () => {
       expect(shortenUrl('http://localhost:3000/s?q=%E4%B8%AD%E6%96%87', 'http://localhost:3000')).toBe(
         '/s?q=%E4%B8%AD%E6%96%87',
       );
+    });
+  });
+
+  describe('ensureUid（已有则复用，没有则新分配）', () => {
+    it('ensureUid 对已在映射中的元素返回原 uid（不重新分配）', () => {
+      document.body.innerHTML = '<button id="b">x</button>';
+      buildSnapshot(document.body);
+      const el = document.getElementById('b')!;
+      const first = resolveUidByElement(el);
+      expect(ensureUid(el)).toBe(first);
+      expect(resolveUid(first)).toBe(el);
+    });
+
+    it('ensureUid 对未快照过的元素新分配 uid 且可反查', () => {
+      document.body.innerHTML = '<button>a</button>';
+      buildSnapshot(document.body);
+      const fresh = document.createElement('input');
+      document.body.appendChild(fresh);
+      const uid = ensureUid(fresh);
+      expect(resolveUid(uid)).toBe(fresh);
+    });
+
+    it('resetUidMap 后 ensureUid 走新序号空间（不得盲信反向残留的旧值）', () => {
+      // 区分力说明（false-guard 实测结论）：「reset 清反向表」这个操作本身在黑盒上
+      // 不可观测——残留能造成错误复用的唯一通道是 existing 命中且正向 deref===el，
+      // 而正向 (v→el) 存在必然意味着某次 assignUid/ensureUid 的同步 set 已把反向
+      // 刷成正确的 el→v，清不清等价。reset 后重快照的场景反而测不住（新快照把
+      // 反向重建了，破坏版与正确版行为一致）。
+      // 真正锁得住的是【双向校验】这条守卫：reset 清掉正向后，若有人把校验弱化成
+      // 「只信反向残留」，existing=2 会被直接复用（旧序号空间的值）。本用例抓住它。
+      document.body.innerHTML = '<button id="a">a</button>';
+      buildSnapshot(document.body); // root=1, a=2
+      const a = document.getElementById('a')!;
+      expect(ensureUid(a)).toBe(2);
+      resetUidMap();
+      const second = ensureUid(a);
+      expect(second).not.toBe(2);      // 不复用旧序号空间的值
+      expect(second).toBe(1);          // counter 已重来，新序号空间从 1 计
+      expect(resolveUid(second)).toBe(a);
+    });
+
+    it('同一元素多次 ensureUid 幂等', () => {
+      document.body.innerHTML = '<button id="b">x</button>';
+      const el = document.getElementById('b')!;
+      expect(ensureUid(el)).toBe(ensureUid(el));
+    });
+
+    it('ensureUid 与快照分配不撞号（快照后再 ensureUid 新元素，序号递增不重叠）', () => {
+      document.body.innerHTML = '<button>a</button><button>b</button>';
+      buildSnapshot(document.body);
+      const fresh = document.createElement('input');
+      document.body.appendChild(fresh);
+      const uid = ensureUid(fresh);
+      // uid 1 与 uid 2 已被快照占用，新分配必须避开
+      expect(uid).not.toBe(1);
+      expect(uid).not.toBe(2);
+      expect(resolveUid(1)).not.toBe(fresh);
+      expect(resolveUid(2)).not.toBe(fresh);
     });
   });
 });

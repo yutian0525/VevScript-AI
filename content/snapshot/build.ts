@@ -16,9 +16,17 @@ const DEFAULTS: Required<SnapshotOptions> = { maxChildrenPerLevel: 200, maxNodes
 
 let uidMap = new Map<number, WeakRef<Element>>();
 let uidCounter = 0;
+/** 反向表：元素 → uid。WeakMap 不阻碍 GC，用于 ensureUid 的 O(1) 复用判定。 */
+let uidReverse = new WeakMap<Element, number>();
 
 export function resetUidMap(): void {
   uidMap = new Map();
+  // 反向表同步作废：reset 意味着 uid 序号从头计数。当前实现下反向残留其实
+  // 不会造成错误复用——ensureUid 的双向校验要求正向 (v→el) 命中才放行，而
+  // 正向命中必然来自某次同步 set（反向已被刷新为正确值），残留清不清等价。
+  // 但整表作废是正确性卫生：防御未来出现绕过同步 set 的写入路径（例如某处
+  // 只写正向不写反向），残留旧值就会被盲信。两行换一个不变量，值得。
+  uidReverse = new WeakMap();
   uidCounter = 0;
 }
 
@@ -28,6 +36,21 @@ export function resolveUid(uid: number): Element | null {
   const el = ref.deref();
   if (!el || !el.isConnected) return null;
   return el;
+}
+
+/**
+ * 取元素的 uid：映射中已有则复用，否则新分配。
+ * 复用是关键——query_page 不能让上一次快照给 agent 的 uid 失效。
+ * 与快照内 assignUid 共享同一 uidCounter 与序号空间，故绝不撞号。
+ */
+export function ensureUid(el: Element): number {
+  const existing = uidReverse.get(el);
+  // 双向校验：反向表命中但正向表已被 resetUidMap 清空时不能复用（序号已重来）
+  if (existing != null && uidMap.get(existing)?.deref() === el) return existing;
+  uidCounter += 1;
+  uidMap.set(uidCounter, new WeakRef(el));
+  uidReverse.set(el, uidCounter);
+  return uidCounter;
 }
 
 export interface SnapNode {
@@ -57,6 +80,7 @@ export function buildSnapshot(
   function assignUid(el: Element): number {
     uidCounter += 1;
     uidMap.set(uidCounter, new WeakRef(el));
+    uidReverse.set(el, uidCounter);
     return uidCounter;
   }
 
