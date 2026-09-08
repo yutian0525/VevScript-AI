@@ -66,7 +66,10 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 export async function waitFor(cond: WaitCond, opts: WaitOpts = {}): Promise<{ waited: number }> {
   const timeout = opts.timeout ?? DEFAULT_TIMEOUT;
-  const interval = opts.interval ?? DEFAULT_INTERVAL;
+  // interval clamp 到 timeout：审查探针实录——AI 生成的脚本完全可能写出
+  // interval:5000 + timeout:3000 的组合，sleep 大于预算时首次超时判定被跳过，
+  // 实际等待可超出预算整整一个 interval（实测 timeout=500/interval=5000 超冲到 5001ms）。
+  const interval = Math.min(opts.interval ?? DEFAULT_INTERVAL, timeout);
   const start = Date.now();
 
   // idle 单独走：需要跨轮次保持「上次计数与其时间戳」。计数有变化（任何方向）

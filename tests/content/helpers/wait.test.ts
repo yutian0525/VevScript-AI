@@ -121,3 +121,17 @@ describe('waitFor（fake timers）', () => {
     await expect(p).resolves.toBeDefined();
   });
 });
+
+describe('waitFor 超时预算（interval clamp）', () => {
+  beforeEach(() => { resetUidMap(); document.body.innerHTML = ''; });
+
+  it('interval > timeout 时实际等待不超时预算一个 interval（clamp 到 timeout）', async () => {
+    // 审查探针实录：不 clamp 时 waitFor({idle}, {timeout:500, interval:5000}) 超冲到 5001ms
+    //（首次 sleep 跳过超时判定）。clamp 后第一次 sleep 即 interval=timeout=500，
+    // 超时错误应约在 500ms 抛出而非 5000ms。
+    const t0 = Date.now();
+    const err = await catchStepError(waitFor({ idle: 2000 }, { timeout: 500, interval: 5000 }));
+    expect(err.kind).toBe('timeout');
+    expect(Date.now() - t0).toBeLessThan(2000);
+  });
+});
