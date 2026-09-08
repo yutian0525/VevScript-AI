@@ -112,6 +112,18 @@ describe('query_page', () => {
     expect(d.frameNotice).toContain('跨域');
   });
 
+  it('命中 0 + 跨域帧时 frameNotice 也在（两分支形状对齐）', () => {
+    document.body.innerHTML = '<iframe id="f"></iframe>';
+    Object.defineProperty(document.getElementById('f')!, 'contentDocument', {
+      get() { throw new DOMException('blocked', 'SecurityError'); },
+    });
+    // 查一个哪都没有的元素 → 命中 0 分支；skippedFrames 透出且 frameNotice 不缺位
+    const d = ok(doQuery({ locator: { role: 'button', text: '不存在的按钮' } }));
+    expect(d.matched).toBe(0);
+    expect(d.skippedFrames).toBe(1);
+    expect(d.frameNotice).toContain('跨域');
+  });
+
   it('uidNotice 恒带（生命周期提示）', () => {
     document.body.innerHTML = '<button>x</button>';
     const d = ok(doQuery({ locator: { role: 'button' } }));

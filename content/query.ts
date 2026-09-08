@@ -53,6 +53,11 @@ export function doQuery(args: QueryArgs): ToolResult {
         matched: 0, returned: 0, lines: [], skippedFrames: res.skippedFrames,
         relaxed: diag.relaxed, nearMiss: diag.nearMiss, hint: diag.hint,
         uidNotice: UID_NOTICE,
+        // 与命中 N 分支形状对齐：SW 侧/渲染层按字段读 frameNotice 时，命中 0 + 跨域帧
+        // 场景不该静默缺这条（hint 文案覆盖了「在跨域 iframe 里」，但结构化字段另算）。
+        ...(res.skippedFrames > 0
+          ? { frameNotice: `${res.skippedFrames} 个跨域 iframe 无法访问，其中的元素不在结果内。` }
+          : {}),
       },
     };
   }
