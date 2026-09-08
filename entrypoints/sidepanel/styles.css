@@ -1097,6 +1097,51 @@ body {
 }
 .scripts-card__delbtn:hover { background: var(--line-strong); color: var(--warn); }
 
+/* ============ 敏感站点排除页（HookExclusionsPage） ============ */
+/* 名单条目 = 机器令牌行：mono pattern + 状态点 + 幽灵删除钮。
+   「默认」与「用户添加」用点色区分（信息编码，非装饰）：signal=出厂默认，ink-3=用户添加。 */
+.hx-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 4px 7px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.hx-row:last-child { border-bottom: none; }
+.hx-row:hover { background: var(--paper); }
+.hx-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--ink-3); }
+.hx-dot--default { background: var(--signal); }
+.hx-pattern {
+  font-family: var(--mono); font-size: 11.5px; color: var(--ink);
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hx-del {
+  border: none; background: transparent; color: var(--ink-3); cursor: pointer;
+  padding: 4px; border-radius: var(--r-sm); display: inline-flex; flex-shrink: 0;
+  transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.hx-del:hover { background: var(--err-wash); color: var(--err); }
+.hx-del:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+/* 名单容器：sunken 井 + 内部行自绘分隔（不用 .well——那是 JSON 代码井的 mono 预排版语境） */
+.hx-list {
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 3px 5px;
+  display: flex; flex-direction: column;
+}
+/* 说明块：「受限」语义的 warn-wash 面板，替代裸 hint 三连排 */
+.hx-notice {
+  font-size: 12px; color: var(--ink-2); line-height: 1.7;
+  background: var(--warn-wash);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 9px 12px;
+}
+/* 名单脚注：当前条数（mono 令牌声道） */
+.hx-count {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--ink-3);
+}
+
 /* switch 组件：40×22 轨道滑块，选中 signal 底白滑块 */
 .switch {
   position: relative; width: 40px; height: 22px; flex-shrink: 0;
