@@ -794,10 +794,15 @@ describe('locator 基础匹配', () => {
   });
 
   it('uid 失效（元素脱离 DOM）返回空数组', () => {
+    // 不能用 queryLocator(1)——uid 1 是根节点(body)，清空 innerHTML 只脱离子节点，
+    // body 自身仍 connected，resolveUid(1) 恒返回 body。必须取子元素的真实 uid。
     document.body.innerHTML = '<button>x</button>';
     buildSnapshot(document.body);
+    const btn = document.querySelector('button')!;
+    let uid = 0;
+    for (let i = 1; i < 200; i++) if (resolveUid(i) === btn) { uid = i; break; }
     document.body.innerHTML = '';
-    expect(queryLocator(1).elements).toEqual([]);
+    expect(queryLocator(uid).elements).toEqual([]);
   });
 
   it('role 过滤（口径与快照一致，复用 computeRole）', () => {
