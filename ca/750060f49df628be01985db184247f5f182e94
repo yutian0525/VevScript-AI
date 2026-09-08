@@ -1,0 +1,23 @@
+tests/content/locator.test.ts
+  s_90855c46e5bd90::t_7c21336156d549 131,135-137
+  s_90855c46e5bd90::t_19622cf55804d9 138
+content/locator.ts
+  s_90855c46e5bd90::t_5e2d3739e9d613 21-23
+  s_90855c46e5bd90::t_f5e2cd1679193f 46-47,49-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ca750060f49df628be01985db184247f5f182e94",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
