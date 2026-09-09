@@ -1,0 +1,131 @@
+.gitignore
+  s_9cadd1dd3f2f54::t_6fb93e5e8a79a6 7-8
+landing/src/styles.css
+  s_9cadd1dd3f2f54::t_990a476d6e9d16 981-998
+  s_9cadd1dd3f2f54::t_8ca869019efa8d 467-469
+  s_9cadd1dd3f2f54::t_f7fdd594436511 964,1002
+  s_9cadd1dd3f2f54::t_3f7c7f32673746 9-18
+  s_9cadd1dd3f2f54::t_6ae4bd6384b6d1 303-327
+  s_9cadd1dd3f2f54::t_b0b5be557239b3 651-653,656-658,661-664,666-671,675-684,686-701,1027
+  s_9cadd1dd3f2f54::t_36d82414a8eee0 1-8,19-43,47-57,60-62,65-71,73-91,93-98,100-163,165-167,169-190,200-207,209-228,232-233,236,240,243-244,248-271,274,280-281,284-285,288-290,292,294-302,404-406,408-415,417-433,437-445,447-448,450-466,470-488,490-506,508-519,521-523,525-546,548-564,567,570-595,597-610,612-636,638-650,1028-1049,1051-1062
+  s_9cadd1dd3f2f54::t_d62342374afea0 272-273,275-279,282-283,286,291,293
+  s_9cadd1dd3f2f54::t_e6717044a21b3a 1018-1020,1023-1024
+  s_9cadd1dd3f2f54::t_72ca2fd469ab69 191-199
+  s_9cadd1dd3f2f54::t_62071aa8c0f9ea 247,407,446,489,524,596,660
+  s_9cadd1dd3f2f54::t_3b2f7124b9643d 241,654-655,659
+  s_9cadd1dd3f2f54::t_f634aa8ee94a8a 331-332,354,358
+  s_9cadd1dd3f2f54::t_dc14f1c282add4 434-436
+  s_9cadd1dd3f2f54::t_deeb81054ef9a2 337-338
+  s_9cadd1dd3f2f54::t_ec99543095f674 229-231,238-239,242,245-246
+  s_9cadd1dd3f2f54::t_ca7d79788187f4 44-46,72,92,99,164,168,208,287,416,449,507,520,547,568-569,611,637,685,780,960,974,1007,1050
+  s_9cadd1dd3f2f54::t_00e22ed2472110 328-330,333-336,339-353,355-357,359-403
+  s_9cadd1dd3f2f54::t_c6e95dd317d836 58-59,63-64,234-235,237,665
+  s_9cadd1dd3f2f54::t_d8bc483c4a342a 672-674
+  s_9cadd1dd3f2f54::t_d2bba2d152021b 702-779,781-897,901-959,961-963,965-973,975-980,999-1001,1003-1006,1008-1017,1021-1022,1025-1026
+  s_9cadd1dd3f2f54::t_dc3616cfbd897b 565-566
+  s_9cadd1dd3f2f54::t_45d219761973be 898-900
+landing/src/components/DemoPanel.tsx
+  s_9cadd1dd3f2f54::t_1fe8f46bc45c34 1-14,16-19,21-37,39-138
+  s_9cadd1dd3f2f54::t_d426a50cf116bc 15,20,38
+landing/index.html
+  s_9cadd1dd3f2f54::t_5b2b4a90f4a025 13-17
+  s_9cadd1dd3f2f54::t_07f0176ddf4829 6,9
+  s_9cadd1dd3f2f54::t_f62d2c6c79b330 19-29
+  s_9cadd1dd3f2f54::t_526c7588b5a40e 1-5,7-8,10-12,18,30-35
+landing/package.json
+  s_9cadd1dd3f2f54::t_2420d4b4d60818 1-12,14-19,22-24
+  s_9cadd1dd3f2f54::t_38dae28b07f635 13
+  s_9cadd1dd3f2f54::t_63c3b9d93f6bb2 20-21
+landing/src/pages/Docs.tsx
+  s_9cadd1dd3f2f54::t_a86e8a24528ea1 1-15,17-25,27-61,63-84
+  s_9cadd1dd3f2f54::t_b9301eba4703fe 16,26,62
+landing/src/components/DemoPage.tsx
+  s_9cadd1dd3f2f54::t_87593e5d6e6e4c 69-80
+  s_9cadd1dd3f2f54::t_67738dcdcb97f9 34-36,53,61
+  s_9cadd1dd3f2f54::t_669829ed5a5083 1
+  s_9cadd1dd3f2f54::t_679c234c2277f6 2-33,37-52,54-60,62-68,81-87
+landing/src/components/Chrome.tsx
+  s_9cadd1dd3f2f54::t_d1da7fe0112e70 20-27,29
+  s_9cadd1dd3f2f54::t_9a5c1e59d7bf73 1-19,28,30-57
+landing/src/demo/script.ts
+  s_9cadd1dd3f2f54::t_bef0b1cdeab8af 12-13
+  s_9cadd1dd3f2f54::t_8d69d96b85b125 32-33,42,96,148,192
+  s_9cadd1dd3f2f54::t_0e3e005f9739d5 1-11,14-31,34-38,95,97-147,149-191,193-242
+  s_9cadd1dd3f2f54::t_85c171a3e7b3c9 39-41,43-94
+landing/src/components/Logo.tsx
+  s_9cadd1dd3f2f54::t_83ac01e48464ce 1-49
+tsconfig.json
+  s_9cadd1dd3f2f54::t_ba7842b3be4ad0 7-12
+landing/tsconfig.json
+  s_9cadd1dd3f2f54::t_b94396a05d58dc 1-17
+landing/src/demo/cards.ts
+  s_9cadd1dd3f2f54::t_3b2f7124b9643d 15,17
+  s_9cadd1dd3f2f54::t_fb1acc49004244 1-14,16,18-21
+landing/public/brand/logo-mark.svg
+  s_9cadd1dd3f2f54::t_684e97783729f3 1-14
+landing/src/components/Demo.tsx
+  s_9cadd1dd3f2f54::t_244d9922f5b26e 10
+  s_9cadd1dd3f2f54::t_0da9f92dac3205 48
+  s_9cadd1dd3f2f54::t_34cfacb57e547a 1-9,11-32,35-47,49-53
+  s_9cadd1dd3f2f54::t_d8bc483c4a342a 33-34
+landing/public/brand/logo-mono.svg
+  s_9cadd1dd3f2f54::t_684e97783729f3 1-14
+landing/public/brand/logo-lockup.svg
+  s_9cadd1dd3f2f54::t_684e97783729f3 1-23
+landing/src/demo/useRunner.ts
+  s_9cadd1dd3f2f54::t_782d3186d4870e 1-16,19-20,22-142,144-166
+  s_9cadd1dd3f2f54::t_a3e69609d4ec6f 17-18,21,143
+landing/src/pages/Home.tsx
+  s_9cadd1dd3f2f54::t_fd57a858273a20 118-119,354,361
+  s_9cadd1dd3f2f54::t_93126b02fe24cb 33-46
+  s_9cadd1dd3f2f54::t_b9301eba4703fe 155,243
+  s_9cadd1dd3f2f54::t_4839e525ecbc80 266-269
+  s_9cadd1dd3f2f54::t_3e28dcf46d0c7d 2-3,5-12,15,17,19-20,22-32,47-51
+  s_9cadd1dd3f2f54::t_2d4e1bbddd8f5b 16,18,21
+  s_9cadd1dd3f2f54::t_8ff4ecf620cfc2 93-117,120-147
+  s_9cadd1dd3f2f54::t_8bb34197950961 1
+  s_9cadd1dd3f2f54::t_84eeddaaebd245 348-353,355-360,362-377
+  s_9cadd1dd3f2f54::t_eea290f60fc167 187-189
+  s_9cadd1dd3f2f54::t_6c39b4dfe944a4 236,239-240
+  s_9cadd1dd3f2f54::t_9d2c975fdb2133 151-152
+  s_9cadd1dd3f2f54::t_a59e483085e1f3 52-57,59-92
+  s_9cadd1dd3f2f54::t_b7429fcbc9a17a 178-179
+  s_9cadd1dd3f2f54::t_8985adb7fe2224 148,172,204,227
+  s_9cadd1dd3f2f54::t_a9ec7aba1d0aa6 13-14
+  s_9cadd1dd3f2f54::t_9479449cae036c 270-274,276-287
+  s_9cadd1dd3f2f54::t_4f94a6dd34360f 315-347
+  s_9cadd1dd3f2f54::t_abde2cb7ae050a 58
+  s_9cadd1dd3f2f54::t_f0941c1020d4b2 4,163-165,218-220,381,385,389,393,416,421,426,431
+  s_9cadd1dd3f2f54::t_e67a694797a068 149-150,153-154,156-162,166-171,173-177,180-186,190-203,205-217,221-226,228-235,237-238,241-242,244-265,275,288-314,378-380,382-384,386-388,390-392,394-415,417-420,422-425,427-430,432-440
+landing/vite.config.ts
+  s_9cadd1dd3f2f54::t_ae83fc24a2fd64 1-10
+landing/src/App.tsx
+  s_9cadd1dd3f2f54::t_3677a97e5b5dea 1-18
+landing/src/router.ts
+  s_9cadd1dd3f2f54::t_affd6f0b7114de 1-28
+landing/README.md
+  s_9cadd1dd3f2f54::t_1464ee504e714a 3
+  s_9cadd1dd3f2f54::t_b657bc86aa7352 1-2,4-41
+landing/src/main.tsx
+  s_9cadd1dd3f2f54::t_c504a03bae416b 1-13
+landing/src/components/RichText.tsx
+  s_9cadd1dd3f2f54::t_ea84891888bec8 1-17
+landing/package-lock.json
+  s_9cadd1dd3f2f54::t_e84f7306dcc760 1-1258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e3d0b4f2bb8ad837a155428f0a8cb61ba810f9f5",
+  "prompts": {},
+  "sessions": {
+    "s_9cadd1dd3f2f54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a88ef34-0ed4-479f-bd85-15294b7ab5ab",
+        "model": "claude-opus-5"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
