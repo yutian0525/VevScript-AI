@@ -1,7 +1,6 @@
 // components/settings/ModelSettings.tsx
 // 模型设置（设置二级页）：AI 服务表单（原 SettingsView 内容平移，加 onBack 返回钮）。
 import { useEffect, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -39,15 +38,9 @@ export function ModelSettings({ onBack }: { onBack: () => void }) {
     });
   }, []);
 
-  const back = (
-    <Button variant="ghost" onClick={onBack} aria-label="返回">
-      <ArrowLeft size={14} />
-    </Button>
-  );
-
   if (!settings) {
     return (
-      <PageShell title="模型设置" eyebrow="MODEL" actions={back}>
+      <PageShell title="模型设置" eyebrow="MODEL" onBack={onBack}>
         <div className="hint">加载中…</div>
       </PageShell>
     );
@@ -89,7 +82,7 @@ export function ModelSettings({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <PageShell title="模型设置" eyebrow="MODEL" actions={back}>
+    <PageShell title="模型设置" eyebrow="MODEL" onBack={onBack}>
       <section className="section">
         <h2 className="section__title">AI 服务（OpenAI 兼容）</h2>
         <div className="field">
@@ -147,6 +140,19 @@ export function ModelSettings({ onBack }: { onBack: () => void }) {
           )}
         </div>
         <div className="field">
+          <label className="field-label">单轮回复上限（token，0 = 不下发）</label>
+          <Input
+            type="number"
+            min={0}
+            value={settings.agent.maxTokens}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setSettings({ ...settings, agent: { ...settings.agent, maxTokens: Number.isFinite(v) ? Math.max(0, v) : 0 } });
+            }}
+          />
+          <span className="hint">下发为 max_tokens。太小会让长回复/长工具参数被截断；置 0 则不下发该字段（走服务端默认）。</span>
+        </div>
+        <div className="field">
           <label className="field-label">超时时间（秒，0 = 不限时）</label>
           <Input
             type="number"
@@ -157,7 +163,7 @@ export function ModelSettings({ onBack }: { onBack: () => void }) {
               setSettings({ ...settings, agent: { ...settings.agent, llmTimeoutSec: Number.isFinite(v) ? Math.max(0, v) : 0 } });
             }}
           />
-          <span className="hint">静默窗口：连接后或流式输出中，超过该时长未收到任何数据即判定挂死并中止（0 = 关闭超时保护）。</span>
+          <span className="hint">静默窗口：连接后或流式输出中，超过该时长未收到任何数据即判定挂死并中止（0 = 不限时，仍有 5 分钟静默兜底防永久挂死）。</span>
         </div>
         <div className="field">
           <label className="field-label">失败重试次数（0 = 不重试）</label>

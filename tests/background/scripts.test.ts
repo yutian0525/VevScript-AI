@@ -4,9 +4,10 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import {
   computeRuntimeScriptIds, recomputeTab, recomputeAllTabs, dropTab, getRuntimeSnapshot,
   handleCreate, handleUpdate, handleDelete, handleSetEnabled, handleImport, handleGet, spliceLines,
+  appendText, replaceText,
   syncRegistrations, initScriptsModule, ENGINE_UNAVAILABLE_MSG,
 } from '../../background/scripts';
-import { listScripts, saveScript } from '../../storage/scripts';
+import { listScripts, saveScript, getScript } from '../../storage/scripts';
 // 注：new MessageRouter() 需要运行时值——type-only 导入会被擦除导致运行时 TypeError
 import { MessageRouter } from '../../background/router';
 import { setAlwaysAllow } from '../../background/gm-permissions';
@@ -128,6 +129,84 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     expect(() => spliceLines('a\nb\nc', 0, 2, 'X')).toThrow('非法行区间');
     expect(() => spliceLines('a\nb\nc', 3, 2, 'X')).toThrow('非法行区间');
     expect(() => spliceLines('a\nb\nc', 2, 9, 'X')).toThrow('越界');
+  });
+
+  it('appendText：追加到末尾；原文无尾换行时补一个', () => {
+    expect(appendText('a\nb\n', 'c();')).toBe('a\nb\nc();');
+    expect(appendText('a\nb', 'c();')).toBe('a\nb\nc();');
+    expect(appendText('', 'c();')).toBe('c();');
+    expect(() => appendText('a\n', '')).toThrow('append 不能为空');
+  });
+
+  it('replaceText：命中 1 处替换；未命中/多处未传 all 报错；all:true 全替', () => {
+    expect(replaceText('a\nfoo\nb', 'foo', 'bar')).toBe('a\nbar\nb');
+
+    expect(() => replaceText('a\nb', 'zzz', 'x')).toThrow('未找到');
+
+    // 命中 2 处（第 2、4 行）未传 all → 报错并列出行号
+    expect(() => replaceText('a\nfoo\nb\nfoo', 'foo', 'x')).toThrow(/命中 2 处.*第 2、4 行/);
+
+    expect(replaceText('a\nfoo\nb\nfoo', 'foo', 'x', true)).toBe('a\nx\nb\nx');
+    expect(() => replaceText('a\n', '', 'x')).toThrow('不能为空');
+  });
+
+  it('replaceText：old 含正则元字符按字面量处理', () => {
+    expect(replaceText('if (a.b) { c(); }', 'a.b', 'a.c')).toBe('if (a.c) { c(); }');
+    expect(replaceText('x = arr[0] * 2;', 'arr[0] * 2', 'n')).toBe('x = n;');
+    // 字面量语义：'a.b' 不会匹配到 'axb'
+    expect(() => replaceText('axb', 'a.b', 'z')).toThrow('未找到');
+  });
+
+  it('handleUpdate：append 追加后重解析投影字段', async () => {
+    installFakeUserScripts();
+    const { script } = await handleCreate({ text: mkText('(function () {') });
+    const next = await handleUpdate(script.id, { append: '  f();\n})();' });
+    expect(next.text.endsWith('(function () {\n  f();\n})();')).toBe(true);
+    expect(next.code).toContain('f();');
+    expect(next.name).toBe('n');
+  });
+
+  it('handleUpdate：replace 精确替换；old 不唯一时报错且不落库', async () => {
+    installFakeUserScripts();
+    const { script } = await handleCreate({ text: mkText('f();\ng();\nf();') });
+    await expect(handleUpdate(script.id, { replace: { old: 'f();', new: 'h();' } }))
+      .rejects.toThrow('命中 2 处');
+    // 报错后原文未变
+    expect((await getScript(script.id))!.text).toBe(mkText('f();\ng();\nf();'));
+
+    const next = await handleUpdate(script.id, { replace: { old: 'g();', new: 'h();' } });
+    expect(next.text).toBe(mkText('f();\nh();\nf();'));
+  });
+
+  it('handleUpdate：文本分支互斥 —— 同传两支报错，列出分支名', async () => {
+    installFakeUserScripts();
+    const { script } = await handleCreate({ text: mkText('f();') });
+    await expect(handleUpdate(script.id, { text: mkText('g();'), append: 'x();' }))
+      .rejects.toThrow(/只能传一个.*text.*append/);
+    await expect(handleUpdate(script.id, { append: 'x();', replace: { old: 'f', new: 'g' } }))
+      .rejects.toThrow('只能传一个');
+    // enabled 可与文本分支同传（不冲突）
+    const next = await handleUpdate(script.id, { append: 'x();', enabled: false });
+    expect(next.enabled).toBe(false);
+    expect(next.text).toContain('x();');
+  });
+
+  it('handleUpdate：空 patch 报错文案含四支分支名', async () => {
+    installFakeUserScripts();
+    const { script } = await handleCreate({ text: mkText('f();') });
+    await expect(handleUpdate(script.id, {})).rejects.toThrow(/text.*edit.*append.*replace/);
+  });
+
+  it('handleUpdate：分支字段为 null（模型 JSON 透传）→ 报错且不落库', async () => {
+    installFakeUserScripts();
+    const { script } = await handleCreate({ text: mkText('f();') });
+    // { append: null } → null 不算分支（!= null 过滤）+ enabled 缺省 → 「至少包含」报错，不静默追加 "null"
+    await expect(handleUpdate(script.id, { append: null as never })).rejects.toThrow('patch 至少包含');
+    // replace 分支对象本身非 null → 进分支集，old 非字符串由 replaceText 守卫报错
+    await expect(handleUpdate(script.id, { replace: { old: undefined as never, new: 'x' } }))
+      .rejects.toThrow('replace.old 不能为空');
+    // 报错后原文未变
+    expect((await getScript(script.id))!.text).toBe(mkText('f();'));
   });
 
   it('handleCreate：解析投影落库 + register（code/matches/runAt/world）', async () => {
@@ -268,11 +347,11 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
 
   it('handleImport：原文存 text + TM 元数据解析 + unsupported grant 警告透传', async () => {
     installFakeUserScripts();
-    const src = '// ==UserScript==\n// @name imp\n// @match https://i.com/*\n// @grant GM_log\n// @grant GM_download\n// ==/UserScript==\nlog();';
+    const src = '// ==UserScript==\n// @name imp\n// @match https://i.com/*\n// @grant GM_log\n// @grant GM_fakeApi\n// ==/UserScript==\nlog();';
     const { script, warnings } = await handleImport(src, 'imp.user.js');
     expect(script.text).toBe(src);
     expect(script).toMatchObject({ name: 'imp', enabled: true, source: 'import', matches: ['https://i.com/*'] });
-    expect(warnings.some((w) => w.includes('GM_download'))).toBe(true);
+    expect(warnings.some((w) => w.includes('GM_fakeApi'))).toBe(true);
   });
 
   it('handleImport：@include pattern 形式并入 matches 生效', async () => {
@@ -282,7 +361,7 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     expect(script.matches).toEqual(['https://i.com/*']);
   });
 
-  it('initScriptsModule：挂 11 个 handler + tabs 监听 + 启动 sync', async () => {
+  it('initScriptsModule：挂 13 个 handler + tabs 监听 + 启动 sync', async () => {
     const api = installFakeUserScripts();
     const router = new MessageRouter();
     vi.spyOn(browser.tabs.onUpdated, 'addListener').mockImplementation(() => {});
@@ -292,8 +371,8 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     // 空库时启动 sync 无缺失注册可补（register 不会被调）；getScripts 仅由启动自愈 sync 触达
     await vi.waitFor(() => expect(api.getScripts).toHaveBeenCalled());
 
-    // 11 个 handler 全部有注册（未注册类型才会报 no handler；SCRIPTS_GET 无参走 handleGet throw → router 兜底 ok:false）
-    for (const type of ['SCRIPTS_LIST', 'SCRIPTS_GET', 'SCRIPTS_CREATE', 'SCRIPTS_UPDATE', 'SCRIPTS_DELETE', 'SCRIPTS_SET_ENABLED', 'SCRIPTS_IMPORT', 'SCRIPTS_GET_RUNTIME', 'SCRIPTS_GET_RUNTIME_FOR_TAB', 'SCRIPTS_GET_PERMISSIONS', 'SCRIPTS_REVOKE_PERMISSION']) {
+    // 13 个 handler + 更新编排 3 个（SCRIPTS_IMPORT_URL/CHECK_UPDATE/APPLY_UPDATE 见下方独立用例）全部有注册（未注册类型才会报 no handler；SCRIPTS_GET 无参走 handleGet throw → router 兜底 ok:false）
+    for (const type of ['SCRIPTS_LIST', 'SCRIPTS_GET', 'SCRIPTS_CREATE', 'SCRIPTS_UPDATE', 'SCRIPTS_DELETE', 'SCRIPTS_SET_ENABLED', 'SCRIPTS_IMPORT', 'SCRIPTS_GET_RUNTIME', 'SCRIPTS_GET_RUNTIME_FOR_TAB', 'SCRIPTS_GET_PERMISSIONS', 'SCRIPTS_REVOKE_PERMISSION', 'SCRIPTS_GET_LLM_TIER', 'SCRIPTS_SET_LLM_TIER']) {
       const r = await router.dispatch({ type } as { type: string });
       expect(r).not.toMatchObject({ error: expect.stringContaining('no handler') });
     }
@@ -377,7 +456,7 @@ describe('wrapper 接线（Phase 5）', () => {
 
   it('handleCreate 后预取 @require（fetch mock 落缓存，getResourceBundle 可取）', async () => {
     installFakeUserScripts();
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, headers: new Map(), text: async () => 'lib();' })));
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, headers: new Map([['content-type', 'text/javascript']]), text: async () => 'lib();' })));
     const src = '// ==UserScript==\n// @name t\n// @match https://a.com/*\n// @grant GM_getValue\n// @require https://cdn/lib.js\n// ==/UserScript==\nx();';
     const { script } = await handleCreate({ text: src });
     expect(script.meta?.requires).toEqual(['https://cdn/lib.js']);
@@ -474,5 +553,36 @@ describe('更新接线（spec §2）', () => {
     await setState(script.id);
     await handleDelete(script.id);
     expect((await readUpdateStates())[script.id]).toBeUndefined();
+  });
+});
+
+describe('注册产物：@resource 的 GM_getResourceURL 快照', () => {
+  beforeEach(() => {
+    fakeBrowser.reset();
+    vi.restoreAllMocks();
+  });
+
+  it('文本 @resource → wrapper 内嵌 data: URL', async () => {
+    // 预取：文本资源落缓存（fetchResource 读 resp.headers.get('content-type')，Map 形状即够）
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, status: 200,
+      headers: new Map([['content-type', 'text/css']]),
+      text: async () => 'body{color:red}',
+    })));
+    const { prefetchResources } = await import('../../background/gm-resources');
+    const api = installFakeUserScripts();
+    const s = {
+      id: 'r1', text: '', name: 't', enabled: true, matches: ['https://a.com/*'],
+      code: 'x();', runAt: 'document_idle', world: 'USER_SCRIPT', source: 'user', createdAt: 1, updatedAt: 1,
+      meta: { grants: ['GM_getResourceURL'], resources: { theme: 'https://cdn/t.css' } },
+    } as never;
+    await saveScript(s);
+    await prefetchResources(s);
+    await syncRegistrations();
+    // wrapper 产物里 __resourceUrls 快照必须带上 theme 的 data: URL（缺省 {} 则 GM_getResourceURL 落空）
+    const reg = api.register.mock.calls[0]![0] as Array<{ js: Array<{ code: string }> }>;
+    const captured = reg[0]!.js[0]!.code;
+    expect(captured).toContain('__resourceUrls = {"theme":"data:text/css');
+    vi.unstubAllGlobals();
   });
 });

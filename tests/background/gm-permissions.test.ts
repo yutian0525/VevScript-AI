@@ -8,6 +8,8 @@ import {
   removeScriptPermissions,
   listAllowedHosts,
   revokeHost,
+  getLlmTier,
+  setLlmTier,
 } from '../../background/gm-permissions';
 
 describe('gm-permissions', () => {
@@ -53,5 +55,31 @@ describe('listAllowedHosts / revokeHost', () => {
     const raw = await storage.getItem<Record<string, unknown>>('local:gm:permissions');
     expect(raw && 's1' in raw).toBe(false); // s1 的 key 已不存在（非留空对象）
     expect(raw && 's2' in raw).toBe(true); // 其他脚本不受影响
+  });
+});
+
+describe('llm 权限档', () => {
+  beforeEach(() => fakeBrowser.reset());
+
+  it('缺省 ask；set/get 往返', async () => {
+    expect(await getLlmTier('s1')).toBe('ask'); // 无记录 → 默认每次询问
+    await setLlmTier('s1', 'allow');
+    expect(await getLlmTier('s1')).toBe('allow');
+    await setLlmTier('s1', 'deny');
+    expect(await getLlmTier('s1')).toBe('deny');
+    expect(await getLlmTier('s2')).toBe('ask'); // 其它脚本不受影响
+  });
+
+  it('与 cors 共存：setLlmTier 不清 alwaysAllow，反之亦然', async () => {
+    await setAlwaysAllow('s1', 'a.com');
+    await setLlmTier('s1', 'allow');
+    expect(await getAlwaysAllow('s1', 'a.com')).toBe(true);
+    expect(await getLlmTier('s1')).toBe('allow');
+  });
+
+  it('removeScriptPermissions 连 llm 档一起删', async () => {
+    await setLlmTier('s1', 'deny');
+    await removeScriptPermissions('s1');
+    expect(await getLlmTier('s1')).toBe('ask');
   });
 });

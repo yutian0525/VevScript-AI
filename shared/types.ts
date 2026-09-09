@@ -99,6 +99,10 @@ export interface ScriptSummary {
   grantSupported: string[];
   /** 不支持的 grant（列表页黄色警示） */
   grantUnsupported: string[];
+  /** 原文总行数（text.split('\n').length），供模型判断读取策略（spec §4.3） */
+  lines: number;
+  /** 原文字符数 */
+  bytes: number;
 }
 
 // ---------- Skill 系统（spec：skills-and-slash-commands）----------
@@ -128,6 +132,21 @@ export interface SkillSummary {
   description: string;
   enabled: boolean;
   builtin?: boolean;
+  updatedAt: number;
+}
+
+// ---------- Agent 记忆（跨会话长期记忆，spec §3）----------
+
+export interface MemoryEntry {
+  /** nanoid(8)：短 id 省注入 token，且足够唯一（本地 ≤100 条） */
+  id: string;
+  /** 记忆正文，≤500 字符 */
+  content: string;
+  /** 站点作用域（Chrome match pattern）。空数组 = 全局记忆，始终注入 */
+  matches: string[];
+  /** 来源：AI 自主记录 / 用户手工添加。事实记录，不因后续编辑而改写 */
+  source: 'ai' | 'user';
+  createdAt: number;
   updatedAt: number;
 }
 

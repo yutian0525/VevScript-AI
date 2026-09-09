@@ -9,7 +9,7 @@ function mkSummary(over: Partial<ScriptSummary> = {}): ScriptSummary {
     id: 's1', name: '去广告', matches: ['https://a.com/*'], enabled: true,
     source: 'user', runAt: 'document_idle', world: 'USER_SCRIPT',
     updatedAt: 1, hasGrants: false, errorCount: 0, hasRequires: false,
-    grantSupported: [], grantUnsupported: [], ...over,
+    grantSupported: [], grantUnsupported: [], lines: 1, bytes: 1, ...over,
   };
 }
 

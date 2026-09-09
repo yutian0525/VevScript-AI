@@ -3,10 +3,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { MessageRouter } from '../../background/router';
-import { initGmApi } from '../../background/gm-api';
-import { listAlwaysAllow, setAlwaysAllow } from '../../background/gm-permissions';
+import {
+  initGmApi, handleGmCall, __setLlmProviderFactory, __resetLlmSession,
+} from '../../background/gm-api';
+import { __resetConfirmQueue } from '../../background/confirm-queue';
+import { listAlwaysAllow, setAlwaysAllow, setLlmTier } from '../../background/gm-permissions';
 import { saveScript } from '../../storage/scripts';
 import type { UserScript } from '../../shared/types';
+import type { StreamEvent } from '../../agent/provider/types';
 
 // fakeBrowser 未内置 notifications API——initGmApi 挂 onClicked/onClosed 监听需要它
 (browser as unknown as Record<string, unknown>).notifications = { create: vi.fn(async () => 'id') };
@@ -65,5 +69,47 @@ describe('gm-debug handlers', () => {
 
   it('listAlwaysAllow：无记录返回空', async () => {
     expect(await listAlwaysAllow('nope')).toEqual([]);
+  });
+});
+
+describe('LlmChat 直调（调试台）', () => {
+  beforeEach(() => {
+    fakeBrowser.reset(); vi.restoreAllMocks(); __resetConfirmQueue(); __resetLlmSession();
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({} as never);
+  });
+
+  it('无 chan 参数：chunk 不下发、终值照常返回（直调 = 非流式语义）', async () => {
+    const { saveSettings } = await import('../../storage/settings');
+    await saveSettings({ provider: { baseUrl: 'https://api.test/v1', apiKey: 'k', model: 'm' } });
+    await saveScript(mkScript({ meta: { grants: ['GM_llmChat'], connects: ['api.a.com'] } }));
+    await setLlmTier('s1', 'allow');
+    const tabSpy = vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(undefined as never);
+    // 宏任务时序 + 双 delta：与 gm-api.test.ts 的 fake 对齐（防微任务早于 await 续体掩盖时序 bug）
+    __setLlmProviderFactory(() => ({
+      streamChat: (_p: unknown, onEvent: (ev: StreamEvent) => void) => {
+        setTimeout(() => {
+          onEvent({ type: 'text-delta', text: '直' });
+          onEvent({ type: 'text-delta', text: '调' });
+          onEvent({ type: 'message-done' });
+        }, 0);
+        return { cancel: () => {} };
+      },
+    }));
+    // 直调视角（走 handleGmCall，无 wrapper）：params[1] 无 chan → enqueueChunk 静默，仅回终值
+    const r = await handleGmCall(
+      { scriptId: 's1', api: 'LlmChat', reqId: 1, params: [{ messages: [{ role: 'user', content: 'hi' }] }] },
+      { tab: { id: 1, url: 'https://a.com/' } } as never,
+    );
+    expect(r).toMatchObject({ ok: true, data: { text: '直调' } });
+    expect(tabSpy.mock.calls.filter((c) => (c[1] as { kind?: string })?.kind === 'LLM_CHUNK')).toHaveLength(0);
+  });
+
+  it('API_TO_GRANT：LlmChat 映射 GM_llmChat（未 grant → permission not requested: LlmChat）', async () => {
+    await saveScript(mkScript()); // 无 GM_llmChat grant
+    const r = await handleGmCall(
+      { scriptId: 's1', api: 'LlmChat', reqId: 1, params: [{ messages: [{ role: 'user', content: 'x' }] }] },
+      { tab: { id: 1, url: 'https://a.com/' } } as never,
+    );
+    expect(r).toMatchObject({ ok: false, error: expect.stringContaining('permission not requested: LlmChat') });
   });
 });

@@ -4,9 +4,11 @@
 import { useEffect, useState } from 'react';
 import { storage } from 'wxt/utils/storage';
 import { PanelLeft, ScrollText, SquarePen } from 'lucide-react';
+import { Tooltip } from '../ui/Tooltip';
 import { openScriptTab, sendScriptsRequest } from '../../stores/scripts';
 import type { GmMenuEntry, GmErrorItem } from '../../stores/scripts';
 import type { ScriptsRuntimeEntry } from '../../shared/messages';
+import { matchUrl } from '../../shared/match-pattern';
 
 interface RunRow {
   scriptId: string;
@@ -15,7 +17,7 @@ interface RunRow {
 }
 
 /** 当前活动标签：currentWindow 取不到时退化到 lastFocusedWindow（对齐 stores/scripts refresh 惯例）。 */
-async function activeTab(): Promise<{ id?: number } | undefined> {
+async function activeTab(): Promise<{ id?: number; url?: string } | undefined> {
   let [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   if (!tab) [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true });
   return tab;
@@ -28,42 +30,51 @@ export function PopupApp() {
   // 启停开关状态：冷读页不订阅广播，本地 optimistic 覆盖（undefined = 未动过，用默认开）
   const [enabledIds, setEnabledIds] = useState<Map<string, boolean>>(new Map());
 
-  // 冷读：当前 tab 运行条目 + 菜单快照（短命页面不订阅广播）
+  // 冷读：当前 tab 运行条目 + 菜单快照。挂载拉一次；打开期间订阅 SCRIPTS_CHANGED 重拉
+  // （别处启停/删/改后 popup 仍开着时同步——不再靠重开）。
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const load = async () => {
       try {
         const tab = await activeTab();
         const tabId = tab?.id;
+        const url = tab?.url ?? '';
         const rtResp = await sendScriptsRequest<{ ok: boolean; data?: { entry: ScriptsRuntimeEntry | null }; error?: string }>({
           type: 'SCRIPTS_GET_RUNTIME_FOR_TAB', tabId: tabId ?? -1,
         });
         const gmResp = await sendScriptsRequest<{ ok: boolean; data?: { menus: GmMenuEntry[]; errors: Record<string, GmErrorItem[]> }; error?: string }>({
           type: 'SCRIPTS_GET_GM_STATE',
         });
-        const listResp = await sendScriptsRequest<{ ok: boolean; data?: { scripts: Array<{ id: string; name: string; enabled: boolean }> }; error?: string }>({
+        const listResp = await sendScriptsRequest<{ ok: boolean; data?: { scripts: Array<{ id: string; name: string; enabled: boolean; matches?: string[] }> }; error?: string }>({
           type: 'SCRIPTS_LIST',
         });
         if (cancelled) return;
         const entry = rtResp.data?.entry ?? null;
         const listed = listResp.data?.scripts ?? [];
-        const names = new Map(listed.map((s) => [s.id, s.name]));
-        const enabled = new Map(listed.map((s) => [s.id, s.enabled]));
-        setEnabledIds(enabled);
+        setEnabledIds(new Map(listed.map((s) => [s.id, s.enabled])));
         const menus = gmResp.data?.menus ?? [];
-        const runRows: RunRow[] = (entry?.scriptIds ?? []).map((scriptId) => ({
-          scriptId,
-          name: names.get(scriptId) ?? scriptId,
-          commands: menus.find((m) => m.scriptId === scriptId)?.commands ?? [],
-        }));
+        // 行集合 = 已注入（运行中）∪ 匹配当前页 URL 的脚本（含被禁用的——供一键启用）
+        const injected = new Set(entry?.scriptIds ?? []);
+        const runRows: RunRow[] = listed
+          .filter((s) => injected.has(s.id) || matchUrl(s.matches ?? [], url))
+          .map((s) => ({
+            scriptId: s.id,
+            name: s.name,
+            commands: menus.find((m) => m.scriptId === s.id)?.commands ?? [],
+          }));
         setRows(runRows);
       } catch {
         if (!cancelled) setRows([]);
       } finally {
         if (!cancelled) setLoaded(true);
       }
-    })();
-    return () => { cancelled = true; };
+    };
+    void load();
+    const onMessage = (msg: unknown) => {
+      if ((msg as { type?: string })?.type === 'SCRIPTS_CHANGED') void load();
+    };
+    browser.runtime.onMessage.addListener(onMessage);
+    return () => { cancelled = true; browser.runtime.onMessage.removeListener(onMessage); };
   }, []);
 
   async function openSidepanel(): Promise<void> {
@@ -106,51 +117,49 @@ export function PopupApp() {
         </button>
       </div>
       <div className="popup__run">
-        <div className="popup__runhead">
-          <span className={`scripts-run__dot${rows.length > 0 ? '' : ' scripts-run__dot--off'}`} aria-hidden />
-          <span className="mono">RUNNING · {rows.length}</span>
-        </div>
         {!loaded ? (
-          <div className="popup__empty">加载中…</div>
+          <div className="popup__empty popup__empty--center">加载中…</div>
         ) : rows.length === 0 ? (
-          <div className="popup__empty">无脚本在此页运行</div>
+          <div className="popup__empty popup__empty--center">无脚本在此页运行</div>
         ) : (
           rows.map((row) => (
             <div key={row.scriptId} className="popup__runwrap">
-              <div
-                className="popup__runrow"
-                role="button"
-                tabIndex={0}
-                title={row.commands.length === 0 ? '无菜单命令' : row.commands.length === 1 ? `执行：${row.commands[0]?.name ?? ''}` : '展开命令列表'}
-                onClick={() => onRowClick(row)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRowClick(row); } }}
-              >
-                <span className="popup__runname">{row.name}</span>
-                <button
-                  type="button"
-                  className="popup__editbtn"
-                  aria-label={`编辑 ${row.name}`}
-                  title="编辑脚本"
-                  onClick={(e) => { e.stopPropagation(); openScriptTab(row.scriptId); }}
+              <Tooltip label={row.commands.length === 0 ? '无菜单命令' : row.commands.length === 1 ? `执行：${row.commands[0]?.name ?? ''}` : '展开命令列表'}>
+                <div
+                  className="popup__runrow"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onRowClick(row)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRowClick(row); } }}
                 >
-                  <SquarePen size={13} aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={enabledIds.get(row.scriptId) ?? true}
-                  aria-label={`${enabledIds.get(row.scriptId) ?? true ? '禁用' : '启用'} ${row.name}`}
-                  className={`switch${enabledIds.get(row.scriptId) ?? true ? ' switch--on' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const next = !(enabledIds.get(row.scriptId) ?? true);
-                    setEnabledIds((prev) => new Map(prev).set(row.scriptId, next));
-                    void setEnabled(row.scriptId, next);
-                  }}
-                >
-                  <span className="switch__thumb" aria-hidden />
-                </button>
-              </div>
+                  <span className="popup__runname">{row.name}</span>
+                  <Tooltip label="编辑脚本">
+                    <button
+                      type="button"
+                      className="popup__editbtn"
+                      aria-label={`编辑 ${row.name}`}
+                      onClick={(e) => { e.stopPropagation(); openScriptTab(row.scriptId); }}
+                    >
+                      <SquarePen size={13} aria-hidden />
+                    </button>
+                  </Tooltip>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={enabledIds.get(row.scriptId) ?? true}
+                    aria-label={`${enabledIds.get(row.scriptId) ?? true ? '禁用' : '启用'} ${row.name}`}
+                    className={`switch${enabledIds.get(row.scriptId) ?? true ? ' switch--on' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const next = !(enabledIds.get(row.scriptId) ?? true);
+                      setEnabledIds((prev) => new Map(prev).set(row.scriptId, next));
+                      void setEnabled(row.scriptId, next);
+                    }}
+                  >
+                    <span className="switch__thumb" aria-hidden />
+                  </button>
+                </div>
+              </Tooltip>
               {expanded === row.scriptId && row.commands.length > 1 && (
                 <div className="popup__cmdlist">
                   {row.commands.map((c) => (

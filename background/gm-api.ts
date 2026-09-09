@@ -8,9 +8,17 @@ import { storage } from 'wxt/utils/storage';
 import { getScript } from '../storage/scripts';
 import { matchUrl } from '../shared/match-pattern';
 import { bridgeTokensForUrl } from './gm-token';
+import { getTabData, saveTabData, getAllTabData, cleanupTabData } from './gm-tab-store';
 import { classifyGrants } from '../shared/gm-apis';
 import { enqueueConfirm } from './confirm-queue';
 import { createRequest, type CsResponse, type GmDebugInfoData } from '../shared/messages';
+import { OpenAICompatProvider } from '../agent/provider/openai-compat';
+import type { ChatMessage, ContentPart, StreamEvent } from '../agent/provider/types';
+import { getSettings } from '../storage/settings';
+import { getLlmTier } from './gm-permissions';
+import { listCookies, setCookie, deleteCookie, cookieTargetUrl, type CookieDetails } from './gm-cookie';
+import { runDownload, type DownloadDetails } from './gm-download';
+import { initUrlChange } from './gm-urlchange';
 
 export interface GmErrorEntry {
   at: number;
@@ -48,11 +56,26 @@ const API_TO_GRANT: Record<string, string> = {
   CloseTab: 'GM_openInTab', // close 是 GM_openInTab 返回句柄上的方法，共用同一 grant
   XmlHttpRequest: 'GM_xmlhttpRequest',
   AbortRequest: 'GM_xmlhttpRequest',
+  LlmChat: 'GM_llmChat',
+  SetValues: 'GM_setValues',
+  DeleteValues: 'GM_deleteValues',
+  UnregisterMenu: 'GM_unregisterMenuCommand',
+  CloseNotification: 'GM_closeNotification',
+  UpdateNotification: 'GM_updateNotification',
+  GetTab: 'GM_getTab',
+  SaveTab: 'GM_saveTab',
+  GetTabs: 'GM_getTabs',
+  Download: 'GM_download',
+  CookieList: 'GM_cookie',
+  CookieSet: 'GM_cookie',
+  CookieDelete: 'GM_cookie',
+  WindowClose: 'window.close',
+  WindowFocus: 'window.focus',
 };
 
 // 框架内部通道（错误上报）与值存储不受 @grant 限制：值 API 的 grant 已在 wrapper 侧安装期把关，
 // SW 只当存储；错误上报是框架自身调用（spec §8）。
-const GRANT_EXEMPT = new Set(['ReportError', 'SetValue', 'GetValue', 'DeleteValue', 'ListValues']);
+const GRANT_EXEMPT = new Set(['ReportError', 'SetValue', 'GetValue', 'DeleteValue', 'ListValues', 'SetValues', 'DeleteValues', 'GetValues']);
 
 // GM_notification 兜底图标（Chrome basic 通知要求非空 iconUrl，且只认扩展内真实文件路径——
 // data: URI 会报 "Unable to download all specified images"，资产由 public/gm-notif.png 提供）
@@ -151,6 +174,7 @@ export async function cleanupScriptState(scriptId: string): Promise<void> {
   menuTable.delete(scriptId);
   for (const [id, t] of notifTargets) if (t.scriptId === scriptId) notifTargets.delete(id);
   await storage.removeItem(valuesKey(scriptId));
+  await cleanupTabData(scriptId);
   broadcastMenus();
 }
 
@@ -353,6 +377,293 @@ async function doXmlHttpRequest(
   }
 }
 
+// ---- GM_cookie 实现（chrome.cookies 透传 + @connect 门控，spec §5.2）----
+
+async function doCookie(
+  scriptId: string, op: 'list' | 'set' | 'delete', params: unknown[], sender: Sender,
+): Promise<{ ok: true; data?: unknown } | { ok: false; error: string }> {
+  const details = (params[0] ?? {}) as CookieDetails;
+  const script = await getScript(scriptId);
+  if (!script) return { ok: false, error: '脚本不存在' };
+  const targetUrl = cookieTargetUrl(details);
+  if (!targetUrl) return { ok: false, error: 'GM_cookie 缺少 url 或 domain' };
+  const pageUrl = sender?.tab?.url ?? '';
+  const decision = await matchConnectWithPermissions(script.meta?.connects ?? [], targetUrl, pageUrl, scriptId);
+  if (decision === ConnectDecision.CONFIRM) {
+    const host = hostOf(targetUrl);
+    const choice = await enqueueConfirm({
+      kind: 'connect',
+      title: 'Cookie 访问确认',
+      message: `脚本「${script.name}」请求读写 cookie`,
+      rows: [
+        { label: '主机', value: host, mono: true },
+        { label: '操作', value: op, mono: true },
+        { label: '来源', value: pageUrl || '（未知）', mono: true },
+      ],
+      actions: [
+        { decision: 'allow-once', label: '允许一次', variant: 'primary' },
+        { decision: 'always', label: '总是允许' },
+        { decision: 'deny', label: '拒绝', variant: 'danger', countdown: true },
+      ],
+      timeoutMs: 60_000,
+    });
+    if (choice === 'always') {
+      const { setAlwaysAllow } = await import('./gm-permissions');
+      await setAlwaysAllow(scriptId, host);
+    } else if (choice !== 'allow-once') {
+      return { ok: false, error: 'permission denied（用户拒绝或超时；可加 @connect 或在确认页批准）' };
+    }
+  } else if (decision === ConnectDecision.DENY) {
+    return { ok: false, error: `Refused：cookie 主机「${hostOf(targetUrl)}」不在 @connect 列表` };
+  }
+  try {
+    if (op === 'list') return { ok: true, data: await listCookies(details) };
+    if (op === 'set') { await setCookie(details); return { ok: true, data: null }; }
+    await deleteCookie(details);
+    return { ok: true, data: null };
+  } catch (e) {
+    return { ok: false, error: `GM_cookie.${op} 失败：${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
+// ---- GM_download 实现（chrome.downloads + @connect 门控，spec §5.3）----
+
+async function doDownload(
+  scriptId: string, params: unknown[], sender: Sender,
+): Promise<{ ok: true; data?: unknown } | { ok: false; error: string }> {
+  const details = (params[0] ?? {}) as DownloadDetails;
+  if (!details.url) return { ok: false, error: 'GM_download 缺少 url' };
+  const script = await getScript(scriptId);
+  if (!script) return { ok: false, error: '脚本不存在' };
+  const pageUrl = sender?.tab?.url ?? '';
+  const decision = await matchConnectWithPermissions(script.meta?.connects ?? [], details.url, pageUrl, scriptId);
+  if (decision === ConnectDecision.CONFIRM) {
+    const host = hostOf(details.url);
+    const choice = await enqueueConfirm({
+      kind: 'connect',
+      title: '下载确认',
+      message: `脚本「${script.name}」请求下载文件`,
+      rows: [
+        { label: '主机', value: host, mono: true },
+        { label: 'URL', value: details.url, mono: true },
+        { label: '文件名', value: details.name ?? '（默认）', mono: true },
+        { label: '来源', value: pageUrl || '（未知）', mono: true },
+      ],
+      actions: [
+        { decision: 'allow-once', label: '允许一次', variant: 'primary' },
+        { decision: 'always', label: '总是允许' },
+        { decision: 'deny', label: '拒绝', variant: 'danger', countdown: true },
+      ],
+      timeoutMs: 60_000,
+    });
+    if (choice === 'always') {
+      const { setAlwaysAllow } = await import('./gm-permissions');
+      await setAlwaysAllow(scriptId, host);
+    } else if (choice !== 'allow-once') {
+      return { ok: false, error: 'permission denied（用户拒绝或超时）' };
+    }
+  } else if (decision === ConnectDecision.DENY) {
+    return { ok: false, error: `Refused：下载主机「${hostOf(details.url)}」不在 @connect 列表` };
+  }
+  try {
+    return await runDownload(details);
+  } catch (e) {
+    return { ok: false, error: `GM_download 失败：${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
+// ---- GM_llmChat（脚本调用大模型，spec docs/superpowers/specs/2026-09-05-gm-llm-chat-design.md）----
+
+// 「本会话内允许」：SW 内存态，重启失效（与菜单表同款取舍）。档位变更时由 SCRIPTS_SET_LLM_TIER 清（scripts.ts handler 调用）。
+const llmSessionAllow = new Set<string>();
+
+/** 档位变更时清单脚本的会话内授权（scripts.ts SCRIPTS_SET_LLM_TIER 调用）。 */
+export function __resetLlmSessionFor(scriptId: string): void { llmSessionAllow.delete(scriptId); }
+
+/** 仅测试用：造一个 session 授权（scripts-llm-tier 测试验证「set 档清 session」）。 */
+export function __addLlmSessionForTest(scriptId: string): void { llmSessionAllow.add(scriptId); }
+
+/** 仅测试用：只读查询 session 授权是否存在（同上）。 */
+export function __llmSessionHasForTest(scriptId: string): boolean { return llmSessionAllow.has(scriptId); }
+
+const LLM_IMAGE_MAX = 5 * 1024 * 1024;      // 单张 data URL 上限（base64 后）
+const LLM_PAYLOAD_MAX = 2 * 1024 * 1024;    // 消息总载荷上限
+const LLM_RESPONSE_MAX = 1024 * 1024;       // 响应聚合文本上限
+const LLM_DEFAULT_TIMEOUT = 120_000;
+const LLM_DENY_MSG = 'permission denied: 大模型调用已被用户拒绝（可在脚本详情 → 设置 → 模型调用 改档位）';
+
+/** 测试注入点：SW 内不可 mock import 的 provider 构造，经此替换。
+ *  返回类型 = streamChat 签名本身（Provider 接口的结构形状）——fake provider 无需继承类。 */
+type LlmProviderLike = { streamChat: OpenAICompatProvider['streamChat'] };
+let llmProviderFactory: (config: { baseUrl: string; apiKey: string; model: string; extraBody?: Record<string, unknown> }) => LlmProviderLike =
+  (config) => new OpenAICompatProvider(config);
+
+/** 仅测试用：替换 provider 工厂。 */
+export function __setLlmProviderFactory(f: typeof llmProviderFactory): void { llmProviderFactory = f; }
+
+/** 仅测试用：清 session 授权表。 */
+export function __resetLlmSession(): void { llmSessionAllow.clear(); }
+
+interface LlmDetails {
+  messages?: unknown;
+  timeout?: number;
+}
+
+function fail(msg: string): { ok: false; error: string } {
+  return { ok: false, error: msg };
+}
+
+/** 参数校验 + 归一化为 ChatMessage[]。返回 union：失败带 error；payloadKB 供确认卡复用（避免二次 stringify）。 */
+function validateLlmMessages(raw: unknown): { ok: true; messages: ChatMessage[]; payloadKB: number } | { ok: false; error: string } {
+  if (!Array.isArray(raw) || raw.length === 0) return fail('缺少 messages 或为空数组');
+  const out: ChatMessage[] = [];
+  for (const m of raw) {
+    const role = (m as { role?: unknown })?.role;
+    if (role !== 'system' && role !== 'user' && role !== 'assistant') {
+      return fail(`非法 role: ${String(role)}（仅支持 system/user/assistant）`);
+    }
+    const content = (m as { content?: unknown })?.content;
+    if (typeof content === 'string') { out.push({ role, content }); continue; }
+    if (!Array.isArray(content)) return fail('非法 content（应为字符串或 {type,...} 数组）');
+    const parts: ContentPart[] = [];
+    for (const p of content) {
+      const t = (p as { type?: unknown })?.type;
+      if (t === 'text') {
+        parts.push({ type: 'text', text: String((p as { text?: unknown })?.text ?? '') });
+      } else if (t === 'image_url') {
+        const url = String((p as { image_url?: { url?: unknown } })?.image_url?.url ?? '');
+        if (url.startsWith('data:') && url.length > LLM_IMAGE_MAX) {
+          return fail(`图片过大：${Math.round(url.length / 1024)}KB（上限 5MB）`);
+        }
+        parts.push({ type: 'image_url', imageUrl: url });
+      } else {
+        return fail(`非法 content part type: ${String(t)}`);
+      }
+    }
+    out.push({ role, content: parts });
+  }
+  const payload = JSON.stringify(out);
+  const payloadKB = Math.round(payload.length / 1024);
+  if (payload.length > LLM_PAYLOAD_MAX) {
+    return fail(`消息载荷过大：${payloadKB}KB（上限 2MB）`);
+  }
+  return { ok: true, messages: out, payloadKB };
+}
+
+/** 权限档决策：allow 放 / ask 查 session 表，未命中弹确认卡。
+ *  deny 已在 doLlmChat 硬拒，gate 只处理 ask/allow/session（不弹卡不依赖模型配置状态的拒绝在最外层）。 */
+async function llmGate(scriptId: string, scriptName: string, modelName: string, msgCount: number, payloadKB: number, tier: 'ask' | 'allow'): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (tier === 'allow') return { ok: true };
+  if (llmSessionAllow.has(scriptId)) return { ok: true };
+  const choice = await enqueueConfirm({
+    kind: 'llm',
+    title: '大模型调用确认',
+    message: `脚本「${scriptName}」请求调用大模型`,
+    rows: [
+      { label: '脚本', value: scriptName },
+      { label: '模型', value: modelName, mono: true },
+      { label: '消息数', value: String(msgCount), mono: true },
+      { label: '载荷', value: `${payloadKB}KB`, mono: true },
+    ],
+    actions: [
+      { decision: 'allow-once', label: '允许一次', variant: 'primary' },
+      { decision: 'session', label: '本会话内允许' },
+      { decision: 'deny', label: '拒绝', variant: 'danger', countdown: true },
+    ],
+    timeoutMs: 60_000,
+  });
+  if (choice === 'session') { llmSessionAllow.add(scriptId); return { ok: true }; }
+  if (choice === 'allow-once') return { ok: true };
+  return fail(LLM_DENY_MSG);
+}
+
+async function doLlmChat(
+  scriptId: string, params: unknown[], sender: Sender,
+): Promise<{ ok: true; data?: unknown } | { ok: false; error: string }> {
+  const details = (params[0] ?? {}) as LlmDetails;
+  const v = validateLlmMessages(details.messages);
+  if (!v.ok) return v;
+  if (details.timeout != null && (typeof details.timeout !== 'number' || !Number.isFinite(details.timeout) || details.timeout <= 0)) {
+    return fail('非法 timeout');
+  }
+  const script = await getScript(scriptId);
+  if (!script) return fail('脚本不存在');
+
+  // deny 硬拒先于模型配置检查（权限层最外：档位拒绝时既不弹卡也不暴露配置状态）
+  const tier = await getLlmTier(scriptId);
+  if (tier === 'deny') return fail(LLM_DENY_MSG);
+
+  const { provider } = await getSettings();
+  if (!provider.baseUrl || !provider.apiKey || !provider.model) {
+    return fail('模型未配置：请到侧边栏 设置 → 模型设置 配置后重试');
+  }
+  const gate = await llmGate(scriptId, script.name, provider.model, v.messages.length, v.payloadKB, tier);
+  if (!gate.ok) return gate;
+
+  const tabId = sender?.tab?.id;
+  const chan = params[1] as string | undefined; // wrapper 传的通道号（直调/旧调用无 chan → chunk 不下发）
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(new Error('timeout')), details.timeout ?? LLM_DEFAULT_TIMEOUT);
+
+  // 流结束哨兵：provider 契约保证恰好终止于一个 message-done（abort 也不例外）——
+  // 先等流终结，再等 chunk 下行链排空，gmres 才会 resolve（时序不变量）。
+  // 兜底：abort 时 provider 可能已死（如流被 cancel 后连补发都做不了的违约实现），
+  // 不能指望它补发事件——abort 即放行等待，下方终态判定（超时/超限）会正确接管。
+  // resolveDone 幂等（finished 守卫 + once 监听），与契约路径并存为双保险。
+  let resolveDone!: () => void;
+  const done = new Promise<void>((r) => { resolveDone = r; });
+  let finished = false; // 防御 fake/异常 provider 违约重复发 message-done（第二次忽略）
+  // abort 双兜底：①放行 done 等待（provider 可能已死、连契约的补发 message-done 都没有）；
+  // ②cancel 流句柄（signal 是契约通道，cancel 是显式句柄——fake/实现可能不监听 signal）。
+  // 均幂等：resolveDone 有 finished 守卫，cancel 对已终止流是无害 no-op。
+  let handle: { cancel: () => void } | undefined; // provider 可能在 streamChat 内部同步 emit+abort，此刻赋值语句未执行 → ?. 防 undefined
+  ac.signal.addEventListener('abort', () => {
+    if (!finished) resolveDone();
+    handle?.cancel();
+  }, { once: true });
+
+  // chunk 下行 promise 链：保证 gmres resolve 晚于所有 LLM_CHUNK（时序不变量）
+  let chain: Promise<void> = Promise.resolve();
+  const enqueueChunk = (delta: string): void => {
+    chain = chain.then(() =>
+      tabId != null && chan ? sendGmEvent(tabId, scriptId, 'LLM_CHUNK', { chan, delta }) : undefined,
+    );
+  };
+
+  let text = '';
+  let usage: { promptTokens?: number; completionTokens?: number } | undefined;
+  let finishReason: string | undefined;
+  let streamError: string | undefined;
+
+  try {
+    const p = llmProviderFactory(provider);
+    handle = p.streamChat({ messages: v.messages, tools: [], signal: ac.signal }, (ev: StreamEvent) => {
+      if (ev.type === 'text-delta') {
+        text += ev.text;
+        if (text.length > LLM_RESPONSE_MAX) { ac.abort(new Error('response-too-large')); return; }
+        enqueueChunk(ev.text);
+      } else if (ev.type === 'message-done') {
+        usage = ev.usage; finishReason = ev.finishReason;
+        if (!finished) { finished = true; resolveDone(); }
+      } else if (ev.type === 'error') {
+        streamError = ev.error;
+      }
+      // reasoning-delta 忽略（不下发）
+    });
+    await done;   // 等流终结（此刻全部 chunk 已入链）
+    await chain;  // 再排空 chunk 下行链
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (text.length > LLM_RESPONSE_MAX) return fail('响应过大：超 1MB 上限');
+  if (ac.signal.reason instanceof Error && ac.signal.reason.message === 'timeout') {
+    return fail(`LLM 调用超时（${details.timeout ?? LLM_DEFAULT_TIMEOUT}ms）`);
+  }
+  if (streamError) return fail(`LLM 调用失败: ${streamError}`);
+  return { ok: true, data: { text, usage, finishReason } };
+}
+
 // ---- 分发 ----
 
 export async function handleGmCall(
@@ -395,6 +706,48 @@ export async function handleGmCall(
     case 'ListValues': {
       const values = await readValues(scriptId);
       return { ok: true, data: Object.keys(values) };
+    }
+    case 'SetValues': {
+      const [obj] = params as [Record<string, unknown>];
+      const values = await readValues(scriptId);
+      const entries = obj && typeof obj === 'object' ? Object.entries(obj) : [];
+      for (const [key, value] of entries) {
+        const oldValue = values[key];
+        values[key] = value;
+        await broadcastValueChange(scriptId, key, oldValue, value, sender);
+      }
+      await writeValues(scriptId, values);
+      return { ok: true, data: null };
+    }
+    case 'DeleteValues': {
+      const [keys] = params as [string[]];
+      const values = await readValues(scriptId);
+      for (const key of Array.isArray(keys) ? keys : []) {
+        const oldValue = values[key];
+        delete values[key];
+        await broadcastValueChange(scriptId, key, oldValue, undefined, sender);
+      }
+      await writeValues(scriptId, values);
+      return { ok: true, data: null };
+    }
+    case 'UnregisterMenu': {
+      const [key] = params as [string];
+      const cmds = menuTable.get(scriptId);
+      if (cmds) { cmds.delete(key); if (cmds.size === 0) menuTable.delete(scriptId); }
+      broadcastMenus();
+      return { ok: true, data: null };
+    }
+    case 'CloseNotification': {
+      const [id] = params as [string];
+      try { await browser.notifications?.clear(id); return { ok: true, data: null }; }
+      catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+    }
+    case 'UpdateNotification': {
+      const [id, details] = params as [string, { title?: string; text?: string }];
+      try {
+        await browser.notifications?.update(id, { type: 'basic', iconUrl: NOTIF_ICON, title: details?.title ?? scriptId, message: details?.text ?? '' });
+        return { ok: true, data: null };
+      } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
     }
     case 'RegisterMenu': {
       const [key, name] = params as [string, string];
@@ -453,10 +806,45 @@ export async function handleGmCall(
       try { await browser.tabs.remove(tabId); return { ok: true, data: null }; }
       catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
     }
+    case 'LlmChat':
+      return doLlmChat(scriptId, params, sender);
     case 'XmlHttpRequest':
       return doXmlHttpRequest(scriptId, params, sender);
+    case 'CookieList':
+      return doCookie(scriptId, 'list', params, sender);
+    case 'CookieSet':
+      return doCookie(scriptId, 'set', params, sender);
+    case 'CookieDelete':
+      return doCookie(scriptId, 'delete', params, sender);
+    case 'Download':
+      return doDownload(scriptId, params, sender);
     case 'AbortRequest':
       return { ok: true, data: null }; // 一次性请求模型：abort 后到的响应由 content 宿主/wrapper 侧忽略（简化语义，文档明示）
+    case 'GetTab': {
+      const tabId = sender?.tab?.id;
+      if (tabId == null) return { ok: false, error: 'GetTab 缺少 tab 上下文' };
+      return { ok: true, data: await getTabData(scriptId, tabId) };
+    }
+    case 'SaveTab': {
+      const tabId = sender?.tab?.id;
+      if (tabId == null) return { ok: false, error: 'SaveTab 缺少 tab 上下文' };
+      await saveTabData(scriptId, tabId, (params[0] ?? {}) as Record<string, unknown>);
+      return { ok: true, data: null };
+    }
+    case 'GetTabs':
+      return { ok: true, data: await getAllTabData(scriptId) };
+    case 'WindowClose': {
+      const tabId = sender?.tab?.id;
+      if (tabId == null) return { ok: false, error: 'window.close 缺少 tab 上下文' };
+      try { await browser.tabs.remove(tabId); return { ok: true, data: null }; }
+      catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+    }
+    case 'WindowFocus': {
+      const tabId = sender?.tab?.id;
+      if (tabId == null) return { ok: false, error: 'window.focus 缺少 tab 上下文' };
+      try { await browser.tabs.update(tabId, { active: true }); return { ok: true, data: null }; }
+      catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+    }
     default:
       return { ok: false, error: `未知 GM API：${api}` };
   }
@@ -577,5 +965,8 @@ export function initGmApi(router: RouterLike): void {
     notifTargets.delete(notifId); // 关闭即清映射
     void sendGmEvent(t.tabId, t.scriptId, 'NOTIF_CLICK', { id: notifId, byUser: false });
   });
+
+  // window.onurlchange：SW 监听 SPA 导航（pushState/hash），命中脚本下行 URL_CHANGE（Task 11）
+  initUrlChange((tabId, scriptId, url) => void sendGmEvent(tabId, scriptId, 'URL_CHANGE', { url }));
 }
 

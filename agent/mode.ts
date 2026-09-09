@@ -14,10 +14,44 @@ export const ASK_MODE_TOOLS = new Set([
   'get_network_request',
   'list_scripts',
   'get_script',
+  'grep_script',      // 脚本检索（纯读）
   'load_skill',
+  // 记忆三工具：ask 的语义是「不改网页/浏览器状态」，记忆只改扩展自己的本地笔记；
+  // 且「以后都这样」这类交代大多发生在问答里，收走写权限会很别扭（spec §3.4）。
+  'memory_list',
+  'memory_write',
+  'memory_delete',
 ]);
 
 export type AgentMode = 'ask' | 'agent';
+
+/** 记忆工具的可用档位：off = 不下发、read = 只给 memory_list、full = 三个都给。 */
+export type MemoryCap = 'off' | 'read' | 'full';
+
+/** 三个记忆工具。 */
+export const MEMORY_TOOLS = new Set(['memory_list', 'memory_write', 'memory_delete']);
+/** 其中的写操作。 */
+export const MEMORY_WRITE_TOOLS = new Set(['memory_write', 'memory_delete']);
+
+/** 按记忆档位过滤工具 schema。 */
+export function filterSchemasForMemory<T extends ToolSchemaLike>(schemas: T[], cap: MemoryCap): T[] {
+  if (cap === 'full') return schemas;
+  if (cap === 'off') return schemas.filter((s) => !MEMORY_TOOLS.has(s.function.name));
+  return schemas.filter((s) => !MEMORY_WRITE_TOOLS.has(s.function.name));
+}
+
+/** 记忆工具的硬闸判定：返回拒绝文案，或 null 表示放行。
+ *  工具清单已按档位下发，这里是防幻觉调用的兜底（与 ask 模式守卫同一形状）。 */
+export function memoryToolDenial(name: string, cap: MemoryCap): string | null {
+  if (!MEMORY_TOOLS.has(name)) return null;
+  if (cap === 'off') {
+    return `记忆功能已在设置中关闭，工具 ${name} 不可用；如需使用请到设置页「AI 记忆」打开总开关`;
+  }
+  if (cap === 'read' && MEMORY_WRITE_TOOLS.has(name)) {
+    return `记忆当前为只读（设置中已关闭「允许 AI 写入」），工具 ${name} 不可用；可以用 memory_list 查看已有记忆`;
+  }
+  return null;
+}
 
 /** 按模式过滤工具 schema。 */
 export function filterSchemasForMode(schemas: ToolSchemaLike[], mode: AgentMode): ToolSchemaLike[] {

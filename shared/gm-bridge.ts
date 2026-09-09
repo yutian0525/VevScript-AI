@@ -11,7 +11,7 @@ export interface GmBridgeRequest {
 }
 
 /** SW → content → wrapper 下行事件类别（tabs.sendMessage GM_EVENT 的 kind）。 */
-export type GmEventKind = 'VALUE_CHANGE' | 'MENU_CLICK' | 'NOTIF_CLICK' | 'TAB_EVENT';
+export type GmEventKind = 'VALUE_CHANGE' | 'MENU_CLICK' | 'NOTIF_CLICK' | 'TAB_EVENT' | 'LLM_CHUNK' | 'URL_CHANGE';
 
 export const gmReqEvent = (scriptId: string) => `gmreq:${scriptId}`;
 export const gmResEvent = (scriptId: string) => `gmres:${scriptId}`;

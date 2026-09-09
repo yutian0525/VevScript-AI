@@ -1,5 +1,5 @@
 // agent/tools/schemas.ts
-// 25 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）。描述对齐 chrome-devtools-mcp。
+// 30 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个 + 记忆的 3 个。描述对齐 chrome-devtools-mcp。
 import type { ToolSchema } from '../provider/types';
 
 // 显式声明返回 Record<string, unknown>，避免 type:'object' 字面量收窄导致的赋值报错。
@@ -262,7 +262,7 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'list_scripts',
       description:
-        '列出脚本库中的用户脚本摘要（不含代码体）。enabled 按启用状态过滤；urlContains 按匹配模式子串过滤（大小写不敏感）。summary 含 errorCount（脚本运行报错条数，>0 时可主动向用户提议排查）与 grantSupported/grantUnsupported（GM API 支持状态）。update 字段来自后台定期检查的缓存（不会触发新检查）：update.hasUpdate=true 表示有可用更新、update.remoteVersion 为远端版本；无 update 字段 = 该脚本无更新源或后台尚未检查过。要更新脚本用 update_script 并传 patch.applyUpdate=true（会即时拉取远端最新覆盖，无需先检查）。需要完整代码时用 get_script。',
+        '列出脚本库中的用户脚本摘要（不含代码体）。enabled 按启用状态过滤；urlContains 按匹配模式子串过滤（大小写不敏感）。summary 含 errorCount（脚本运行报错条数，>0 时可主动向用户提议排查）与 grantSupported/grantUnsupported（GM API 支持状态）。update 字段来自后台定期检查的缓存（不会触发新检查）：update.hasUpdate=true 表示有可用更新、update.remoteVersion 为远端版本；无 update 字段 = 该脚本无更新源或后台尚未检查过。要更新脚本用 update_script 并传 patch.applyUpdate=true（会即时拉取远端最新覆盖，无需先检查）。需要完整代码时用 get_script。summary 含 lines/bytes（脚本规模）：行数多时优先用 grep_script 定位或 get_script 按区间读，不要整份读回。',
       parameters: obj({
         enabled: { type: 'boolean', description: '按启用状态过滤' },
         urlContains: { type: 'string', description: '匹配模式包含该子串（大小写不敏感）' },
@@ -274,7 +274,7 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'get_script',
       description:
-        '读取单个用户脚本：完整 text（.user.js 原文）+ 解析投影 + totalLines 总行数。可选 offset/limit 读取行区间（1-based 含端点，越界自动钳制；limit 缺省读到末尾），此时 script.text 为切片、startLine/endLine 为实际返回区间。id 来自 list_scripts。',
+        '读取单个用户脚本：完整 text（.user.js 原文）+ 解析投影 + totalLines 总行数。可选 offset/limit 读取行区间（1-based 含端点，越界自动钳制；limit 缺省读到末尾），此时 script.text 为切片、startLine/endLine 为实际返回区间。id 来自 list_scripts。返回的每行带 `  12| ` 形式的行号前缀（右对齐 4 位）——它是标注不是文件内容，写回时不要带上。不传 offset/limit 时默认只返回前 200 行并在 notice 里给出续读位置；定位特定代码用 grep_script 更省上下文。',
       parameters: obj(
         {
           id: { type: 'string', description: '脚本 id' },
@@ -288,9 +288,27 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
   {
     type: 'function',
     function: {
+      name: 'grep_script',
+      description:
+        '在用户脚本原文中检索（按正则；非法正则自动降级为字面量子串）。id 缺省时搜全库（脚本库全部脚本）——可用来回答「哪个脚本动了这个选择器/接口」。返回命中行的 scriptId、脚本名、行号与带行号前缀的内容。用于在不整份读回长脚本的前提下定位代码，配合 update_script 的 patch.replace 做精确改写。',
+      parameters: obj(
+        {
+          pattern: { type: 'string', description: '检索式（正则语法；非法时按字面量处理）' },
+          id: { type: 'string', description: '限定单个脚本 id；缺省搜全库' },
+          ignoreCase: { type: 'boolean', description: '忽略大小写（默认 false）' },
+          contextLines: { type: 'number', description: '每处命中额外返回的上下文行数（默认 0）' },
+          limit: { type: 'number', description: '最多返回行数（默认 50，超出时 truncated=true）' },
+        },
+        ['pattern'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'create_script',
       description:
-        '创建用户脚本：以浏览器用户脚本权限在头部匹配规则命中的页面上自动运行。创建前先向用户说明脚本用途与作用范围。两种来源二选一：source=完整的 .user.js 文本（含 ==UserScript== 元数据头，头部 @字段即配置：@name/@match/@include/@run-at/@world/@grant，无独立名称/匹配参数），或 url=.user.js 直链（下载安装，自动记录为更新源以便日后检查更新）。代码以页面脚本方式原样执行，无 GM_* API。source 方式解析后须有匹配规则（@match 或 pattern 形式的 @include）。',
+        '创建用户脚本：以浏览器用户脚本权限在头部匹配规则命中的页面上自动运行。创建前先向用户说明脚本用途与作用范围。两种来源二选一：source=完整的 .user.js 文本（含 ==UserScript== 元数据头，头部 @字段即配置：@name/@match/@include/@run-at/@world/@grant，无独立名称/匹配参数），或 url=.user.js 直链（下载安装，自动记录为更新源以便日后检查更新）。代码以页面脚本方式原样执行，无 GM_* API。source 方式解析后须有匹配规则（@match 或 pattern 形式的 @include）。source 有长度上限（200 行 / 8192 字符）：超限会被拒绝。写长脚本请分步——本次只提交元数据头 + 未闭合的 IIFE 骨架（写到 `(function () {` 为止，不要写 `})();`），再用 update_script 的 patch.append 分次追加代码体，最后一段带上 `})();` 闭合。骨架若提前闭合，后续追加的代码会落到 IIFE 外的全局作用域。',
       parameters: obj(
         {
           source: { type: 'string', description: '完整 .user.js 文本（含 ==UserScript== 元数据头）。与 url 二选一' },
@@ -306,13 +324,13 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'update_script',
       description:
-        '更新用户脚本。patch 至少一项：applyUpdate 从脚本更新源（@updateURL/@downloadURL）拉取远端最新文本并覆盖本地（含代码与头部设置，会覆盖本地修改；脚本无更新源则报错——常用于 list_scripts 显示 update.hasUpdate 后应用更新，也可不经检查直接拉最新）；text 整文替换（完整 .user.js 原文，重新解析头部）；edit 行区间替换（1-based 含端点，越界报错，替换后整体重解析）；enabled 启停。applyUpdate 与 text/edit 互斥且优先。改头部字段（名称/匹配/时机等）就是改原文，没有独立字段可改。规则/代码更新在下次页面导航后生效。',
+        '更新用户脚本。patch 至少一项：applyUpdate 从脚本更新源（@updateURL/@downloadURL）拉取远端最新文本并覆盖本地（含代码与头部设置，会覆盖本地修改；脚本无更新源则报错——常用于 list_scripts 显示 update.hasUpdate 后应用更新，也可不经检查直接拉最新）；text 整文替换（完整 .user.js 原文，重新解析头部）；edit 行区间替换（1-based 含端点，越界报错，替换后整体重解析）；enabled 启停。applyUpdate 与各文本分支互斥且优先。改头部字段（名称/匹配/时机等）就是改原文，没有独立字段可改。规则/代码更新在下次页面导航后生效。append 追加到原文末尾（不需要行号，分步写脚本的主力）；replace 按字面量精确替换 {old,new,all?}（不依赖行号，old 必须在原文中唯一，命中多处会报错并列出行号，可加上下文让它唯一或传 all:true）。text/edit/append/replace 四支互斥，一次只能传一支。返回里的 balance 是括号配平状态：分步过程中骨架未闭合时为 unclosed（正常），最后一段写完应为 ok；若不为 ok 就用 grep_script 定位漏掉的括号再 replace 修正。',
       parameters: obj(
         {
           id: { type: 'string', description: '脚本 id' },
           patch: {
             type: 'object',
-            description: '至少包含 applyUpdate / text / enabled / edit 之一',
+            description: '至少包含 applyUpdate / text / edit / append / replace / enabled 之一；四个文本分支互斥',
             properties: {
               applyUpdate: { type: 'boolean', description: '从更新源拉取远端最新文本覆盖本地（与 text/edit 互斥，优先生效）' },
               text: { type: 'string', description: '整文替换：完整 .user.js 原文' },
@@ -326,6 +344,17 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
                   text: { type: 'string', description: '替换文本（可多行）' },
                 },
                 required: ['startLine', 'endLine', 'text'],
+              },
+              append: { type: 'string', description: '追加到原文末尾（不需要行号）' },
+              replace: {
+                type: 'object',
+                description: '字面量精确替换（不依赖行号）；old 需在原文中唯一',
+                properties: {
+                  old: { type: 'string', description: '要被替换的原文片段（字面量，非正则）' },
+                  new: { type: 'string', description: '替换为' },
+                  all: { type: 'boolean', description: 'old 命中多处时全部替换（默认 false，多处则报错）' },
+                },
+                required: ['old', 'new'],
               },
             },
           },
@@ -366,6 +395,50 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
       parameters: obj(
         { command: { type: 'string', description: '技能的斜杠命令名（不含 /），来自系统提示中的可用技能清单' } },
         ['command'],
+      ),
+    },
+  },
+  // ---- Memory（跨会话长期记忆，spec §3.4）----
+  {
+    type: 'function',
+    function: {
+      name: 'memory_list',
+      description:
+        '列出长期记忆（含未在系统提示里出现的其他站点记忆）。用途：① 写入前查重，避免记两条矛盾的；② 导航到某站点【之前】提前取该站经验——系统提示只会列出当前页命中的记忆全文，其他站点只给站点清单。scope 可传完整 URL（精确匹配作用域）或站点关键词如 bilibili（对作用域做子串匹配）；不传 scope 则返回全库。注意：带 scope 时不返回全局记忆，因为全局记忆已常驻在系统提示里。',
+      parameters: obj({
+        scope: { type: 'string', description: '完整 URL 或站点关键词；缺省返回全库' },
+        limit: { type: 'number', description: `返回条数上限，默认 ${30}，最大 100` },
+      }),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'memory_write',
+      description:
+        '记录或改写一条长期记忆（跨会话持久保留）。不传 id = 新增；传 id = 改写那一条（content 必传；matches 传了才改、不传保持原作用域）。该记：用户的偏好与习惯、某站点的固定操作路径、踩过的坑与解法、账号与环境的稳定事实。不该记：本轮的中间结果、页面上随时会变的数字、马上就用完的临时数据。matches 是站点作用域（Chrome match pattern，如 *://*.bilibili.com/*），留空则为全局记忆、任何页面都会注入——只在某站适用的经验务必填 matches，否则会在别的站误导你自己。正文上限 500 字符，写不下就拆成两条。',
+      parameters: obj(
+        {
+          content: { type: 'string', description: '记忆正文，≤500 字符，一条只说一件事' },
+          matches: {
+            type: 'array',
+            items: { type: 'string' },
+            description: '站点作用域（Chrome match pattern）。留空 = 全局记忆',
+          },
+          id: { type: 'string', description: '要改写的记忆 id（来自系统提示的 [id …] 或 memory_list）；不传则新增' },
+        },
+        ['content'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'memory_delete',
+      description: '删除一条长期记忆。记忆过时或与新发现矛盾时，改写（memory_write 带 id）优先于删除；确认无用再删。幂等：id 不存在也返回成功。',
+      parameters: obj(
+        { id: { type: 'string', description: '记忆 id（来自系统提示的 [id …] 或 memory_list）' } },
+        ['id'],
       ),
     },
   },

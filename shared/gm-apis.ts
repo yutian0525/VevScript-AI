@@ -9,6 +9,8 @@ export interface GmApiDef {
   impl: GmImpl;
   /** 点形式 GM.xxx 的 Promise 包装（GM_info 的 GM.info 是同引用，非 Promise） */
   promiseForm: boolean;
+  /** 对象型 API 的子方法名（仅 GM_cookie）：@grant 一次装齐；点形式 GM.cookie 同引用 */
+  objectApi?: string[];
 }
 
 export const GM_API_REGISTRY: Record<string, GmApiDef> = {
@@ -26,10 +28,27 @@ export const GM_API_REGISTRY: Record<string, GmApiDef> = {
   GM_notification: { impl: 'bridge', promiseForm: true },
   GM_openInTab: { impl: 'bridge', promiseForm: true },
   GM_xmlhttpRequest: { impl: 'bridge', promiseForm: true },
+  GM_llmChat: { impl: 'bridge', promiseForm: true },
+  // ---- Tier A（零新权限）----
+  GM_removeValueChangeListener: { impl: 'local', promiseForm: true },
+  GM_getValues: { impl: 'snapshot', promiseForm: true },
+  GM_setValues: { impl: 'bridge', promiseForm: true },
+  GM_deleteValues: { impl: 'bridge', promiseForm: true },
+  GM_addElement: { impl: 'local', promiseForm: true },
+  GM_unregisterMenuCommand: { impl: 'bridge', promiseForm: true },
+  GM_getResourceURL: { impl: 'snapshot', promiseForm: true },
+  GM_getTab: { impl: 'bridge', promiseForm: true },
+  GM_saveTab: { impl: 'bridge', promiseForm: true },
+  GM_getTabs: { impl: 'bridge', promiseForm: true },
+  GM_closeNotification: { impl: 'bridge', promiseForm: true },
+  GM_updateNotification: { impl: 'bridge', promiseForm: true },
+  // ---- Tier B（需新权限）----
+  GM_download: { impl: 'bridge', promiseForm: true },
+  GM_cookie: { impl: 'bridge', promiseForm: false, objectApi: ['list', 'set', 'delete'] },
 };
 
 /** 特殊 grant 名（非函数，但视为「受支持」——wrapper 直接提供值） */
-export const SPECIAL_GRANTS = new Set(['unsafeWindow']);
+export const SPECIAL_GRANTS = new Set(['unsafeWindow', 'window.close', 'window.focus', 'window.onurlchange']);
 
 /** grant 列表二分（spec §9.2 徽标精确化）。'none' 与空归空。 */
 export function classifyGrants(grants: string[]): { supported: string[]; unsupported: string[] } {

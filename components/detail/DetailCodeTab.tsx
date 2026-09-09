@@ -10,13 +10,16 @@ import { CodeEditor } from './CodeEditor';
 
 const MAX_IMPORT_BYTES = 280 * 1024; // 与 UserScript.text 后端上限对齐
 
-export function DetailCodeTab({ script, onSaved }: { script: UserScript; onSaved: (saved: UserScript) => Promise<void> | void }) {
+export function DetailCodeTab({ script, onSaved, onDirtyChange }: { script: UserScript; onSaved: (saved: UserScript) => Promise<void> | void; onDirtyChange?: (dirty: boolean) => void }) {
   const [text, setText] = useState(script.text);
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   // 脚本切换/保存后同步基线
   useEffect(() => { setText(script.text); setDirty(false); }, [script.id, script.updatedAt]);
+  // 上报 dirty 给 DetailApp（供跨界面变更时判断是否可安全重拉）；卸载（切 Tab）时归零
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
 
   // 实时解析预览（头部即配置，所见即所得——保存才落库重注册）
   const parsed = useMemo(() => parseUserScript(text), [text]);

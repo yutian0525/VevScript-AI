@@ -1,12 +1,15 @@
 // components/detail/DetailApp.tsx
 // 全屏脚本详情页（2026-09-04 重设计）：header = 头像 + 标题/副标题 + 外链 icon 组；
 // 左栏纯导航（详情/代码/设置/日志）；启停/删除在详情 Tab 内。
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Download, House, LifeBuoy, RefreshCw, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '../ui/Button';
+import { Tooltip } from '../ui/Tooltip';
+import { useTruncated } from '../ui/useTruncated';
 import { sendScriptsRequest } from '../../stores/scripts';
 import type { UserScript } from '../../shared/types';
+import type { ScriptsChangedEvent } from '../../shared/messages';
 import { useScriptDetail } from './useScriptDetail';
 import { DetailInfoTab } from './DetailInfoTab';
 import { DetailCodeTab } from './DetailCodeTab';
@@ -16,12 +19,32 @@ import { DetailLogsTab } from './DetailLogsTab';
 type TabKey = 'info' | 'code' | 'settings' | 'logs';
 
 export function DetailApp({ id }: { id: string }) {
-  const { script, setScript, errors, notFound, loading } = useScriptDetail(id);
+  const { script, setScript, errors, notFound, setNotFound, loading, reload } = useScriptDetail(id);
   const [tab, setTab] = useState<TabKey>('info');
   const [message, setMessage] = useState('');
   const [iconFailed, setIconFailed] = useState(false);
+  // 代码 Tab 未保存标记（提升到此，供外部变更订阅判断是否可安全重拉）
+  const dirtyRef = useRef(false);
+  // 别处改动了本脚本但本地正在编辑：显横幅让用户主动加载最新，不覆盖 dirty 编辑
+  const [staleNotice, setStaleNotice] = useState(false);
   // 切换脚本时重置头像加载失败标记
-  useEffect(() => { setIconFailed(false); }, [id]);
+  useEffect(() => { setIconFailed(false); setStaleNotice(false); }, [id]);
+  // 标题过长才挂 tooltip（早返回前声明，保持 hook 顺序稳定）
+  const [titleRef, titleTruncated] = useTruncated<HTMLHeadingElement>(script?.name);
+
+  // 跨界面同步：别处（侧栏/popup/AI 工具）改了本脚本 → 重拉；删了 → 跳「已删除」
+  useEffect(() => {
+    const onMessage = (msg: unknown) => {
+      const m = msg as ScriptsChangedEvent;
+      if (m?.type !== 'SCRIPTS_CHANGED') return;
+      if (m.ids && !m.ids.includes(id)) return; // 无 ids 视为全量，保守也响应
+      if (m.reason === 'delete') { setNotFound(true); return; }
+      if (dirtyRef.current) setStaleNotice(true); // 有未保存编辑：横幅提示，不覆盖
+      else void reload();
+    };
+    browser.runtime.onMessage.addListener(onMessage);
+    return () => browser.runtime.onMessage.removeListener(onMessage);
+  }, [id, reload, setNotFound]);
 
   function onScriptChanged(next: UserScript, note: string): void {
     setScript(next);
@@ -77,22 +100,24 @@ export function DetailApp({ id }: { id: string }) {
           <span className="detail__avatar detail__avatar--fallback" aria-hidden>{avatarChar}</span>
         )}
         <div className="detail__headtext">
-          <h1 className="detail__h1" title={script.name}>{script.name || '未命名脚本'}</h1>
+          <Tooltip label={script.name} disabled={!titleTruncated}>
+            <h1 className="detail__h1" ref={titleRef}>{script.name || '未命名脚本'}</h1>
+          </Tooltip>
           {subtitleParts.length > 0 && <div className="detail__subtitle">{subtitleParts.join(' · ')}</div>}
         </div>
         {links.length > 0 && (
           <div className="detail__links">
             {links.map((l) => (
-              <Button
-                key={l.label}
-                variant="ghost"
-                className="btn--icon"
-                aria-label={l.label}
-                title={`${l.label}：${l.url}`}
-                onClick={() => void browser.tabs.create({ url: l.url })}
-              >
-                {l.icon}
-              </Button>
+              <Tooltip key={l.label} label={`${l.label}：${l.url}`}>
+                <Button
+                  variant="ghost"
+                  className="btn--icon"
+                  aria-label={l.label}
+                  onClick={() => void browser.tabs.create({ url: l.url })}
+                >
+                  {l.icon}
+                </Button>
+              </Tooltip>
             ))}
           </div>
         )}
@@ -114,8 +139,19 @@ export function DetailApp({ id }: { id: string }) {
         </nav>
         <div className="detail__content">
           {message && <div className="scripts-warnline" role="status">{message}</div>}
+          {staleNotice && (
+            <div className="scripts-warnline" role="status" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ flex: 1 }}>该脚本已在别处变更，你有未保存的编辑。</span>
+              <Button
+                variant="ghost"
+                onClick={() => { setStaleNotice(false); void reload(); }}
+              >
+                放弃编辑并加载最新
+              </Button>
+            </div>
+          )}
           {tab === 'info' && <DetailInfoTab script={script} onChanged={onScriptChanged} onDelete={remove} />}
-          {tab === 'code' && <DetailCodeTab script={script} onSaved={(s) => setScript(s)} />}
+          {tab === 'code' && <DetailCodeTab script={script} onSaved={(s) => setScript(s)} onDirtyChange={(d) => { dirtyRef.current = d; }} />}
           {tab === 'settings' && <DetailSettingsTab id={script.id} />}
           {tab === 'logs' && <DetailLogsTab id={script.id} errors={errors} />}
         </div>

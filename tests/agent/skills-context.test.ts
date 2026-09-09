@@ -26,9 +26,7 @@ describe('buildSkillsPrompt / buildContext(skills)', () => {
     const msgs = buildContext(
       [{ role: 'user', content: 'hi' }],
       { url: 'https://x.com', title: 'X' },
-      60,
-      undefined,
-      [{ name: 'N', command: 'c', description: 'd' }],
+      { skills: [{ name: 'N', command: 'c', description: 'd' }] },
     );
     const sys = msgs[0]!.content as string;
     expect(sys).toContain('/c');

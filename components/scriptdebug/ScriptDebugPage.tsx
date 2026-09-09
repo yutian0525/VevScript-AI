@@ -2,9 +2,10 @@
 // 脚本运行时调试台（设置二级页，spec §3）：白名单视图 + GM API 列表 + 经真实桥链路直调。
 // 直调 api 用点形式短名（SetValue/XmlHttpRequest…），与 wrapper 实际发出形式一致。
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ChevronRight, Play, Loader2, Globe, Check, X } from 'lucide-react';
+import { ChevronRight, Play, Loader2, Globe, Check, X } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
+import { Tooltip } from '../ui/Tooltip';
 import { GM_API_REGISTRY } from '../../shared/gm-apis';
 import { sendScriptsRequest } from '../../stores/scripts';
 import type { DebugExecResponse, GmDebugInfoData } from '../../shared/messages';
@@ -23,6 +24,7 @@ export const CALL: Record<string, { kind: CallKind; short?: string; hint: string
   GM_notification: { kind: 'bridge', short: 'Notification', hint: '[{"title":"标题","text":"正文"}, "notifId"]' },
   GM_openInTab: { kind: 'bridge', short: 'OpenInTab', hint: '["https://example.com", {"active":true}]' },
   GM_xmlhttpRequest: { kind: 'bridge', short: 'XmlHttpRequest', hint: '[{"url":"https://api.a.com","method":"GET"}]' },
+  GM_llmChat: { kind: 'bridge', short: 'LlmChat', hint: '[{"messages":[{"role":"user","content":"hi"}]}]' },
   // SW 有分支 2：经桥调 SW 的 GetValue/ListValues，返回 storage 实时值（非页面快照）
   GM_getValue: { kind: 'sw', short: 'GetValue', hint: '["key", "默认值"]' },
   GM_listValues: { kind: 'sw', short: 'ListValues', hint: '[]' },
@@ -32,6 +34,23 @@ export const CALL: Record<string, { kind: CallKind; short?: string; hint: string
   GM_addStyle: { kind: 'page', hint: '页面内 API（DOM 本地完成）' },
   GM_log: { kind: 'page', hint: '页面内 API（console 本地完成）' },
   GM_addValueChangeListener: { kind: 'page', hint: '页面内 API（本地注册监听）' },
+  // ---- Tier A/B 扩充（2026-09-07）----
+  GM_setValues: { kind: 'bridge', short: 'SetValues', hint: '[{"k1":"v1","k2":"v2"}]' },
+  GM_deleteValues: { kind: 'bridge', short: 'DeleteValues', hint: '[["k1","k2"]]' },
+  GM_unregisterMenuCommand: { kind: 'bridge', short: 'UnregisterMenu', hint: '["cmdKey"]' },
+  GM_closeNotification: { kind: 'bridge', short: 'CloseNotification', hint: '["notifId"]' },
+  GM_updateNotification: { kind: 'bridge', short: 'UpdateNotification', hint: '["notifId", {"title":"T","text":"X"}]' },
+  GM_getTab: { kind: 'bridge', short: 'GetTab', hint: '[]' },
+  GM_saveTab: { kind: 'bridge', short: 'SaveTab', hint: '[{"k":"v"}]' },
+  GM_getTabs: { kind: 'bridge', short: 'GetTabs', hint: '[]' },
+  GM_download: { kind: 'bridge', short: 'Download', hint: '[{"url":"https://example.com/f.zip","name":"f.zip"}]' },
+  // page 类（local/snapshot，不可远程直调）
+  GM_getValues: { kind: 'page', hint: '页面内 API（注入期值快照）' },
+  GM_removeValueChangeListener: { kind: 'page', hint: '页面内 API（本地移除监听）' },
+  GM_addElement: { kind: 'page', hint: '页面内 API（DOM 本地完成）' },
+  GM_getResourceURL: { kind: 'page', hint: '页面内 API（注入期资源快照）' },
+  // 对象型：三方法（CookieList/CookieSet/CookieDelete）各自过桥，调试台暂不支持对象型直调
+  GM_cookie: { kind: 'page', hint: '对象型 API（GM_cookie.list/set/delete 经桥；调试台暂不支持对象型直调）' },
 };
 
 const KIND_NOTE: Record<CallKind, string> = {
@@ -85,13 +104,15 @@ export function ScriptDebugPage({ onBack }: { onBack: () => void }) {
     <PageShell
       title="脚本运行时调试台"
       eyebrow="SCRIPTDEBUG"
+      onBack={onBack}
       right={
-        <span className="gauge" title={info?.tabUrl}>
-          <Globe size={12} color="var(--ink-3)" />
-          <span className="gauge__label mono" style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{targetHost}</span>
-        </span>
+        <Tooltip label={info?.tabUrl}>
+          <span className="gauge">
+            <Globe size={12} color="var(--ink-3)" />
+            <span className="gauge__label mono" style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{targetHost}</span>
+          </span>
+        </Tooltip>
       }
-      actions={<Button variant="ghost" onClick={onBack} aria-label="返回"><ArrowLeft size={14} /></Button>}
     >
       {scripts.length === 0 ? (
         <div className="chat__empty">脚本池为空——先在脚本池新建或导入脚本</div>

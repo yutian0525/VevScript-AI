@@ -1,10 +1,11 @@
 // components/detail/DetailInfoTab.tsx
 // 详情 Tab（2026-09-04 重写）：中文字段（title 保留原键名）+ URL 可点链接 + 底部操作区（启停/删除）。
 // 双声道：标签 sans 人话；match/grant/run-at 等机器值 mono。
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Check, RefreshCw, X } from 'lucide-react';
 import { storage } from 'wxt/utils/storage';
 import { Button } from '../ui/Button';
+import { Tooltip } from '../ui/Tooltip';
 import { sendScriptsRequest } from '../../stores/scripts';
 import { classifyGrants } from '../../shared/gm-apis';
 import { UPDATE_STATE_KEY, type ScriptUpdateState, type UserScript } from '../../shared/types';
@@ -20,9 +21,20 @@ interface Props {
 /** URL 形态值：渲染为可点链接（新标签打开），显示文本 = URL 本身 */
 function UrlValue({ url }: { url: string }) {
   return (
-    <Button variant="ghost" className="detail__link" title={url} onClick={() => void browser.tabs.create({ url })}>
-      {url}
-    </Button>
+    <Tooltip label={url}>
+      <Button variant="ghost" className="detail__link" onClick={() => void browser.tabs.create({ url })}>
+        {url}
+      </Button>
+    </Tooltip>
+  );
+}
+
+/** 信息键：中文标签 + hover 显示原键名（如 version / match / run-at） */
+function InfoKey({ label, keyName }: { label: ReactNode; keyName: string }) {
+  return (
+    <Tooltip label={keyName}>
+      <span className="detail__infokey">{label}</span>
+    </Tooltip>
   );
 }
 
@@ -91,13 +103,13 @@ export function DetailInfoTab({ script, onChanged, onDelete }: Props) {
     <div className="detail__info">
       {meta.version && (
         <div className="detail__inforow">
-          <span className="detail__infokey" title="version">版本</span>
+          <InfoKey label="版本" keyName="version" />
           <span>{meta.version}</span>
         </div>
       )}
       {(hasSource || checkState) && (
         <div className="detail__inforow">
-          <span className="detail__infokey" title="update check">更新检查</span>
+          <InfoKey label="更新检查" keyName="update check" />
           <span className="detail__infoval" role="status">
             {checkState == null && <span style={{ color: 'var(--ink-3)' }}>尚未检查</span>}
             {checkState?.status === 'up-to-date' && <span>已是最新{checkState.remoteVersion ? ` v${checkState.remoteVersion}` : ''}</span>}
@@ -115,45 +127,45 @@ export function DetailInfoTab({ script, onChanged, onDelete }: Props) {
       )}
       {meta.author && (
         <div className="detail__inforow">
-          <span className="detail__infokey" title="author">作者</span>
+          <InfoKey label="作者" keyName="author" />
           <span>{meta.author}</span>
         </div>
       )}
       {meta.description && (
         <div className="detail__inforow">
-          <span className="detail__infokey" title="description">描述</span>
+          <InfoKey label="描述" keyName="description" />
           <span>{meta.description}</span>
         </div>
       )}
       {meta.namespace && (
         <div className="detail__inforow">
-          <span className="detail__infokey" title="namespace">命名空间</span>
+          <InfoKey label="命名空间" keyName="namespace" />
           <UrlValue url={meta.namespace} />
         </div>
       )}
       {meta.homepage && (
         <div className="detail__inforow">
-          <span className="detail__infokey" title="homepage">主页</span>
+          <InfoKey label="主页" keyName="homepage" />
           <UrlValue url={meta.homepage} />
         </div>
       )}
       {meta.supportURL && (
         <div className="detail__inforow">
-          <span className="detail__infokey" title="supportURL">支持页</span>
+          <InfoKey label="支持页" keyName="supportURL" />
           <UrlValue url={meta.supportURL} />
         </div>
       )}
       <div className="detail__inforow">
-        <span className="detail__infokey" title="match">匹配规则</span>
+        <InfoKey label="匹配规则" keyName="match" />
         <span className="mono detail__infoval">{script.matches.length > 0 ? script.matches.join('  ') : '（无——脚本不会运行）'}</span>
       </div>
       <div className="detail__inforow">
-        <span className="detail__infokey" title="run-at · world">注入时机 · 沙箱</span>
+        <InfoKey label="注入时机 · 沙箱" keyName="run-at · world" />
         <span className="mono detail__infoval">{script.runAt} · {script.world}</span>
       </div>
       {meta.grants && meta.grants.length > 0 && (
         <div className="detail__inforow">
-          <span className="detail__infokey" title="grant">权限申请</span>
+          <InfoKey label="权限申请" keyName="grant" />
           <span className="detail__grants">
             {meta.grants.map((g) => {
               const ok = classifyGrants([g]).supported.length > 0;
@@ -167,18 +179,22 @@ export function DetailInfoTab({ script, onChanged, onDelete }: Props) {
         </div>
       )}
       <div className="detail__actions">
-        <Button
-          variant="ghost"
-          disabled={!hasSource || checking || updating}
-          title={hasSource ? undefined : '无更新源（@updateURL/@downloadURL）'}
-          onClick={() => void checkUpdate()}
-        >
-          <RefreshCw size={13} aria-hidden /> {checking ? '检查中…' : '检查更新'}
-        </Button>
         <Button variant="signal" disabled={busy} onClick={() => void toggleEnabled()}>
           {script.enabled ? '禁用脚本' : '启用脚本'}
         </Button>
         <Button variant="danger" onClick={() => void onDelete()}>删除脚本</Button>
+        {/* 检查更新为次要操作，推到最右；disabled 按钮不触发 hover，tooltip 挂外层 span 才能在「无更新源」时提示 */}
+        <Tooltip label="无更新源（@updateURL/@downloadURL）" disabled={hasSource}>
+          <span className="detail__btnwrap detail__btnwrap--end">
+            <Button
+              variant="ghost"
+              disabled={!hasSource || checking || updating}
+              onClick={() => void checkUpdate()}
+            >
+              <RefreshCw size={13} aria-hidden /> {checking ? '检查中…' : '检查更新'}
+            </Button>
+          </span>
+        </Tooltip>
       </div>
     </div>
   );

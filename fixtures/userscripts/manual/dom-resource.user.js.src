@@ -12,6 +12,10 @@
 // @grant        GM_setValue
 // @grant        GM_deleteValue
 // @grant        unsafeWindow
+// @grant        GM_addElement
+// @grant        GM_getResourceURL
+// @resource     logo https://www.google.com/favicon.ico
+// @connect      www.google.com
 // @noframes
 // ==/UserScript==
 
@@ -46,6 +50,16 @@
         log('d5', 'GM.getValue Promise resolve → ' + JSON.stringify(v));
         GM.deleteValue('__gmt_manual_dr_dot');
       });
+    },
+    'd6-addel': function (log) {
+      var el = GM_addElement('div', { id: 'gmt-addel', textContent: 'GM_addElement 探针', style: 'position:fixed;left:12px;top:60px;z-index:2147483646;background:#188038;color:#fff;padding:6px 10px;border-radius:4px;font:12px system-ui' });
+      log('d6', 'GM_addElement 返回 tagName=' + el.tagName + '，看左上第二个绿块');
+    },
+    'd7-resurl': function (log) {
+      var url = GM_getResourceURL('logo');
+      log('d7', 'GM_getResourceURL("logo") 前缀 → ' + String(url).slice(0, 32));
+      var img = GM_addElement('img', { src: url, style: 'position:fixed;left:12px;top:100px;z-index:2147483646;width:32px;height:32px;border:1px solid #ccc' });
+      void img;
     }
   };
 
@@ -57,7 +71,9 @@
       { id: 'd2', api: 'GM_getResourceText(name)', desc: '读 @resource 声明的资源文本；未声明返回 undefined（真实资源内容验证归 gmt-selftest）。', steps: [{ id: 'd2-res', label: '读未声明资源' }], expect: '日志显示 undefined' },
       { id: 'd3', api: 'GM_log(...args)', desc: '带 [脚本名] 前缀写本地 console。', steps: [{ id: 'd3-log', label: '打一条日志' }, '开 F12 → Console，找 [GM 手测·DOM资源日志] 前缀行'], expect: 'Console 出现前缀行' },
       { id: 'd4', api: 'unsafeWindow（特殊 grant）', desc: 'USER_SCRIPT world 下为隔离 world window（要真页面 window 需 @world MAIN）。', steps: [{ id: 'd4-uw', label: '打印 unsafeWindow 判定' }], expect: 'document === document 为 true' },
-      { id: 'd5', api: 'GM.setValue / GM.getValue（点形式）', desc: '点形式为 Promise 形态。', steps: [{ id: 'd5-dot', label: '点形式写后读' }], expect: '日志显示 "pv"' }
+      { id: 'd5', api: 'GM.setValue / GM.getValue（点形式）', desc: '点形式为 Promise 形态。', steps: [{ id: 'd5-dot', label: '点形式写后读' }], expect: '日志显示 "pv"' },
+      { id: 'd6', api: 'GM_addElement(tag, attrs)', desc: '创建并插入元素（textContent/style 特判）。', steps: [{ id: 'd6-addel', label: '插入绿色探针块' }], expect: '左上出现绿色「GM_addElement 探针」块' },
+      { id: 'd7', api: 'GM_getResourceURL(name)', desc: '返回 @resource 的 data: URL；插入 <img> 验证可加载。', steps: [{ id: 'd7-resurl', label: '取 URL 并插入图片' }, '看左上是否出现 32x32 图标'], expect: '日志前缀为 data:image/... 且图片渲染' }
     ],
     actions: actions
   });

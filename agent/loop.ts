@@ -7,6 +7,7 @@ import { runTurn } from './run-turn';
 import { buildContext, type PageInfo, type SkillBrief } from './context';
 import { getToolSchemas } from './tools/registry';
 import { modePrompt, type AgentMode } from './mode';
+import { memoryStateToCap, type MemoryState } from './memory-prompt';
 import { initGuardState, recordTurn, checkGuards, DEFAULT_GUARD_CONFIG, type GuardState } from './loop-guards';
 import { getConversation, appendMessage, setStatus, setLastPromptTokens, setMode } from '../storage/conversations';
 import { meterRatio, COMPACT_THRESHOLD } from './context-meter';
@@ -27,6 +28,12 @@ export interface LoopDeps {
   getSkills?: () => Promise<SkillBrief[]>;
   /** 当前行为模式（缺省 'agent'）。每轮开跑前经 getMode 重读，支持任务中途切换。 */
   getMode?: () => Promise<AgentMode>;
+  /** 单轮 token 上限（0/缺省 = 不下发 max_tokens）。 */
+  getMaxTokens?: () => Promise<number>;
+  /** 系统提示词全文（缺省用内置 SYSTEM_PROMPT）。每轮重读，设置页改完下一轮生效。 */
+  getSystemPrompt?: () => Promise<string>;
+  /** 记忆状态（全量条目 + 两个开关）。缺省不注入记忆块，工具清单按默认 full 下发。 */
+  getMemoryState?: () => Promise<MemoryState>;
 }
 
 const TAB_OPENING_TOOLS = new Set(['click', 'press_key']);
@@ -96,11 +103,21 @@ async function drive(
     const skills = (await deps.getSkills?.()) ?? [];
     // 模式每轮重读：任务中途用户切 ask/agent，下一轮立即生效（已发出的轮次不回收）
     const mode = (await deps.getMode?.()) ?? 'agent';
-    const messages = buildContext(conv.messages, page, 60, conv.summary, skills, mode);
+    const systemPrompt = await deps.getSystemPrompt?.();
+    const memory = await deps.getMemoryState?.();
+    const messages = buildContext(conv.messages, page, { summary: conv.summary, skills, mode, systemPrompt, memory });
+    const memoryCap = memory ? memoryStateToCap(memory) : 'full';
 
-    const result = await runTurn(deps.provider, { messages, tools: getToolSchemas(mode), signal }, {
+    const maxTokens = (await deps.getMaxTokens?.()) ?? 0;
+    // 参数生成进度节流器：每轮新建，状态不跨轮（下一轮从 0 重新计）
+    const onArgs = makeArgsThrottle((name, bytes) => deps.emit({ type: 'tool-args-delta', name, bytes }));
+    const result = await runTurn(deps.provider, {
+      messages, tools: getToolSchemas(mode, memoryCap), signal,
+      ...(maxTokens > 0 ? { maxTokens } : {}),
+    }, {
       onTextDelta: (t) => deps.emit({ type: 'text-delta', text: t }),
       onReasoningDelta: (t) => deps.emit({ type: 'reasoning-delta', text: t }),
+      onToolArgsDelta: onArgs,
     });
 
     if (signal.aborted) {
@@ -128,7 +145,9 @@ async function drive(
       await appendMessage(convId, assistantMsg(result.text, result.toolCalls, result.reasoning));
       const truncFailed: ToolResult[] = [];
       for (const tc of result.toolCalls) {
-        await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: '错误：模型输出被截断，该工具调用参数不完整，请重新发起' });
+        await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: '错误：模型输出被截断，该工具调用参数不完整。若在写长脚本，请改用分步方式：'
+          + '先 create_script 只提交元数据头 + 未闭合的 IIFE 骨架（如 `(function () {` 结尾，不写 `})();`），'
+          + '再用 update_script 的 patch.append 分次追加代码体，最后一段带上 `})();` 闭合。' });
         truncFailed.push({ ok: false, error: '模型输出被截断' });
       }
       guard = recordTurn(guard, result.toolCalls, truncFailed);
@@ -228,4 +247,21 @@ async function finishAborted(convId: string, deps: LoopDeps): Promise<void> {
 function toToolContent(r: ToolResult): string {
   if (r.ok) return typeof r.data === 'string' ? r.data : JSON.stringify(r.data ?? { ok: true });
   return `错误：${r.error ?? '未知错误'}`;
+}
+
+const ARGS_THROTTLE_MS = 200;
+const ARGS_THROTTLE_BYTES = 1024;
+
+/** 参数进度节流：首次立即发，之后满 200ms 或涨够 1KB 才发（避免逐 token 广播）。
+ *  每轮 runTurn 前新建一个，状态不跨轮。 */
+function makeArgsThrottle(emit: (name: string, bytes: number) => void): (name: string, bytes: number) => void {
+  let lastAt = 0;
+  let lastBytes = -1;
+  return (name, bytes) => {
+    const now = Date.now();
+    if (lastBytes >= 0 && now - lastAt < ARGS_THROTTLE_MS && bytes - lastBytes < ARGS_THROTTLE_BYTES) return;
+    lastAt = now;
+    lastBytes = bytes;
+    emit(name, bytes);
+  };
 }

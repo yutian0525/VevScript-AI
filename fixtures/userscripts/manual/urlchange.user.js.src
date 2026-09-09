@@ -1,0 +1,42 @@
+// ==UserScript==
+// @name         GM 手测·URL变化
+// @namespace    ai-browser-extend/gmt-manual
+// @version      1.0.0
+// @description  window.onurlchange 人工测试：pushState / hash 触发回调
+// @match        *://*/*
+// @run-at       document-end
+// @grant        window.onurlchange
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_deleteValue
+// @grant        GM_addStyle
+// @noframes
+// ==/UserScript==
+
+(function () {
+  window.onurlchange = function (info) { GMT.log('u1', 'onurlchange 回调 → ' + JSON.stringify(info)); };
+  window.addEventListener('urlchange', function (e) { GMT.log('u1', "'urlchange' 事件 → " + JSON.stringify(e.detail)); });
+
+  var n = 0;
+  var actions = {
+    'u1-push': function (log) {
+      n += 1;
+      history.pushState({}, '', location.pathname + '?__gmt_url=' + n);
+      log('u1', '已 pushState ?__gmt_url=' + n + '（SW webNavigation 下行后应见回调/事件行）');
+    },
+    'u2-hash': function (log) {
+      location.hash = 'gmt-' + Date.now();
+      log('u2', '已改 hash（onReferenceFragmentUpdated 触发）');
+    }
+  };
+
+  GMT.render({
+    module: 'urlchange',
+    title: 'GM 手测·URL变化',
+    cards: [
+      { id: 'u1', api: 'window.onurlchange（pushState）', desc: 'SPA pushState 触发回调 + urlchange 事件。', steps: [{ id: 'u1-push', label: 'pushState 改 URL' }, '看是否出现回调/事件行'], expect: '出现 onurlchange 回调行与 urlchange 事件行，url 含 __gmt_url' },
+      { id: 'u2', api: 'window.onurlchange（hash）', desc: 'hash 变化触发。', steps: [{ id: 'u2-hash', label: '改 hash' }], expect: '出现携带新 hash 的回调/事件行' }
+    ],
+    actions: actions
+  });
+})();

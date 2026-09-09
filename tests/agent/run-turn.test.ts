@@ -131,6 +131,24 @@ describe('runTurn', () => {
     expect(r.text).toBe('结论');
   });
 
+  it('onToolArgsDelta：每次 tool-call-delta 回调带工具名与累计字节数', async () => {
+    const seen: Array<[string, number]> = [];
+    const provider: Provider = {
+      streamChat(_p, onEvent) {
+        queueMicrotask(() => {
+          onEvent({ type: 'tool-call-delta', index: 0, id: 'c1', name: 'create_script', argsDelta: '{"a' });
+          onEvent({ type: 'tool-call-delta', index: 0, argsDelta: '":1}' });
+          onEvent({ type: 'message-done', finishReason: 'tool_calls' });
+        });
+        return { cancel: vi.fn() };
+      },
+    };
+    await runTurn(provider, { messages: [], tools: [] }, {
+      onToolArgsDelta: (name, bytes) => seen.push([name, bytes]),
+    });
+    expect(seen).toEqual([['create_script', 3], ['create_script', 7]]);
+  });
+
   it('无 reasoning 时 TurnResult.reasoning 为 undefined', async () => {
     const p = scriptedProvider([
       { type: 'text-delta', text: 'x' },

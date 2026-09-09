@@ -75,5 +75,7 @@ export function toSummary(s: UserScript, errorCount = 0): ScriptSummary {
     hasRequires: (s.meta?.requires?.length ?? 0) > 0,
     grantSupported: supported,
     grantUnsupported: unsupported,
+    lines: s.text.split('\n').length,
+    bytes: s.text.length,
   };
 }

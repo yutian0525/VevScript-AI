@@ -108,6 +108,8 @@ export type PortMsgFromPanel =
 export type AgentEvent =
   | { type: 'reasoning-delta'; text: string }
   | { type: 'text-delta'; text: string }
+  /** 工具参数流式生成中（bytes = 已累计字节数，非增量）。根治「模型在写长参数时 UI 全静默」。 */
+  | { type: 'tool-args-delta'; name: string; bytes: number }
   | { type: 'tool-start'; name: string; args: string; callId: string }
   | { type: 'tool-end'; name: string; callId: string; ok: boolean; summary: string; output?: string; image?: string }
   | { type: 'usage'; promptTokens?: number; completionTokens?: number }
@@ -147,8 +149,12 @@ export interface ScriptPatch {
   enabled?: boolean;
   /** 行区间替换：在当前原文上 splice 后整体重解析 */
   edit?: ScriptEditRange;
-  /** 从更新源（@updateURL/@downloadURL）拉取远端最新文本并覆盖；与 text/edit 互斥，优先生效。 */
+  /** 从更新源（@updateURL/@downloadURL）拉取远端最新文本并覆盖；与其余分支互斥且优先。 */
   applyUpdate?: boolean;
+  /** 追加到原文末尾（不需要行号）。分步写长脚本的主力原语（spec §4.1）。 */
+  append?: string;
+  /** 字面量精确替换（不依赖行号）。old 需唯一，否则报错列出命中行号。 */
+  replace?: { old: string; new: string; all?: boolean };
 }
 
 /** SCRIPTS_GET 响应 data 形状：传 offset/limit 时 script.text 为行切片（修订 2026-09-02） */
@@ -180,6 +186,8 @@ export type ScriptsRequest =
   | { type: 'SCRIPTS_GET_RUNTIME_FOR_TAB'; tabId: number }
   | { type: 'SCRIPTS_GET_PERMISSIONS'; id: string }
   | { type: 'SCRIPTS_REVOKE_PERMISSION'; id: string; host: string }
+  | { type: 'SCRIPTS_GET_LLM_TIER'; id: string }
+  | { type: 'SCRIPTS_SET_LLM_TIER'; id: string; tier: 'ask' | 'allow' | 'deny' }
   | { type: 'CONFIRM_RESOLVE'; confirmId: string; decision: string }
   | { type: 'CONFIRM_GET_STATE' }
   | { type: 'GM_DEBUG_CALL'; scriptId: string; api: string; params: unknown[]; tabId?: number }
@@ -197,6 +205,18 @@ export type SkillsRequest =
   | { type: 'SKILLS_SET_ENABLED'; id: string; enabled: boolean }
   | { type: 'SKILLS_IMPORT'; text: string; filename?: string }
   | { type: 'SKILLS_EXPORT'; ids?: string[] };   // 缺省 = 全部
+
+// ---------- Hook 排除名单（sidepanel → bg request/response，走 MessageRouter）----------
+
+/** HOOK_EXCLUSIONS_GET 响应 data：patterns=当前名单，defaults=出厂默认（UI 判「已改动」）。 */
+export interface HookExclusionsData {
+  patterns: string[];
+  defaults: string[];
+}
+
+export type HookExclusionsRequest =
+  | { type: 'HOOK_EXCLUSIONS_GET' }
+  | { type: 'HOOK_EXCLUSIONS_SAVE'; patterns: string[] };
 
 /** GM_DEBUG_INFO 响应 data：脚本运行时调试台白名单视图（spec §3.①）。 */
 export interface GmDebugInfoData {
@@ -221,6 +241,19 @@ export interface ScriptsRuntimeEvent {
 export interface ScriptsUpdatesEvent {
   type: 'SCRIPTS_UPDATES';
   updates: Record<string, ScriptUpdateState>;
+}
+
+/** 脚本清单变更原因（跨界面同步：侧栏 refresh、详情页刷新/删除、popup 重载） */
+export type ScriptsChangedReason = 'create' | 'update' | 'enable' | 'delete' | 'import';
+
+/** bg → 扩展页面广播：脚本清单发生写变更（增/改/启停/删/导入）。
+ *  与 SCRIPTS_RUNTIME 区别：后者只报某 tab 运行集，本事件报「清单本体变了」，
+ *  接收方据此重拉 summaries / 重取详情，修 name/enabled/matches/删除卡片残留不同步。
+ *  ids：受影响脚本 id（删除/改单条时给；批量或不确定可省，接收方全量 refresh）。 */
+export interface ScriptsChangedEvent {
+  type: 'SCRIPTS_CHANGED';
+  reason: ScriptsChangedReason;
+  ids?: string[];
 }
 
 /** popup/侧边栏跨面导航通知（popup → sidepanel，fire-and-forget；sidepanel 未开时由 pendingView 兜底） */

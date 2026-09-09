@@ -15,6 +15,8 @@ export interface WrapperDeps {
   values: Record<string, unknown>;
   /** @resource 内容（name → text） */
   resources: Record<string, string>;
+  /** @resource 的 data: URL 快照（GM_getResourceURL 零 RPC 数据源）；可选，缺省 {} */
+  resourceUrls?: Record<string, string>;
   /** @require 预取产物（按声明顺序） */
   requireCodes: string[];
   extensionVersion: string;
@@ -47,6 +49,9 @@ function preamble(scriptId: string): string {
   var __GM_id = ${J(scriptId)};
   var __GM_token = TOKEN_PLACEHOLDER;
   var __GM_reqSeq = 0;
+  // 页实例 id：LLM_CHUNK 通道前缀。同页二次注入（扩展重载重注而旧 wrapper 仍在流式）时，
+  // 两个闭包的数字 reqId 会撞——chan 带上实例 id 才能配对到正确的 onChunk。
+  var __GM_inst = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   var __GM_pending = new Map();
   var __GM_listeners = new Map();
   var __GM_valueHooks = new Map();
@@ -56,6 +61,7 @@ function preamble(scriptId: string): string {
   var unsafeWindow = window;
   var __values = VALUES_PLACEHOLDER;
   var __resources = RESOURCES_PLACEHOLDER;
+  var __resourceUrls = RESOURCEURLS_PLACEHOLDER;
   // 握手态：wrapper 可能早于桥宿主挂 gmreq 监听（@run-at document-end/start 早于宿主的
   // document_idle + 异步拉 token）。宿主未就绪时 gmreq 派发进虚空、请求永挂——故未就绪先入
   // backlog，收到 gmhost 就绪信号再冲刷（见 shared/gm-bridge.ts 握手注释）。
@@ -64,14 +70,19 @@ function preamble(scriptId: string): string {
   function __GM_send(detail) {
     window.dispatchEvent(new CustomEvent('gmreq:' + __GM_id, { detail: detail }));
   }
-  function __GM_post(api, params) {
+  // 请求双形态：显式 reqId 版供 LLM 等需要通道号配对下行的调用方（chan 与 reqId 共用一次自增），
+  // 自增版是常规请求入口——Promise 挂载 + 握手 backlog 分流逻辑集中在 __GM_post_id 内。
+  function __GM_post_id(api, params, reqId) {
     return new Promise(function (resolve, reject) {
-      var reqId = ++__GM_reqSeq;
       __GM_pending.set(reqId, { resolve: resolve, reject: reject });
       var detail = { token: __GM_token, reqId: reqId, api: api, params: params };
       if (__GM_hostReady) __GM_send(detail);
       else __GM_backlog.push(detail);
     });
+  }
+  function __GM_post(api, params) {
+    var reqId = ++__GM_reqSeq;
+    return __GM_post_id(api, params, reqId);
   }
   // 收到宿主就绪信号：置位 + 冲刷 backlog（取出并清空，重复 gmhost 到达时 backlog 已空，幂等）。
   window.addEventListener('gmhost:' + __GM_id, function () {
@@ -96,7 +107,7 @@ function preamble(scriptId: string): string {
     var d = e.detail || {};
     if (d.kind === 'VALUE_CHANGE') {
       var hooks = __GM_valueHooks.get(d.data.key);
-      if (hooks) hooks.forEach(function (fn) { fn(d.data.key, d.data.oldValue, d.data.newValue, d.data.remote); });
+      if (hooks) hooks.forEach(function (fn) { if (fn) fn(d.data.key, d.data.oldValue, d.data.newValue, d.data.remote); });
     } else if (d.kind === 'MENU_CLICK') {
       var cb = __GM_listeners.get('menu:' + d.data.key);
       if (cb) cb();
@@ -106,6 +117,12 @@ function preamble(scriptId: string): string {
     } else if (d.kind === 'TAB_EVENT') {
       var tc = __GM_listeners.get('tab:' + d.data.tabId);
       if (tc) tc(d.data);
+    } else if (d.kind === 'LLM_CHUNK') {
+      var lc = __GM_listeners.get('llmchan:' + d.data.chan);
+      if (lc) lc(d.data.delta);
+    } else if (d.kind === 'URL_CHANGE') {
+      try { if (typeof unsafeWindow.onurlchange === 'function') unsafeWindow.onurlchange({ url: d.data.url }); } catch (e) { /* 回调异常不阻断 */ }
+      try { unsafeWindow.dispatchEvent(new CustomEvent('urlchange', { detail: { url: d.data.url } })); } catch (e) { /* ignore */ }
     }
   });
   function __GM_report(message, stack, line) {
@@ -132,6 +149,13 @@ function preamble(scriptId: string): string {
       if (val !== undefined) out[k] = val;
     }
     return out;
+  }
+  // LLM 专用摘除：onChunk 语义上必摘（函数不可过桥），防御调用方塞了非函数可克隆值
+  // （如字符串/对象）残留在 payload 里混进 SW。__GM_plain 本身已摘所有函数，此处是显式化。
+  function __GM_plain_llm(v) {
+    var copy = __GM_plain(v);
+    if (copy && copy.onChunk !== undefined) delete copy.onChunk;
+    return copy;
   }
   // 可变参 Function 构造器：预编译探测（只编译不执行）与用户代码执行共用语言级构造。
   // 构造器返回对象覆盖 new 产物，故 new __GM_probe(...) 直接得到编译出的函数。
@@ -169,15 +193,35 @@ const GM_INSTALLS: ReadonlyArray<readonly [string, string]> = [
   ['GM_addValueChangeListener', 'function (key, fn) { var arr = __GM_valueHooks.get(key) || []; arr.push(fn); __GM_valueHooks.set(key, arr); return key + ":" + (arr.length - 1); }'],
   ['GM_addStyle', 'function (css) { var el = document.createElement("style"); el.textContent = css; (document.head || document.documentElement).appendChild(el); return el; }'],
   ['GM_getResourceText', 'function (name) { return __resources[name]; }'],
+  ['GM_getValues', 'function (keys) { var out = {}; if (Array.isArray(keys)) { for (var i = 0; i < keys.length; i++) { var k = keys[i]; out[k] = __values[k]; } } else if (keys && typeof keys === "object") { for (var k2 in keys) { if (Object.prototype.hasOwnProperty.call(keys, k2)) { out[k2] = __values[k2] === undefined ? keys[k2] : __values[k2]; } } } else { for (var k3 in __values) { if (Object.prototype.hasOwnProperty.call(__values, k3)) out[k3] = __values[k3]; } } return out; }'],
+  ['GM_removeValueChangeListener', 'function (id) { var i = String(id).lastIndexOf(":"); if (i < 0) return; var key = String(id).slice(0, i); var idx = parseInt(String(id).slice(i + 1), 10); var arr = __GM_valueHooks.get(key); if (arr && arr[idx]) arr[idx] = null; }'],
+  ['GM_setValues', 'function (obj) { if (obj && typeof obj === "object") { for (var k in obj) { if (Object.prototype.hasOwnProperty.call(obj, k)) __values[k] = obj[k]; } } return __GM_post("SetValues", [__GM_plain(obj)]); }'],
+  ['GM_deleteValues', 'function (keys) { if (Array.isArray(keys)) { for (var i = 0; i < keys.length; i++) delete __values[keys[i]]; } return __GM_post("DeleteValues", [keys]); }'],
+  // 无 parent 时默认落 body（TM 语义；head 的 UA display:none 会吞掉渲染元素——d6/d7 手测教训）
+  ['GM_addElement', 'function (a, b, c) { var parent, tag, attrs; if (typeof a === "string") { parent = null; tag = a; attrs = b || {}; } else { parent = a; tag = b; attrs = c || {}; } var el = document.createElement(tag); for (var k in attrs) { if (!Object.prototype.hasOwnProperty.call(attrs, k)) continue; if (k === "textContent") el.textContent = attrs[k]; else if (k === "innerHTML") el.innerHTML = attrs[k]; else el.setAttribute(k, attrs[k]); } (parent || document.body || document.head || document.documentElement).appendChild(el); return el; }'],
+  ['GM_getResourceURL', 'function (name) { return __resourceUrls[name]; }'],
   ['GM_log', 'function () { var a = [].slice.call(arguments); a.unshift(GM_info.script.name); console.log.apply(console, a); }'],
   ['GM_registerMenuCommand', 'function (name, fn) { var key = "m" + (++__GM_reqSeq); __GM_listeners.set("menu:" + key, fn); __GM_post("RegisterMenu", [key, name]); return key; }'],
+  ['GM_unregisterMenuCommand', 'function (key) { __GM_listeners.delete("menu:" + key); return __GM_post("UnregisterMenu", [key]); }'],
   ['GM_setClipboard', 'function (text) { return __GM_post("SetClipboard", [text]); }'],
   ['GM_notification', 'function (details, ondone) { var id = "n" + (++__GM_reqSeq); if (ondone) __GM_listeners.set("notif:" + id, ondone); __GM_post("Notification", [__GM_plain(details), id]); }'],
+  ['GM_closeNotification', 'function (id) { return __GM_post("CloseNotification", [id]); }'],
+  ['GM_updateNotification', 'function (id, details) { return __GM_post("UpdateNotification", [id, __GM_plain(details)]); }'],
   ['GM_openInTab', 'function (url, opts) { opts = opts || {}; var h = { closed: false, onclose: null, __tabId: null, close: function () { if (h.__tabId != null) { __GM_post("CloseTab", [h.__tabId]); } else { h.__closePending = true; } } }; __GM_post("OpenInTab", [url, __GM_plain(opts)]).then(function (tabId) { h.__tabId = tabId; if (h.__closePending) { __GM_post("CloseTab", [tabId]); } __GM_listeners.set("tab:" + tabId, function (d) { h.closed = !!d.closed; if (d.closed && h.onclose) h.onclose(); }); }); return h; }'],
+  ['GM_getTab', 'function (cb) { var p = __GM_post("GetTab", []); if (typeof cb === "function") p.then(cb); return p; }'],
+  ['GM_saveTab', 'function (data) { return __GM_post("SaveTab", [__GM_plain(data)]); }'],
+  ['GM_getTabs', 'function (cb) { var p = __GM_post("GetTabs", []); if (typeof cb === "function") p.then(cb); return p; }'],
   // details 经 __GM_plain 摘除回调函数再过桥：CustomEvent detail 跨 world（USER_SCRIPT→ISOLATED）
   // 走结构化克隆，函数不可克隆会使 detail 变 null（宿主静默丢弃，请求永挂无任何回显）。
   // onload/onerror/ontimeout 留在闭包里，由 .then 分支调用。
   ['GM_xmlhttpRequest', 'function (details) { var d = __GM_plain(details); __GM_post("XmlHttpRequest", [d]).then(function (resp) { if (resp && resp.error) { details.onerror && details.onerror(resp); } else { details.onload && details.onload(resp); } }, function (err) { details.onerror && details.onerror({ error: String(err) }); }); return { abort: function () {} }; }'],
+  ['GM_download', 'function (arg, name) { var details = typeof arg === "string" ? { url: arg, name: name } : (arg || {}); var d = __GM_plain(details); __GM_post("Download", [d]).then(function (r) { if (r && r.error) { details.onerror && details.onerror(r); } else { details.onload && details.onload(r); } }, function (e) { details.onerror && details.onerror({ error: String(e) }); }); return { abort: function () {} }; }'],
+  // LLM 调用：onChunk 先摘出存闭包（函数不可过桥），chan = 页实例id:reqId 供 SW 下行 LLM_CHUNK 配对。
+  // chan 与请求 reqId 共用同一次 ++__GM_reqSeq 自增（不二次自增）。成功/失败都清监听；
+  // 不提供 abort（一次性语义，文档明示）。
+  ['GM_llmChat', 'function (details) { var onChunk = details && typeof details.onChunk === "function" ? details.onChunk : null; var d = __GM_plain_llm(details); var reqId = ++__GM_reqSeq; var chan = __GM_inst + ":" + reqId; if (onChunk) __GM_listeners.set("llmchan:" + chan, onChunk); return __GM_post_id("LlmChat", [d, chan], reqId).then(function (r) { if (onChunk) __GM_listeners.delete("llmchan:" + chan); return r; }, function (e) { if (onChunk) __GM_listeners.delete("llmchan:" + chan); throw e; }); }'],
+  // 对象型 API：@grant 一次装齐三方法（对象字面量，delete 是保留字作键需加引号——ES5 防御）。
+  ['GM_cookie', '{ list: function (d) { return __GM_post("CookieList", [__GM_plain(d)]); }, set: function (d) { return __GM_post("CookieSet", [__GM_plain(d)]); }, "delete": function (d) { return __GM_post("CookieDelete", [__GM_plain(d)]); } }'],
 ] as const;
 
 function installLines(script: UserScript): { code: string; vars: string[] } {
@@ -192,7 +236,11 @@ function installLines(script: UserScript): { code: string; vars: string[] } {
     lines.push(`  ${name} = install(${J(name)}, ${syncExpr});`);
     vars.push(name);
     const def = GM_API_REGISTRY[name];
-    if (def?.promiseForm) {
+    if (def?.objectApi) {
+      // 对象型：点形式同引用（GM.cookie = GM_cookie），三方法本身已返回 Promise
+      const dot = name.replace(/^GM_/, 'GM.');
+      lines.push(`  ${dot} = ${name};`);
+    } else if (def?.promiseForm) {
       const dot = name.replace(/^GM_/, 'GM.');
       lines.push(`  install(${J(dot)}, function () { var a = [].slice.call(arguments); var r = GM[${J(name)}].apply(null, a); return r && typeof r.then === 'function' ? r : Promise.resolve(r); });`);
     }
@@ -201,6 +249,16 @@ function installLines(script: UserScript): { code: string; vars: string[] } {
     if (real.includes(name)) emit(name, expr);
   }
   return { code: lines.join('\n'), vars };
+}
+
+/** 特殊 grant（window.close/focus/onurlchange）：改 unsafeWindow 而非 GM 对象，按 grant 条件 emit。 */
+function specialGrantLines(script: UserScript): string {
+  const grants = script.meta?.grants ?? [];
+  const lines: string[] = [];
+  if (grants.includes('window.close')) lines.push('  unsafeWindow.close = function () { __GM_post("WindowClose", []); };');
+  if (grants.includes('window.focus')) lines.push('  unsafeWindow.focus = function () { __GM_post("WindowFocus", []); };');
+  if (grants.includes('window.onurlchange')) lines.push('  unsafeWindow.onurlchange = null;');
+  return lines.join('\n');
 }
 
 /** 拼装完整注入代码。无 grant 且无 @require → 返回裸 code（spec §5 零开销）。 */
@@ -215,6 +273,7 @@ export function buildWrappedCode(script: UserScript, deps: WrapperDeps): string 
     .replace('TOKEN_PLACEHOLDER', () => J(deps.token))
     .replace('VALUES_PLACEHOLDER', () => J(deps.values))
     .replace('RESOURCES_PLACEHOLDER', () => J(deps.resources))
+    .replace('RESOURCEURLS_PLACEHOLDER', () => J(deps.resourceUrls ?? {}))
     .replace('GMINFO_PLACEHOLDER', () => gmInfoLiteral(script, deps.extensionVersion));
 
   // 用户代码执行体：@require 前置拼接（require 与用户代码共享同一函数作用域，TM 同款），
@@ -226,6 +285,7 @@ export function buildWrappedCode(script: UserScript, deps: WrapperDeps): string 
   // （Function 构造体只认全局作用域，闭包变量必须显式注入才能对用户代码可见）。
   // GM/GM_info/unsafeWindow 始终可见（preamble 无条件定义；GM.info 同引用）；下划线 API 按 grant 精确注入。
   const { code: installs, vars } = installLines(script);
+  const specials = specialGrantLines(script);
   const apiVars = vars.filter((n) => n !== 'GM_info');
   const params = ['GM', 'GM_info', 'unsafeWindow', ...apiVars];
   const paramList = params.map((n) => J(n)).join(', ');
@@ -249,5 +309,5 @@ export function buildWrappedCode(script: UserScript, deps: WrapperDeps): string 
 })();
 `;
 
-  return [head, varDecl, installs + '\n', tail].join('\n');
+  return [head, varDecl, installs + '\n', specials + '\n', tail].join('\n');
 }

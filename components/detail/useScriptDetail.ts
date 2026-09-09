@@ -1,6 +1,6 @@
 // components/detail/useScriptDetail.ts
 // 详情页数据加载：SCRIPTS_GET 拉脚本 + 错误订阅 + 不存在检测。
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { sendScriptsRequest, useScripts } from '../../stores/scripts';
 import type { GmErrorItem } from '../../stores/scripts';
@@ -12,7 +12,11 @@ export interface ScriptDetailData {
   setScript: Dispatch<SetStateAction<UserScript | null>>;
   errors: GmErrorItem[];
   notFound: boolean;
+  /** 别处删除该脚本时置真（详情页跳「已删除」空态，消 ghost） */
+  setNotFound: Dispatch<SetStateAction<boolean>>;
   loading: boolean;
+  /** 重新拉取脚本（别处改动后同步）；按 updatedAt 去重，自触发的相同数据不重置本地态 */
+  reload: () => Promise<void>;
 }
 
 export function useScriptDetail(id: string): ScriptDetailData {
@@ -43,6 +47,21 @@ export function useScriptDetail(id: string): ScriptDetailData {
     return () => { cancelled = true; };
   }, [id]);
 
+  // 别处改动后重拉：按 updatedAt 去重——自己刚保存触发的广播拿到相同数据，不重置本地态（防闪烁）
+  const reload = useCallback(async () => {
+    try {
+      const resp = await sendScriptsRequest<{ ok: boolean; data?: { script: UserScript }; error?: string }>({
+        type: 'SCRIPTS_GET', id,
+      });
+      if (resp.ok && resp.data) {
+        setScript((prev) => (prev && prev.updatedAt === resp.data!.script.updatedAt ? prev : resp.data!.script));
+        setNotFound(false);
+      } else {
+        setNotFound(true); // 已被删
+      }
+    } catch { /* 传输异常：保持当前态，不误判删除 */ }
+  }, [id]);
+
   // 订阅脚本错误广播（实时增行）+ 冷读复水（refresh 拉全量 GM 状态含 errors）
   useEffect(() => {
     void useScripts.getState().refresh();
@@ -59,5 +78,5 @@ export function useScriptDetail(id: string): ScriptDetailData {
     return () => { browser.runtime.onMessage.removeListener(onMessage); };
   }, []);
 
-  return { script, setScript, errors, notFound, loading };
+  return { script, setScript, errors, notFound, setNotFound, loading, reload };
 }

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Paperclip, Wrench, CircleAlert, Loader2, Check, X, ChevronRight, ChevronDown, Brain, SquarePen, ArrowUp, ArrowDown, Square, ArrowDownToLine } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
+import { Tooltip } from '../ui/Tooltip';
 import { Gauge } from '../ui/Gauge';
 import { ContextRing } from './ContextRing';
 import { Markdown } from './Markdown';
@@ -35,7 +36,7 @@ const HELLO_SUGGESTIONS: { tag?: string; label: string; text: string }[] = [
 ];
 
 export function ChatView() {
-  const { messages, status, pauseReason, applyEvent, promptTokens, compacting } = useChat();
+  const { messages, status, pauseReason, applyEvent, promptTokens, compacting, argsProgress } = useChat();
   const { currentId, list, menuOpen, setMenuOpen } = useConversations();
   const [input, setInput] = useState('');
   const [contextWindow, setContextWindow] = useState(DEFAULT_CONTEXT_WINDOW);
@@ -93,7 +94,8 @@ export function ChatView() {
   }, []);
 
   const last = messages[messages.length - 1];
-  const scrollKey = `${messages.length}:${last?.text?.length ?? 0}:${last?.reasoning?.length ?? 0}:${last?.status ?? ''}`;
+  // argsProgress 计入 key：进度条出现/增长时若用户贴底则保持贴底（含 name，防新工具 bytes 重置时不触发）
+  const scrollKey = `${messages.length}:${last?.text?.length ?? 0}:${last?.reasoning?.length ?? 0}:${last?.status ?? ''}:${argsProgress ? `${argsProgress.name}:${argsProgress.bytes}` : ''}`;
   useEffect(() => {
     // 跟随中才自动贴底。流式期间一律瞬时滚动：smooth 的中间态会被 scroll 监听误判成用户上滚。
     if (!follow) return;
@@ -214,12 +216,16 @@ export function ChatView() {
       right={<Gauge state={status} />}
       actions={
         <>
-          <Button variant="ghost" className="btn--icon" aria-label="新建会话" onClick={() => void useConversations.getState().newConversation()}>
-            <SquarePen size={16} />
-          </Button>
-          <Button variant="ghost" className="btn--icon" aria-label="会话列表" aria-expanded={menuOpen} onClick={() => { if (!menuOpen) void useConversations.getState().refreshList(); setMenuOpen(!menuOpen); }}>
-            <ChevronDown size={16} />
-          </Button>
+          <Tooltip label="新建会话">
+            <Button variant="ghost" className="btn--icon" aria-label="新建会话" onClick={() => void useConversations.getState().newConversation()}>
+              <SquarePen size={16} />
+            </Button>
+          </Tooltip>
+          <Tooltip label="会话列表" disabled={menuOpen}>
+            <Button variant="ghost" className="btn--icon" aria-label="会话列表" aria-expanded={menuOpen} onClick={() => { if (!menuOpen) void useConversations.getState().refreshList(); setMenuOpen(!menuOpen); }}>
+              <ChevronDown size={16} />
+            </Button>
+          </Tooltip>
         </>
       }
     >
@@ -252,6 +258,13 @@ export function ChatView() {
             {messages.map((m, i) => (
               <MessageRow key={i} index={i} item={m} streaming={status === 'running' && i === lastIdx} />
             ))}
+            {argsProgress && status === 'running' && (
+              <div className="argsprog rise">
+                <span className="mono argsprog__name">{argsProgress.name}</span>
+                <span className="argsprog__text">正在生成参数…</span>
+                <span className="mono argsprog__size">{formatBytes(argsProgress.bytes)}</span>
+              </div>
+            )}
             {status === 'paused' && (
               <div className="pausebar rise">
                 <div style={{ marginBottom: 8 }}>
@@ -262,16 +275,17 @@ export function ChatView() {
             )}
           </div>
           {!follow && messages.length > 0 && (
-            <button
-              type="button"
-              className="chat__tobottom"
-              // 流式中用瞬时：smooth 的下落会被下一次增量的瞬时贴底截断，不如一步到位
-              onClick={() => { setFollow(true); scrollToBottom(status !== 'running'); }}
-              aria-label="滚动到底部"
-              title="滚动到底部"
-            >
-              <ArrowDownToLine size={15} />
-            </button>
+            <Tooltip label="滚动到底部">
+              <button
+                type="button"
+                className="chat__tobottom"
+                // 流式中用瞬时：smooth 的下落会被下一次增量的瞬时贴底截断，不如一步到位
+                onClick={() => { setFollow(true); scrollToBottom(status !== 'running'); }}
+                aria-label="滚动到底部"
+              >
+                <ArrowDownToLine size={15} />
+              </button>
+            </Tooltip>
           )}
         </div>
         <div className="composer">
@@ -329,16 +343,17 @@ export function ChatView() {
               style={{ display: 'none' }}
               onChange={onPickFiles}
             />
-            <button
-              type="button"
-              className="composer__attach"
-              disabled={attachDisabled}
-              title={attachments.length >= MAX_ATTACHMENTS ? `最多 ${MAX_ATTACHMENTS} 个附件` : '上传附件（文本 / 图片，也可 Ctrl+V 粘贴）'}
-              aria-label="上传附件"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip size={16} />
-            </button>
+            <Tooltip label={attachments.length >= MAX_ATTACHMENTS ? `最多 ${MAX_ATTACHMENTS} 个附件` : '上传附件（文本 / 图片，也可 Ctrl+V 粘贴）'}>
+              <button
+                type="button"
+                className="composer__attach"
+                disabled={attachDisabled}
+                aria-label="上传附件"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip size={16} />
+              </button>
+            </Tooltip>
             <ModeSelect disabled={status === 'running' ? false : compacting} />
             <div className="composer__actions">
               <ContextRing
@@ -418,11 +433,11 @@ function MessageRow({ item, index, streaming }: { item: ChatItem; index: number;
   const open = !!item.expanded;
   return (
     <div className="rise">
+      <Tooltip label={item.args} disabled={!item.args}>
       <button
         className={`toolcard toolcard--btn toolcard--${state}`}
         aria-expanded={canExpand ? open : undefined}
         onClick={() => canExpand && toggleExpand(index)}
-        title={item.args}
       >
         <span className="toolcard__icon">
           {item.status === 'running' ? (
@@ -443,6 +458,7 @@ function MessageRow({ item, index, streaming }: { item: ChatItem; index: number;
           <ChevronRight size={13} className={`toolcard__chev${open ? ' toolcard__chev--open' : ''}`} />
         )}
       </button>
+      </Tooltip>
       {open && canExpand && (
         <div className="toolcard__detail rise">
           {item.args && (
@@ -512,4 +528,9 @@ function formatArgs(args: string): string {
 /** token 数格式化：>=1000 显示 xk，否则原样。 */
 function formatTokens(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+}
+
+/** 参数进度的体积显示：<1KB 显示字节，否则一位小数的 KB。 */
+function formatBytes(n: number): string {
+  return n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`;
 }

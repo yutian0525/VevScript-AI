@@ -87,15 +87,17 @@ describe('DetailApp', () => {
     expect(screen.getByRole('button', { name: '删除脚本' })).toBeTruthy();
   });
 
-  it('详情 Tab：中文字段标签 + title tooltip 保留原键名', async () => {
+  it('详情 Tab：中文字段标签 + hover tooltip 显示原键名', async () => {
     mockBackend(mkScript({ meta: { version: '1.0', grants: ['GM_getValue'] } }));
     render(<DetailApp id="s1" />);
     await screen.findByText('测试脚本');
     expect(screen.getByText('版本')).toBeTruthy();
     expect(screen.getByText('匹配规则')).toBeTruthy();
     expect(screen.getByText('权限申请')).toBeTruthy();
-    expect(screen.getByTitle('version')).toBeTruthy();
-    expect(screen.getByTitle('match')).toBeTruthy();
+    // 原键名从原生 title 迁移到自定义 Tooltip：hover 中文标签，气泡显示原键名
+    fireEvent.mouseEnter(screen.getByText('版本'));
+    const tip = await screen.findByRole('tooltip');
+    expect(tip.textContent).toContain('version');
   });
 
   it('详情 Tab 操作区：启停按钮显示反向操作，点击调 SCRIPTS_SET_ENABLED', async () => {
@@ -174,6 +176,23 @@ describe('DetailApp', () => {
     mockBackend(null);
     render(<DetailApp id="gone" />);
     expect(await screen.findByText('脚本不存在或已被删除')).toBeTruthy();
+  });
+
+  it('别处删除本脚本（SCRIPTS_CHANGED delete 广播）→ 跳「已删除」空态，不留 ghost', async () => {
+    mockBackend(mkScript());
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    fakeBrowser.runtime.onMessage.trigger({ type: 'SCRIPTS_CHANGED', reason: 'delete', ids: ['s1'] }, {} as never, () => {});
+    expect(await screen.findByText('脚本不存在或已被删除')).toBeTruthy();
+  });
+
+  it('别处删除的是其它脚本（ids 不含本脚本）→ 详情页不受影响', async () => {
+    mockBackend(mkScript());
+    render(<DetailApp id="s1" />);
+    await screen.findByText('测试脚本');
+    fakeBrowser.runtime.onMessage.trigger({ type: 'SCRIPTS_CHANGED', reason: 'delete', ids: ['other'] }, {} as never, () => {});
+    expect(screen.getByText('测试脚本')).toBeTruthy();
+    expect(screen.queryByText('脚本不存在或已被删除')).toBeNull();
   });
 
   it('代码 Tab 工具栏：保存/导入/导出按钮在状态字左侧（DOM 顺序）', async () => {

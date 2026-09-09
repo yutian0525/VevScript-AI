@@ -6,14 +6,33 @@ import { ModelSettings } from './ModelSettings';
 import { ToolBenchPage } from '../debug/ToolBenchPage';
 import { ScriptDebugPage } from '../scriptdebug/ScriptDebugPage';
 import { SkillsPage } from '../skills/SkillsPage';
+import { SystemPromptPage } from './SystemPromptPage';
+import { MemoryPage } from './MemoryPage';
+import { HookExclusionsPage } from './HookExclusionsPage';
 
 export function SettingsView() {
   const [sub, setSub] = useState<SettingsSub | null>(null);
   const back = () => setSub(null);
 
-  if (sub === 'model') return <ModelSettings onBack={back} />;
-  if (sub === 'toolbench') return <ToolBenchPage onBack={back} />;
-  if (sub === 'scriptdebug') return <ScriptDebugPage onBack={back} />;
-  if (sub === 'skills') return <SkillsPage onBack={back} />;
-  return <SettingsHome onOpen={setSub} />;
+  return (
+    <div className="view-swap" key={sub ?? 'home'}>
+      {sub === 'model' ? (
+        <ModelSettings onBack={back} />
+      ) : sub === 'prompt' ? (
+        <SystemPromptPage onBack={back} />
+      ) : sub === 'memory' ? (
+        <MemoryPage onBack={back} />
+      ) : sub === 'toolbench' ? (
+        <ToolBenchPage onBack={back} />
+      ) : sub === 'scriptdebug' ? (
+        <ScriptDebugPage onBack={back} />
+      ) : sub === 'skills' ? (
+        <SkillsPage onBack={back} />
+      ) : sub === 'hookexclusions' ? (
+        <HookExclusionsPage onBack={back} />
+      ) : (
+        <SettingsHome onOpen={setSub} />
+      )}
+    </div>
+  );
 }

@@ -29,6 +29,8 @@ interface ChatState {
   pauseReason?: string;
   promptTokens?: number;   // 当前会话最近一轮真实发出的 token（环形指示器分子）
   compacting: boolean;     // 是否正在压缩
+  /** 当前 tool_call 参数流式生成进度（瞬态，不入 messages）：模型在写长参数时的可见反馈。 */
+  argsProgress?: { name: string; bytes: number };
   mode: AgentMode;         // 行为模式（ask/agent）：attach 回权威值，setMode 本地即时改
   addUserMessage: (text: string, attachments?: ChatAttachment[]) => void;
   applyEvent: (e: AgentEvent) => void;
@@ -124,9 +126,9 @@ export const useChat = create<ChatState>((set) => ({
       // role==='tool' 已在 toolResults 里被 assistant 分支消费，不单独渲染
       // role==='system' 不持久化，天然不会出现
     }
-    return { messages: items, status: 'idle', pauseReason: undefined };
+    return { messages: items, status: 'idle', pauseReason: undefined, argsProgress: undefined };
   }),
-  reset: () => set({ messages: [], status: 'idle', pauseReason: undefined, promptTokens: undefined, compacting: false, mode: 'agent' }),
+  reset: () => set({ messages: [], status: 'idle', pauseReason: undefined, promptTokens: undefined, compacting: false, argsProgress: undefined, mode: 'agent' }),
   applyEvent: (e) => set((s) => {
     const messages = [...s.messages];
     switch (e.type) {
@@ -149,14 +151,17 @@ export const useChat = create<ChatState>((set) => ({
         }
         return { messages };
       }
+      case 'tool-args-delta':
+        // bytes 是累计值 → 覆盖写
+        return { argsProgress: { name: e.name, bytes: e.bytes } };
       case 'tool-start': {
         collapseTrailingThinking(messages);
         // 按 callId 幂等：重复的 tool-start（同 callId）不再新推卡片，避免"一张 done 一张永远 running"
         if (e.callId && messages.some((m) => m.role === 'tool' && m.callId === e.callId)) {
-          return { messages };
+          return { messages, argsProgress: undefined };
         }
         messages.push({ role: 'tool', name: e.name, args: e.args, callId: e.callId, status: 'running' });
-        return { messages };
+        return { messages, argsProgress: undefined };
       }
       case 'tool-end': {
         const idx = messages.findIndex((m) => m.role === 'tool' && m.callId === e.callId);
@@ -179,14 +184,14 @@ export const useChat = create<ChatState>((set) => ({
         return { compacting: false, promptTokens: e.newPromptTokens ?? s.promptTokens };
       case 'paused':
         collapseTrailingThinking(messages);
-        return { messages, status: 'paused', pauseReason: e.reason };
+        return { messages, status: 'paused', pauseReason: e.reason, argsProgress: undefined };
       case 'done':
         collapseTrailingThinking(messages);
-        return { messages, status: 'idle' };
+        return { messages, status: 'idle', argsProgress: undefined };
       case 'error':
         collapseTrailingThinking(messages);
         messages.push({ role: 'error', text: e.message });
-        return { messages, status: 'idle' };
+        return { messages, status: 'idle', argsProgress: undefined };
       default: return {};
     }
   }),

@@ -11,6 +11,8 @@ afterEach(cleanup);
 function mockBackend(opts: {
   entry?: { tabId: number; url: string; scriptIds: string[] } | null;
   commands?: Array<{ scriptId: string; commands: Array<{ key: string; name: string }> }>;
+  /** 覆盖 SCRIPTS_LIST 返回（测「匹配 URL 但禁用也显示」用）；缺省则由 entry.scriptIds 派生 */
+  listed?: Array<{ id: string; name: string; enabled: boolean; matches?: string[] }>;
 } = {}): void {
   browser.runtime.onMessage.addListener((msg: { type: string }, _s, sendResponse) => {
     if (msg.type === 'SCRIPTS_GET_RUNTIME_FOR_TAB') {
@@ -22,7 +24,8 @@ function mockBackend(opts: {
       return true;
     }
     if (msg.type === 'SCRIPTS_LIST') {
-      sendResponse({ ok: true, data: { scripts: opts.entry?.scriptIds.map((id) => ({ id, name: `脚本${id}`, enabled: true })) ?? [], engineAvailable: true } });
+      const scripts = opts.listed ?? opts.entry?.scriptIds.map((id) => ({ id, name: `脚本${id}`, enabled: true })) ?? [];
+      sendResponse({ ok: true, data: { scripts, engineAvailable: true } });
       return true;
     }
     if (msg.type === 'SCRIPTS_MENU_INVOKE') { sendResponse({ ok: true }); return true; }
@@ -42,7 +45,7 @@ describe('PopupApp', () => {
     vi.restoreAllMocks();
   });
 
-  it('渲染两导航按钮 + RUNNING 计数头 + 空态', async () => {
+  it('渲染两导航按钮 + 空态（无 RUNNING 头）', async () => {
     mockBackend({ entry: null });
     render(<PopupApp />);
     expect(screen.getByRole('button', { name: /打开侧边栏/ })).toBeTruthy();
@@ -138,6 +141,44 @@ describe('PopupApp', () => {
       expect(createSpy).not.toHaveBeenCalled();
       expect(closeSpy).not.toHaveBeenCalled();
     });
+  });
+
+  it('匹配当前页 URL 但被禁用的脚本也显示，开关处于关闭态', async () => {
+    // 运行时无注入（entry 空），但列表里有个禁用脚本匹配当前页 → 应显示，供一键启用
+    (browser.tabs as unknown as { query: () => Promise<Array<{ id: number; url: string }>> }).query =
+      vi.fn().mockResolvedValue([{ id: 11, url: 'https://a.com/page' }]);
+    mockBackend({
+      entry: { tabId: 11, url: 'https://a.com/page', scriptIds: [] },
+      listed: [{ id: 'd1', name: '禁用脚本', enabled: false, matches: ['*://a.com/*'] }],
+    });
+    render(<PopupApp />);
+    expect(await screen.findByText('禁用脚本')).toBeTruthy();
+    expect((screen.getByRole('switch', { name: /禁用脚本/ }) as HTMLElement).getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('打开期间收到 SCRIPTS_CHANGED → 重新拉取（不再靠重开）', async () => {
+    mockBackend({ entry: { tabId: 11, url: 'https://a.com/', scriptIds: ['r1'] } });
+    const sendSpy = vi.spyOn(browser.runtime, 'sendMessage');
+    render(<PopupApp />);
+    await screen.findByText('脚本r1');
+    const before = sendSpy.mock.calls.filter((c) => (c[0] as { type?: string })?.type === 'SCRIPTS_LIST').length;
+    fakeBrowser.runtime.onMessage.trigger({ type: 'SCRIPTS_CHANGED', reason: 'enable', ids: ['r1'] }, {} as never, () => {});
+    await vi.waitFor(() => {
+      const after = sendSpy.mock.calls.filter((c) => (c[0] as { type?: string })?.type === 'SCRIPTS_LIST').length;
+      expect(after).toBeGreaterThan(before); // 重新拉取了一次
+    });
+  });
+
+  it('不匹配当前页 URL 的禁用脚本不显示（空态）', async () => {
+    (browser.tabs as unknown as { query: () => Promise<Array<{ id: number; url: string }>> }).query =
+      vi.fn().mockResolvedValue([{ id: 11, url: 'https://other.com/' }]);
+    mockBackend({
+      entry: { tabId: 11, url: 'https://other.com/', scriptIds: [] },
+      listed: [{ id: 'd1', name: '禁用脚本', enabled: false, matches: ['*://a.com/*'] }],
+    });
+    render(<PopupApp />);
+    expect(await screen.findByText(/无脚本在此页运行/)).toBeTruthy();
+    expect(screen.queryByText('禁用脚本')).toBeNull();
   });
 
   it('运行行控件次序：编辑按钮在开关左侧', async () => {

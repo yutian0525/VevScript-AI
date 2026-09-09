@@ -10,6 +10,9 @@ export default defineContentScript({
   world: 'MAIN',
   runAt: 'document_start',
   allFrames: true,
+  // 动态注册（SW 的 hook-registration.ts 负责）：manifest 不再静态声明本脚本，
+  // 从而能用 excludeMatches 排除风控站（Boss直聘等指纹检测 MAIN world 包装即拒开）。
+  registration: 'runtime',
   main() {
     const MAX_BODY = 64 * 1024;
     const TEXT_CT = /(text\/|application\/(json|xml|javascript|x-www-form-urlencoded)|\+json|\+xml)/i;

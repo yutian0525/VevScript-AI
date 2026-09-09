@@ -10,6 +10,12 @@
 // @grant        GM_getValue
 // @grant        GM_addStyle
 // @grant        GM_deleteValue
+// @grant        GM_getTab
+// @grant        GM_saveTab
+// @grant        GM_getTabs
+// @grant        window.close
+// @grant        window.focus
+// @grant        unsafeWindow
 // @noframes
 // ==/UserScript==
 
@@ -213,6 +219,19 @@ var GMT = (function () {
       handle.onclose = function () { GMT.log('t2', 'onclose 触发 @ ' + new Date().toLocaleTimeString()); };
       handle.close();
       log('t2', 'close() 已调用，等探针页关闭…');
+    },
+    't3-savetab': function (log) {
+      GM_saveTab({ visited: Date.now() });
+      GM_getTab(function (data) { GMT.log('t3', 'GM_getTab 读回 → ' + JSON.stringify(data)); });
+      log('t3', '已 saveTab + getTab（回调打印读回值）');
+    },
+    't4-gettabs': function (log) {
+      GM_getTabs(function (all) { GMT.log('t4', 'GM_getTabs → ' + JSON.stringify(all)); });
+      log('t4', '已请求 GM_getTabs（回调打印全 tab 数据）');
+    },
+    't5-focus': function (log) {
+      unsafeWindow.focus();
+      log('t5', '已调 window.focus（本 tab 激活；多窗口下更明显）');
     }
   };
 
@@ -221,7 +240,10 @@ var GMT = (function () {
     title: 'GM 手测·标签页',
     cards: [
       { id: 't1', api: 'GM_openInTab(url, opts?)', desc: '开新 tab（active:false 后台开），返回句柄 {closed, close(), onclose}。', steps: [{ id: 't1-open', label: '后台打开探针页' }], expect: '后台出现新 tab；日志 closed=false、close 为 function' },
-      { id: 't2', api: '句柄 close() / onclose', desc: 'close() 关闭探针页；关闭后 onclose 回调触发、closed 翻 true。', steps: [{ id: 't2-close', label: '关闭探针页' }, '切回本页看日志'], expect: '探针页被关；日志出现 onclose 触发时间戳' }
+      { id: 't2', api: '句柄 close() / onclose', desc: 'close() 关闭探针页；关闭后 onclose 回调触发、closed 翻 true。', steps: [{ id: 't2-close', label: '关闭探针页' }, '切回本页看日志'], expect: '探针页被关；日志出现 onclose 触发时间戳' },
+      { id: 't3', api: 'GM_saveTab(data) / GM_getTab(cb)', desc: '本 tab 私有数据写后读回（回调形态）。', steps: [{ id: 't3-savetab', label: 'saveTab + getTab' }], expect: '日志读回 {"visited":<ts>}' },
+      { id: 't4', api: 'GM_getTabs(cb)', desc: '全部 tab 的本脚本数据 {tabId:data}。', steps: [{ id: 't4-gettabs', label: 'getTabs' }], expect: '日志含当前 tab 的数据条目' },
+      { id: 't5', api: 'window.focus（特殊 grant）', desc: '激活脚本所在 tab。', steps: [{ id: 't5-focus', label: 'focus 本 tab' }], expect: '本 tab 被激活（无报错）' }
     ],
     actions: actions,
     probe: { mark: '__gmt_probe=1', key: '__gmt_manual_probe_tabs' }

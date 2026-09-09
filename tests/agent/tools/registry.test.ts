@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { executeTool, getToolSchemas } from '../../../agent/tools/registry';
+import { saveScript } from '../../../storage/scripts';
 
 describe('工具 registry', () => {
   // 同时清 fakeBrowser 状态与 vitest spy：spyOn 的 mock 历史不随 fakeBrowser.reset 清除，
@@ -11,7 +12,7 @@ describe('工具 registry', () => {
   });
 
   it('getToolSchemas 返回全部 schema', () => {
-    expect(getToolSchemas().length).toBe(26);
+    expect(getToolSchemas().length).toBe(30);
   });
 
   it('content script 类工具经 tabs.sendMessage 分发到主帧 frameId:0', async () => {
@@ -136,5 +137,44 @@ describe('工具 registry', () => {
     expect(r.ok).toBe(false);
     if (r.ok) throw new Error('预期失败结果');
     expect(r.error).not.toContain('受限');
+  });
+
+  it('grep_script 走 storage 分支，不做受限页预检', async () => {
+    await saveScript({
+      id: 'g1', text: 'const box = 1;', name: 'g', enabled: true, matches: ['https://a.com/*'],
+      code: 'const box = 1;', runAt: 'document_idle', world: 'USER_SCRIPT',
+      source: 'user', createdAt: 1, updatedAt: 1,
+    });
+    // 目标 tab 是受限页：脚本工具豁免预检，仍应正常返回
+    const r = await executeTool('grep_script', { pattern: 'box' }, {
+      tabId: 1, sessionId: 'c1', signal: new AbortController().signal,
+    });
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe('记忆工具分发', () => {
+  beforeEach(() => fakeBrowser.reset());
+
+  it('memory_write → 落库；memory_list → 读回；memory_delete → 删除', async () => {
+    const ctx = { tabId: 1, sessionId: 'c1', signal: new AbortController().signal };
+    const w = await executeTool('memory_write', { content: '偏好中文' }, ctx);
+    expect(w.ok).toBe(true);
+    const id = (w as { data: { id: string } }).data.id;
+
+    const l = await executeTool('memory_list', {}, ctx);
+    expect(l.ok).toBe(true);
+    expect((l as { data: { total: number } }).data.total).toBe(1);
+
+    const d = await executeTool('memory_delete', { id }, ctx);
+    expect(d.ok).toBe(true);
+    expect((await executeTool('memory_list', {}, ctx) as { data: { total: number } }).data.total).toBe(0);
+  });
+
+  it('记忆工具豁免受限页预检（受限页 URL 上仍能用）', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'chrome://extensions' }) as never;
+    const ctx = { tabId: 1, sessionId: 'c1', signal: new AbortController().signal };
+    const r = await executeTool('memory_list', {}, ctx);
+    expect(r.ok).toBe(true); // 记忆工具在 RESTRICTED 检查之前分发,受限页也放行
   });
 });
