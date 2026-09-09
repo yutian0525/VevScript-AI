@@ -1,4 +1,6 @@
-# AI Browser Extension
+# 织雀AI脚本 Vevscript-ai
+
+> 说一句需求，AI 替你写并装好用户脚本。
 
 让 AI 替你写浏览器用户脚本。
 

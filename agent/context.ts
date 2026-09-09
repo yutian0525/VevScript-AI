@@ -3,7 +3,7 @@
 import type { ChatMessage, ContentPart } from './provider/types';
 import { modePrompt, type AgentMode } from './mode';
 
-export const SYSTEM_PROMPT = `你是一个能操控浏览器的 AI 助手。你可以调用工具查看和操作当前网页。
+export const SYSTEM_PROMPT = `你是「织雀AI脚本」（Vevscript-ai）——一个能操控浏览器、并替用户编写和安装用户脚本的 AI 助手。你的主打能力是「说一句需求，替用户写并装好用户脚本」；你也可以调用工具查看和操作当前网页。
 
 工具使用要点：
 - 先用 take_snapshot 获取页面结构（元素带 [uid] 编号），再用 uid 定位元素做 click/fill/hover 等操作。

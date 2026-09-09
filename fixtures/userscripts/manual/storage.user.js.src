@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         GM 手测·值存储
-// @namespace    ai-browser-extend/gmt-manual
+// @namespace    vevscript-ai/gmt-manual
 // @version      1.0.0
 // @description  GM 值存储模块人工测试：说明 + 步骤 + 人工标记
 // @match        *://*/*
@@ -70,7 +70,7 @@
     module: 'storage',
     title: 'GM 手测·值存储',
     cards: [
-      { id: 's1', api: 'GM_info', desc: '脚本与扩展元数据（scriptHandler/version/script/injectInto）。', steps: ['核对下方日志里的 script.name 是否为本脚本名、scriptHandler 是否为 ai-browser-extend'], expect: '字段与本脚本元头一致' },
+      { id: 's1', api: 'GM_info', desc: '脚本与扩展元数据（scriptHandler/version/script/injectInto）。', steps: ['核对下方日志里的 script.name 是否为本脚本名、scriptHandler 是否为 vevscript-ai'], expect: '字段与本脚本元头一致' },
       { id: 's2', api: 'GM_getValue(key, def?) / GM_setValue(key, val)', desc: '写后读往返（下划线形式同步返回，值来自注入时快照 + 桥写穿透）。', steps: [{ id: 's2-set', label: '写入 v1 并读回' }], expect: '日志显示 "v1"' },
       { id: 's3', api: 'GM_setValue（对象值）', desc: '对象值经 JSON 往返存取。', steps: [{ id: 's3-obj', label: '存 {a:1,b:"x"} 并读回' }], expect: '日志显示 {"a":1,"b":"x"}' },
       { id: 's4', api: 'GM_getValue 默认值分支', desc: '读不存在的键返回调用方默认值。', steps: [{ id: 's4-def', label: '读缺失键（默认 "def"）' }], expect: '日志显示 "def"' },

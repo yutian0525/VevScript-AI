@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         GM 手测·DOM资源日志
-// @namespace    ai-browser-extend/gmt-manual
+// @namespace    vevscript-ai/gmt-manual
 // @version      1.0.0
 // @description  GM DOM/资源/日志模块人工测试：说明 + 步骤 + 人工标记
 // @match        *://*/*

@@ -120,7 +120,7 @@ for (const f of FIXTURES) {
       expect(fields.runAt).toBe('document_end');
       expect(fields.world).toBe('USER_SCRIPT');
       expect(fields.meta.noframes).toBe(true);
-      expect(fields.meta.namespace).toBe('ai-browser-extend/gmt-manual');
+      expect(fields.meta.namespace).toBe('vevscript-ai/gmt-manual');
     });
 
     it('grants 精确等于模块 API 并集，且全部已注册', () => {
