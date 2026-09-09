@@ -1,0 +1,15 @@
+<!-- 织雀AI脚本 Vevscript-ai · 图标瓦片：signal 底 + 纯白字形。扩展工具栏/商店图标的 PNG 母版。 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="织雀AI脚本">
+  <defs>
+    <mask id="vv-weave-tile">
+      <rect width="32" height="32" fill="#fff"/>
+      <path d="M5 9.22 L19.2 22.77" fill="none" stroke="#000" stroke-width="6.7"/>
+    </mask>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="#53589a"/>
+  <g fill="none" stroke="#fff" stroke-width="4.6">
+    <path d="M27 9.22 L12.8 22.77" mask="url(#vv-weave-tile)"/>
+    <path d="M5 9.22 L19.2 22.77"/>
+  </g>
+  <rect x="13.8" y="10.3" width="4.4" height="10.52" rx="2.2" fill="#fff"/>
+</svg>
