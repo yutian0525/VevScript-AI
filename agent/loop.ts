@@ -245,14 +245,24 @@ async function finishAborted(convId: string, deps: LoopDeps): Promise<void> {
 }
 
 function toToolContent(r: ToolResult): string {
-  if (r.ok) return typeof r.data === 'string' ? r.data : JSON.stringify(r.data ?? { ok: true });
+  // stringify 兜底：data 理论上都经 serializeSafe 归一（无循环引用），但这是 loop 的
+  // 最后一道关卡——未来某工具漏归一炸出 TypeError 会让会话永久卡 running，宁可降级为
+  // 不可序列化标记也不能炸（审查探针指出该暴露面）。
+  const stringify = (v: unknown): string => {
+    try {
+      return JSON.stringify(v) ?? '';
+    } catch {
+      return '"[不可序列化]"';
+    }
+  };
+  if (r.ok) return typeof r.data === 'string' ? r.data : stringify(r.data ?? { ok: true });
   // 失败也带 data（run_page_script 的失败诊断 kind/failedAt/hint 都在 data 里）——
   // 丢掉它 spec §5.2「失败极详」整条落空。既有工具失败均不带 data，行为不变。
   // ToolResult 失败分支类型上没有 data（类型面收窄），value 层由 page-script 等带出——
   // 与 page-script.ts:115 的既有注释同源，这里是消费端。
   const data = (r as { data?: unknown }).data;
   if (data != null) {
-    const detail = typeof data === 'string' ? data : JSON.stringify(data);
+    const detail = typeof data === 'string' ? data : stringify(data);
     return `错误：${r.error ?? '未知错误'}\n${detail}`;
   }
   return `错误：${r.error ?? '未知错误'}`;
