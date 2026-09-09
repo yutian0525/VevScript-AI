@@ -12,6 +12,23 @@ describe('context 组装', () => {
     expect(msgs[0]!.content).toContain('take_snapshot');
   });
 
+  it('SYSTEM_PROMPT 引导多步操作优先用脚本', () => {
+    expect(SYSTEM_PROMPT).toContain('run_page_script');
+    expect(SYSTEM_PROMPT).toContain('query_page');
+  });
+
+  it('SYSTEM_PROMPT 保留 uid stale 规则（take_snapshot + click 路径仍在）', () => {
+    expect(SYSTEM_PROMPT).toContain('stale');
+  });
+
+  it('SYSTEM_PROMPT 说明 evaluate_script 与 run_page_script 的分工', () => {
+    expect(SYSTEM_PROMPT).toContain('evaluate_script');
+  });
+
+  it('SYSTEM_PROMPT 保留不可信输入告警', () => {
+    expect(SYSTEM_PROMPT).toContain('不可信输入');
+  });
+
   it('SYSTEM_PROMPT 含「长内容分步写入」通用规则', () => {
     expect(SYSTEM_PROMPT).toContain('骨架');
     expect(SYSTEM_PROMPT).toContain('截断');
