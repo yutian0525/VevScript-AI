@@ -1,0 +1,97 @@
+fixtures/userscripts/manual/download.user.js.src
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+docs/使用指南.md
+  s_f78e52d6657af4::t_32c56985adb4fc 36
+  s_f78e52d6657af4::t_fcfcbf66b6e1b5 1
+  s_f78e52d6657af4::t_99562531122ccf 87
+fixtures/userscripts/manual/urlchange.user.js.src
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+docs/gm-api-reference.md
+  s_f78e52d6657af4::t_6735876af1389c 25
+fixtures/userscripts/manual/cookie.user.js.src
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+package.json
+  s_f78e52d6657af4::t_e2deba1e24510c 2,4
+fixtures/userscripts/manual/notify-menu.user.js.src
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+tests/shared/gm-wrapper.test.ts
+  s_f78e52d6657af4::t_58c56f202ec853 22
+entrypoints/popup/index.html
+  s_f78e52d6657af4::t_5c9402018c892c 6
+fixtures/userscripts/manual/gmt-manual-interaction.user.js
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+entrypoints/sidepanel/styles.css
+  s_f78e52d6657af4::t_672a84224e1308 2
+tests/shared/skill-md.test.ts
+  s_f78e52d6657af4::t_3842ecc7171b6f 142-143,145-151
+  s_f78e52d6657af4::t_9ea665a153c45e 140-141,144
+entrypoints/sidepanel/index.html
+  s_f78e52d6657af4::t_a4c96476d4ee2d 6
+fixtures/userscripts/manual/gmt-manual-urlchange.user.js
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+fixtures/userscripts/manual/gmt-manual-download.user.js
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+README.md
+  s_f78e52d6657af4::t_7743a4f2ff30fd 1-3
+fixtures/userscripts/manual/tabs.user.js.src
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+entrypoints/background.ts
+  s_f78e52d6657af4::t_d81fd3651b6764 117
+  s_f78e52d6657af4::t_fb449a41a81e3a 65
+fixtures/userscripts/manual/gmt-manual-llm.user.js
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3,245
+shared/gm-wrapper.ts
+  s_f78e52d6657af4::t_eada8d1fa2e1d5 30
+fixtures/userscripts/manual/storage.user.js.src
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3,73
+tests/shared/gmt-manual-fixtures.test.ts
+  s_f78e52d6657af4::t_46f02253caa80d 123
+fixtures/userscripts/manual/gmt-manual-notify-menu.user.js
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+shared/skill-md.ts
+  s_f78e52d6657af4::t_52b9352dd13b8e 100-101,106-109
+fixtures/userscripts/manual/llm.user.js.src
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3,58
+fixtures/userscripts/manual/dom-resource.user.js.src
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+fixtures/userscripts/manual/gmt-manual-tabs.user.js
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+agent/context.ts
+  s_f78e52d6657af4::t_e7b9e9b4234030 6
+fixtures/userscripts/manual/gmt-manual-storage.user.js
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3,260
+fixtures/userscripts/manual/gmt-manual-dom-resource.user.js
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+wxt.config.ts
+  s_f78e52d6657af4::t_5609e4bbd389ec 15-16
+fixtures/userscripts/manual/network.user.js.src
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3,25
+fixtures/userscripts/gmt-selftest.user.js
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3,260-261
+fixtures/userscripts/manual/gmt-manual-cookie.user.js
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+fixtures/userscripts/manual/interaction.user.js.src
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3
+tests/shared/gmt-selftest-fixture.test.ts
+  s_f78e52d6657af4::t_063c0147cdc462 33
+fixtures/userscripts/manual/gmt-manual-network.user.js
+  s_f78e52d6657af4::t_8efd44e2e1bc86 3,212
+package-lock.json
+  s_f78e52d6657af4::t_bf4d9a1c942a07 2,8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "9fc717eaf5219f45dd5f955c1fcf2e14ff22e2b7",
+  "prompts": {},
+  "sessions": {
+    "s_f78e52d6657af4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b976f88-73ee-4abf-8aff-a22465817442",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
