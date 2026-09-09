@@ -1,0 +1,26 @@
+public/skills/builtin.md
+  h_71c0863b823da1 14,20,26-27,31,36,46,50,60,72,85,95,107,120,124,166,194-196,198,200-201,212-213,222-223,225,244-247,271,279
+  s_71a6b00c08fca1::t_d978d7c9f5a759 94
+  s_71a6b00c08fca1::t_6dd5f70ff3d451 177-193,197,199,202-211,214-221,224,226-243,248-270,272-278,280-286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "889b46f3e436148633abcf46cff47ff8620aacf1",
+  "prompts": {},
+  "humans": {
+    "h_71c0863b823da1": {
+      "author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_71a6b00c08fca1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62d98896-8267-448e-bbf8-8e8c4644f06c",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
