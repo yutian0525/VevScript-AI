@@ -28,4 +28,48 @@ describe('wait_for', () => {
     const r = await waitForText({ texts: ['A', 'B'], timeoutMs: 500 });
     expect(r.ok).toBe(true);
   });
+
+  it('向后兼容：texts 任一命中即成功', async () => {
+    document.body.innerHTML = '<div>已完成</div>';
+    const r = await waitForText({ texts: ['进行中', '已完成'] });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect((r.data as { matched: string }).matched).toBe('已完成');
+  });
+
+  it('appear：等元素出现', async () => {
+    document.body.innerHTML = '<div role="dialog">弹窗</div>';
+    const r = await waitForText({ appear: { role: 'dialog' } });
+    expect(r.ok).toBe(true);
+  });
+
+  it('gone：等元素消失（本来就没有时立即成功）', async () => {
+    document.body.innerHTML = '';
+    const r = await waitForText({ gone: '.loading' });
+    expect(r.ok).toBe(true);
+  });
+
+  it('idle：等网络静默', async () => {
+    const r = await waitForText({ idle: 50, timeoutMs: 3000 });
+    expect(r.ok).toBe(true);
+  });
+
+  it('超时返回 ok:false 且带条件描述与 hint', async () => {
+    document.body.innerHTML = '';
+    const r = await waitForText({ appear: { role: 'dialog' }, timeoutMs: 150 }) as { ok: boolean; error: string };
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('dialog');
+  });
+
+  it('一个都不传时报错（避免无条件死等到超时）', async () => {
+    const r = await waitForText({} as never) as { ok: boolean; error: string };
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('至少');
+  });
+
+  it('多个条件同传时报错（不静默取优先）', async () => {
+    const r = await waitForText({ texts: ['x'], idle: 100 } as never) as { ok: boolean; error: string };
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('只能');
+  });
 });

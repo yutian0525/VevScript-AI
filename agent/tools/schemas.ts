@@ -131,14 +131,18 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     type: 'function',
     function: {
       name: 'wait_for',
-      description: '等待页面出现指定文本（轮询）。命中任一文本即返回。',
-      parameters: obj(
-        {
-          texts: { type: 'array', items: { type: 'string' }, description: '要等待的文本（命中任一即可）' },
-          timeoutMs: { type: 'number', description: '超时毫秒（默认 10000）' },
+      description:
+        '等待页面达到某个条件。四种条件互斥，一次只传一个：texts（任一文本出现）、appear（元素出现）、gone（元素消失，等 loading 消失用这个）、idle（网络静默指定毫秒，等异步渲染完成用这个）。需要连续等多个条件时用 run_page_script 在脚本里连续 waitFor，比多次调本工具省往返。',
+      parameters: obj({
+        texts: {
+          type: 'array', items: { type: 'string' },
+          description: '任一文本出现即成功',
         },
-        ['texts'],
-      ),
+        appear: { description: '等该 locator 的元素出现。locator 语法同 query_page' },
+        gone: { description: '等该 locator 的元素消失（如 ".loading"）' },
+        idle: { type: 'number', description: '等网络静默这么多毫秒（如 600）' },
+        timeoutMs: { type: 'number', description: '超时，缺省 10000' },
+      }),
     },
   },
   {

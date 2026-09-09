@@ -18,7 +18,14 @@ export interface BgToCsRequestMap {
   HOVER: { uid: Uid };
   SCROLL: { direction: 'up' | 'down' | 'left' | 'right'; amount?: number };
   PRESS_KEY: { key: string; modifiers?: string[] };
-  WAIT_TEXT: { texts: string[]; timeoutMs?: number };
+  /** 四种条件互斥（spec §6.4）。texts 为原有形式，保留向后兼容。 */
+  WAIT_TEXT: {
+    texts?: string[];
+    appear?: Locator;
+    gone?: Locator;
+    idle?: number;
+    timeoutMs?: number;
+  };
   PAGE_META: Record<string, never>;
   /** 脚本运行时调试台直调：SW→CS，宿主 debugCall 经真实桥链路发 GM_API_CALL（spec §3） */
   GM_DEBUG_INVOKE: { scriptId: string; api: string; params: unknown[] };
