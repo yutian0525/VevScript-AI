@@ -143,6 +143,83 @@ git commit -m "feat(gm): 注册表扩 14 API + 3 特殊 grant + URL_CHANGE 事�
 
 ---
 
+### Task 1.5: 修复注册表扩充的连带破坏（CALL 表 parity + 过期示例）
+
+> **为何存在：** Task 1 把注册表从 15 扩到 29 键，连带打破 3 个（原计划遗漏的）依赖 `GM_API_REGISTRY` 键集的测试：调试台 `CALL` 表 parity（结构契约，防新 API 漏登记白屏）、两处用 `GM_download` 当「unsupported 示例」的过期断言（GM_download 现已注册为 supported）。本任务修复这三处，与 wrapper 任务无耦合，立即转绿。
+
+**Files:**
+- Modify: `components/scriptdebug/ScriptDebugPage.tsx`（`CALL` 表加 14 条）
+- Modify: `tests/shared/userscript-meta.test.ts:177-178`（示例 grant 换未知名）
+- Modify: `tests/background/scripts.test.ts:350,354`（同上）
+- Test（护栏，勿改逻辑）：`tests/scriptdebug/call-registry-parity.test.ts`
+
+- [ ] **Step 1: 先确认三处失败**
+
+Run: `npx vitest run tests/scriptdebug/call-registry-parity.test.ts tests/shared/userscript-meta.test.ts tests/background/scripts.test.ts`
+Expected: FAIL（CALL 键集 ≠ 注册表键集；两处 `GM_download` 警告断言失败）
+
+- [ ] **Step 2: CALL 表加 14 条**
+
+`components/scriptdebug/ScriptDebugPage.tsx` 的 `CALL` 对象内追加（bridge 类带 `short`，page 类不带——parity 测试第二用例强制此约定）。`GM_cookie` 为对象型无单一 short，标 page + 说明：
+
+```typescript
+  // ---- Tier A/B 扩充（2026-09-07）----
+  GM_setValues: { kind: 'bridge', short: 'SetValues', hint: '[{"k1":"v1","k2":"v2"}]' },
+  GM_deleteValues: { kind: 'bridge', short: 'DeleteValues', hint: '[["k1","k2"]]' },
+  GM_unregisterMenuCommand: { kind: 'bridge', short: 'UnregisterMenu', hint: '["cmdKey"]' },
+  GM_closeNotification: { kind: 'bridge', short: 'CloseNotification', hint: '["notifId"]' },
+  GM_updateNotification: { kind: 'bridge', short: 'UpdateNotification', hint: '["notifId", {"title":"T","text":"X"}]' },
+  GM_getTab: { kind: 'bridge', short: 'GetTab', hint: '[]' },
+  GM_saveTab: { kind: 'bridge', short: 'SaveTab', hint: '[{"k":"v"}]' },
+  GM_getTabs: { kind: 'bridge', short: 'GetTabs', hint: '[]' },
+  GM_download: { kind: 'bridge', short: 'Download', hint: '[{"url":"https://example.com/f.zip","name":"f.zip"}]' },
+  // page 类（local/snapshot，不可远程直调）
+  GM_getValues: { kind: 'page', hint: '页面内 API（注入期值快照）' },
+  GM_removeValueChangeListener: { kind: 'page', hint: '页面内 API（本地移除监听）' },
+  GM_addElement: { kind: 'page', hint: '页面内 API（DOM 本地完成）' },
+  GM_getResourceURL: { kind: 'page', hint: '页面内 API（注入期资源快照）' },
+  // 对象型：三方法（CookieList/CookieSet/CookieDelete）各自过桥，调试台暂不支持对象型直调
+  GM_cookie: { kind: 'page', hint: '对象型 API（GM_cookie.list/set/delete 经桥；调试台暂不支持对象型直调）' },
+```
+
+> 注：`GM_cookie`/`GM_download` 的真实 SW 门控在 Task 9/10；此处 CALL 仅为调试台登记（Download 可直调，Cookie 因对象型置灰）。
+
+- [ ] **Step 3: 修两处过期示例**
+
+`tests/shared/userscript-meta.test.ts` 第 177-178 行，把 `GM_download` 换成真未注册名 `GM_fakeApi`：
+
+```typescript
+    const bad = parseUserScript('// ==UserScript==\n// @name t\n// @match https://a.com/*\n// @grant GM_getValue\n// @grant GM_fakeApi\n// ==/UserScript==\nx();');
+    expect(bad.warnings.some((w) => w.includes('GM_fakeApi'))).toBe(true);
+```
+
+`tests/background/scripts.test.ts` 第 350、354 行同样替换：
+
+```typescript
+    const src = '// ==UserScript==\n// @name imp\n// @match https://i.com/*\n// @grant GM_log\n// @grant GM_fakeApi\n// ==/UserScript==\nlog();';
+    const { script, warnings } = await handleImport(src, 'imp.user.js');
+    expect(script.text).toBe(src);
+    expect(script).toMatchObject({ name: 'imp', enabled: true, source: 'import', matches: ['https://i.com/*'] });
+    expect(warnings.some((w) => w.includes('GM_fakeApi'))).toBe(true);
+```
+
+- [ ] **Step 4: 运行验证通过**
+
+Run: `npx vitest run tests/scriptdebug/call-registry-parity.test.ts tests/shared/userscript-meta.test.ts tests/background/scripts.test.ts`
+Expected: PASS（三文件全绿）
+
+- [ ] **Step 5: 编译 + Commit**
+
+```bash
+npm run compile
+git add components/scriptdebug/ScriptDebugPage.tsx tests/shared/userscript-meta.test.ts tests/background/scripts.test.ts
+git commit -m "fix(gm): 调试台 CALL 表登记 14 新 API + 过期 GM_download 示例改未知名"
+```
+
+> **遗留（Task 6.5 收口）：** `tests/shared/gmt-selftest-fixture.test.ts` 两用例（grants=全注册键、buildWrappedCode 安装全部）依赖 wrapper 安装行存在，须在 Task 6 后修（Task 6.5）。在此之前该文件红属预期，不影响各任务自测（单文件运行）。
+
+---
+
 ### Task 2: 预取管线支持二进制资源（GM_getResourceURL 数据源）
 
 **Files:**
@@ -670,6 +747,77 @@ Expected: 无错误
 ```bash
 git add shared/gm-wrapper.ts tests/shared/gm-wrapper.test.ts
 git commit -m "feat(gm): wrapper 特殊 grant（window.close/focus/onurlchange）+ URL_CHANGE 分发"
+```
+
+---
+
+### Task 6.5: 同步 gmt-selftest fixture 到全 29+4 grant（收口 Task 1.5 遗留）
+
+> **为何存在：** `tests/shared/gmt-selftest-fixture.test.ts` 有两个用例断言 fixture 覆盖**全部**注册 API：①`grants = Object.keys(GM_API_REGISTRY) + SPECIAL_GRANTS`（现为 29+4=33 项）；②`buildWrappedCode` 为每个注册键生成 `install("<name>"`。Task 1 扩注册表后①立即红，②需等 Task 3-6 的 wrapper 安装行齐了才能全绿——故收口放在 Task 6 之后。本任务把 fixture 的 @grant 补齐到 33 项并同步其自证文案/断言。
+
+**Files:**
+- Modify: `fixtures/userscripts/gmt-selftest.user.js`（@grant 补 14 函数 + 3 特殊 grant；description 与 group1 自证断言同步）
+- Test（护栏）：`tests/shared/gmt-selftest-fixture.test.ts`
+
+- [ ] **Step 1: 确认当前失败点**
+
+Run: `npx vitest run tests/shared/gmt-selftest-fixture.test.ts`
+Expected: FAIL（grants 用例：期望 33 项、实得 16；install-all 用例：新 API 的 `install(...)` 缺失——Task 3-6 已补则仅 grants 用例红）
+
+- [ ] **Step 2: 补 @grant（14 函数 + 3 特殊 grant）**
+
+在 `fixtures/userscripts/gmt-selftest.user.js` 的 `@grant GM_llmChat`（第 29 行）之后、`@connect`（第 30 行）之前插入：
+
+```
+// @grant        GM_removeValueChangeListener
+// @grant        GM_getValues
+// @grant        GM_setValues
+// @grant        GM_deleteValues
+// @grant        GM_addElement
+// @grant        GM_unregisterMenuCommand
+// @grant        GM_getResourceURL
+// @grant        GM_getTab
+// @grant        GM_saveTab
+// @grant        GM_getTabs
+// @grant        GM_closeNotification
+// @grant        GM_updateNotification
+// @grant        GM_download
+// @grant        GM_cookie
+// @grant        window.close
+// @grant        window.focus
+// @grant        window.onurlchange
+```
+
+- [ ] **Step 3: 同步 description + group1 自证断言**
+
+`fixtures/userscripts/gmt-selftest.user.js` 第 6 行 description 里「15 个 GM API 可用性」改为「29 个 GM API 可用性」。
+
+对应地 `tests/shared/gmt-selftest-fixture.test.ts` 第 36 行的 description 断言也同步为「29 个 GM API 可用性」（该测试硬编码比对 description 全文）。
+
+fixture 内 group1 的自证行「script.grants = 15 API + unsafeWindow」（第 260-266 行）：该 runtime 断言硬编码 16 项期望数组，与新 grants 不符。改为**动态长度校验**（避免再硬编码一长串，降低后续再扩的维护成本）：
+
+```javascript
+    addRow('1 元字段解析', 'script.grants 含全部已声明 grant（33 项）', function () {
+      var g = (info.script.grants || []).slice();
+      return g.length === 33 || 'grants 数量=' + g.length + '：' + JSON.stringify(g.slice().sort());
+    });
+```
+
+> 注：selftest fixture 仅在 @grant 层声明全部能力（让 parity/install-all 用例通过）；新 API 的运行时逐项验证归 gmt-manual 模块（Task 13/14），本 fixture 不新增 runtime 测试组。
+
+- [ ] **Step 4: 重解析零警告自检**
+
+fixture 头部 `window.close`/`window.focus`/`window.onurlchange`/`GM_cookie` 等新 grant 必须被 `parseUserScript` 视为「supported」（Task 1 已把它们入 SPECIAL_GRANTS/注册表），否则「解析零警告」用例（第 26-28 行）会因 unsupported 警告变红。确认 Task 1 完成后此点自然满足。
+
+Run: `npx vitest run tests/shared/gmt-selftest-fixture.test.ts`
+Expected: PASS（全部用例：解析零警告 / grants 33 项 / install-all / 体量）
+
+- [ ] **Step 5: 编译 + Commit**
+
+```bash
+npm run compile
+git add fixtures/userscripts/gmt-selftest.user.js tests/shared/gmt-selftest-fixture.test.ts
+git commit -m "test(gm): gmt-selftest fixture 补全 29+4 grant + 自证断言动态化"
 ```
 
 ---

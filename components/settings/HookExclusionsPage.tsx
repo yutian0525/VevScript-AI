@@ -51,37 +51,54 @@ export function HookExclusionsPage({ onBack }: { onBack: () => void }) {
 
   useEffect(() => { void refresh(); }, []);
 
+  const customCount = data.patterns.filter((p) => !data.defaults.includes(p)).length;
+
   return (
     <PageShell title="敏感站点排除" eyebrow="HOOK" onBack={onBack}>
       <section className="section">
         <h2 className="section__title">排除名单</h2>
-        <span className="hint">命中名单的站点不注入 MAIN world 观测 hook（消除扩展指纹，防 Boss直聘类风控站拒开）。
-          保存后需刷新已打开的页面才生效；该站 console 观测失效、网络请求/响应 body 不可用；自己的用户脚本不受此名单约束。</span>
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <p className="hx-notice">
+          命中名单的站点不注入 MAIN world 观测 hook，消除扩展指纹——Boss直聘等风控站检测到包装痕迹会拒绝打开。
+          保存后需<b>刷新已打开的页面</b>才生效；该站 console 观测失效、网络请求/响应 body 不可用；自己的用户脚本不受此名单约束。
+        </p>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
           <Input
             value={draft}
             onChange={(e) => { setDraft(e.target.value); setError(null); }}
             onKeyDown={(e) => { if (e.key === 'Enter') void add(); }}
             placeholder="*://*.example.com/*"
             className="mono-input"
+            aria-label="新增排除 pattern"
           />
           <Button onClick={() => void add()}><Plus size={14} /> 添加</Button>
         </div>
-        {error && <span className="status-text status-text--err">{error}</span>}
-        {warning && <span className="status-text" style={{ color: 'var(--warn)' }}>{warning}</span>}
-        <div className="well" style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
-          {data.patterns.length === 0 && <span className="hint">名单为空：所有站点均注入观测 hook。</span>}
-          {data.patterns.map((p) => (
-            <div key={p} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <code className="mono">{p}</code>
-              <Button onClick={() => void remove(p)} aria-label={`删除 ${p}`}>
-                <Trash2 size={14} />
-              </Button>
-            </div>
-          ))}
+        {error && <div className="status-text status-text--err" style={{ marginTop: 6 }}>{error}</div>}
+        {warning && <div className="status-text" style={{ marginTop: 6, color: 'var(--warn)' }}>{warning}</div>}
+
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 14, marginBottom: 6 }}>
+          <span className="hx-count">PATTERNS · {data.patterns.length}</span>
+          {customCount > 0 && <span className="hx-count">+{customCount} 自定义</span>}
         </div>
-        <div style={{ marginTop: 12 }}>
+        <div className="hx-list">
+          {data.patterns.length === 0 && <span className="hint" style={{ padding: '6px 8px' }}>名单为空：所有站点均注入观测 hook。</span>}
+          {data.patterns.map((p) => {
+            const isDefault = data.defaults.includes(p);
+            return (
+              <div key={p} className="hx-row">
+                <span className={`hx-dot${isDefault ? ' hx-dot--default' : ''}`} aria-hidden />
+                <code className="hx-pattern" title={p}>{p}</code>
+                {isDefault && <span className="hx-count">默认</span>}
+                <button className="hx-del" onClick={() => void remove(p)} aria-label={`删除 ${p}`}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
           <Button onClick={() => void reset()}><RotateCcw size={14} /> 恢复默认</Button>
+          <span className="hint">回到出厂四站；自定义条目会被移除。</span>
         </div>
       </section>
     </PageShell>
