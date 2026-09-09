@@ -1,7 +1,12 @@
 {
   "name": "vevscript-ai",
   "version": "1.0.0",
-  "description": "织雀AI脚本（Vevscript-ai）——说一句需求，AI 替你写并装好用户脚本",
+  "description": "织雀AI脚本（Vevscript-ai）——浏览器里的 agent harness：AI 在你的页面上动手，也能写成用户脚本常驻",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yutian0525/VevScript-AI.git"
+  },
+  "homepage": "https://github.com/yutian0525/VevScript-AI",
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
