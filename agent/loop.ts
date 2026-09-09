@@ -204,10 +204,30 @@ async function drive(
         continue;
       }
 
-      if (tc.name === 'take_screenshot' && r.ok) {
-        const shot = (r.data as { screenshot?: string } | undefined)?.screenshot;
-        deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: true, summary: '已截图', image: shot });
-        await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: '截图已捕获，见下一条消息' });
+      // 两类工具都产截图：take_screenshot 是主通道，run_page_script 是失败诊断的
+      // 兜底（screenshot:'on-failure'）。同一处理：tool 消息只留一句话，base64 走
+      // 独立 user 图片消息（进视觉通道 + 受 trimImageParts 管理）——若让它留在
+      // toToolContent 的 JSON 里，会成为数万 token 的纯文本废料且永不回收。
+      if (tc.name === 'take_screenshot' || tc.name === 'run_page_script') {
+        const data = (r as { data?: { screenshot?: string } | undefined }).data;
+        const shot = data?.screenshot;
+        // 失败分支的 ok 必须如实透传（run_page_script 失败带图是常态诊断路径）
+        deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: r.ok, summary: r.ok ? '已截图' : (r.error ?? '失败'), image: shot });
+        // take_screenshot：data 只有截图本身，tool 消息留占位即可；
+        // run_page_script：data 里还有 trace/logs/data 等结果，摘掉 screenshot 后照常序列化
+        //（成功与失败两条路径都要摘——base64 永不进文本通道，这条不变量不看 r.ok）。
+        let rest: string;
+        if (tc.name === 'run_page_script' && data != null) {
+          const { screenshot: _s, ...keep } = data;
+          // 失败分支的 ToolResult 类型面没有 data（value 层由 page-script 带出，见
+          // toToolContent 的注释）——error 前置 + 诊断详情的组装与 toToolContent 同款，就地拼。
+          rest = r.ok
+            ? toToolContent({ ok: true, data: keep })
+            : `错误：${r.error ?? '未知错误'}\n${JSON.stringify(keep)}`;
+        } else {
+          rest = toToolContent(r.ok ? { ok: true } : r);
+        }
+        await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: rest });
         if (shot) {
           const parts: ContentPart[] = [
             { type: 'text', text: SCREENSHOT_SENTINEL },

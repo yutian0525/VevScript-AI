@@ -301,6 +301,52 @@ describe('agent loop', () => {
     expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', image: 'data:image/jpeg;base64,ZZZ' }));
   });
 
+  it('run_page_script 成功 + screenshot：tool 消息留 trace 等剩余信息且不含 base64，图片走 user part', async () => {
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'run_page_script', argsDelta: '{"script":"return 1"}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: '看到了' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({
+      ok: true, data: { screenshot: 'data:image/jpeg;base64,ZZZ', trace: [{ i: 1, op: '$' }], data: [1, 2], pageErrors: 0 },
+    } as ToolResult);
+    const d = deps(provider, exec);
+    await runAgentLoop({ convId: 'c-rps-ok', tabId: 1, userMessage: 'x' }, d);
+    const conv = await getConversation('c-rps-ok');
+    const toolMsg = conv.messages.find((m) => m.role === 'tool')!;
+    const content = String(toolMsg.content);
+    // trace 等有效信息保留，base64 绝不进文本通道
+    expect(content).toContain('trace');
+    expect(content).not.toContain('data:image');
+    const userImg = conv.messages.find((m) => m.role === 'user' && Array.isArray(m.content));
+    const parts = userImg!.content as Array<{ type: string; imageUrl?: string }>;
+    expect(parts.some((p) => p.type === 'image_url' && p.imageUrl === 'data:image/jpeg;base64,ZZZ')).toBe(true);
+    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', name: 'run_page_script', image: 'data:image/jpeg;base64,ZZZ' }));
+  });
+
+  it('run_page_script 失败 + screenshot：tool 消息含 kind/hint 且不含 base64，图片走 user part', async () => {
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'run_page_script', argsDelta: '{"script":"x"}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: '看了诊断' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({
+      ok: false, error: '点击被遮挡', data: { kind: 'blocked', hint: '先关掉提示条', screenshot: 'data:image/jpeg;base64,EEE' },
+    } as ToolResult);
+    const d = deps(provider, exec);
+    await runAgentLoop({ convId: 'c-rps-fail', tabId: 1, userMessage: 'x' }, d);
+    const conv = await getConversation('c-rps-fail');
+    const toolMsg = conv.messages.find((m) => m.role === 'tool')!;
+    const content = String(toolMsg.content);
+    // 错误 + 诊断详情保留，base64 绝不进文本通道
+    expect(content.startsWith('错误：点击被遮挡')).toBe(true);
+    expect(content).toContain('"kind":"blocked"');
+    expect(content).toContain('"hint":"先关掉提示条"');
+    expect(content).not.toContain('data:image');
+    const userImg = conv.messages.find((m) => m.role === 'user' && Array.isArray(m.content));
+    const parts = userImg!.content as Array<{ type: string; imageUrl?: string }>;
+    expect(parts.some((p) => p.type === 'image_url' && p.imageUrl === 'data:image/jpeg;base64,EEE')).toBe(true);
+    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', name: 'run_page_script', ok: false, image: 'data:image/jpeg;base64,EEE' }));
+  });
+
   it('usage：provider 返回 promptTokens → emit usage 且存入 lastPromptTokens', async () => {
     const provider = queuedProvider([[
       { type: 'text-delta', text: 'ok' },
