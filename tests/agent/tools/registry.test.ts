@@ -20,12 +20,62 @@ describe('工具 registry', () => {
     const exec = vi.spyOn(browser.scripting, 'executeScript').mockResolvedValue(
       [{ result: { ok: true, url: 'https://x.com' } }] as never,
     );
-    const send = vi.spyOn(browser.tabs, 'sendMessage');
+    // 注入兜底先发 PAGE_META probe；fake-browser 未实现 sendMessage，resolve undefined 即视为「有响应」
+    const send = vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(undefined as never);
     const r = await executeTool('run_page_script', { script: 'return 1' },
       { tabId: 1, sessionId: 's', signal: new AbortController().signal });
     expect(r.ok).toBe(true);
     expect(exec).toHaveBeenCalled();
-    expect(send).not.toHaveBeenCalled();
+    expect(send).toHaveBeenCalledTimes(1);
+    expect((send.mock.calls[0]![1] as { type: string }).type).toBe('PAGE_META');
+  });
+
+  describe('run_page_script 的 CS 注入兜底（扩展重载前的老页面）', () => {
+    const setup = () => {
+      fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'https://x.com' }) as never;
+      const exec = vi.spyOn(browser.scripting, 'executeScript').mockResolvedValue(
+        [{ result: { ok: true, url: 'https://x.com' } }] as never,
+      );
+      return exec;
+    };
+
+    it('probe 成功（CS 在）→ 不注入，直接 executeScript', async () => {
+      const exec = setup();
+      const send = vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(
+        { correlationId: 'x', type: 'PAGE_META', result: { ok: true, data: { url: 'https://x.com' } } } as never,
+      );
+      const r = await executeTool('run_page_script', { script: 'return 1' },
+        { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+      expect(r.ok).toBe(true);
+      // probe 恰好 1 次（无重试、无二次探测）；注入只发生在 scriptRunner 那一次
+      expect(send).toHaveBeenCalledTimes(1);
+      expect((send.mock.calls[0]![1] as { type: string }).type).toBe('PAGE_META');
+      expect(exec).toHaveBeenCalledTimes(1);
+    });
+
+    it('probe 失败 + 注入成功 → 兜底注入后正常执行（sendMessage 1 次 probe，注入走 executeScript 不占 sendMessage）', async () => {
+      const exec = setup();
+      const send = vi.spyOn(browser.tabs, 'sendMessage').mockRejectedValue(new Error('Receiving end does not exist'));
+      const r = await executeTool('run_page_script', { script: 'return 1' },
+        { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+      expect(r.ok).toBe(true);
+      expect(send).toHaveBeenCalledTimes(1);
+      // 第一次 executeScript = injectContentScript 的 content.js，第二次 = scriptRunner
+      expect(exec).toHaveBeenCalledTimes(2);
+      expect((exec.mock.calls[0]![0] as { files?: string[] }).files).toEqual(['/content-scripts/content.js']);
+      expect((exec.mock.calls[1]![0] as { func?: unknown }).func).toBeDefined();
+    });
+
+    it('probe 失败 + 注入也失败 → ok:false 带「无法注入」', async () => {
+      setup();
+      vi.spyOn(browser.tabs, 'sendMessage').mockRejectedValue(new Error('Receiving end does not exist'));
+      vi.spyOn(browser.scripting, 'executeScript').mockRejectedValue(new Error('Cannot access contents of the page'));
+      const r = await executeTool('run_page_script', { script: 'return 1' },
+        { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+      expect(r.ok).toBe(false);
+      if (r.ok) throw new Error('预期失败结果');
+      expect(r.error).toContain('无法注入');
+    });
   });
 
   it('run_page_script 受限页被拦', async () => {
@@ -39,6 +89,7 @@ describe('工具 registry', () => {
 
   it('run_page_script 缺 script 参数时走工具自身错误（分发已到达）', async () => {
     fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'https://x.com' }) as never;
+    vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(undefined as never);
     const r = await executeTool('run_page_script', {}, { tabId: 1, sessionId: 's', signal: new AbortController().signal });
     expect(r.ok).toBe(false);
     if (r.ok) throw new Error('预期失败结果');
