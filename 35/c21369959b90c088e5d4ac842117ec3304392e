@@ -1,0 +1,22 @@
+CLAUDE.md
+  s_71a6b00c08fca1::t_47106769e4a9ff 118
+public/skills/builtin.md
+  s_71a6b00c08fca1::t_92d3387fd969bd 110
+  s_71a6b00c08fca1::t_080a584c280c8c 116,118,120-126,135-143,145,153,159-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "35c21369959b90c088e5d4ac842117ec3304392e",
+  "prompts": {},
+  "sessions": {
+    "s_71a6b00c08fca1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62d98896-8267-448e-bbf8-8e8c4644f06c",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
