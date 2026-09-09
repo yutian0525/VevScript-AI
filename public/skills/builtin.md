@@ -237,7 +237,7 @@ expect(cond, msg)     // 断言，失败即中止并诊断
 **搜索并抓前 5 条**
 
 ```js
-await type($({ role:'textbox', near:'搜索' }), 'React 性能优化');
+await type($({ role:'textbox', text:'搜索' }), 'React 性能优化');
 await press('Enter');
 await waitFor({ idle:600 }, { timeout:8000 });
 log('搜索页已加载', location.href);
@@ -246,6 +246,8 @@ return $$('.SearchResult-Card').slice(0, 5).map((card) => ({
   link:  $('a', { within: card }).href,
 }));
 ```
+
+`near` 靠页面可见文本找锚点——标签若只在 `aria-label`/`placeholder` 里（无可见文字），`near` 找不到它，改用 `{ role, text }`。
 
 **翻页收集（含正常退出）**
 
@@ -276,7 +278,7 @@ return $$('.feed-item').length;
 ```js
 await hover($({ text:'更多' }));
 await waitFor({ text:'导出' }, { timeout:2000 });
-await click($({ text:'导出' }));
+await click($({ role:'link', text:'导出' }));
 ```
 
 **填表提交并确认成功**

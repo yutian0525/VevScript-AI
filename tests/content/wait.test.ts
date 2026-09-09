@@ -72,4 +72,31 @@ describe('wait_for', () => {
     expect(r.ok).toBe(false);
     expect(r.error).toContain('只能');
   });
+
+  it('texts 超时报「均未出现」且不提谓词（报错文案讲文本不讲实现）', async () => {
+    document.body.innerHTML = '';
+    const r = await waitForText({ texts: ['甲', '乙'], timeoutMs: 100 }) as { ok: boolean; error: string };
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('均未出现');
+    expect(r.error).toContain('甲 / 乙');
+    expect(r.error).not.toContain('谓词');
+  });
+
+  it('appear 传失效 uid 立即报失效（不死等到超时）', async () => {
+    const t0 = Date.now();
+    const r = await waitForText({ appear: 424242, timeoutMs: 5000 }) as { ok: boolean; error: string };
+    const elapsed = Date.now() - t0;
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('已失效');
+    // 前置检查的意义就在「不死等」：若走了 locator 轮询要吃满 5s 超时
+    expect(elapsed).toBeLessThan(3000);
+  });
+
+  it('appear 传有效 uid 时正常等待不误伤', async () => {
+    // resolveUid 只认 content script 快照分配的 uid；测试里不经快照拿不到映射，
+    // 用 CSS locator 验证同一条 appear 路径的前置检查不会拦下非 uid 条件即可。
+    document.body.innerHTML = '<div role="dialog">弹窗</div>';
+    const r = await waitForText({ appear: { role: 'dialog' }, timeoutMs: 1000 });
+    expect(r.ok).toBe(true);
+  });
 });

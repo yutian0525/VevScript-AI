@@ -5,6 +5,7 @@ import type { ToolResult } from '../shared/types';
 import type { BgToCsRequestMap } from '../shared/messages';
 import { waitFor } from './helpers/wait';
 import { StepError } from './helpers/step-error';
+import { resolveUid } from './snapshot/build';
 
 export async function waitForText(p: BgToCsRequestMap['WAIT_TEXT']): Promise<ToolResult> {
   const given = [
@@ -27,19 +28,33 @@ export async function waitForText(p: BgToCsRequestMap['WAIT_TEXT']): Promise<Too
 
   try {
     // texts：任一命中即成功。逐个 await 会串行等待，故合成一个谓词一次交给 waitFor。
+    // 谓词形式的超时报错会说「自定义谓词未满足」，agent 没写过谓词会被误导去查谓词
+    // 逻辑——texts 分支自己 catch timeout 换成讲文本的专属文案（审查意见 2）。
     if (p.texts?.length) {
       const wanted = p.texts;
       let matched = '';
-      await waitFor(() => {
-        const body = document.body?.innerText ?? document.body?.textContent ?? '';
-        const hit = wanted.find((t) => body.includes(t));
-        if (hit) { matched = hit; return true; }
-        return false;
-      }, { timeout });
+      try {
+        await waitFor(() => {
+          const body = document.body?.innerText ?? document.body?.textContent ?? '';
+          const hit = wanted.find((t) => body.includes(t));
+          if (hit) { matched = hit; return true; }
+          return false;
+        }, { timeout });
+      } catch (e) {
+        if (e instanceof StepError && e.kind === 'timeout') {
+          return { ok: false, error: `wait_for 超时（${timeout}ms）：文本「${wanted.join(' / ')}」均未出现。` };
+        }
+        throw e;
+      }
       return { ok: true, data: { matched } };
     }
 
+    // appear 传 uid 的前置检查：uid 是某次快照的分配，页面一变就与真实元素错位；
+    // 失效 uid 等 locator 轮询只可能死等到超时（reviewed 意见 3）——立即报「已失效」。
     if (p.appear != null) {
+      if (typeof p.appear === 'number' && !resolveUid(p.appear)) {
+        return { ok: false, error: `wait_for 失败：uid ${p.appear} 已失效，请重新 take_snapshot 或 query_page 获取当前 uid` };
+      }
       const r = await waitFor(p.appear, { timeout });
       return { ok: true, data: { waited: r.waited } };
     }
