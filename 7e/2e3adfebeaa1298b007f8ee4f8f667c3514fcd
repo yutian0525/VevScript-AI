@@ -1,0 +1,27 @@
+public/skills/builtin.md
+  s_90855c46e5bd90::t_ed55f7df8c3d55 281
+  s_90855c46e5bd90::t_3adc1cdc2ce5cb 240,250
+  s_90855c46e5bd90::t_66f0b8bb054faa 251
+content/wait.ts
+  s_90855c46e5bd90::t_4595e70e343407 31-32,36-44,46-48,52-53,55-57
+  s_90855c46e5bd90::t_4ed115c6ba8d8c 45
+  s_90855c46e5bd90::t_7388922524a87e 8
+tests/content/wait.test.ts
+  s_90855c46e5bd90::t_e8149a323c4d2f 75-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7e2e3adfebeaa1298b007f8ee4f8f667c3514fcd",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
