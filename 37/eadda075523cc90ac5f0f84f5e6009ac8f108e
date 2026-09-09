@@ -1,0 +1,22 @@
+tests/agent/loop.test.ts
+  s_90855c46e5bd90::t_a7efd501b6150d 304-349
+agent/loop.ts
+  s_90855c46e5bd90::t_81338a1d90d41f 207-221,227-230
+  s_90855c46e5bd90::t_6fdc891b14ec7e 222-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "37eadda075523cc90ac5f0f84f5e6009ac8f108e",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
