@@ -1,0 +1,24 @@
+{
+  "name": "vevscript-ai-landing",
+  "private": true,
+  "version": "1.0.0",
+  "description": "织雀AI脚本 Vevscript-ai 宣传页（独立 Vite + React 站点，与扩展构建互不干扰）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide-react": "^1.35.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "@vitejs/plugin-react": "6.1.1",
+    "typescript": "7.0.2",
+    "vite": "8.2.2"
+  }
+}

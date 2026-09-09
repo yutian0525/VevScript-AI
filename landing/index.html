@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>织雀AI脚本 Vevscript-ai · 浏览器里的 agent harness</title>
+    <meta
+      name="description"
+      content="一个完整的 agent harness，运行时目标是你正在用的这个浏览器：多轮 loop、上下文压缩、熔断阀、权限模式、流式续播。AI 在真实页面上动手，也能写成 .user.js 常驻。"
+    />
+    <link rel="icon" type="image/svg+xml" href="./brand/logo-mark.svg" />
+    <meta name="theme-color" content="#f2f2f4" />
+    <meta property="og:title" content="织雀AI脚本 Vevscript-ai · 浏览器里的 agent harness" />
+    <meta
+      property="og:description"
+      content="AI 在你的页面上动手，也能写成用户脚本常驻。"
+    />
+    <meta property="og:type" content="website" />
+    <!-- MiSans（小米官方字体的 npm 分发）。按 unicode-range 切片，只下页面真正用到的子集。
+         两档：Regular（光学字重 330）/ Semibold（520）——见 styles.css 里的 --w-body / --w-bold。 -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/misans@4.1.0/lib/Normal/MiSans-Regular.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/misans@4.1.0/lib/Normal/MiSans-Semibold.min.css"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
