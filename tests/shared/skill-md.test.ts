@@ -3,6 +3,9 @@
 
 import { describe, it, expect } from 'vitest';
 import { parseSkillMd, parseSkillMdDocument, serializeSkillMd, serializeSkillsMd } from '../../shared/skill-md';
+// 打包资源照 tests/background/builtin-skills.test.ts 惯例用 ?raw 导入（不依赖测试进程 cwd），
+// 直接对真实文件验证，防止文档格式漂移到解析失败。
+import builtinMd from '../../public/skills/builtin.md?raw';
 
 describe('parseSkillMd', () => {
   it('正常解析：frontmatter 三字段 + 正文', () => {
@@ -178,5 +181,41 @@ describe('serializeSkillMd / serializeSkillsMd / parseSkillMdDocument', () => {
       expect(r.skill.description).toBe('desc ription');
       expect(r.warnings).toHaveLength(0);
     }
+  });
+});
+
+describe('内置技能资源 builtin.md', () => {
+  const docs = parseSkillMdDocument(builtinMd);
+
+  it('四篇文档全部解析成功，无坏文档', () => {
+    expect(docs).toHaveLength(4);
+    expect(docs.every((d) => d.ok)).toBe(true);
+  });
+
+  it('command 唯一且含 page-script', () => {
+    const cmds = docs.map((d) => (d.ok ? d.skill.command : ''));
+    expect(new Set(cmds).size).toBe(cmds.length);
+    expect(cmds).toContain('page-script');
+  });
+
+  it('page-script 正文含 10 个 helper 与 8 类失败', () => {
+    const doc = docs.find((d) => d.ok && d.skill.command === 'page-script')!;
+    expect(doc).toBeDefined();
+    if (!doc.ok) return;
+    const body = doc.skill.content;
+    for (const n of ['$(', '$$(', 'click(', 'type(', 'hover(', 'press(', 'waitFor(', 'text(', 'log(', 'expect(']) {
+      expect(body).toContain(n);
+    }
+    for (const k of ['locator-miss', 'locator-ambiguous', 'blocked', 'state',
+                     'timeout', 'assert', 'script-error', 'page-error']) {
+      expect(body).toContain(k);
+    }
+  });
+
+  it('page-script 简述在 200 字符内（进每轮 system prompt）', () => {
+    const doc = docs.find((d) => d.ok && d.skill.command === 'page-script')!;
+    expect(doc).toBeDefined();
+    if (!doc.ok) return;
+    expect(doc.skill.description.length).toBeLessThanOrEqual(200);
   });
 });

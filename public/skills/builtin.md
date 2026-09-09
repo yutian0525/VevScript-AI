@@ -151,3 +151,183 @@ command: write-script
    - `take_screenshot` 或 `evaluate_script` 检查效果是否符合预期。
 5. **迭代修正**：优先 `patch.replace`（精确、不依赖行号）；需要看代码时用 `get_script` 按区间读（返回带行号，默认只给前 200 行）或 `grep_script` 定位，不要整份读回；改完再刷新验证，直到符合预期。
 6. 收尾：告诉用户脚本已安装、作用在哪些站点、如何启停（脚本池开关）、想改需求随时再说。
+
+---
+
+---
+name: 页面脚本 API
+description: 编写页内批量执行脚本的 helper 函数参考；调用 run_page_script 前加载
+command: page-script
+---
+
+# 页面脚本 API 参考
+
+`run_page_script` 在页面里执行一段 async 函数体，一次往返完成多个动作。下面是可用的 10 个 helper。
+
+**原生 JS 照常可用**——helper 只封装三类难写对的东西：事件序列、等待条件、失败诊断。滚动、数组处理、字符串操作直接写原生。
+
+**注意 world**：helper 只在 `world:'isolated'`（默认）下可用。`world:'main'` 只跑原生 DOM/JS，10 个 helper 全部不可用（仅 `log` 例外，只收集埋点）。要读写页面自身的 JS 变量才用 main。
+
+## 定位
+
+```js
+$(loc, opts?)    // 单个。找不到或命中多个都抛错（附诊断）
+$$(loc, opts?)   // 多个。返回数组，可能为空
+```
+
+`loc` 三种形状：
+
+```js
+$('button.submit')                        // CSS 选择器
+$(46)                                     // uid（来自 take_snapshot / query_page）
+$({ role:'button', text:'登录' })          // 语义：角色 + 文本
+$({ role:'textbox', near:'密码' })         // 相对：'密码'附近的输入框
+$({ text:'删除', nth:2 })                  // 命中多个取第 3 个（0-based）
+$({ text:'确定', exact:true })             // 精确匹配（默认包含匹配）
+$('h2', { within: item })                 // 限定在某元素内查找
+```
+
+- `role` 常用值：`button` `link` `textbox` `combobox` `checkbox` `radio` `option` `tab` `heading` `listitem` `img`。
+- `text` 匹配前会折叠空白。匹配对象是元素的可访问名，无名时退回其可见文本。
+- `near` 判定顺序：显式 `label[for]`/`aria-labelledby` 关联 → DOM 邻近（从锚点逐层向上找）→ 几何最近（纵向距离加权 3 倍，保护同一视觉行）。**这是启发式，会猜错**；trace 里的 `nearTier`（label/dom/geometry）告诉你走了哪一级，命中不对就换成选择器。
+- `$` 命中多个即抛错是刻意的：避免「点了三个里的第一个」这种静默干错事。真有多个时用 `$$` 取，或加 `nth`/`within` 收窄。
+- **同源 iframe 自动穿透**，无需额外处理。跨域 iframe 内容无法访问，trace 里 `skippedFrames` 会计数告知盲区。
+
+## 动作
+
+```js
+await click(el, opts?)         // opts: { dbl:true 双击, force:true 跳过遮挡检测 }
+await type(el, value, opts?)   // opts: { instant:true 跳过逐字符 }
+await hover(el)
+await press(key, mods?)        // press('Enter') / press({key:'a', ctrl:true})
+```
+
+- `click` 内部发完整序列（`pointerdown`→`mousedown`→`pointerup`→`mouseup`→`click`）+ 点击前 `focus()` + 真实坐标 + 遮挡检测（取元素**中心点**采样 `elementFromPoint`，pointer-events:none 的装饰层不算遮挡）。不用自己 `dispatchEvent`。
+- `type` 通吃 `input`/`textarea`/`<select>`/`contenteditable`。传 `<select>` 时按 option 的 value 匹配，不中再按显示文本匹配。
+- `type` 默认**逐字符发键盘事件**——搜索联想框需要 `keydown` 才触发。长文本用 `{ instant:true }` 加速。
+- `type` 填完发 `change` 但**不 blur**（blur 可能触发提交或校验）。需要 blur 时显式 `press('Tab')`。
+- `type` 的不可输入是**显式报错**而非静默成功：disabled/readonly 直接抛 `state`；`contenteditable="false"` 的节点（富文本编辑器里的 mention/徽章岛）不算可编辑；number 输入框收到非数字值会抛错（原生 setter 会把它清洗成空）。产生大写字符的按键自动带 shiftKey。
+- `press('Enter')` 是合成事件，**不触发表单的隐式提交**。监听 keydown 的搜索框正常工作（Enter 也会发 keypress，旧式监听也能收到）；需要提交表单时点提交按钮，或 `$('form').requestSubmit()`。修饰键：`press({key:'a', ctrl:true})` 或 `press('a', { ctrl:true })`。
+
+## 等待
+
+```js
+await waitFor({ role:'dialog' })          // 元素出现
+await waitFor({ gone:'.loading' })        // 元素消失
+await waitFor({ text:'搜索结果' })         // 文本出现
+await waitFor({ idle:600 })               // 网络静默 600ms
+await waitFor(() => items.length > 10)    // 自定义谓词（可 async）
+await waitFor(cond, { timeout:8000, interval:100 })   // 缺省 timeout 10000、interval 100
+```
+
+- `interval` 会被压到不超过 `timeout`，不用自己算。
+- `{ idle }` 依赖网络请求计数判断静默，**纯前端渲染（不发请求）的变化等不到**——那种情况用元素条件或谓词。
+- uid 条件只适合「等快照里已有 uid 的元素消失」；等待期间才出现的元素没有 uid，用 CSS/语义 locator。
+
+## 观测
+
+```js
+text(el)              // 归一化取文本（trim + 折叠空白）。el 为空返回空串
+log(...args)          // 埋点，结果里的 logs 会回给你（上限 30 条，每条 500 字符）
+expect(cond, msg)     // 断言，失败即中止并诊断
+```
+
+## 五个成品示例
+
+**搜索并抓前 5 条**
+
+```js
+await type($({ role:'textbox', near:'搜索' }), 'React 性能优化');
+await press('Enter');
+await waitFor({ idle:600 }, { timeout:8000 });
+log('搜索页已加载', location.href);
+return $$('.SearchResult-Card').slice(0, 5).map((card) => ({
+  title: text($('h2', { within: card })),
+  link:  $('a', { within: card }).href,
+}));
+```
+
+**翻页收集（含正常退出）**
+
+```js
+const all = [];
+for (let p = 0; p < 3; p++) {
+  all.push(...$$('.item').map(text));
+  const next = $$({ text:'下一页' });
+  if (!next.length) { log('无下一页，停在第', p + 1, '页'); break; }
+  await click(next[0]);
+  await waitFor({ idle:500 }, { timeout:8000 });
+}
+return all;
+```
+
+**无限滚动**（用原生滚动——原生一行能写对的不包 helper）
+
+```js
+for (let i = 0; i < 5; i++) {
+  window.scrollTo(0, document.body.scrollHeight);
+  await waitFor({ idle:800 }, { timeout:5000 });
+}
+return $$('.feed-item').length;
+```
+
+**hover 展开再点**
+
+```js
+await hover($({ text:'更多' }));
+await waitFor({ text:'导出' }, { timeout:2000 });
+await click($({ text:'导出' }));
+```
+
+**填表提交并确认成功**
+
+```js
+await type($({ near:'用户名', role:'textbox' }), 'alice');
+await type($({ near:'密码',   role:'textbox' }), 'secret');
+await click($({ role:'button', text:'登录' }));
+await waitFor({ gone:{ role:'button', text:'登录' } }, { timeout:10000 });
+expect(!location.pathname.includes('login'), '仍在登录页，可能凭据错误');
+log('登录后', location.href);
+```
+
+## 返回值
+
+成功：
+
+```js
+{ ok:true, url, elapsed, trace:[{i,op,on,…}], logs:[…], data:<你 return 的值>, pageErrors:0 }
+```
+
+失败：
+
+```js
+{ ok:false, kind, error, failedAt:{i,…诊断字段}, trace:[…前序成功步], logs, hint, url, pageErrors }
+```
+
+- `trace` 成功步只记一行摘要（不记 click 内部的 5 个事件）。超 50 步会折叠中间。
+- `data` 上限 8192 字符，超限截断并给 `dataTruncated`。抓大量内容时**先在脚本里聚合**（只回需要的字段），或 `.slice()` 分批取。
+- 返回值里不能有 DOM 节点——用 `text(el)`、`el.href`、`el.value` 取标量。
+- `pageErrors` 是页面自己在这段时间抛的错误数。它 > 0 而你的 trace 正常，说明是**触发了页面 bug**，不是你的脚本错——换条路径。
+
+## 八类失败与修法
+
+| `kind` | 含义 | 怎么改 |
+|---|---|---|
+| `locator-miss` | 匹配 0 个 | 看 `failedAt.relaxed` 哪一档有命中、`nearMiss` 给的候选长什么样，据此改 locator |
+| `locator-ambiguous` | 期望 1 个但命中多个 | 看 `failedAt.ambiguous` 列出的候选，加 `nth` 或 `within` 收窄 |
+| `blocked` | 找到了但被遮挡 | `failedAt.blockedBy` 是遮挡物。先关掉它（找它里面的关闭/同意按钮），或滚动错开 |
+| `state` | 找到了但 disabled/readonly/不可输入 | 前置条件没满足。先做别的（填必填项、勾选同意），或确认操作对象是否正确 |
+| `timeout` | `waitFor` 超时 | 看 `failedAt.matched`：0 说明元素始终不存在（可能前一步没生效、需先滚动、或在跨域 iframe）；条件写错也常见 |
+| `assert` | `expect` 失败 | 对页面状态的理解有误。用 `query_page` 看实际内容 |
+| `script-error` | 代码本身错 | 按 `error` 改。若是「未定义的函数」且名字不在上面 10 个里，说明用了本运行时没有的 API |
+| `page-error` | 页面 JS 抛错 | 你的操作触发了页面 bug，换条路径 |
+
+`assert` 与 `timeout` 属于「trace 都正常但结果不对」——这两类值得重跑时传 `screenshot:'on-failure'` 看页面实况。其余类型的结构化诊断通常已经够用，截图是浪费。
+
+## 工作流建议
+
+1. 陌生页面先 `query_page` 试定位符（便宜，几百 tokens），试通了原样搬进脚本。
+2. 不确定页面结构时 `take_snapshot`（默认 `interactive` 档已瘦身），只关心某区域用 `region`。
+3. 脚本别写太长——出错时定位困难。一个脚本做一件事（一次搜索、一轮翻页），拿到结果再决定下一步。
+4. 关键节点埋 `log`，失败时能看出走到哪了。
+5. 有把握的前置条件用 `expect` 卡住，避免在错误状态上继续操作。
