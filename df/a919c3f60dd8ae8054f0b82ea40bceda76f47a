@@ -1,0 +1,31 @@
+background/builtin-skills.ts
+  s_90855c46e5bd90::t_aacd35d23ea2ef 2
+public/skills/builtin.md
+  s_90855c46e5bd90::t_257f11d2223237 194
+  s_90855c46e5bd90::t_20b9869d9064fb 215-220,242,259,269,278,288
+  s_90855c46e5bd90::t_eab34c94b84212 154-193,195-214,221-241,243-258,260-268,270-277,279-287,289-333
+tests/background/builtin-skills.test.ts
+  s_90855c46e5bd90::t_163f4020931545 64,67,69-70
+  s_90855c46e5bd90::t_1492ee7b7b600c 87,89
+  s_90855c46e5bd90::t_02883927845eed 25,28,30
+  s_90855c46e5bd90::t_458846ebf5f76a 105
+tests/shared/skill-md.test.ts
+  s_90855c46e5bd90::t_88580eedbb94b2 6-8
+  s_90855c46e5bd90::t_9701f0428b8145 186-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "dfa919c3f60dd8ae8054f0b82ea40bceda76f47a",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
