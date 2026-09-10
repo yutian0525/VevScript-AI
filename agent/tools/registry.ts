@@ -8,7 +8,6 @@ import { ASK_MODE_TOOLS, filterSchemasForMemory, memoryToolDenial, type AgentMod
 import { doListPages, doNewPage, doClosePage, doSelectPage } from './tabs';
 import { doScreenshot } from './screenshot';
 import { doEvaluate } from './evaluate';
-import { doRunPageScript } from './page-script';
 import { doHttpRequest } from './http';
 import { doListConsoleMessages, doListNetworkRequests, doGetNetworkRequest } from './observe';
 import {
@@ -124,25 +123,6 @@ export async function executeTool(
     return doEvaluate(
       ctx.tabId,
       args as { function: string; args?: unknown[]; world?: 'main' | 'isolated'; timeoutMs?: number },
-    );
-  }
-  // run_page_script 与 evaluate_script 同级：SW 直接 scripting.executeScript 注入运行时，
-  // 不经 CS 消息通道，但同样操作当前页 → 保留在上面的受限页预检之后。
-  if (name === 'run_page_script') {
-    // helper 全局由 content script 的 main() 安装——扩展重载前已打开的标签页没有它，
-    // scriptRunner 会降级成 deny 占位。先探测再兜底注入，与 CS 通道工具的既有兜底同款。
-    // 探测只看「有没有响应」不看好坏（CsResponse 恒 ok:true 的 PAGE_META 结果）。
-    const probe = await browser.tabs.sendMessage(ctx.tabId, createRequest('PAGE_META', {}), { frameId: 0 }).catch(() => null);
-    if (!probe) {
-      const injected = await injectContentScript(ctx.tabId);
-      if (!injected) {
-        return { ok: false, error: '无法注入 content script（该页可能不允许注入，或刚导航中）。刷新页面后重试。' };
-      }
-      // 注入完成即代表 main() 已跑（helper 全局已装），无需二次探测。
-    }
-    return doRunPageScript(
-      ctx.tabId,
-      args as { script: string; world?: 'isolated' | 'main'; timeoutMs?: number; screenshot?: 'never' | 'on-failure' | 'always' },
     );
   }
 

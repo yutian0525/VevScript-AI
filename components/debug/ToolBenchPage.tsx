@@ -1,5 +1,5 @@
 // components/debug/ToolBenchPage.tsx
-// 工具调试台（设置二级页）：按能力域分组列出全部工具（32 个），绕过 LLM 直接对当前标签页调用。
+// 工具调试台（设置二级页）：按能力域分组列出全部工具（31 个），绕过 LLM 直接对当前标签页调用。
 // 走后台 DEBUG_EXEC_TOOL → handleDebugExec → executeTool（与真实链路一致）。
 import { useEffect, useState } from 'react';
 import { ChevronRight, Play, Loader2, Globe } from 'lucide-react';

@@ -40,7 +40,7 @@ function describeLoc(loc: Locator): string {
   return describeLocator(loc);   // 语义 locator 复用 locator.ts 的可读描述
 }
 
-// uid 条件的局限（文档性，写给 run_page_script 的调用方）：uid 是某次快照分配的
+// uid 条件的局限（文档性）：uid 是某次快照分配的
 // 快照期映射，页面 DOM 一变（增删节点、翻页、框架重渲染）就可能与真实元素错位
 // ——waitFor(uid) 等到的可能是「快照旧位置上如今长着别的元素的节点」。且等待期间
 // 元素若尚未出现，快照根本来不及给它编 uid，waitFor(uid) 天然只适合「等快照里

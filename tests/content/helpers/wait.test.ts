@@ -24,10 +24,10 @@ describe('waitFor（真实时钟）', () => {
   it('locator 条件：元素已存在时立即返回 waited 很小', async () => {
     document.body.innerHTML = '<div role="dialog">弹窗</div>';
     const r = await waitFor({ role: 'dialog' });
-    // 300ms 而非 50：jsdom 首次 getComputedStyle 冷启动 ~60ms（探针实测）会算进
-    // waited。断言的本意是「没进轮询循环」，50ms 都远小于 interval 起步的两轮
-    // 轮询（~200ms+），300ms 一样有区分力且不被环境抖动打爆。
-    expect(r.waited).toBeLessThan(300);
+    // 500ms 而非 50：jsdom 首次 getComputedStyle 冷启动 ~60ms（探针实测）会算进
+    // waited，全量跑时冷启动抖动可达 300ms+。断言的本意是「没进轮询循环」，
+    // 轮询起步两轮就要 ~200ms+，500ms 仍有区分力（进了循环必然超它）。
+    expect(r.waited).toBeLessThan(500);
   });
 
   it('gone 条件：元素本来就不存在时立即返回', async () => {

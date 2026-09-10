@@ -204,29 +204,14 @@ async function drive(
         continue;
       }
 
-      // 两类工具都产截图：take_screenshot 是主通道，run_page_script 是失败诊断的
-      // 兜底（screenshot:'on-failure'）。同一处理：tool 消息只留一句话，base64 走
-      // 独立 user 图片消息（进视觉通道 + 受 trimImageParts 管理）——若让它留在
-      // toToolContent 的 JSON 里，会成为数万 token 的纯文本废料且永不回收。
-      if (tc.name === 'take_screenshot' || tc.name === 'run_page_script') {
+      // take_screenshot 产截图：tool 消息只留一句话，base64 走独立 user 图片消息
+      //（进视觉通道 + 受 trimImageParts 管理）——若让它留在 toToolContent 的 JSON 里，
+      // 会成为数万 token 的纯文本废料且永不回收。
+      if (tc.name === 'take_screenshot') {
         const data = (r as { data?: { screenshot?: string } | undefined }).data;
         const shot = data?.screenshot;
-        // 失败分支的 ok 必须如实透传（run_page_script 失败带图是常态诊断路径）
         deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: r.ok, summary: r.ok ? '已截图' : (r.error ?? '失败'), image: shot });
-        // take_screenshot：data 只有截图本身，tool 消息留占位即可；
-        // run_page_script：data 里还有 trace/logs/data 等结果，摘掉 screenshot 后照常序列化
-        //（成功与失败两条路径都要摘——base64 永不进文本通道，这条不变量不看 r.ok）。
-        let rest: string;
-        if (tc.name === 'run_page_script' && data != null) {
-          const { screenshot: _s, ...keep } = data;
-          // 失败分支的 ToolResult 类型面没有 data（value 层由 page-script 带出，见
-          // toToolContent 的注释）——error 前置 + 诊断详情的组装与 toToolContent 同款，就地拼。
-          rest = r.ok
-            ? toToolContent({ ok: true, data: keep })
-            : `错误：${r.error ?? '未知错误'}\n${JSON.stringify(keep)}`;
-        } else {
-          rest = toToolContent(r.ok ? { ok: true } : r);
-        }
+        const rest = toToolContent(r.ok ? { ok: true } : r);
         await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: rest });
         if (shot) {
           const parts: ContentPart[] = [
@@ -239,9 +224,28 @@ async function drive(
       }
 
       const summary = r.ok ? '成功' : (r.error ?? '失败');
-      const output = toToolContent(r);
-      deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: r.ok, summary, output });
+      // data 里若混入 screenshot（防御性：任何工具都不得让 base64 进文本上下文），
+      // 摘掉后单独走 user 图片消息；其余字段照常序列化进 tool 消息。
+      const shot = (r as { data?: { screenshot?: string } | undefined }).data?.screenshot;
+      let output: string;
+      if (shot != null) {
+        const data = (r as { data?: Record<string, unknown> | undefined }).data;
+        const { screenshot: _s, ...keep } = data ?? {};
+        output = r.ok
+          ? toToolContent({ ok: true, data: keep })
+          : `错误：${r.error ?? '未知错误'}\n${JSON.stringify(keep)}`;
+      } else {
+        output = toToolContent(r);
+      }
+      deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: r.ok, summary, image: shot, output });
       await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: output });
+      if (shot) {
+        const parts: ContentPart[] = [
+          { type: 'text', text: SCREENSHOT_SENTINEL },
+          { type: 'image_url', imageUrl: shot },
+        ];
+        await appendMessage(convId, { role: 'user', content: parts });
+      }
     }
 
     guard = recordTurn(guard, result.toolCalls, results);
@@ -276,10 +280,8 @@ function toToolContent(r: ToolResult): string {
     }
   };
   if (r.ok) return typeof r.data === 'string' ? r.data : stringify(r.data ?? { ok: true });
-  // 失败也带 data（run_page_script 的失败诊断 kind/failedAt/hint 都在 data 里）——
-  // 丢掉它 spec §5.2「失败极详」整条落空。既有工具失败均不带 data，行为不变。
-  // ToolResult 失败分支类型上没有 data（类型面收窄），value 层由 page-script 等带出——
-  // 与 page-script.ts:115 的既有注释同源，这里是消费端。
+  // 失败也带 data（个别工具的失败诊断信息在 data 里）——丢掉它「失败极详」落空。
+  // ToolResult 失败分支类型上没有 data（类型面收窄），value 层由工具带出，这里是消费端。
   const data = (r as { data?: unknown }).data;
   if (data != null) {
     const detail = typeof data === 'string' ? data : stringify(data);

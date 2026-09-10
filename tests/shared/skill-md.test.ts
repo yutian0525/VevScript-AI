@@ -187,35 +187,14 @@ describe('serializeSkillMd / serializeSkillsMd / parseSkillMdDocument', () => {
 describe('内置技能资源 builtin.md', () => {
   const docs = parseSkillMdDocument(builtinMd);
 
-  it('四篇文档全部解析成功，无坏文档', () => {
-    expect(docs).toHaveLength(4);
+  it('三篇文档全部解析成功，无坏文档', () => {
+    expect(docs).toHaveLength(3);
     expect(docs.every((d) => d.ok)).toBe(true);
   });
 
-  it('command 唯一且含 page-script', () => {
+  it('command 唯一且不含 page-script（该技能已随 run_page_script 拆除）', () => {
     const cmds = docs.map((d) => (d.ok ? d.skill.command : ''));
     expect(new Set(cmds).size).toBe(cmds.length);
-    expect(cmds).toContain('page-script');
-  });
-
-  it('page-script 正文含 10 个 helper 与 8 类失败', () => {
-    const doc = docs.find((d) => d.ok && d.skill.command === 'page-script')!;
-    expect(doc).toBeDefined();
-    if (!doc.ok) return;
-    const body = doc.skill.content;
-    for (const n of ['$(', '$$(', 'click(', 'type(', 'hover(', 'press(', 'waitFor(', 'text(', 'log(', 'expect(']) {
-      expect(body).toContain(n);
-    }
-    for (const k of ['locator-miss', 'locator-ambiguous', 'blocked', 'state',
-                     'timeout', 'assert', 'script-error', 'page-error']) {
-      expect(body).toContain(k);
-    }
-  });
-
-  it('page-script 简述在 200 字符内（进每轮 system prompt）', () => {
-    const doc = docs.find((d) => d.ok && d.skill.command === 'page-script')!;
-    expect(doc).toBeDefined();
-    if (!doc.ok) return;
-    expect(doc.skill.description.length).toBeLessThanOrEqual(200);
+    expect(cmds).not.toContain('page-script');
   });
 });

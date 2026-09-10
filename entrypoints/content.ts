@@ -9,8 +9,6 @@ import { doQuery } from '../content/query';
 import { doClick, doFill, doFillForm, doHover, doScroll, doPressKey } from '../content/interact';
 import { waitForText } from '../content/wait';
 import { initBridgeHost, handleGmEvent, debugCall } from '../content/gm-bridge-host';
-import { createHelpers } from '../content/helpers/index';
-import { HELPER_GLOBAL } from '../content/script-runtime';
 
 /** 纯处理逻辑（可单测）：一条 BgToCsRequest → CsResponse。 */
 export async function handleCsRequest(req: BgToCsRequest): Promise<CsResponse> {
@@ -67,23 +65,11 @@ function safeQuery(sel: string): Element | null {
   }
 }
 
-/**
- * 把 helper 工厂挂到 globalThis，供 scripting.executeScript 注入的 scriptRunner 取用。
- * ISOLATED world 与 content script 是同一个隔离世界，globalThis 共享——故不需要动态注入
- * helper 代码，静态打包进本 bundle 即可（spec §3.6）。
- */
-export function installHelperGlobal(): void {
-  (globalThis as Record<string, unknown>)[HELPER_GLOBAL] = createHelpers;
-}
-
 export default defineContentScript({
   matches: ['<all_urls>'],
   runAt: 'document_idle',
   allFrames: true,
   main() {
-    // helper 全局越早装越好：scriptRunner 随时可能被 SW 注入取用；重复调用幂等（重复赋值无害），
-    // content script 被浏览器重注入时也会自然重装。
-    installHelperGlobal();
     browser.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       const req = msg as BgToCsRequest;
       if (!req || typeof req.type !== 'string' || !('correlationId' in req)) return false;

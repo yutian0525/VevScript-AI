@@ -12,8 +12,7 @@ describe('context 组装', () => {
     expect(msgs[0]!.content).toContain('take_snapshot');
   });
 
-  it('SYSTEM_PROMPT 引导多步操作优先用脚本', () => {
-    expect(SYSTEM_PROMPT).toContain('run_page_script');
+  it('SYSTEM_PROMPT 引导定向查询优先', () => {
     expect(SYSTEM_PROMPT).toContain('query_page');
   });
 
@@ -21,8 +20,9 @@ describe('context 组装', () => {
     expect(SYSTEM_PROMPT).toContain('stale');
   });
 
-  it('SYSTEM_PROMPT 说明 evaluate_script 与 run_page_script 的分工', () => {
+  it('SYSTEM_PROMPT 提及 evaluate_script 与 wait_for', () => {
     expect(SYSTEM_PROMPT).toContain('evaluate_script');
+    expect(SYSTEM_PROMPT).toContain('wait_for');
   });
 
   it('SYSTEM_PROMPT 保留不可信输入告警', () => {

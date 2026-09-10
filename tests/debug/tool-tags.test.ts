@@ -9,9 +9,9 @@ describe('TOOL_TAGS 完备性', () => {
     }
   });
 
-  it('六类计数 PAGE 12 / TABS 5 / NET 4 / SCRIPTS 7 / SKILLS 1 / MEMORY 3', () => {
+  it('六类计数 PAGE 11 / TABS 5 / NET 4 / SCRIPTS 7 / SKILLS 1 / MEMORY 3', () => {
     const count = (tag: string) => Object.values(TOOL_TAGS).filter((v) => v === tag).length;
-    expect(count('PAGE')).toBe(12);
+    expect(count('PAGE')).toBe(11);
     expect(count('TABS')).toBe(5);
     expect(count('NET')).toBe(4);
     expect(count('SCRIPTS')).toBe(7);
@@ -26,10 +26,6 @@ describe('TOOL_TAGS 完备性', () => {
 
   it('query_page 归 PAGE', () => {
     expect(TOOL_TAGS.query_page).toBe('PAGE');
-  });
-
-  it('run_page_script 归 PAGE', () => {
-    expect(TOOL_TAGS.run_page_script).toBe('PAGE');
   });
 
   it('GROUPS 按组序 PAGE/TABS/NET/SCRIPTS/SKILLS/MEMORY', () => {

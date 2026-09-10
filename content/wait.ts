@@ -21,7 +21,7 @@ export async function waitForText(p: BgToCsRequestMap['WAIT_TEXT']): Promise<Too
   }
   // 多个条件同传不静默取优先：静默取舍会让 agent 以为两个条件都被等待了。
   if (given.length > 1) {
-    return { ok: false, error: `wait_for 只能传一个条件，收到 ${given.join(' + ')}。分成多次调用，或改用 run_page_script 在脚本里连续 waitFor` };
+    return { ok: false, error: `wait_for 只能传一个条件，收到 ${given.join(' + ')}。分成多次调用` };
   }
 
   const timeout = p.timeoutMs ?? 10_000;

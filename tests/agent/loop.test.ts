@@ -112,10 +112,9 @@ describe('agent loop', () => {
   });
 
   it('工具失败但带 data 时，data 进 tool 消息（错误前置 + 换行接诊断详情）', async () => {
-    // run_page_script 的失败诊断（kind/trace/failedAt/hint）都在 data 里——
-    // 失败分支丢 data 的话 spec §5.2「失败极详」到不了模型。
+    // 个别工具的失败诊断（kind/hint 等）在 data 里——失败分支丢 data 的话诊断到不了模型。
     const provider = queuedProvider([
-      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'run_page_script', argsDelta: '{"script":"return 1"}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'wait_for', argsDelta: '{"idle":500}' }, { type: 'message-done', finishReason: 'tool_calls' }],
       [{ type: 'text-delta', text: '看了诊断' }, { type: 'message-done', finishReason: 'stop' }],
     ]);
     const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({
@@ -301,35 +300,13 @@ describe('agent loop', () => {
     expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', image: 'data:image/jpeg;base64,ZZZ' }));
   });
 
-  it('run_page_script 成功 + screenshot：tool 消息留 trace 等剩余信息且不含 base64，图片走 user part', async () => {
+  it('工具失败 data 里的 screenshot 也走图片通道（base64 永不进文本上下文）', async () => {
     const provider = queuedProvider([
-      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'run_page_script', argsDelta: '{"script":"return 1"}' }, { type: 'message-done', finishReason: 'tool_calls' }],
-      [{ type: 'text-delta', text: '看到了' }, { type: 'message-done', finishReason: 'stop' }],
-    ]);
-    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({
-      ok: true, data: { screenshot: 'data:image/jpeg;base64,ZZZ', trace: [{ i: 1, op: '$' }], data: [1, 2], pageErrors: 0 },
-    } as ToolResult);
-    const d = deps(provider, exec);
-    await runAgentLoop({ convId: 'c-rps-ok', tabId: 1, userMessage: 'x' }, d);
-    const conv = await getConversation('c-rps-ok');
-    const toolMsg = conv.messages.find((m) => m.role === 'tool')!;
-    const content = String(toolMsg.content);
-    // trace 等有效信息保留，base64 绝不进文本通道
-    expect(content).toContain('trace');
-    expect(content).not.toContain('data:image');
-    const userImg = conv.messages.find((m) => m.role === 'user' && Array.isArray(m.content));
-    const parts = userImg!.content as Array<{ type: string; imageUrl?: string }>;
-    expect(parts.some((p) => p.type === 'image_url' && p.imageUrl === 'data:image/jpeg;base64,ZZZ')).toBe(true);
-    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', name: 'run_page_script', image: 'data:image/jpeg;base64,ZZZ' }));
-  });
-
-  it('run_page_script 失败 + screenshot：tool 消息含 kind/hint 且不含 base64，图片走 user part', async () => {
-    const provider = queuedProvider([
-      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'run_page_script', argsDelta: '{"script":"x"}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'wait_for', argsDelta: '{"idle":500}' }, { type: 'message-done', finishReason: 'tool_calls' }],
       [{ type: 'text-delta', text: '看了诊断' }, { type: 'message-done', finishReason: 'stop' }],
     ]);
     const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({
-      ok: false, error: '点击被遮挡', data: { kind: 'blocked', hint: '先关掉提示条', screenshot: 'data:image/jpeg;base64,EEE' },
+      ok: false, error: '等待超时', data: { kind: 'timeout', hint: '改条件', screenshot: 'data:image/jpeg;base64,EEE' },
     } as ToolResult);
     const d = deps(provider, exec);
     await runAgentLoop({ convId: 'c-rps-fail', tabId: 1, userMessage: 'x' }, d);
@@ -337,14 +314,14 @@ describe('agent loop', () => {
     const toolMsg = conv.messages.find((m) => m.role === 'tool')!;
     const content = String(toolMsg.content);
     // 错误 + 诊断详情保留，base64 绝不进文本通道
-    expect(content.startsWith('错误：点击被遮挡')).toBe(true);
-    expect(content).toContain('"kind":"blocked"');
-    expect(content).toContain('"hint":"先关掉提示条"');
+    expect(content.startsWith('错误：等待超时')).toBe(true);
+    expect(content).toContain('"kind":"timeout"');
+    expect(content).toContain('"hint":"改条件"');
     expect(content).not.toContain('data:image');
     const userImg = conv.messages.find((m) => m.role === 'user' && Array.isArray(m.content));
     const parts = userImg!.content as Array<{ type: string; imageUrl?: string }>;
     expect(parts.some((p) => p.type === 'image_url' && p.imageUrl === 'data:image/jpeg;base64,EEE')).toBe(true);
-    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', name: 'run_page_script', ok: false, image: 'data:image/jpeg;base64,EEE' }));
+    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', name: 'wait_for', ok: false, image: 'data:image/jpeg;base64,EEE' }));
   });
 
   it('usage：provider 返回 promptTokens → emit usage 且存入 lastPromptTokens', async () => {

@@ -98,20 +98,4 @@ describe('content 消息处理器', () => {
     const data = (resp.result as { ok: true; data: { matched: number } }).data;
     expect(data.matched).toBe(1);
   });
-
-  it('installHelperGlobal 把工厂挂到 globalThis（scriptRunner 据此取用）', async () => {
-    const { installHelperGlobal } = await import('../../entrypoints/content');
-    const { HELPER_GLOBAL } = await import('../../content/script-runtime');
-    delete (globalThis as Record<string, unknown>)[HELPER_GLOBAL];
-    installHelperGlobal();
-    expect(typeof (globalThis as Record<string, unknown>)[HELPER_GLOBAL]).toBe('function');
-  });
-
-  it('installHelperGlobal 幂等（重复调用不报错）', async () => {
-    const { installHelperGlobal } = await import('../../entrypoints/content');
-    installHelperGlobal();
-    installHelperGlobal();
-    const { HELPER_GLOBAL } = await import('../../content/script-runtime');
-    expect(typeof (globalThis as Record<string, unknown>)[HELPER_GLOBAL]).toBe('function');
-  });
 });

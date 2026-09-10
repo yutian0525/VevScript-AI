@@ -1,19 +1,12 @@
 // content/helpers/step-error.ts
-// helper 抛出的结构化错误（spec §5.2/§5.3）。单独成文件：events/wait/index 都要用，
-// 放 index.ts 会造成循环 import。
-import type { ScriptKind } from '../../shared/script-result';
+// waitFor 链路抛出的结构化错误（spec §5.2/§5.3）。单独成文件避免循环 import。
 
-/** 失败诊断附加字段。按 kind 填不同子集，序列化后进返回值的 failedAt。 */
+/** 失败诊断附加字段。按 kind 填不同子集。 */
 export interface StepErrorDetail {
   /** 涉及的元素简要信息。 */
   element?: Record<string, unknown>;
-  /** blocked 时的遮挡物。 */
-  blockedBy?: Record<string, unknown>;
   /** locator 相关：命中数、放宽结果、相似候选。 */
   matched?: number;
-  relaxed?: Record<string, number>;
-  nearMiss?: unknown[];
-  ambiguous?: unknown[];
   /** timeout 时：等待条件描述与已等时长。 */
   cond?: string;
   waited?: number;
@@ -22,8 +15,22 @@ export interface StepErrorDetail {
   [k: string]: unknown;
 }
 
-/** helper 层抛出的结构化错误：kind 走 ScriptKind 八分类，detail 携带按 kind 的诊断子集。
- *  对象留在页内 world——scriptRunner 捕获后序列化 kind/message/detail 进返回值，不跨 world 传递。 */
+/** 失败分类。每类对应一个明确不同的修复方向。 */
+export const SCRIPT_KINDS = [
+  'locator-miss',       // 匹配 0 个 → 定位符错了
+  'locator-ambiguous',  // 期望 1 个但匹配 N 个 → 加限定收窄
+  'blocked',            // 找到了但被遮挡 → 先处理遮挡物
+  'state',              // 找到了但 disabled/readonly/不可输入 → 前置条件没满足
+  'timeout',            // waitFor 超时 → 条件写错或页面真没变化
+  'assert',             // 断言失败 → 逻辑判断不成立
+  'script-error',       // 调用方代码本身错 → 改代码
+  'page-error',         // 页面 JS 抛错 → 操作触发页面 bug，换路径
+] as const;
+
+export type ScriptKind = (typeof SCRIPT_KINDS)[number];
+
+/** waitFor 链路抛出的结构化错误：kind 走八分类，detail 携带按 kind 的诊断子集。
+ *  content/wait.ts 捕获后把 message 与 detail.hint 并入 ToolResult 的 error。 */
 export class StepError extends Error {
   readonly kind: ScriptKind;
   readonly detail: StepErrorDetail;
@@ -34,12 +41,4 @@ export class StepError extends Error {
     this.kind = kind;
     this.detail = detail;
   }
-}
-
-/** 元素状态是否阻止交互。点击/输入前的前置检查。
- *  返回原因短句（进 message），null = 可交互。 */
-export function disabledReason(el: Element): string | null {
-  if (el.hasAttribute('disabled')) return 'disabled 属性';
-  if (el.getAttribute('aria-disabled') === 'true') return 'aria-disabled="true"';
-  return null;
 }
