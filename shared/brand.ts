@@ -14,4 +14,6 @@ export const BRAND = {
   repo: 'https://github.com/yutian0525/VevScript-AI',
   /** 问题反馈（仓库 issues） */
   issues: 'https://github.com/yutian0525/VevScript-AI/issues',
+  /** 开源协议（仓库 LICENSE 文件） */
+  license: 'https://github.com/yutian0525/VevScript-AI/blob/main/LICENSE',
 } as const;

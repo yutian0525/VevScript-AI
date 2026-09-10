@@ -7,6 +7,11 @@
     "url": "git+https://github.com/yutian0525/VevScript-AI.git"
   },
   "homepage": "https://github.com/yutian0525/VevScript-AI",
+  "license": "MIT",
+  "author": {
+    "name": "倪镭",
+    "url": "https://github.com/yutian0525"
+  },
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",

@@ -1,6 +1,6 @@
 // components/settings/AboutPage.tsx
-// 关于软件二级页：品牌块（居中）+ 版本 + 官网 / GitHub / 问题反馈外链行。
-import { Globe, LifeBuoy, ExternalLink } from 'lucide-react';
+// 关于软件二级页：品牌块（居中）+ 版本 + 官网 / GitHub / 问题反馈 / 协议外链行。
+import { Globe, LifeBuoy, ExternalLink, Scale } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { PageShell } from '../ui/PageShell';
 import { Brand, GithubMark } from '../ui/Brand';
@@ -10,6 +10,7 @@ const LINKS: Array<{ url: string; label: string; hint: string; icon: ReactNode }
   { url: BRAND.site, label: '官方网站', hint: 'vevscript.yutkit.com', icon: <Globe size={17} strokeWidth={1.8} /> },
   { url: BRAND.repo, label: '开源仓库', hint: 'GitHub · yutian0525/VevScript-AI', icon: <GithubMark size={16} /> },
   { url: BRAND.issues, label: '问题反馈', hint: '提交 Issue，报告 bug 或提需求', icon: <LifeBuoy size={17} strokeWidth={1.8} /> },
+  { url: BRAND.license, label: '开源协议', hint: 'MIT License', icon: <Scale size={17} strokeWidth={1.8} /> },
 ];
 
 export function AboutPage({ onBack }: { onBack: () => void }) {
