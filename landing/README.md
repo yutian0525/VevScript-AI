@@ -1,6 +1,8 @@
 # 织雀AI脚本 · 宣传页
 
-[织雀AI脚本 Vevscript-ai](https://github.com/yutian0525/VevScript-AI) 的宣传页——定位口径是「**浏览器里的 agent harness**」，首屏到页脚都按这个身份组织（`#harness` 讲机件、`#paths` 讲两种输出形态）。改文案前先看仓库根 [CLAUDE.md](../CLAUDE.md) 的「宣传页 landing/」一节，slogan 有六处联动。独立站点，与扩展的 WXT 构建互不干扰（各自 `package.json` / `node_modules` / 产物目录；根 `tsconfig.json` 已把本目录排除在扩展类型检查外）。
+[织雀AI脚本 Vevscript-ai](https://github.com/yutian0525/VevScript-AI) 的宣传页。独立站点，与扩展的 WXT 构建互不干扰（各自 `package.json` / `node_modules` / 产物目录；根 `tsconfig.json` 已把本目录排除在扩展类型检查外）。
+
+**改文案前先读**仓库根 [CLAUDE.md](../CLAUDE.md) 的「宣传页 landing/」一节。两条硬约束容易踩：slogan 有六处联动需一起改；章节顺序必须与 README 一致（先说人话，`#harness` 那节的机件表垫在两条路之后，不许往前挪）。首屏 H1 的 em 那行还有字数上限，加字前先量。
 
 ```bash
 npm install

@@ -10,15 +10,16 @@ export function Home() {
       <section className="hero">
         <div className="shell hero__grid">
           <div className="hero__copy">
-            {/* 不复述 H1 里的 agent harness，只补它没说的事实 */}
-            <span className="eyebrow hero__eyebrow">Chrome MV3 · OpenAI 兼容 · 开源</span>
+            <span className="eyebrow hero__eyebrow">Chrome 侧边栏 · 开源</span>
+            {/* em 那行有 white-space:nowrap（编织下划线不能断行），故字数受栏宽硬约束：
+                1440px 下栏宽约 470px，74px 字号最多容 6 个汉字。加字会压进右侧装置。 */}
             <h1 className="h-display hero__h1">
-              浏览器里的
+              说一句话，
               <br />
-              <em>agent harness</em>
+              <em>AI 替你动手</em>
             </h1>
             <p className="lede hero__lede">
-              多轮 loop、上下文压缩、熔断阀、权限模式、流式续播——该有的都在。只是它的作用对象是你正在用的这个浏览器：真登录态、真会话、真标签页。
+              它读懂你正打开的这个网页，然后替你点击、填写、翻页——现在就做完。常做的事让它写成用户脚本，以后每次打开自动跑。
             </p>
             <div className="hero__actions">
               <a className="btn btn--primary" href={REPO} target="_blank" rel="noreferrer noopener">
@@ -49,47 +50,7 @@ export function Home() {
         </div>
       </section>
 
-      <section className="section section--white" id="harness">
-        <div className="shell">
-          <div className="section__head">
-            <span className="eyebrow">Harness 机件</span>
-            <h2 className="h-section">一个 agent 运行时该有的东西</h2>
-            <p className="lede">
-              不是「调模型 + 几个函数」。会话在后台跑、上下文自己收拢、模型卡住有熔断、能力面按权限收放。
-            </p>
-          </div>
-
-          <div className="tools rig">
-            {RIG.map((r) => (
-              <div className="toolrow" key={r.k}>
-                <div className="toolrow__k">
-                  <span className="toolrow__name">{r.k}</span>
-                  <span className="toolrow__c">{r.f}</span>
-                </div>
-                <p className="rig__d">
-                  <RichText text={r.d} />
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="stances">
-            <span className="eyebrow">几个刻意的取向</span>
-            <div className="stances__grid">
-              {STANCES.map((s) => (
-                <div className="stance" key={s.t}>
-                  <h3 className="h-card stance__t">{s.t}</h3>
-                  <p className="stance__d">
-                    <RichText text={s.d} />
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="section section--paper" id="paths">
+      <section className="section section--white" id="paths">
         <div className="shell">
           <div className="section__head">
             <span className="eyebrow">两条路</span>
@@ -145,7 +106,7 @@ export function Home() {
         </div>
       </section>
 
-      <section className="section section--white" id="flow">
+      <section className="section section--paper" id="flow">
         <div className="shell">
           <div className="section__head">
             <span className="eyebrow">脚本那条路 · 拆开看</span>
@@ -165,6 +126,48 @@ export function Home() {
                 </p>
               </article>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section section--white" id="harness">
+        <div className="shell">
+          <div className="section__head">
+            <span className="eyebrow">Harness 机件</span>
+            <h2 className="h-section">它不是套壳调模型</h2>
+            <p className="lede">
+              一个 agent 真跑起来要的机件，这里都有：多轮循环、上下文自己收拢、模型卡住有熔断、
+              能力面按权限收放、任务在后台跑不怕你切走。说白了这是一个完整的 agent harness，
+              只是它的运行时目标是你正在用的这个浏览器。
+            </p>
+          </div>
+
+          <div className="tools rig">
+            {RIG.map((r) => (
+              <div className="toolrow" key={r.k}>
+                <div className="toolrow__k">
+                  <span className="toolrow__name">{r.k}</span>
+                  <span className="toolrow__c">{r.f}</span>
+                </div>
+                <p className="rig__d">
+                  <RichText text={r.d} />
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="stances">
+            <span className="eyebrow">几个刻意的取向</span>
+            <div className="stances__grid">
+              {STANCES.map((s) => (
+                <div className="stance" key={s.t}>
+                  <h3 className="h-card stance__t">{s.t}</h3>
+                  <p className="stance__d">
+                    <RichText text={s.d} />
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

@@ -1,7 +1,7 @@
 {
   "name": "vevscript-ai",
   "version": "1.0.0",
-  "description": "织雀AI脚本（Vevscript-ai）——浏览器里的 agent harness：AI 在你的页面上动手，也能写成用户脚本常驻",
+  "description": "织雀AI脚本（Vevscript-ai）——在侧边栏说一句话，AI 就在当前网页上替你做完。常做的事，写成用户脚本以后自动跑。",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yutian0525/VevScript-AI.git"
