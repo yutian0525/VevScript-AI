@@ -224,6 +224,24 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
       parameters: obj(
         {
           locator: {
+            // anyOf 三形状必须显式声明：无 type 约束时部分模型把语义对象/uid 序列化成
+            // JSON 字符串上送，CS 侧虽已做防御解析，但正确形状从源头消除一次误分派。
+            anyOf: [
+              { type: 'string', description: 'CSS 选择器，如 "button.submit" / "a"' },
+              { type: 'number', description: '元素 uid（来自最近一次 take_snapshot / query_page 的 [uid]）' },
+              {
+                type: 'object',
+                description: '语义对象：按角色与文本定位',
+                properties: {
+                  role: { type: 'string', description: 'button/link/textbox/combobox/checkbox/tab/heading 等' },
+                  text: { type: 'string', description: '文本，默认包含匹配，exact:true 转精确' },
+                  near: { type: 'string', description: '找"该文本附近"的元素（如 { role:"textbox", near:"密码" }）' },
+                  nth: { type: 'number', description: '命中多个时取第几个（0-based）' },
+                  exact: { type: 'boolean', description: 'text 转精确匹配' },
+                },
+                additionalProperties: false,
+              },
+            ],
             description:
               '三形状之一：CSS 选择器字符串；元素 uid 数字；语义对象 { role, text, near, nth, exact }。role 如 button/link/textbox/combobox/checkbox/tab/heading；text 默认包含匹配，exact:true 转精确；near 找"该文本附近"的元素（如 { role:"textbox", near:"密码" }）；nth 命中多个时取第几个（0-based）',
           },

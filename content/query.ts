@@ -26,6 +26,17 @@ export interface QueryArgs {
 export function doQuery(args: QueryArgs): ToolResult {
   if (args?.locator == null) return { ok: false, error: 'query_page 缺少 locator 参数' };
 
+  // 防御性解析：schema 给 locator 声明了三形状（string/number/语义对象），但部分模型会
+  // 把对象/数字序列化成 JSON 字符串塞进来（实测：语义对象报「选择器非法」）。形似 JSON
+  // 的字符串先 try-parse 再分派；坏 JSON 退回字面 CSS（走既有的 0 命中诊断，不额外报错）。
+  let locator: Locator = args.locator;
+  if (typeof locator === 'string') {
+    const s = locator.trim();
+    if ((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']')) || /^-?\d+$/.test(s)) {
+      try { locator = JSON.parse(s) as Locator; } catch { /* 字面 CSS，照常分派 */ }
+    }
+  }
+
   let scope: Element | undefined;
   if (args.within != null) {
     const el = resolveUid(args.within);
@@ -37,7 +48,7 @@ export function doQuery(args: QueryArgs): ToolResult {
 
   let res: ReturnType<typeof queryLocator>;
   try {
-    res = queryLocator(args.locator, { within: scope });
+    res = queryLocator(locator, { within: scope });
   } catch (e) {
     return { ok: false, error: `query_page 定位失败：${e instanceof Error ? e.message : String(e)}` };
   }
@@ -46,7 +57,7 @@ export function doQuery(args: QueryArgs): ToolResult {
     // 命中 0 个也要给诊断——探查阶段就把定位符调对，不带错进脚本。
     // uidNotice 恒带（uid 诊断分支也提醒了 uid 时效性，但那是「失效」口径，
     // 与本条「错位」口径互补；恒带让两个分支的返回形状一致，消费方少一层判断）。
-    const diag = diagnoseMiss(args.locator, scope ?? document.body);
+    const diag = diagnoseMiss(locator, scope ?? document.body);
     return {
       ok: true,
       data: {

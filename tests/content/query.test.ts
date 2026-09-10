@@ -82,6 +82,22 @@ describe('query_page', () => {
     expect(err(r)).toContain('缺少 locator');
   });
 
+  it('locator 为形似 JSON 的字符串时按 JSON 解析（模型把对象序列化进 string 的兜底）', () => {
+    document.body.innerHTML = '<button>提交</button>';
+    // 模型侧 schema 违规输出：语义对象被序列化成字符串——语义条件必须仍生效
+    const d = ok(doQuery({ locator: '{"role":"button","text":"提交"}' as never }));
+    expect(d.matched).toBe(1);
+    // uid 数字同理：ensureUid 分配后不重置映射，数字字符串应解析回同元素
+    document.body.innerHTML = '<button>确定</button>';
+    const el = document.querySelector('button')!;
+    const uid = ensureUid(el);
+    const d2 = ok(doQuery({ locator: String(uid) as never }));
+    expect(d2.matched).toBe(1);
+    // 恶意/坏 JSON 不炸：按字面 CSS 处理——非法选择器走 ok:false（与裸坏选择器同径）
+    const bad = doQuery({ locator: '{"role":' as never });
+    expect(bad.ok).toBe(false);
+  });
+
   it('非法选择器返回 ok:false 并带原因', () => {
     const r = doQuery({ locator: '<<bad>>' });
     expect(r.ok).toBe(false);
