@@ -1,0 +1,48 @@
+components/settings/SettingsHome.tsx
+  s_16c232dabdcc80::t_e03f5bdfc43255 32
+  s_16c232dabdcc80::t_97d8e73cb4aed9 29-31
+  s_16c232dabdcc80::t_3a45ce2aa1c1b5 33-35
+  s_16c232dabdcc80::t_ef4ede48a98ac7 2-3,8,10-28,36-41,66-72
+components/detail/DetailApp.tsx
+  s_16c232dabdcc80::t_16917e516434eb 10,97-99
+components/popup/PopupApp.tsx
+  s_16c232dabdcc80::t_9691d495743d4f 2,6,8,86-89,112-114,117,119,122-124
+components/settings/AboutPage.tsx
+  s_16c232dabdcc80::t_1251ca6877c1e4 1-47
+components/settings/SettingsView.tsx
+  s_16c232dabdcc80::t_aa6dca9434343b 12,34-35
+components/ui/Brand.tsx
+  s_16c232dabdcc80::t_d8a879e07be341 1-61
+entrypoints/sidepanel/styles.css
+  s_16c232dabdcc80::t_11b98259d5e52d 948-995,1221-1225,1335-1339
+landing/src/pages/Docs.tsx
+  s_16c232dabdcc80::t_6dfceeda814031 1,3-4,6,11,16-17,20-25,27-73,75-77,80,82-145,149-164,171-267
+landing/src/pages/Home.tsx
+  s_16c232dabdcc80::t_32a3ec308e9f47 1,5,25-29
+landing/src/router.ts
+  s_16c232dabdcc80::t_66ee477f553eaa 29-32
+landing/src/styles.css
+  s_16c232dabdcc80::t_007ab433964b08 651-711
+shared/brand.ts
+  s_16c232dabdcc80::t_197713f5afe9d7 1-17
+tests/popup/popup-app.test.tsx
+  s_16c232dabdcc80::t_e7e1dbbaa338d0 2,48,51,53,57,62,210-224
+tests/settings/settings-view.test.tsx
+  s_16c232dabdcc80::t_fc9b9812e121b1 12-13,42-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c44126beea4a7c3ac103fc43211bac97e2135a99",
+  "prompts": {},
+  "sessions": {
+    "s_16c232dabdcc80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8a611dd-725e-4539-a666-e2c93c15907f",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
