@@ -1,8 +1,8 @@
-import { ArrowRight, BookOpen, Eye, Puzzle, ScrollText, Wrench } from 'lucide-react';
+import { ArrowRight, BookOpen, Download, Eye, Puzzle, ScrollText, Wrench } from 'lucide-react';
 import { Demo } from '../components/Demo';
 import { GithubMark } from '../components/Logo';
 import { RichText } from '../components/RichText';
-import { REPO } from '../router';
+import { REPO, RELEASES } from '../router';
 
 export function Home() {
   return (
@@ -22,7 +22,11 @@ export function Home() {
               它读懂你正打开的这个网页，然后替你点击、填写、翻页——现在就做完。常做的事让它写成用户脚本，以后每次打开自动跑。
             </p>
             <div className="hero__actions">
-              <a className="btn btn--primary" href={REPO} target="_blank" rel="noreferrer noopener">
+              <a className="btn btn--primary" href={RELEASES} target="_blank" rel="noreferrer noopener">
+                <Download aria-hidden="true" />
+                立即下载
+              </a>
+              <a className="btn btn--ghost" href={REPO} target="_blank" rel="noreferrer noopener">
                 <GithubMark size={15} />
                 去 GitHub 拿源码
               </a>
