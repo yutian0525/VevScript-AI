@@ -1,0 +1,49 @@
+components/ui/Brand.tsx
+  s_0e0f55e1441d48::t_c124635e2fbcc6 1-61
+components/popup/PopupApp.tsx
+  s_0e0f55e1441d48::t_4642d52b8a941a 86-89
+  s_0e0f55e1441d48::t_a3612881d47bfd 112-114,117,119,122-123
+  s_0e0f55e1441d48::t_377e2426438139 2
+  s_0e0f55e1441d48::t_efc208e1cf4a4f 6,8
+  s_0e0f55e1441d48::t_67c1f3f0a7f9be 124
+tests/settings/settings-view.test.tsx
+  s_0e0f55e1441d48::t_cd48ce9df58b2d 12-13
+  s_0e0f55e1441d48::t_abe151927c6233 42-61
+components/detail/DetailApp.tsx
+  s_0e0f55e1441d48::t_b25d98c367c8dd 10
+  s_0e0f55e1441d48::t_9308c1e31a26a6 97-99
+tests/popup/popup-app.test.tsx
+  s_0e0f55e1441d48::t_5d43fd6fb87afd 2
+  s_0e0f55e1441d48::t_9fb8e5e704523e 48,51,53,57,62
+  s_0e0f55e1441d48::t_5eb249863133ec 210-224
+components/settings/AboutPage.tsx
+  s_0e0f55e1441d48::t_08fe30ead3db12 1-15,17-21,23-47
+  s_0e0f55e1441d48::t_a5c5eb456e28fc 16,22
+components/settings/SettingsView.tsx
+  s_0e0f55e1441d48::t_4de7021efb5daf 12
+  s_0e0f55e1441d48::t_52b38873889139 34-35
+shared/brand.ts
+  s_0e0f55e1441d48::t_0e67dab88f1a28 1-17
+components/settings/SettingsHome.tsx
+  s_0e0f55e1441d48::t_bb6b03137027f2 2-3,8,10-41,66-72
+entrypoints/sidepanel/styles.css
+  s_0e0f55e1441d48::t_8d955b80a796de 948-995
+  s_0e0f55e1441d48::t_277884b6f57d09 1221-1225
+  s_0e0f55e1441d48::t_9429ffcaf99729 1335-1339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ece6e6d4c799d2c2a574aac485743370743dc7e4",
+  "prompts": {},
+  "sessions": {
+    "s_0e0f55e1441d48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4702f3c4-7a4c-40aa-839a-48ac12a4da62",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
