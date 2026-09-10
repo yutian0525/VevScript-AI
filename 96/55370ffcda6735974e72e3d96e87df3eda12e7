@@ -1,0 +1,27 @@
+package.json
+  s_16c232dabdcc80::t_c6b90750286da8 10-14
+README.md
+  s_16c232dabdcc80::t_516ed307f3a1d1 286
+components/settings/AboutPage.tsx
+  s_16c232dabdcc80::t_345dd555f1675c 2-3,13
+shared/brand.ts
+  s_16c232dabdcc80::t_97eb2e2c1a9175 17-18
+LICENSE
+  s_16c232dabdcc80::t_669e62f7b79b07 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "9655370ffcda6735974e72e3d96e87df3eda12e7",
+  "prompts": {},
+  "sessions": {
+    "s_16c232dabdcc80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8a611dd-725e-4539-a666-e2c93c15907f",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
