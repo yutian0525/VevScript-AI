@@ -1218,9 +1218,9 @@ body {
 
 /* ============ 全屏脚本详情页（script-detail.html） ============ */
 .detail { display: flex; flex-direction: column; height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--sans); }
-/* 顶部品牌信息条：脚本详情页最上方，标明所属产品 */
+/* 顶部品牌信息条：脚本详情页最上方，标明所属产品（居中） */
 .detail__brandbar {
-  display: flex; align-items: center; padding: 8px 16px;
+  display: flex; align-items: center; justify-content: center; padding: 8px 16px;
   border-bottom: 1px solid var(--line); background: var(--paper); flex-shrink: 0;
 }
 .detail--empty { align-items: center; justify-content: center; gap: 10px; display: flex; flex-direction: column; }
