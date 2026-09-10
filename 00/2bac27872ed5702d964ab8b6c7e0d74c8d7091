@@ -1,0 +1,19 @@
+.github/workflows/release.yml
+  s_16c232dabdcc80::t_4c405c7a3f58b9 1-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "002bac27872ed5702d964ab8b6c7e0d74c8d7091",
+  "prompts": {},
+  "sessions": {
+    "s_16c232dabdcc80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8a611dd-725e-4539-a666-e2c93c15907f",
+        "model": "unknown"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
