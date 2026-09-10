@@ -116,7 +116,7 @@ export function Docs() {
             <span className="doc-sec__k">04</span>
             <h2 className="h-card doc-sec__h">Tools 介绍</h2>
             <p className="doc-p">
-              <RichText text="模型可调用 27 个内置工具，划分为 6 个能力域。每次调用均以卡片形式记录在会话中，包含工具名、参数与结果摘要。其中 11 个只读工具在 ask 模式下可用，其余仅在 agent 模式下可用。设置页的工具调试台支持绕过模型直接调用任意工具。" />
+              <RichText text="模型可调用 28 个内置工具，划分为 6 个能力域。每次调用均以卡片形式记录在会话中，包含工具名、参数与结果摘要。其中 12 个只读工具在 ask 模式下可用，其余仅在 agent 模式下可用。设置页的工具调试台支持绕过模型直接调用任意工具。" />
             </p>
             <div className="doc-modes">
               {MODES.map((m) => (
@@ -177,7 +177,7 @@ const TOC: { id: string; n: string; label: string }[] = [
 
 const INTRO: { t: string; d: string }[] = [
   { t: '两种执行方式', d: '即时执行一次性任务，或生成用户脚本供后续自动运行。两者共用同一套页面感知机制。' },
-  { t: '两种权限模式', d: 'ask 模式为只读（11 个工具），agent 模式为完整操控（27 个工具），可在输入框旁切换。' },
+  { t: '两种权限模式', d: 'ask 模式为只读（12 个工具），agent 模式为完整操控（28 个工具），可在输入框旁切换。' },
   { t: '完整 agent 运行时', d: '内置多轮循环、上下文压缩、熔断保护、权限模式、流式续播与会话持久化。' },
   { t: '内置脚本管理器', d: '提供脚本池、GM_* API、页面观测与两台调试台，覆盖脚本全生命周期管理。' },
 ];
@@ -254,12 +254,12 @@ const GM_GROUPS: { k: string; v: { n: string; d: string }[] }[] = [
 ];
 
 const MODES: { k: string; n: string; d: string }[] = [
-  { k: 'ask', n: '11 个只读工具', d: '仅读取，不修改页面或浏览器状态。可解读页面、查看截图、检索控制台与网络请求、读取脚本库。涉及修改操作时会提示切换模式。' },
-  { k: 'agent', n: '全部 27 个工具', d: '完整操控。支持点击、填写、导航、标签页管理、脚本执行、HTTP 请求及脚本池增删改，执行前先行观察页面。' },
+  { k: 'ask', n: '12 个只读工具', d: '仅读取，不修改页面或浏览器状态。可解读页面、定向查询元素、查看截图、检索控制台与网络请求、读取脚本库。涉及修改操作时会提示切换模式。' },
+  { k: 'agent', n: '全部 28 个工具', d: '完整操控。支持点击、填写、导航、标签页管理、脚本执行、HTTP 请求及脚本池增删改，执行前先行观察页面。' },
 ];
 
 const TOOL_GROUPS: { k: string; v: string[] }[] = [
-  { k: '页面操控', v: ['take_snapshot', 'click', 'fill', 'fill_form', 'hover', 'scroll', 'press_key', 'wait_for', 'navigate_page'] },
+  { k: '页面操控', v: ['take_snapshot', 'query_page', 'click', 'fill', 'fill_form', 'hover', 'scroll', 'press_key', 'wait_for', 'navigate_page'] },
   { k: '标签页', v: ['list_pages', 'new_page', 'close_page', 'select_page'] },
   { k: '感知', v: ['take_screenshot', 'evaluate_script', 'http_request'] },
   { k: '观测', v: ['list_console_messages', 'list_network_requests', 'get_network_request'] },

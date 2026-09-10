@@ -37,7 +37,7 @@ export function Home() {
             </div>
             <ul className="facts">
               <li className="fact">
-                <span className="fact__n">27</span>
+                <span className="fact__n">28</span>
                 <span className="fact__l">个内置工具</span>
               </li>
               <li className="fact">
@@ -179,10 +179,10 @@ export function Home() {
       <section className="section section--paper" id="tools">
         <div className="shell">
           <div className="section__head">
-            <span className="eyebrow">27 tools · 6 domains</span>
+            <span className="eyebrow">28 tools · 6 domains</span>
             <h2 className="h-section">模型手上的工具</h2>
             <p className="lede">
-              每一步都以卡片形式摊在会话里：工具名、参数、结果摘要。其中 11 个只读工具在 ask 模式下也可用，
+              每一步都以卡片形式摊在会话里：工具名、参数、结果摘要。其中 12 个只读工具在 ask 模式下也可用，
               其余仅 agent 模式。设置页的工具调试台可以绕开模型直调任意一个。
             </p>
           </div>
@@ -372,12 +372,12 @@ const PATHS: { k: string; t: string; d: string; tools: string[]; when: string }[
 const MODES: { k: string; n: string; d: string }[] = [
   {
     k: 'ask',
-    n: '11 个只读工具',
+    n: '12 个只读工具',
     d: '只看不改。解读页面内容、看截图、翻控制台报错与网络请求、读脚本库。你让它改东西时，它会说明当前是只读模式并请你切换。',
   },
   {
     k: 'agent',
-    n: '全部 27 个工具',
+    n: '全部 28 个工具',
     d: '完整操控。点击填写导航、标签页管理、执行脚本、发 HTTP 请求、增删改脚本池。先观察再动手，做完用自然语言汇报。',
   },
 ];
@@ -404,7 +404,7 @@ const STEPS: { t: string; d: string }[] = [
 const TOOLS: { k: string; v: string[] }[] = [
   {
     k: '页面操控',
-    v: ['take_snapshot', 'click', 'fill', 'fill_form', 'hover', 'scroll', 'press_key', 'wait_for', 'navigate_page'],
+    v: ['take_snapshot', 'query_page', 'click', 'fill', 'fill_form', 'hover', 'scroll', 'press_key', 'wait_for', 'navigate_page'],
   },
   { k: '标签页', v: ['list_pages', 'new_page', 'close_page', 'select_page'] },
   { k: '感知', v: ['take_screenshot', 'evaluate_script', 'http_request'] },
