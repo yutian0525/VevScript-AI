@@ -1,0 +1,106 @@
+# 发布工作流：在 main 分支打 tag（v*）时触发。
+#
+# 做三件事：
+#   1. 把 package.json 的 version 同步成 tag 版本并提交（防止 tag 与代码版本漂移）；
+#   2. wxt build + zip 产出扩展包，按规范重命名；
+#   3. 创建 GitHub Release（draft，附构建产物）。
+#
+# 注意：tag 必须打在 main 分支的提交上（或在 GitHub UI 里从 main 选 tag）。
+# tag 指向的提交若不在 main 上（如在 dev 打了 tag 再合过去），version 校验步骤
+# 会 fail——这是有意为之，保证发布产物与 main 内容一致。
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # 提交版本号回 main + 创建 Release
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # on:push tags 对任何分支打的 tag 都会触发，这里显式保证只发 main 上的 tag。
+      # 不校验的话：dev 上打的 tag 照样发布，且后面的版本号提交会把 dev 链整条推上 main。
+      - name: Verify tag is on main
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
+            echo "::error::tag '${{ github.ref_name }}' 不在 main 分支上。请在 main 打 tag 触发发布。"
+            exit 1
+          fi
+          echo "tag 指向的提交位于 main，校验通过"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # ── 1. package.json 版本号同步 tag ─────────────────────────────
+      - name: Sync package.json version to tag
+        id: sync
+        env:
+          TAG_VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG_VERSION#v}" # v1.2.3 -> 1.2.3
+          # 语义化版本粗校验：拒绝 v/1.2/abc 这类不合格 tag
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::tag '${TAG_VERSION}' 不是合法的语义化版本（期望 vMAJOR.MINOR.PATCH）"
+            exit 1
+          fi
+          CURRENT=$(node -p "require('./package.json').version")
+          if [ "$CURRENT" = "$VERSION" ]; then
+            echo "package.json 已是 ${VERSION}，无需提交"
+          else
+            npm version "$VERSION" --no-git-tag-version --allow-same-version
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package.json
+            # 只可能改到 package.json；package-lock.json 由 npm version 一并更新
+            git add package-lock.json 2>/dev/null || true
+            git commit -m "chore(release): v${VERSION}"
+            git push origin HEAD:main
+            echo "已提交并推送版本号 v${VERSION} 到 main"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      # ── 2. 构建产物 ────────────────────────────────────────────────
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build extension
+        run: npm run build
+
+      # wxt zip 产 .output/<name>-<version>-chrome.zip，这里重命名成发布规范名
+      - name: Zip & rename artifact
+        env:
+          VERSION: ${{ steps.sync.outputs.version }}
+        run: |
+          npm run zip
+          mkdir -p dist
+          SRC=$(find .output -maxdepth 1 -name '*-chrome.zip' | head -1)
+          [ -n "$SRC" ] || { echo "::error::未找到 wxt zip 产物"; exit 1; }
+          cp "$SRC" "dist/vevscript-ai-v${VERSION}-chrome-mv3.zip"
+          echo "产物：dist/vevscript-ai-v${VERSION}-chrome-mv3.zip"
+          ls -la dist/
+
+      # ── 3. Draft release ──────────────────────────────────────────
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.sync.outputs.version }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --draft \
+            --title "织雀AI脚本 Vevscript-ai v${VERSION}" \
+            --generate-notes \
+            dist/vevscript-ai-v${VERSION}-chrome-mv3.zip
