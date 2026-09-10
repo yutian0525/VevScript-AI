@@ -1,0 +1,46 @@
+landing/index.html
+  s_9cadd1dd3f2f54::t_92531fe4ea4be3 13,16
+  s_9cadd1dd3f2f54::t_3604237e263444 6,9
+package.json
+  s_9cadd1dd3f2f54::t_13c07a7c022db2 4
+CLAUDE.md
+  s_9cadd1dd3f2f54::t_e22ed7e1eaa86b 141-145
+wxt.config.ts
+  s_9cadd1dd3f2f54::t_9974334b3ac53a 16
+landing/src/pages/Home.tsx
+  s_9cadd1dd3f2f54::t_72dda15b1042eb 13-15,19
+  s_9cadd1dd3f2f54::t_7a9c741d37ba66 137,139-141
+  s_9cadd1dd3f2f54::t_f2130a6f9276fb 53,109
+  s_9cadd1dd3f2f54::t_5fed09869a53d8 133-136,138,142-171
+  s_9cadd1dd3f2f54::t_ecf69e18ac92d8 17,22
+  s_9cadd1dd3f2f54::t_55620f50ca889f 172-174
+README.md
+  s_9cadd1dd3f2f54::t_28133cf143ae30 3,7,9,12-14,17,19-23,25,27,29
+  s_9cadd1dd3f2f54::t_a6c0a5009a7f63 123
+  s_9cadd1dd3f2f54::t_1f45ac36d7386a 125,127-131
+  s_9cadd1dd3f2f54::t_90a0abfb0efa94 66
+  s_9cadd1dd3f2f54::t_a8dd1119eea274 69,72-73
+  s_9cadd1dd3f2f54::t_2f3a1aeb8a0877 35,38
+  s_9cadd1dd3f2f54::t_26f4c2dddf43e2 33,64,95-121
+  s_9cadd1dd3f2f54::t_0bb39f3e9920fd 31
+  s_9cadd1dd3f2f54::t_381a9cf581bbf5 30
+  s_9cadd1dd3f2f54::t_dadf25581c06c7 122
+landing/README.md
+  s_9cadd1dd3f2f54::t_73429991fcecb5 3-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a040f8ac5d07684c4197e58e1c10d9b61a6d8d33",
+  "prompts": {},
+  "sessions": {
+    "s_9cadd1dd3f2f54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a88ef34-0ed4-479f-bd85-15294b7ab5ab",
+        "model": "claude-opus-5"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
