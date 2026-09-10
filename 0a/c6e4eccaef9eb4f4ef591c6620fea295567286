@@ -1,0 +1,67 @@
+tests/agent/mode.test.ts
+  s_90855c46e5bd90::t_eeb6e2c8e6344a 134,138
+  s_90855c46e5bd90::t_28cae4bb87e07e 44,50-52
+agent/loop.ts
+  s_90855c46e5bd90::t_a1dc591a667e17 227-240,242-248
+  s_90855c46e5bd90::t_a2982ab5c5389d 283-284
+  s_90855c46e5bd90::t_94d96ea8385da5 207-210,214
+background/builtin-skills.ts
+  s_90855c46e5bd90::t_e5c4472cb6d922 2
+agent/tools/schemas.ts
+  s_90855c46e5bd90::t_7c1f8776f63cda 202,208
+  s_90855c46e5bd90::t_cbb358d8d93c1b 135
+  s_90855c46e5bd90::t_27e1148446f9db 223
+  s_90855c46e5bd90::t_1d301e0afdd2dc 2
+content/helpers/step-error.ts
+  s_90855c46e5bd90::t_61b2bcd9a04349 2,4,18-33
+tests/content/helpers/wait.test.ts
+  s_90855c46e5bd90::t_3c89b0c31b01dc 27-30
+content/wait.ts
+  s_90855c46e5bd90::t_d770c859c11484 24
+CLAUDE.md
+  s_90855c46e5bd90::t_b94748ed34240b 136,138,140
+tests/agent/loop.test.ts
+  s_90855c46e5bd90::t_f8e67bfb91e8db 303,305,309,317-319,324
+  s_90855c46e5bd90::t_d1b3a53ee96851 115,117
+tests/agent/tools/registry.test.ts
+  s_90855c46e5bd90::t_29d146185fc984 15
+tests/shared/skill-md.test.ts
+  s_90855c46e5bd90::t_a038d5af8a7da5 190-191,195,198
+tests/agent/tools/schemas.test.ts
+  s_90855c46e5bd90::t_43f32be1f18704 5,12
+  s_90855c46e5bd90::t_a7d39746903e4d 31-38,41,43
+components/debug/tool-tags.ts
+  s_90855c46e5bd90::t_27db698751e4f4 8,11
+tests/agent/context.test.ts
+  s_90855c46e5bd90::t_755578da961d1e 15,23,25
+components/debug/ToolBenchPage.tsx
+  s_90855c46e5bd90::t_11160cbd69bb0e 2
+components/settings/SettingsHome.tsx
+  s_90855c46e5bd90::t_11160cbd69bb0e 14
+agent/context.ts
+  s_90855c46e5bd90::t_e398c08d7592d4 12-13
+tests/background/builtin-skills.test.ts
+  s_90855c46e5bd90::t_542cb5b9159b60 105
+  s_90855c46e5bd90::t_eeb6e2c8e6344a 67,69-70,87,89
+  s_90855c46e5bd90::t_7a00a739dbbc63 25,28,30
+tests/debug/tool-tags.test.ts
+  s_90855c46e5bd90::t_620e522d551ffc 12,14
+content/helpers/wait.ts
+  s_90855c46e5bd90::t_46bb5cdef3aa8b 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "0ac6e4eccaef9eb4f4ef591c6620fea295567286",
+  "prompts": {},
+  "sessions": {
+    "s_90855c46e5bd90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e19c176-b07b-4bb8-914f-6672cb92027e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
