@@ -200,7 +200,7 @@ describe('buildContext opts.systemPrompt', () => {
     });
     const sys = String(msgs[0]!.content);
     expect(sys).toContain('【自定义】只听我的');
-    expect(sys).not.toContain('你是一个能操控浏览器的 AI 助手');
+    expect(sys).not.toContain('你是「织雀AI脚本」');
     expect(sys).toContain('当前页面');
     expect(sys).toContain('/c');
     expect(sys).toContain('ask（只读问答）');
@@ -208,7 +208,7 @@ describe('buildContext opts.systemPrompt', () => {
 
   it('不传 → 用内置全文', () => {
     const sys = String(buildContext([], page)[0]!.content);
-    expect(sys).toContain('你是一个能操控浏览器的 AI 助手');
+    expect(sys).toContain('你是「织雀AI脚本」');
   });
 });
 

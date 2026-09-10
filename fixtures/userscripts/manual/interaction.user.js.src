@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         GM 手测·菜单通知剪贴板
-// @namespace    ai-browser-extend/gmt-manual
+// @namespace    vevscript-ai/gmt-manual
 // @version      1.0.0
 // @description  GM 菜单/通知/剪贴板模块人工测试：说明 + 步骤 + 人工标记
 // @match        *://*/*

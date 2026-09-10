@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         GM 手测·Cookie
-// @namespace    ai-browser-extend/gmt-manual
+// @namespace    vevscript-ai/gmt-manual
 // @version      1.0.0
 // @description  GM_cookie 人工测试：自域 list/set/delete（自域直通不弹卡）
 // @match        *://*/*

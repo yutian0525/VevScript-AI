@@ -1,7 +1,12 @@
 {
-  "name": "ai-browser-extend",
+  "name": "vevscript-ai",
   "version": "1.0.0",
-  "description": "AI 驱动的浏览器操控助手",
+  "description": "织雀AI脚本（Vevscript-ai）——在侧边栏说一句话，AI 就在当前网页上替你做完。常做的事，写成用户脚本以后自动跑。",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yutian0525/VevScript-AI.git"
+  },
+  "homepage": "https://github.com/yutian0525/VevScript-AI",
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",

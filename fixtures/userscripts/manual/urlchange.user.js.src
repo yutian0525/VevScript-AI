@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         GM 手测·URL变化
-// @namespace    ai-browser-extend/gmt-manual
+// @namespace    vevscript-ai/gmt-manual
 // @version      1.0.0
 // @description  window.onurlchange 人工测试：pushState / hash 触发回调
 // @match        *://*/*

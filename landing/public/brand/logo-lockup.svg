@@ -1,0 +1,23 @@
+<!-- 织雀AI脚本 Vevscript-ai · 横向锁定组合：主标识 + 中文字标 + mono 拉丁副标（双声道排版）。
+     字标走系统字体栈（零网络依赖），渲染依赖查看端已装字体；需要绝对一致的印刷场景请转曲。 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 154 48" width="154" height="48" role="img" aria-label="织雀AI脚本 Vevscript-ai">
+  <defs>
+    <mask id="vv-weave-lockup">
+      <rect width="32" height="32" fill="#fff"/>
+      <path d="M5 9.22 L19.2 22.77" fill="none" stroke="#000" stroke-width="6.7"/>
+    </mask>
+  </defs>
+  <g transform="translate(-1.53 0.01) scale(1.5)">
+    <g fill="none" stroke="#53589a" stroke-width="4.6">
+      <path d="M27 9.22 L12.8 22.77" mask="url(#vv-weave-lockup)"/>
+      <path d="M5 9.22 L19.2 22.77"/>
+    </g>
+    <rect x="13.8" y="10.3" width="4.4" height="10.52" rx="2.2" fill="#1c1c22"/>
+  </g>
+  <text x="48" y="24" fill="#1c1c22"
+        font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+        font-size="19" font-weight="600">织雀AI脚本</text>
+  <text x="48.5" y="38.5" fill="#8a8a90"
+        font-family="'SF Mono', 'JetBrains Mono', 'Cascadia Code', ui-monospace, Menlo, Consolas, monospace"
+        font-size="9" font-weight="600" letter-spacing="0.62">VEVSCRIPT-AI</text>
+</svg>

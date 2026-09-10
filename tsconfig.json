@@ -4,5 +4,10 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "jsx": "react-jsx"
-  }
+  },
+  // landing/ 是独立站点（自带 package.json / tsconfig / node_modules），由 landing 里的
+  // `npm run build` 自行类型检查。这里必须排掉：.wxt/tsconfig.json 的 include 是 `../**/*`，
+  // 会把它卷进扩展的 tsc，而它依赖 vite/client 类型，扩展侧没有。
+  // exclude 在继承时是整体覆盖而非合并，故把基础配置的两条一并列出。
+  "exclude": ["./node_modules", ".output", "landing"]
 }

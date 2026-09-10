@@ -137,6 +137,18 @@ describe('serializeSkillMd / serializeSkillsMd / parseSkillMdDocument', () => {
     if (parsed[0]!.ok) expect(parsed[0]!.skill.content).toBe('step1\n\n---\n\nstep2');
   });
 
+  it('frontmatter 开头 --- 与键行之间被格式化插入空行时仍能拆分（builtin.md 实况）', () => {
+    // 编辑器格式化会在 frontmatter 开头 --- 后补空行：---\n\nname:...\ncommand:...\n---\n
+    const docs = [
+      serializeSkillMd({ name: 'A', description: 'd', command: 'a', content: 'CA' }),
+      ['---', '', 'name: B', 'description: d', 'command: b', '---', 'CB'].join('\n'),
+    ].join('\n---\n\n');
+    const parsed = parseSkillMdDocument(docs);
+    expect(parsed).toHaveLength(2);
+    expect(parsed[1]!.ok).toBe(true);
+    if (parsed[1]!.ok) expect(parsed[1]!.skill.command).toBe('b');
+  });
+
   it('无 frontmatter 的坏文档并入前段时留下 absorbed warning', () => {
     const docs = [
       serializeSkillMd({ name: 'A', description: 'd', command: 'a', content: 'CA' }),

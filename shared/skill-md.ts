@@ -97,12 +97,16 @@ export function serializeSkillsMd(list: SkillMdFields[]): string {
   return list.map(serializeSkillMd).join('\n---\n\n');
 }
 
-/** 候选段是否像「frontmatter 开头」：跳过前导空行后，首行 --- 且第二行匹配 key: value。 */
+/** 候选段是否像「frontmatter 开头」：跳过前导空行后，首行 --- 且其后的首个非空行匹配 key: value
+ *  （键行与 --- 之间允许格式化插入的空行；parseSkillMd 同样容忍）。 */
 function looksLikeFrontmatterDoc(chunk: string): boolean {
   const lines = chunk.split(/\r?\n/);
   let i = 0;
   while (i < lines.length && lines[i]!.trim() === '') i += 1;
-  return lines[i]?.trim() === '---' && /^([A-Za-z][\w-]*)\s*:\s*/.test(lines[i + 1] ?? '');
+  if (lines[i]?.trim() !== '---') return false;
+  i += 1;
+  while (i < lines.length && lines[i]!.trim() === '') i += 1;
+  return /^([A-Za-z][\w-]*)\s*:\s*/.test(lines[i] ?? '');
 }
 
 /** 多文档解析（导入用）：先按文档间分隔符（\n---\n\n）拆开，再启发式合并不像 frontmatter

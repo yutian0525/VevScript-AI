@@ -27,7 +27,7 @@ const J = JSON.stringify;
 function gmInfoLiteral(script: UserScript, version: string): string {
   const m = script.meta ?? {};
   return J({
-    scriptHandler: 'ai-browser-extend',
+    scriptHandler: 'vevscript-ai',
     version,
     script: {
       name: script.name,

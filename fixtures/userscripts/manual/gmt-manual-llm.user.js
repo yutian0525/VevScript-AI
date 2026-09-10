@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         GM 手测·大模型
-// @namespace    ai-browser-extend/gmt-manual
+// @namespace    vevscript-ai/gmt-manual
 // @version      1.0.0
 // @description  GM_llmChat 模块人工测试：说明 + 步骤 + 人工标记
 // @match        *://*/*
@@ -242,7 +242,7 @@ var GMT = (function () {
   var NO_GRANT_SRC = [
     '// ==UserScript==',
     '// @name         GM 手测·大模型无授权探针',
-    '// @namespace    ai-browser-extend/gmt-manual',
+    '// @namespace    vevscript-ai/gmt-manual',
     '// @version      1.0.0',
     '// @description  触发 GM_llmChat 未授权分支的临时脚本（测完删除）',
     '// @match        *://*/*',

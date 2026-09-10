@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         GM 手测·下载
-// @namespace    ai-browser-extend/gmt-manual
+// @namespace    vevscript-ai/gmt-manual
 // @version      1.0.1
 // @description  GM_download 人工测试：跨域下载确认卡（刻意不声明 @connect，触发 CONFIRM 弹卡）
 // @match        *://*/*

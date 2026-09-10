@@ -62,7 +62,7 @@ export default defineBackground(() => {
       if (stale.length) await browser.storage.local.remove(stale);
     } catch { /* 清理失败不阻断启动 */ }
     // 内置技能投放（安装 + 更新都触发；更新时覆盖为扩展内新版，保留用户启停状态）
-    await seedBuiltinSkills().catch((e) => console.warn('[ai-browser-ext] 内置技能投放失败', e));
+    await seedBuiltinSkills().catch((e) => console.warn('[vevscript] 内置技能投放失败', e));
   });
 
   // webRequest 接线放 background（统管 browser 事件），observe-store 保持纯数据可测。
@@ -114,5 +114,5 @@ export default defineBackground(() => {
 
   initConfirmQueue(router);
   router.attach();
-  console.log('[ai-browser-ext] background started');
+  console.log('[vevscript] background started');
 });

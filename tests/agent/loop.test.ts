@@ -418,7 +418,7 @@ describe('loop 注入自定义系统提示词', () => {
     );
     const sys = String(captured[0]!.messages[0]!.content);
     expect(sys).toContain('【自定义】听我的');
-    expect(sys).not.toContain('你是一个能操控浏览器的 AI 助手');
+    expect(sys).not.toContain('你是「织雀AI脚本」');
   });
 
   it('不提供 getSystemPrompt → 用内置全文', async () => {
@@ -440,7 +440,7 @@ describe('loop 注入自定义系统提示词', () => {
         emit: vi.fn(),
       },
     );
-    expect(String(captured[0]!.messages[0]!.content)).toContain('你是一个能操控浏览器的 AI 助手');
+    expect(String(captured[0]!.messages[0]!.content)).toContain('你是「织雀AI脚本」');
   });
 });
 

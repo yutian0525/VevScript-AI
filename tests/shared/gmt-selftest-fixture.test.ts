@@ -30,7 +30,7 @@ describe('gmt-selftest fixture 元字段解析面', () => {
   it('基本信息字段全命中', () => {
     expect(fields.name).toBe('GM 运行环境全功能自检');
     expect(fields.meta).toMatchObject({
-      namespace: 'ai-browser-extend/gmt-selftest',
+      namespace: 'vevscript-ai/gmt-selftest',
       version: '1.0.0',
       author: 'gmt-selftest',
       description: '本扩展脚本池运行环境全功能自检：元字段解析自证 + 29 个 GM API 可用性',
