@@ -22,7 +22,7 @@
 
 ```js
 // @grant GM_info
-GM_info.scriptHandler        // "ai-browser-extend"
+GM_info.scriptHandler        // "vevscript-ai"
 GM_info.version              // 扩展版本
 GM_info.injectInto           // "UserScript" | "Main"
 GM_info.script.name          // 脚本名

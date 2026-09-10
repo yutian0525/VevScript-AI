@@ -2,16 +2,45 @@ import { describe, it, expect } from 'vitest';
 import { TOOL_SCHEMAS } from '../../../agent/tools/schemas';
 
 describe('工具 schema', () => {
-  it('恰好 30 个工具（Phase 2 的 9 + Phase 3a 的 7 + Phase 3b 的 3 + Phase 4 的 6 + Skill 的 1 + 脚本检索的 1 + 记忆的 3）', () => {
+  it('恰好 31 个工具（Phase 2 的 9 + Phase 3a 的 7 + Phase 3b 的 3 + Phase 4 的 6 + Skill 的 1 + 脚本检索的 1 + 记忆的 3 + 页面感知 query_page 的 1）', () => {
     const names = TOOL_SCHEMAS.map((s) => s.function.name).sort();
     expect(names).toEqual([
       'click', 'close_page', 'create_script', 'delete_script', 'evaluate_script', 'fill',
       'fill_form', 'get_network_request', 'get_script', 'grep_script', 'hover', 'http_request',
       'list_console_messages', 'list_network_requests', 'list_pages', 'list_scripts', 'load_skill',
       'memory_delete', 'memory_list', 'memory_write',
-      'navigate_page', 'new_page', 'press_key', 'scroll', 'select_page',
+      'navigate_page', 'new_page', 'press_key', 'query_page', 'scroll', 'select_page',
       'take_screenshot', 'take_snapshot', 'toggle_script', 'update_script', 'wait_for',
     ]);
+  });
+
+  it('take_snapshot 有 detail 与 region 参数', () => {
+    const s = TOOL_SCHEMAS.find((x) => x.function.name === 'take_snapshot')!;
+    const props = (s.function.parameters as { properties: Record<string, unknown> }).properties;
+    expect(props.detail).toBeDefined();
+    expect(props.region).toBeDefined();
+  });
+
+  it('query_page schema 存在且 locator 必填', () => {
+    const s = TOOL_SCHEMAS.find((x) => x.function.name === 'query_page')!;
+    expect(s).toBeDefined();
+    const p = s.function.parameters as { required: string[] };
+    expect(p.required).toContain('locator');
+  });
+
+  it('query_page 的 locator 是 anyOf 三形状（string/number/语义对象）', () => {
+    const s = TOOL_SCHEMAS.find((x) => x.function.name === 'query_page')!;
+    const p = s.function.parameters as {
+      required: string[];
+      properties: { locator: { anyOf: Array<{ type?: string }> } };
+    };
+    expect(p.required).toContain('locator');
+    expect(p.properties.locator.anyOf.map((x) => x.type)).toEqual(['string', 'number', 'object']);
+  });
+
+  it('evaluate_script 的 description 不再引用 run_page_script（已拆除）', () => {
+    const d = TOOL_SCHEMAS.find((x) => x.function.name === 'evaluate_script')!.function.description;
+    expect(d).not.toContain('run_page_script');
   });
 
   it('load_skill：command 必填 string', () => {

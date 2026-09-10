@@ -111,6 +111,36 @@ describe('agent loop', () => {
     expect(String(toolMsg.content)).toContain('stale');
   });
 
+  it('工具失败但带 data 时，data 进 tool 消息（错误前置 + 换行接诊断详情）', async () => {
+    // 个别工具的失败诊断（kind/hint 等）在 data 里——失败分支丢 data 的话诊断到不了模型。
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'wait_for', argsDelta: '{"idle":500}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: '看了诊断' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({
+      ok: false, error: '定位失败', data: { kind: 'locator-miss', hint: '改定位符' },
+    } as ToolResult);
+    await runAgentLoop({ convId: 'c-data', tabId: 1, userMessage: 'x' }, deps(provider, exec));
+    const conv = await getConversation('c-data');
+    const toolMsg = conv.messages.find((m) => m.role === 'tool')!;
+    const content = String(toolMsg.content);
+    expect(content.startsWith('错误：定位失败\n')).toBe(true);
+    expect(content).toContain('"kind":"locator-miss"');
+    expect(content).toContain('"hint":"改定位符"');
+  });
+
+  it('工具失败且无 data 时，tool 消息只有错误文本（旧行为不变）', async () => {
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":9}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: '换个方法' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: false, error: '受限页面' });
+    await runAgentLoop({ convId: 'c-nodata', tabId: 1, userMessage: 'x' }, deps(provider, exec));
+    const conv = await getConversation('c-nodata');
+    const toolMsg = conv.messages.find((m) => m.role === 'tool')!;
+    expect(String(toolMsg.content)).toBe('错误：受限页面');
+  });
+
   it('length 截断时该轮 tool_calls 判失败喂回', async () => {
     const provider = queuedProvider([
       [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":' }, { type: 'message-done', finishReason: 'length' }],
@@ -270,6 +300,30 @@ describe('agent loop', () => {
     expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', image: 'data:image/jpeg;base64,ZZZ' }));
   });
 
+  it('工具失败 data 里的 screenshot 也走图片通道（base64 永不进文本上下文）', async () => {
+    const provider = queuedProvider([
+      [{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'wait_for', argsDelta: '{"idle":500}' }, { type: 'message-done', finishReason: 'tool_calls' }],
+      [{ type: 'text-delta', text: '看了诊断' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({
+      ok: false, error: '等待超时', data: { kind: 'timeout', hint: '改条件', screenshot: 'data:image/jpeg;base64,EEE' },
+    } as ToolResult);
+    const d = deps(provider, exec);
+    await runAgentLoop({ convId: 'c-rps-fail', tabId: 1, userMessage: 'x' }, d);
+    const conv = await getConversation('c-rps-fail');
+    const toolMsg = conv.messages.find((m) => m.role === 'tool')!;
+    const content = String(toolMsg.content);
+    // 错误 + 诊断详情保留，base64 绝不进文本通道
+    expect(content.startsWith('错误：等待超时')).toBe(true);
+    expect(content).toContain('"kind":"timeout"');
+    expect(content).toContain('"hint":"改条件"');
+    expect(content).not.toContain('data:image');
+    const userImg = conv.messages.find((m) => m.role === 'user' && Array.isArray(m.content));
+    const parts = userImg!.content as Array<{ type: string; imageUrl?: string }>;
+    expect(parts.some((p) => p.type === 'image_url' && p.imageUrl === 'data:image/jpeg;base64,EEE')).toBe(true);
+    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', name: 'wait_for', ok: false, image: 'data:image/jpeg;base64,EEE' }));
+  });
+
   it('usage：provider 返回 promptTokens → emit usage 且存入 lastPromptTokens', async () => {
     const provider = queuedProvider([[
       { type: 'text-delta', text: 'ok' },
@@ -418,7 +472,7 @@ describe('loop 注入自定义系统提示词', () => {
     );
     const sys = String(captured[0]!.messages[0]!.content);
     expect(sys).toContain('【自定义】听我的');
-    expect(sys).not.toContain('你是一个能操控浏览器的 AI 助手');
+    expect(sys).not.toContain('你是「织雀AI脚本」');
   });
 
   it('不提供 getSystemPrompt → 用内置全文', async () => {
@@ -440,7 +494,7 @@ describe('loop 注入自定义系统提示词', () => {
         emit: vi.fn(),
       },
     );
-    expect(String(captured[0]!.messages[0]!.content)).toContain('你是一个能操控浏览器的 AI 助手');
+    expect(String(captured[0]!.messages[0]!.content)).toContain('你是「织雀AI脚本」');
   });
 });
 

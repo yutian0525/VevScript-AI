@@ -4,3 +4,5 @@ node_modules/
 stats.html
 coverage/
 *.log
+dist/
+.playwright-mcp/

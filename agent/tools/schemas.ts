@@ -1,5 +1,5 @@
 // agent/tools/schemas.ts
-// 30 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个 + 记忆的 3 个。描述对齐 chrome-devtools-mcp。
+// 31 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个 + 记忆的 3 个 + 页面感知的 1 个（query_page）。描述对齐 chrome-devtools-mcp。
 import type { ToolSchema } from '../provider/types';
 
 // 显式声明返回 Record<string, unknown>，避免 type:'object' 字面量收窄导致的赋值报错。
@@ -19,8 +19,17 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'take_snapshot',
       description:
-        '获取当前页面的完整内容树：根为 RootWebArea，含所有可见元素与文本（StaticText）行，每行带 [uid]。用 uid 做 click/fill/hover。注意 uid 定位到可点击元素，同一元素下多行文本可能共享同一 uid（非逐行唯一）。隐藏子菜单聚合在父节点的 description 里，要操作需先 hover 展开再重新 take_snapshot。页面变化后 uid 会失效，需重新调用。',
-      parameters: obj({}),
+        '获取页面内容树，每行带 [uid]，用 uid 做 click/fill/hover。默认 detail="interactive"：只出可交互元素、标题与视口内文本，容器折叠为「… [N 个未展开节点]」计数行（体量约为全量的一半）。需要完整文本时用 detail="full"；只关心某个区域时用 region 限定（比 full 便宜得多）。已知目标是什么时，优先用 query_page 定向查询而非倒整棵树。注意 uid 定位到元素，同一元素下多行文本共享同一 uid（非逐行唯一）；隐藏子菜单聚合在父节点 description 里，要操作需先 hover 展开再重新快照。穿透同源 iframe；跨域 iframe 内容无法读取，返回值的 skippedFrames 会计数。页面变化后 uid 失效，需重新调用。',
+      parameters: obj({
+        detail: {
+          type: 'string',
+          enum: ['interactive', 'full'],
+          description: '详细档位。缺省 interactive（推荐）；full 为全量含所有文本',
+        },
+        region: {
+          description: '限定子树：元素 uid（数字）或 CSS 选择器（字符串，仅主帧）。传了则只倒该容器内部',
+        },
+      }),
     },
   },
   {
@@ -122,14 +131,18 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     type: 'function',
     function: {
       name: 'wait_for',
-      description: '等待页面出现指定文本（轮询）。命中任一文本即返回。',
-      parameters: obj(
-        {
-          texts: { type: 'array', items: { type: 'string' }, description: '要等待的文本（命中任一即可）' },
-          timeoutMs: { type: 'number', description: '超时毫秒（默认 10000）' },
+      description:
+        '等待页面达到某个条件。四种条件互斥，一次只传一个：texts（任一文本出现）、appear（元素出现）、gone（元素消失，等 loading 消失用这个）、idle（网络静默指定毫秒，等异步渲染完成用这个）。',
+      parameters: obj({
+        texts: {
+          type: 'array', items: { type: 'string' },
+          description: '任一文本出现即成功',
         },
-        ['texts'],
-      ),
+        appear: { description: '等该 locator 的元素出现。locator 语法同 query_page' },
+        gone: { description: '等该 locator 的元素消失（如 ".loading"）' },
+        idle: { type: 'number', description: '等网络静默这么多毫秒（如 600）' },
+        timeoutMs: { type: 'number', description: '超时，缺省 10000' },
+      }),
     },
   },
   {
@@ -186,19 +199,56 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     type: 'function',
     function: {
       name: 'evaluate_script',
-      description: '在页面中执行一段 JavaScript 并返回其结果（必须可 JSON 序列化）。用于读取 a11y 快照无法覆盖的深层数据。',
+      description: '在页面中执行一段 JavaScript 并返回其结果（必须可 JSON 序列化）。用于读取 a11y 快照无法覆盖的深层数据、或在页内做一次多步操作。函数体可用 await；注意 main world 与 isolated world 各自独立，页面 JS 变量只在 main world 可见。响应慢的页面操作可配合 wait_for 使用。',
       parameters: obj(
         {
           function: {
             type: 'string',
             description:
-              "一个函数表达式字符串，如 \"() => document.title\" 或 \"() => document.querySelectorAll('a').length\"",
+              "一个函数表达式字符串，如 \"() => document.title\" 或 \"async () => { const el = document.querySelector('.item'); return el?.textContent; }\"",
           },
           args: { type: 'array', description: '传给该函数的参数（可选）', items: {} },
           world: { type: 'string', enum: ['main', 'isolated'], description: 'main=可访问页面变量（默认），isolated=隔离环境' },
           timeoutMs: { type: 'number', description: '超时毫秒（默认 5000）' },
         },
         ['function'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'query_page',
+      description:
+        '按意图定向查询页面元素，只返回命中的几行（带 uid，可直接给 click/fill）。比 take_snapshot 便宜得多——已知要找什么时优先用它。命中 0 个时返回诊断：relaxed 给出逐级放宽后的命中数、nearMiss 给出最像的候选、hint 给出改法，据此改 locator 再试。',
+      parameters: obj(
+        {
+          locator: {
+            // anyOf 三形状必须显式声明：无 type 约束时部分模型把语义对象/uid 序列化成
+            // JSON 字符串上送，CS 侧虽已做防御解析，但正确形状从源头消除一次误分派。
+            anyOf: [
+              { type: 'string', description: 'CSS 选择器，如 "button.submit" / "a"' },
+              { type: 'number', description: '元素 uid（来自最近一次 take_snapshot / query_page 的 [uid]）' },
+              {
+                type: 'object',
+                description: '语义对象：按角色与文本定位',
+                properties: {
+                  role: { type: 'string', description: 'button/link/textbox/combobox/checkbox/tab/heading 等' },
+                  text: { type: 'string', description: '文本，默认包含匹配，exact:true 转精确' },
+                  near: { type: 'string', description: '找"该文本附近"的元素（如 { role:"textbox", near:"密码" }）' },
+                  nth: { type: 'number', description: '命中多个时取第几个（0-based）' },
+                  exact: { type: 'boolean', description: 'text 转精确匹配' },
+                },
+                additionalProperties: false,
+              },
+            ],
+            description:
+              '三形状之一：CSS 选择器字符串；元素 uid 数字；语义对象 { role, text, near, nth, exact }。role 如 button/link/textbox/combobox/checkbox/tab/heading；text 默认包含匹配，exact:true 转精确；near 找"该文本附近"的元素（如 { role:"textbox", near:"密码" }）；nth 命中多个时取第几个（0-based）',
+          },
+          limit: { type: 'number', description: '最多返回几个，缺省 5，上限 20' },
+          within: { type: 'number', description: '限定在该 uid 的容器内查找' },
+        },
+        ['locator'],
       ),
     },
   },

@@ -42,6 +42,7 @@ const RESTRICTED = /^(chrome|edge|about|chrome-extension|moz-extension|devtools)
 // 工具名 → content script 请求类型（未列出的走 chrome API 分支）
 const CS_TOOL_MAP: Record<string, keyof BgToCsRequestMap> = {
   take_snapshot: 'SNAPSHOT',
+  query_page: 'QUERY',
   click: 'CLICK',
   fill: 'FILL',
   fill_form: 'FILL_FORM',
@@ -128,7 +129,7 @@ export async function executeTool(
   const csType = CS_TOOL_MAP[name];
   if (!csType) return { ok: false, error: `未知工具：${name}` };
 
-  // 透传 args（形状由 schema 保证）；模型不传参时 args 即 {}，SNAPSHOT 的 verbose 可正常透传
+  // 透传 args（形状由 schema 保证）；模型不传参时 args 即 {}，SNAPSHOT 的 detail/region 可正常透传
   const payload = args as BgToCsRequestMap[typeof csType];
   const req = createRequest(csType, payload);
   try {

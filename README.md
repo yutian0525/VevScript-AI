@@ -1,21 +1,76 @@
-# AI Browser Extension
+# 织雀AI脚本 Vevscript-ai
 
-让 AI 替你写浏览器用户脚本。
+> 在侧边栏说一句话，AI 就在当前网页上替你做完。常做的事，写成用户脚本以后自动跑。
 
-对着侧边栏说一句需求（"在 B 站首页把缩略图悬停放大"），AI 通过 27 个内置工具理解页面、编写并安装一个 `.user.js` 用户脚本，下次打开匹配页面自动生效——不需要你打开编辑器。它同时也是一个完整的类 Tampermonkey 脚本管理器、页面/网络观测台，和一个长在浏览器侧边栏里的通用 Agent。
+开源地址：<https://github.com/yutian0525/VevScript-AI>
 
-基于 **WXT + React 19 + TypeScript**，面向 Chrome MV3（Chrome 120+）。
+装上它，浏览器右侧多出一个侧边栏。对着它说人话，它读懂你当前打开的这一页，然后动手。
 
-## 核心能力：AI 写用户脚本
-
-这是本项目的主打场景。传统用户脚本的门槛在于：要懂 `@match`/`@grant` 元数据格式、要在陌生页面的 DOM 里摸黑调试、要自己装 Tampermonkey 再粘贴代码。在这里，这些全部交给 AI：
+**一、让它现在就做完一件事**
 
 ```text
-你：帮我在 xxx 网站实现 <某个功能>
+你：把这页候选人的姓名和邮箱整理出来，填进下面的表单
+它：读页面结构 → 逐个点击、填写 → 做完汇报
+    每一步调了什么工具、传了什么参数、拿到什么结果，都留成卡片可回查
+```
+
+**二、让它以后自动做**
+
+```text
+你：把这个站点信息流里的推广卡片都去掉
+它：写一份 .user.js 装进脚本池 → 以后每次打开这个站点自动生效
+    不用再开侧边栏，也不用再调模型
+```
+
+第二种就是**用户脚本**（Tampermonkey 那一套）。原本你得自己搞懂 `@match` / `@grant` 元数据怎么写、在陌生页面的 DOM 里摸黑调试、再装个管理器把代码粘进去。现在说一句话就行，写出来的脚本也留在这儿管理。
+
+两件事共用同一套底子：它先看懂页面（accessibility 结构树、截图、控制台与网络请求），再决定是当场动手还是写成脚本。
+
+一个区别值得说明：它**操作的是你真在用的这个浏览器**——你的登录态、你的 Cookie、你已经打开的那些标签页，不是另起一个干净的自动化浏览器。所以要它做的事，它当场就能做，不需要你再登一次账号。
+
+模型自己接：任何 OpenAI 兼容的 API 都行（DeepSeek / Qwen / OpenAI / 中转站 / 本地 Ollama）。开源，基于 WXT + React 19 + TypeScript，面向 Chrome MV3。
+
+## 它是怎么操控网页的
+
+拿上面那个填表单的例子，摊开看每一步：
+
+```text
+你：把这页候选人的姓名和邮箱整理出来，填进下面的表单
        │
        ▼
-AI 用 take_snapshot 读页面结构（uid 树）、take_screenshot 看渲染效果，
-用 list_console_messages / list_network_requests 摸清接口行为
+take_snapshot 取 accessibility 快照 → 页面结构树，每个可交互元素带 [uid] 编号
+       │
+       ▼
+按 uid 定位并动手：click / fill / fill_form / hover / scroll / press_key
+       │  页面结构变了旧 uid 会失效（stale），此时重新 take_snapshot
+       ▼
+wait_for 等文本出现、navigate_page 导航、take_screenshot 看渲染效果
+       │
+       ▼
+做完用自然语言汇报，每一步的工具名/参数/结果都以卡片留在会话里可回查
+```
+
+为什么走 accessibility snapshot 而不是喂 HTML：uid 树只保留可交互元素与可读文本，比原始 DOM 小一到两个数量级，模型不会被样式与噪声淹没；uid 是稳定句柄，比让模型现编 CSS 选择器可靠得多。
+
+**两种模式**（输入框旁的下拉框切换，`agent/mode.ts`）：
+
+| 模式 | 工具面 | 用途 |
+|---|---|---|
+| **ask** | 11 个只读工具 | 只看不改：解读页面内容、截图、报错、网络请求。要它改动状态时它会提示你切模式 |
+| **agent** | 全部 27 个 | 完整操控：点击填写导航、标签页管理、执行脚本、HTTP 请求、脚本池增删改 |
+
+模式约束是三层的，不只靠 prompt 遵循：`filterSchemasForMode` 决定每轮给模型的工具清单 → `modePrompt` 在 system prompt 里交代能力边界 → `executeTool` 的守卫兜底拦截（防模型幻觉调用没给它的写工具）。
+
+## 它是怎么写脚本的
+
+同样摊开看。难点在于代码不能一次性写完——模型单次输出有长度上限，长脚本写到一半会被截断，整个调用作废。所以流程是先建骨架再分次追加：
+
+```text
+你：把这个站点信息流里的推广卡片都去掉
+       │
+       ▼
+take_snapshot 读页面结构（uid 树）、take_screenshot 看渲染效果，
+必要时用 list_console_messages / list_network_requests 摸清接口行为
        │
        ▼
 create_script 建骨架：元数据头（@match/@grant/...）+ 未闭合 IIFE
@@ -37,26 +92,56 @@ update_script(append) 分次追加代码体，最后一段带 })(); 闭合
 
 写完之后呢？脚本体进**脚本池**，和手工写的脚本待遇完全一致：启停/搜索/导入导出、全屏详情页（CodeMirror 6 编辑器可人工接管微调）、错误日志环形缓冲、`@updateURL` 更新检查（启动时节流自动查，`patch.applyUpdate` 可手动拉取）。
 
-## 其他能力
+## 它不是套壳调模型
 
-### AI Agent（侧边栏会话）
+一个 agent 真跑起来要的机件，这里都有：多轮循环、上下文自动收拢、模型卡住有熔断、能力面按权限收放、任务在后台跑不怕你切走。
 
-- **多会话管理**：会话与标签页解绑，独立列表、重命名、删除、切换；上下文会话间隔离。
-- **工具调用**：AI 通过 27 个内置工具操作浏览器，每步以卡片形式展示工具名、参数、结果摘要。
-- **流式输出**：reasoning/正文增量流式渲染（Markdown，GFM 表格/任务列表），长任务可切走再切回续播。
-- **上下文压缩**：token 用量环形仪表（80%/95% 变色），达阈值自动 LLM 摘要压缩，也可手动点击触发；原始消息永不删除。
-- **技能系统**：导入 `.md` 技能（YAML frontmatter + 正文），启用技能的简述注入每轮 system prompt；输入框 `/` 唤起斜杠指令浮层，`/command` 触发技能。
+换句话说这是一个完整的 **agent harness**，只是它的运行时目标不是终端里的代码库，而是你正在用的这个浏览器。
+
+| 机件 | 位置 | 实现 |
+|---|---|---|
+| 多轮循环 | `agent/loop.ts` | 工具调用循环、per-conv 并发闸门、斜杠指令解析、达阈值自动压缩 |
+| 单轮执行 | `agent/run-turn.ts` | 流式增量（reasoning / 正文 / 工具参数）、工具分发、`finishReason` 处理 |
+| 熔断阀 | `agent/loop-guards.ts` | 打转检测（3 次同工具同参数）、连续失败检测（5 轮全错）——**暂停问用户，不硬杀** |
+| 上下文组装 | `agent/context.ts` | system prompt + 当前页面 + 技能简述 + 模式段；截断防孤立 tool 消息；图片只留最近 2 张 |
+| 上下文压缩 | `agent/compact.ts` | 增量 LLM 摘要，保留近 20 条原文，边界单调不倒退，**原始消息永不删除** |
+| 用量计量 | `agent/context-meter.ts`、`model-windows.ts` | token 估算 + 窗口映射表（设置可覆盖）+ 80% / 95% 档位 |
+| 权限模式 | `agent/mode.ts` | ask / agent 工具面闸门，三层落实 |
+| 模型抽象 | `agent/provider/` | OpenAI 兼容流式，超时 60s + 300s 静默硬兜底，`max_tokens` 显式下发 |
+| 工具注册表 | `agent/tools/registry.ts` | 27 个工具，schema 驱动，返回值统一判别联合 |
+| 会话持久化 | `storage/conversations.ts` | 多会话、与标签页解绑、上下文互相隔离 |
+| 流式续播 | `background/agent-tail.ts` | loop 跑在 SW 里，面板切走再回来补未落库的流式尾巴 |
+| 技能 | `shared/skill-md.ts` | `.md` 导入，简述注入每轮 prompt，`/command` 触发，`load_skill` 取正文 |
+
+几个刻意的设计取向：
+
+- **不设步数上限、不设 token 软预算**。主退出是自然终止（模型不再调工具）+ 用户中断。熔断阀只做故障检测——它测的是模型真卡住了（原地打转、每步都失败），不是正常的长任务。判定命中也只是暂停问你，不是硬杀。
+- **压缩不删原文**。摘要置顶注入，被摘的原始消息仍在 storage 里；压缩改变的只是"这一轮往模型送什么"，不是历史本身。
+- **loop 在 Service Worker 里**，不在面板里。所以关掉侧边栏、切标签页、面板重挂载都不打断任务；重开时后台回放权威运行态 + 补流式尾巴，而不是重跑。
+- **权限约束三层落实**，因为 prompt 遵循不等于硬约束：工具清单按模式过滤 → system prompt 交代边界 → `executeTool` 执行前守卫兜底。
+
+## 其他能力与细节
+
+### 侧边栏用起来是什么样
+
+- 会话可以开多个，互相不串上下文；重命名、删除、切换都在页眉的下拉里。
+- 每步工具调用是一张卡片（工具名 / 参数 / 结果摘要），长任务干完回头能一步步查。
+- 输出是流式的，Markdown 渲染（GFM 表格、任务列表都支持）。写长参数时有进度条，不会看着像卡死。
+- 输入框旁一个环形仪表显示上下文用量，到 80% / 95% 变色，点一下手动压缩。
+- 输入框敲 `/` 唤起技能指令浮层。技能是导入的 `.md` 文件，`/command` 触发。
 
 ### 工具集（27 个）
 
+`*` = ask（只读）模式下也可用的 11 个，其余仅 agent 模式可用。
+
 | 能力域 | 工具 |
 |---|---|
-| 页面操控 | `take_snapshot` `click` `fill` `fill_form` `hover` `scroll` `press_key` `wait_for` `navigate_page` |
-| 标签页 | `list_pages` `new_page` `close_page` `select_page` |
-| 感知 | `take_screenshot` `evaluate_script` `http_request` |
-| 观测 | `list_console_messages` `list_network_requests` `get_network_request` |
-| 脚本池 | `list_scripts` `get_script` `create_script` `update_script` `delete_script` `toggle_script` `grep_script` |
-| 技能 | `load_skill` |
+| 页面操控 | `take_snapshot`\* `click` `fill` `fill_form` `hover` `scroll` `press_key` `wait_for`\* `navigate_page` |
+| 标签页 | `list_pages`\* `new_page` `close_page` `select_page` |
+| 感知 | `take_screenshot`\* `evaluate_script` `http_request` |
+| 观测 | `list_console_messages`\* `list_network_requests`\* `get_network_request`\* |
+| 脚本池 | `list_scripts`\* `get_script`\* `create_script` `update_script` `delete_script` `toggle_script` `grep_script`\* |
+| 技能 | `load_skill`\* |
 
 ### 用户脚本引擎（类 Tampermonkey）
 
@@ -125,6 +210,23 @@ npm test             # Vitest 全量测试
 npm run test:watch   # 测试监听模式
 ```
 
+## 宣传页（landing/）
+
+`landing/` 是独立的宣传页站点，自带 `package.json` / `tsconfig.json` / `node_modules`，与扩展的 WXT 构建互不干扰（根 `tsconfig.json` 已把它排除在扩展类型检查之外）。
+
+```bash
+cd landing
+npm install
+npm run dev      # 开发服务器
+npm run build    # tsc --noEmit && vite build → landing/dist/
+npm run preview  # 预览产物
+```
+
+- 技术栈：Vite + React 19 + TypeScript，`base: './'`（产物可直接丢到任意静态托管的子路径，含 GitHub Pages）。
+- 两个页面：首页 + 使用文档页（**当前留空**，给出章节骨架与仓库内 md 的去处）。路由是手写 hash 路由（`src/router.ts`），无需服务端 rewrite。
+- 首屏是可交互的仿真装置：左侧仿侧边栏、右侧仿网页，点 tag 触发「流式输出 → 工具卡 → 页面变化」三种演出（去掉推广卡片 / 缩略图悬停放大 / 注入阅读时长徽标）。
+- 字体走 CDN 上的 MiSans，详见 [CLAUDE.md](CLAUDE.md) 里的换源与字重说明。
+
 ## 项目结构
 
 ```text
@@ -139,7 +241,10 @@ entrypoints/
 agent/
   tools/              工具 schema 注册表 + 具体工具实现
   provider/           LLM provider 抽象（OpenAI 兼容）
+  loop.ts             多轮工具调用循环（并发闸门 / 斜杠指令 / 自动压缩）
   run-turn.ts         agent 单轮执行（含 tool-args-delta 流式参数进度）
+  mode.ts             ask / agent 模式：只读工具白名单 + 模式 prompt + 守卫
+  context.ts          上下文组装：SYSTEM_PROMPT + 页面信息 + 技能简述 + 截断
 background/
   router.ts           消息路由
   agent-port.ts       长连接管理、CS_READY 等待
@@ -155,12 +260,16 @@ background/
 components/           UI 组件（chat / scripts / settings / detail / debug / scriptdebug / confirm / popup / ui）
 stores/               zustand 状态（chat / ui / scripts / agent-port-client 等）
 shared/               三环境共享类型与纯函数（messages / gm-apis / gm-wrapper / userscript-meta / js-balance ...）
+landing/              宣传页（独立 Vite 站点，不参与扩展构建）
 ```
 
 ## 架构要点
 
+Harness 那层见上面的[机件表](#harness-机件)，这里只记它之外的东西。
+
 - **三环境通信**：前后台与 content script 的消息类型统一定义在 `shared/messages.ts`，request/response + correlation id；`background/router.ts` 集中路由。
-- **Agent loop**：`agent/run-turn.ts` 单轮执行工具调用循环，事件（reasoning/text 增量、tool-start/end、usage、compact 等）经 Port 协议广播到面板；面板重开时后台回放权威状态 + 未落库的流式尾巴。
+- **Port 协议**：loop 的事件（reasoning/text 增量、tool-start/end、usage、compact 等）经 Port 广播到面板；`PortMsgToPanel = AgentEvent & {convId}` 用分布式条件类型叠加（直接交叉会破坏判别联合）；SW 侧用 `panelPorts: Set<Port>` 广播而非捏死单端口。
+- **页面操控**：`take_snapshot` 在 content script 侧把 accessibility 树压成带 `[uid]` 的结构文本，uid → 元素的映射留在 content script；后续 `click`/`fill` 等只传 uid，页面结构变动后旧 uid 失效并回 stale 错误，模型据此重新取快照。选择器由此不经模型现编。
 - **观测管线**：MAIN hook（页面主世界）→ postMessage → ISOLATED content.ts → `runtime.sendMessage` → SW 环形缓冲；观测工具读 SW 缓冲，零 CS 往返。
 - **用户脚本**：`UserScript.text`（完整源码）为唯一真源，name/matches/grants 等均为保存时解析投影；`@grant` 精确决定 API 安装面，`@connect` 域校验 + 确认卡门控跨域。
 

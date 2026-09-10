@@ -31,17 +31,25 @@ describe('ASK_MODE_TOOLS 白名单', () => {
     expect(ASK_MODE_TOOLS.has('grep_script')).toBe(true);
   });
 
+  it('query_page 在 ask 白名单内（纯读）', () => {
+    expect(ASK_MODE_TOOLS.has('query_page')).toBe(true);
+  });
+
   it('记忆三工具在 ask 白名单内（本地笔记不算改浏览器状态）', () => {
     for (const t of ['memory_list', 'memory_write', 'memory_delete']) {
       expect(ASK_MODE_TOOLS.has(t)).toBe(true);
     }
   });
+
+  it('run_page_script 已拆除，不在任何白名单或 schema（防幽灵引用）', () => {
+    expect(ASK_MODE_TOOLS.has('run_page_script')).toBe(false);
+  });
 });
 
 describe('filterSchemasForMode / getToolSchemas', () => {
-  it('agent 模式返回全量 30 个（schemas.ts 当前 30 工具）', () => {
-    expect(getToolSchemas('agent')).toHaveLength(30);
-    expect(getToolSchemas()).toHaveLength(30); // 缺省 = agent
+  it('agent 模式返回全量 31 个（schemas.ts 当前 31 工具）', () => {
+    expect(getToolSchemas('agent')).toHaveLength(31);
+    expect(getToolSchemas()).toHaveLength(31); // 缺省 = agent
   });
 
   it('ask 模式只返回白名单内的 schema', () => {
@@ -123,11 +131,11 @@ describe('记忆 cap 过滤与守卫', () => {
     expect(names).not.toContain('memory_write');
     expect(names).not.toContain('memory_delete');
     expect(names).toContain('take_snapshot');
-    expect(names).toHaveLength(27);
+    expect(names).toHaveLength(28);
   });
 
   it('缺省 cap = full（调试台等既有调用点不受影响）', () => {
-    expect(getToolSchemas('agent')).toHaveLength(30);
+    expect(getToolSchemas('agent')).toHaveLength(31);
   });
 
   it('cap 与 mode 二维叠加：ask + read', () => {

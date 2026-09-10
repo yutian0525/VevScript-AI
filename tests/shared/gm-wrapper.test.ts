@@ -19,7 +19,7 @@ describe('buildWrappedCode', () => {
       token: 'tok123', values: { k: 1 }, resources: {}, requireCodes: [], extensionVersion: '1.0.0',
     });
     expect(code).toContain(PREAMBLE_MARKER);
-    expect(code).toContain('"scriptHandler":"ai-browser-extend"');
+    expect(code).toContain('"scriptHandler":"vevscript-ai"');
     expect(code).toContain('"version":"1.0.0"');
     expect(code).toContain('__values = {"k":1}');
     // JSON.stringify 产双引号字面量（实现惯例），断言按双引号

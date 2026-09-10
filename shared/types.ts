@@ -165,3 +165,21 @@ export interface ChatAttachment {
   /** kind=image：压缩后的 data URL（data:image/...;base64,...） */
   dataUrl?: string;
 }
+
+// ---------- locator（spec §3.2）----------
+// 实现在 content/locator.ts（需 DOM）；类型在此处因为要跨 SW/CS 边界传递。
+
+export interface SemanticLocator {
+  /** 元素角色，口径同快照的 computeRole。 */
+  role?: string;
+  /** 文本，默认包含匹配；exact 转精确。 */
+  text?: string;
+  /** 该文本附近的、满足其余条件的元素。 */
+  near?: string;
+  /** 命中多个时取第 n 个（0-based）。 */
+  nth?: number;
+  exact?: boolean;
+}
+
+/** 三形状：CSS 选择器字符串 / uid 数字 / 语义对象。 */
+export type Locator = string | number | SemanticLocator;

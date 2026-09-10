@@ -12,8 +12,8 @@ export default defineConfig({
     },
   }),
   manifest: {
-    name: 'AI Browser Extension',
-    description: 'AI 驱动的浏览器操控助手',
+    name: '织雀AI脚本 Vevscript-ai',
+    description: '在侧边栏说一句话，AI 就在当前网页上替你做完。常做的事，写成用户脚本以后自动跑。',
     // 工具栏图标点击弹出 popup 浮窗（开侧边栏 / 脚本管理直达 / 当前页运行中脚本菜单触发）。
     // popup 内的「打开侧边栏」按钮走 sidePanel.open，取代旧的 setPanelBehavior 直开。
     action: {

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         GM 运行环境全功能自检
-// @namespace    ai-browser-extend/gmt-selftest
+// @namespace    vevscript-ai/gmt-selftest
 // @version      1.0.0
 // @author       gmt-selftest
 // @description  本扩展脚本池运行环境全功能自检：元字段解析自证 + 29 个 GM API 可用性
@@ -257,8 +257,8 @@
 
   function group1() { // 元字段解析自证（8 项）
     var info = GM_info;
-    addRow('1 元字段解析', 'scriptHandler === ai-browser-extend', function () {
-      return info.scriptHandler === 'ai-browser-extend' || 'scriptHandler=' + info.scriptHandler;
+    addRow('1 元字段解析', 'scriptHandler === vevscript-ai', function () {
+      return info.scriptHandler === 'vevscript-ai' || 'scriptHandler=' + info.scriptHandler;
     });
     addRow('1 元字段解析', 'version 非空字符串', function () {
       return (typeof info.version === 'string' && info.version.length > 0) || 'version=' + JSON.stringify(info.version);

@@ -1,5 +1,5 @@
 // tests/popup/popup-app.test.tsx
-// popup 三区：导航按钮（开侧边栏/脚本管理直达）+ 当前页运行中脚本（菜单触发/编辑跳转）。
+// popup 分区：品牌信息头 + 导航按钮（织雀AI 开侧边栏/脚本管理/设置直达）+ 当前页运行中脚本（菜单触发/编辑跳转）。
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent } from '@testing-library/react';
@@ -45,20 +45,21 @@ describe('PopupApp', () => {
     vi.restoreAllMocks();
   });
 
-  it('渲染两导航按钮 + 空态（无 RUNNING 头）', async () => {
+  it('渲染三导航按钮 + 空态（无 RUNNING 头）', async () => {
     mockBackend({ entry: null });
     render(<PopupApp />);
-    expect(screen.getByRole('button', { name: /打开侧边栏/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /织雀AI/ })).toBeTruthy();
     expect(screen.getByRole('button', { name: /脚本管理/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /设置/ })).toBeTruthy();
     expect(await screen.findByText(/无脚本在此页运行/)).toBeTruthy();
   });
 
-  it('打开侧边栏按钮：调 sidePanel.open({tabId})', async () => {
+  it('织雀AI 按钮：调 sidePanel.open({tabId})', async () => {
     mockBackend({ entry: null });
     (browser.tabs as unknown as { query: () => Promise<Array<{ id: number }>> }).query = vi.fn().mockResolvedValue([{ id: 9 }]);
     const openSpy = vi.spyOn(browser.sidePanel, 'open').mockResolvedValue(undefined);
     render(<PopupApp />);
-    fireEvent.click(screen.getByRole('button', { name: /打开侧边栏/ }));
+    fireEvent.click(screen.getByRole('button', { name: /织雀AI/ }));
     await vi.waitFor(() => expect(openSpy).toHaveBeenCalledWith({ tabId: 9 }));
   });
 
@@ -204,6 +205,21 @@ describe('PopupApp', () => {
       expect(sessionSet).toHaveBeenCalledWith(expect.objectContaining({ 'ui:pendingView': 'scripts' }));
       // 实时广播 UI_NAV（侧边栏已开时立即切换）
       expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'UI_NAV', view: 'scripts' }));
+    });
+  });
+
+  it('设置按钮：写 pendingView(settings) + 发 UI_NAV(settings) + 调 sidePanel.open', async () => {
+    mockBackend({ entry: null });
+    (browser.tabs as unknown as { query: () => Promise<Array<{ id: number }>> }).query = vi.fn().mockResolvedValue([{ id: 7 }]);
+    const openSpy = vi.spyOn(browser.sidePanel, 'open').mockResolvedValue(undefined);
+    const sessionSet = vi.spyOn(browser.storage.session, 'set');
+    const sendSpy = vi.spyOn(browser.runtime, 'sendMessage');
+    render(<PopupApp />);
+    fireEvent.click(screen.getByRole('button', { name: /设置/ }));
+    await vi.waitFor(() => {
+      expect(openSpy).toHaveBeenCalledWith({ tabId: 7 });
+      expect(sessionSet).toHaveBeenCalledWith(expect.objectContaining({ 'ui:pendingView': 'settings' }));
+      expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'UI_NAV', view: 'settings' }));
     });
   });
 });

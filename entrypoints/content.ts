@@ -4,7 +4,8 @@
 import type { BgToCsRequest, CsResponse, CsReadyNotification } from '../shared/messages';
 import type { ToolResult } from '../shared/types';
 import { HOOK_MSG, RELAY_READY, type HookWindowMsg } from '../shared/hook-bridge';
-import { buildSnapshot } from '../content/snapshot/build';
+import { buildSnapshot, resolveUid } from '../content/snapshot/build';
+import { doQuery } from '../content/query';
 import { doClick, doFill, doFillForm, doHover, doScroll, doPressKey } from '../content/interact';
 import { waitForText } from '../content/wait';
 import { initBridgeHost, handleGmEvent, debugCall } from '../content/gm-bridge-host';
@@ -19,8 +20,22 @@ async function route(req: BgToCsRequest): Promise<ToolResult> {
   switch (req.type) {
     case 'SNAPSHOT': {
       if (!document.body) return { ok: false, error: '当前帧无 document.body（可能是非 HTML 文档），无法快照' };
-      return { ok: true, data: buildSnapshot(document.body) };
+      // region 无法解析时报错而非静默退回全页——静默会让 agent 以为拿到的是局部，
+      // 实际是整页，后续判断全部建立在错误前提上。
+      // region 用 uid 时解析的是主帧的 uidMap；用选择器时只查主帧 document.querySelector（不跨帧）——
+      // region 是「给我看那个容器的内部」，容器本身通常在主帧，跨帧 region 超范围不做。
+      let root: Element = document.body;
+      const region = req.payload.region;
+      if (region != null) {
+        const el = typeof region === 'number' ? resolveUid(region) : safeQuery(region);
+        if (!el) {
+          return { ok: false, error: `region 无法解析（${String(region)}）：uid 已失效或选择器无匹配。重新 take_snapshot / query_page 取新 uid，或换选择器。` };
+        }
+        root = el;
+      }
+      return { ok: true, data: buildSnapshot(root, { detail: req.payload.detail }) };
     }
+    case 'QUERY': return doQuery(req.payload);
     case 'CLICK': return doClick(req.payload);
     case 'FILL': return doFill(req.payload);
     case 'FILL_FORM': return doFillForm(req.payload);
@@ -38,6 +53,15 @@ async function route(req: BgToCsRequest): Promise<ToolResult> {
       const _exhaustive: never = req;
       return { ok: false, error: `未知请求：${String((_exhaustive as { type?: string }).type)}` };
     }
+  }
+}
+
+/** 选择器查询，非法选择器返回 null 而非抛错。 */
+function safeQuery(sel: string): Element | null {
+  try {
+    return document.querySelector(sel);
+  } catch {
+    return null;
   }
 }
 

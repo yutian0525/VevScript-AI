@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { Button } from '../ui/Button';
 import { Tooltip } from '../ui/Tooltip';
 import { useTruncated } from '../ui/useTruncated';
+import { Brand } from '../ui/Brand';
 import { sendScriptsRequest } from '../../stores/scripts';
 import type { UserScript } from '../../shared/types';
 import type { ScriptsChangedEvent } from '../../shared/messages';
@@ -93,6 +94,9 @@ export function DetailApp({ id }: { id: string }) {
 
   return (
     <div className="detail">
+      <div className="detail__brandbar">
+        <Brand layout="inline" size={22} id="detail" />
+      </div>
       <header className="detail__topbar">
         {meta.iconURL && !iconFailed ? (
           <img className="detail__avatar" src={meta.iconURL} alt="" onError={() => setIconFailed(true)} />

@@ -204,10 +204,15 @@ async function drive(
         continue;
       }
 
-      if (tc.name === 'take_screenshot' && r.ok) {
-        const shot = (r.data as { screenshot?: string } | undefined)?.screenshot;
-        deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: true, summary: '已截图', image: shot });
-        await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: '截图已捕获，见下一条消息' });
+      // take_screenshot 产截图：tool 消息只留一句话，base64 走独立 user 图片消息
+      //（进视觉通道 + 受 trimImageParts 管理）——若让它留在 toToolContent 的 JSON 里，
+      // 会成为数万 token 的纯文本废料且永不回收。
+      if (tc.name === 'take_screenshot') {
+        const data = (r as { data?: { screenshot?: string } | undefined }).data;
+        const shot = data?.screenshot;
+        deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: r.ok, summary: r.ok ? '已截图' : (r.error ?? '失败'), image: shot });
+        const rest = toToolContent(r.ok ? { ok: true } : r);
+        await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: rest });
         if (shot) {
           const parts: ContentPart[] = [
             { type: 'text', text: SCREENSHOT_SENTINEL },
@@ -219,9 +224,28 @@ async function drive(
       }
 
       const summary = r.ok ? '成功' : (r.error ?? '失败');
-      const output = toToolContent(r);
-      deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: r.ok, summary, output });
+      // data 里若混入 screenshot（防御性：任何工具都不得让 base64 进文本上下文），
+      // 摘掉后单独走 user 图片消息；其余字段照常序列化进 tool 消息。
+      const shot = (r as { data?: { screenshot?: string } | undefined }).data?.screenshot;
+      let output: string;
+      if (shot != null) {
+        const data = (r as { data?: Record<string, unknown> | undefined }).data;
+        const { screenshot: _s, ...keep } = data ?? {};
+        output = r.ok
+          ? toToolContent({ ok: true, data: keep })
+          : `错误：${r.error ?? '未知错误'}\n${JSON.stringify(keep)}`;
+      } else {
+        output = toToolContent(r);
+      }
+      deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: r.ok, summary, image: shot, output });
       await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: output });
+      if (shot) {
+        const parts: ContentPart[] = [
+          { type: 'text', text: SCREENSHOT_SENTINEL },
+          { type: 'image_url', imageUrl: shot },
+        ];
+        await appendMessage(convId, { role: 'user', content: parts });
+      }
     }
 
     guard = recordTurn(guard, result.toolCalls, results);
@@ -245,7 +269,24 @@ async function finishAborted(convId: string, deps: LoopDeps): Promise<void> {
 }
 
 function toToolContent(r: ToolResult): string {
-  if (r.ok) return typeof r.data === 'string' ? r.data : JSON.stringify(r.data ?? { ok: true });
+  // stringify 兜底：data 理论上都经 serializeSafe 归一（无循环引用），但这是 loop 的
+  // 最后一道关卡——未来某工具漏归一炸出 TypeError 会让会话永久卡 running，宁可降级为
+  // 不可序列化标记也不能炸（审查探针指出该暴露面）。
+  const stringify = (v: unknown): string => {
+    try {
+      return JSON.stringify(v) ?? '';
+    } catch {
+      return '"[不可序列化]"';
+    }
+  };
+  if (r.ok) return typeof r.data === 'string' ? r.data : stringify(r.data ?? { ok: true });
+  // 失败也带 data（个别工具的失败诊断信息在 data 里）——丢掉它「失败极详」落空。
+  // ToolResult 失败分支类型上没有 data（类型面收窄），value 层由工具带出，这里是消费端。
+  const data = (r as { data?: unknown }).data;
+  if (data != null) {
+    const detail = typeof data === 'string' ? data : stringify(data);
+    return `错误：${r.error ?? '未知错误'}\n${detail}`;
+  }
   return `错误：${r.error ?? '未知错误'}`;
 }
 

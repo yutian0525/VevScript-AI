@@ -61,7 +61,7 @@ describe('seedBuiltinSkills', () => {
     await expect(seedBuiltinSkills()).rejects.toThrow('解析失败');
   });
 
-  it('空池投放：三条全部写入并带 builtin 标记', async () => {
+  it('空池投放：四条全部写入并带 builtin 标记', async () => {
     stubFetchWith(builtinMd);
     const n = await seedBuiltinSkills();
     expect(n).toBe(3);
