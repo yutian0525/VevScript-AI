@@ -12,7 +12,18 @@ describe('工具 registry', () => {
   });
 
   it('getToolSchemas 返回全部 schema', () => {
-    expect(getToolSchemas().length).toBe(30);
+    expect(getToolSchemas().length).toBe(31);
+  });
+
+  it('query_page 经 CS 通道分发', async () => {
+    const sendMessage = vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(
+      { correlationId: 'x', type: 'QUERY', result: { ok: true, data: { matched: 1 } } } as never,
+    );
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'https://x.com' }) as never;
+    const r = await executeTool('query_page', { locator: { text: 'x' } },
+      { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+    expect(r.ok).toBe(true);
+    expect((sendMessage.mock.calls[0]![1] as { type: string }).type).toBe('QUERY');
   });
 
   it('content script 类工具经 tabs.sendMessage 分发到主帧 frameId:0', async () => {

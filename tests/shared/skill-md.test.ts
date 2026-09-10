@@ -3,6 +3,9 @@
 
 import { describe, it, expect } from 'vitest';
 import { parseSkillMd, parseSkillMdDocument, serializeSkillMd, serializeSkillsMd } from '../../shared/skill-md';
+// 打包资源照 tests/background/builtin-skills.test.ts 惯例用 ?raw 导入（不依赖测试进程 cwd），
+// 直接对真实文件验证，防止文档格式漂移到解析失败。
+import builtinMd from '../../public/skills/builtin.md?raw';
 
 describe('parseSkillMd', () => {
   it('正常解析：frontmatter 三字段 + 正文', () => {
@@ -190,5 +193,20 @@ describe('serializeSkillMd / serializeSkillsMd / parseSkillMdDocument', () => {
       expect(r.skill.description).toBe('desc ription');
       expect(r.warnings).toHaveLength(0);
     }
+  });
+});
+
+describe('内置技能资源 builtin.md', () => {
+  const docs = parseSkillMdDocument(builtinMd);
+
+  it('三篇文档全部解析成功，无坏文档', () => {
+    expect(docs).toHaveLength(3);
+    expect(docs.every((d) => d.ok)).toBe(true);
+  });
+
+  it('command 唯一且不含 page-script（该技能已随 run_page_script 拆除）', () => {
+    const cmds = docs.map((d) => (d.ok ? d.skill.command : ''));
+    expect(new Set(cmds).size).toBe(cmds.length);
+    expect(cmds).not.toContain('page-script');
   });
 });

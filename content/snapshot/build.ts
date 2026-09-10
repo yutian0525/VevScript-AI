@@ -3,19 +3,30 @@
 // → RootWebArea 根 → 折叠纯布局 → 缩进序列化 → open shadow DOM 递归。
 import { computeRole, computeName, computeStates, computeDescription, computeExtras, type NodeExtras } from './roles';
 import { isHidden } from './visibility';
+import { keepAtDetail, type SnapshotDetail } from './filter';
 
 export interface SnapshotOptions {
   maxChildrenPerLevel?: number;
   maxNodes?: number;
+  /** 详细档位。缺省 'interactive'（spec §6.2 新默认）：只留可交互角色 + 标题 + 视口内文本，其余折叠为计数行。 */
+  detail?: SnapshotDetail;
 }
 
-const DEFAULTS: Required<SnapshotOptions> = { maxChildrenPerLevel: 200, maxNodes: 1200 };
+const DEFAULTS: Required<SnapshotOptions> = { maxChildrenPerLevel: 200, maxNodes: 1200, detail: 'interactive' };
 
 let uidMap = new Map<number, WeakRef<Element>>();
 let uidCounter = 0;
+/** 反向表：元素 → uid。WeakMap 不阻碍 GC，用于 ensureUid 的 O(1) 复用判定。 */
+let uidReverse = new WeakMap<Element, number>();
 
 export function resetUidMap(): void {
   uidMap = new Map();
+  // 反向表同步作废：reset 意味着 uid 序号从头计数。当前实现下反向残留其实
+  // 不会造成错误复用——ensureUid 的双向校验要求正向 (v→el) 命中才放行，而
+  // 正向命中必然来自某次同步 set（反向已被刷新为正确值），残留清不清等价。
+  // 但整表作废是正确性卫生：防御未来出现绕过同步 set 的写入路径（例如某处
+  // 只写正向不写反向），残留旧值就会被盲信。两行换一个不变量，值得。
+  uidReverse = new WeakMap();
   uidCounter = 0;
 }
 
@@ -27,7 +38,22 @@ export function resolveUid(uid: number): Element | null {
   return el;
 }
 
-interface SnapNode {
+/**
+ * 取元素的 uid：映射中已有则复用，否则新分配。
+ * 复用是关键——query_page 不能让上一次快照给 agent 的 uid 失效。
+ * 与快照内 assignUid 共享同一 uidCounter 与序号空间，故绝不撞号。
+ */
+export function ensureUid(el: Element): number {
+  const existing = uidReverse.get(el);
+  // 双向校验：反向表命中但正向表已被 resetUidMap 清空时不能复用（序号已重来）
+  if (existing != null && uidMap.get(existing)?.deref() === el) return existing;
+  uidCounter += 1;
+  uidMap.set(uidCounter, new WeakRef(el));
+  uidReverse.set(el, uidCounter);
+  return uidCounter;
+}
+
+export interface SnapNode {
   role: string;
   name: string;
   states: string[];
@@ -35,22 +61,41 @@ interface SnapNode {
   extras: NodeExtras;
   uid?: number;
   isText?: boolean;
+  /** 是否与视口相交。undefined = 未知（jsdom / 0 尺寸元素），过滤时按保留处理。 */
+  inViewport?: boolean;
   children: SnapNode[];
 }
 
-export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text: string } {
+export function buildSnapshot(
+  root: Element, opts: SnapshotOptions = {},
+): { text: string; skippedFrames: number } {
   const cfg = { ...DEFAULTS, ...opts };
   resetUidMap();
   let nodeCount = 0;
   let truncated = false;
+  // 跨域 iframe 数：contentDocument 不可读（抛 SecurityError 或返回 null）时 +1，
+  // 让 agent 知道快照不完整是帧不可及、而非帧是空的。
+  let skippedFrames = 0;
 
   function assignUid(el: Element): number {
     uidCounter += 1;
     uidMap.set(uidCounter, new WeakRef(el));
+    uidReverse.set(el, uidCounter);
     return uidCounter;
   }
 
-  function walkChildren(el: Element, parentUid: number, out: SnapNode[]): void {
+  /** 元素是否与视口相交。rect 全 0（jsdom / 0 尺寸）返回 undefined 表示未知——
+   *  缺信息时 keepAtDetail 按保留处理，不让内容因测量不到而消失。 */
+  function inViewport(el: Element): boolean | undefined {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) return undefined;
+    const view = el.ownerDocument.defaultView;
+    const vh = view?.innerHeight ?? 0;
+    const vw = view?.innerWidth ?? 0;
+    return r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw;
+  }
+
+  function walkChildren(el: Element, parent: SnapNode & { uid: number }, out: SnapNode[]): void {
     const kids: ChildNode[] = [];
     const shadow = (el as HTMLElement).shadowRoot;
     if (shadow) kids.push(...Array.from(shadow.childNodes));
@@ -65,9 +110,10 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
       if (node.nodeType === Node.TEXT_NODE) {
         const t = (node.textContent ?? '').replace(/\s+/g, ' ').trim();
         if (!t) continue;
+        if (coveredByName(parent.name, t)) continue;
         if (nodeCount >= cfg.maxNodes) { truncated = true; break; }
         nodeCount += 1;
-        out.push({ role: 'StaticText', name: t.slice(0, 200), states: [], description: '', extras: {}, uid: parentUid, isText: true, children: [] });
+        out.push({ role: 'StaticText', name: t.slice(0, 200), states: [], description: '', extras: {}, uid: parent.uid, isText: true, inViewport: inViewport(el), children: [] });
         emitted += 1;
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         const child = walkElement(node as Element);
@@ -82,23 +128,42 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
     if (nodeCount >= cfg.maxNodes) { truncated = true; return null; }
     nodeCount += 1;
     const uid = assignUid(elem);
-    const node: SnapNode = {
+    // 收紧为必带 uid：walkChildren 依赖它保证 StaticText 行必带 [uid]（agent 定位元素的唯一入口）
+    const node: SnapNode & { uid: number } = {
       role: computeRole(elem),
       name: computeName(elem),
       states: computeStates(elem),
       description: computeDescription(elem),
       extras: computeExtras(elem),
       uid,
+      inViewport: inViewport(elem),
       children: [],
     };
-    walkChildren(elem, uid, node.children);
+    walkChildren(elem, node, node.children);
+    // 同源 iframe 穿透：跨域访问 contentDocument 抛 SecurityError（或返回 null），计数跳过。
+    // 节点预算与 uid 序列全局共享，故帧内元素的 uid 同样可经 resolveUid 反查、可直接交给 click。
+    // 穿透按【标签名】判定而非 role——computeRole 先查显式 role 属性再查标签名，
+    // 广告/埋点帧常见的 <iframe role="presentation"> 会被标成 presentation，
+    // 按 role 判会让穿透与盲区计数同时静默失效，帧内容在 full 档也彻底消失（审查实测抓出的坑）。
+    // 附带收益：<div role="Iframe"> 这类纯理论组合不再误触发穿透——div 无 contentDocument，
+    // 原逻辑会把它计成 skippedFrames 假阳性。穿透是文档结构层面的行为，与 ARIA 角色无关。
+    const tag = elem.tagName.toLowerCase();
+    if (tag === 'iframe' || tag === 'frame') {
+      const doc = safeFrameDoc(elem);
+      if (doc?.body) walkChildren(doc.body, node, node.children);
+      else skippedFrames += 1;
+    }
     return node;
   }
 
   const rootUid = assignUid(root);
   nodeCount += 1;
   const view = root.ownerDocument.defaultView;
-  const rootNode: SnapNode = {
+  // 同源省 origin 的基准。真实 about:blank 的 origin 序列化为字符串 "null"（不缺失），
+  // 此处退空串的真实来源是 implementation.createHTMLDocument() 这类 defaultView 为 null 的文档
+  // （jsdom 单测里 mock document 的场景同理）——退空串走跨源分支，host 保留，对 agent 反而更完整。
+  const baseOrigin = view?.location?.origin ?? '';
+  const rootNode: SnapNode & { uid: number } = {
     role: 'RootWebArea',
     name: root.ownerDocument.title ?? '',
     states: [],
@@ -107,24 +172,128 @@ export function buildSnapshot(root: Element, opts: SnapshotOptions = {}): { text
     uid: rootUid,
     children: [],
   };
-  walkChildren(root, rootUid, rootNode.children);
+  walkChildren(root, rootNode, rootNode.children);
 
   const lines: string[] = [];
-  serialize(rootNode, 0, lines);
+  const fold = { n: 0 };
+  serialize(rootNode, 0, lines, baseOrigin, cfg.detail, fold);
+  flushFold(lines, 0, fold);   // 残留计数
   if (truncated) lines.push(`… [还有更多节点未显示，快照已达节点上限 ${cfg.maxNodes} 被截断]`);
-  return { text: lines.join('\n') };
+  return { text: lines.join('\n'), skippedFrames };
 }
 
-function serialize(node: SnapNode, depth: number, lines: string[]): void {
-  const emit = shouldEmit(node);
+/** 取 iframe 的同源 document。跨域时浏览器抛 SecurityError 或返回 null，统一返回 null。 */
+function safeFrameDoc(el: Element): Document | null {
+  try {
+    return (el as HTMLIFrameElement).contentDocument ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** 文本是否被父节点 name 覆盖（含 name 被截至 100 字符的前缀情形）。
+ *  代价：文本超 100 字符时，其 100~200 段随去重一起丢弃（原本 t.slice(0,200) 会保留）。
+ *  这是刻意取舍——长标题重复正是去重收益的主要来源，且 name 里已有前 100 字符。 */
+function coveredByName(parentName: string, t: string): boolean {
+  if (!parentName) return false;
+  if (parentName === t) return true;
+  // computeName 截断到 100：name 是 t 的前缀即视为同一段文字。
+  // 上限 100 与 roles.ts 的 normalize(s, 100) 耦合，改那边的截断长度必须同步这里。
+  return parentName.length === 100 && t.startsWith(parentName);
+}
+
+/** URL 瘦身：同源省 origin、跨源留 host+path、查询串截 30（带 … 标记）、总长上限 40。
+ *  代价：hash 一律丢弃——锚点定位对快照读者价值极低，需要时 agent 可经 evaluate_script 读 href；
+ *  超长时同源丢前缀、跨源丢 path 中段。url 属性占快照 28~31% 字符，是仅次于 StaticText
+ *  去重的瘦身点，值得这点信息损失（当前页 origin 已在 system prompt 页面信息块给过）。
+ *  两个实测踩过的坑：
+ *  1. javascript:/mailto:/tel: 等非 http(s) scheme 在 WHATWG URL 下解析成功不抛错，但 host 为空、
+ *     pathname 吞掉 scheme——直接套瘦身公式会把 scheme 一起删掉，故只对 http(s) 瘦身，其余原样保留。
+ *  2. 跨源超长时截断只作用于 host 之后的部分——host 是跨源分支存在的唯一理由（模型靠它区分站点），
+ *     丢了它模型会把外链误判成同源路径；host 自身就超预算的极端情况才整体截断。 */
+export function shortenUrl(raw: string, baseOrigin: string): string {
+  let s: string;
+  let host = '';
+  let sameOrigin = false;
+  try {
+    const u = new URL(raw);
+    if (u.protocol === 'http:' || u.protocol === 'https:') {
+      // 截断必须带 … 标记：否则残缺查询与「恰好 30 字符的完整查询」不可区分，模型会把残缺当完整 URL 抄进脚本
+      const q = u.search.length > 30 ? `${u.search.slice(0, 30)}…` : u.search;
+      if (u.origin === baseOrigin) {
+        sameOrigin = true;
+        s = `${u.pathname}${q}`;
+      } else {
+        host = u.host;
+        s = `${host}${u.pathname}${q}`;
+      }
+    } else {
+      s = raw;
+    }
+  } catch {
+    s = raw;
+  }
+  if (s.length <= 40) return s;
+  // 跨源：host + … + rest 尾部，总长恰 40。host ≥ 39 时尾部一个字符都塞不下，退回整体截断
+  if (!sameOrigin && host.length + 1 < 40) {
+    return `${host}…${s.slice(host.length).slice(-(40 - host.length - 1))}`;
+  }
+  return `…${s.slice(-39)}`;
+}
+
+function serialize(
+  node: SnapNode, depth: number, lines: string[], baseOrigin: string,
+  detail: SnapshotDetail, fold: { n: number },
+): void {
+  // 两层判定：先按既有结构规则（纯布局 generic 折叠、子节点上提），再叠加档位过滤。
+  // 两层都通过才出行——shouldEmit 与 keepAtDetail 口径不同是设计使然：full 档仍需
+  // 宽松的结构规则保留全量，不是要把两者收敛成一套。
+  const structural = shouldEmit(node);
+  const keep = keepAtDetail(node, detail);
+  const emit = structural && keep;
+
   if (emit) {
-    lines.push('  '.repeat(depth) + renderLine(node));
+    flushFold(lines, depth, fold);
+    lines.push('  '.repeat(depth) + renderLine(node, baseOrigin));
+  } else if (structural) {
+    // 计数口径 = 「full 档会显示、本档藏了」的节点，数字即切到 full 能多看到的行数，
+    // agent 可据此决策值不值得切档。纯布局 generic（structural 已先行滤掉）不计——
+    // 它们在 full 档也不出行，计进去只是几百个布局 div 堆出的噪声。
+    fold.n += 1;
   }
   const nextDepth = emit ? depth + 1 : depth;
-  for (const c of node.children) serialize(c, nextDepth, lines);
+  for (const c of node.children) serialize(c, nextDepth, lines, baseOrigin, detail, fold);
 }
 
-function renderLine(node: SnapNode): string {
+/** 输出并清空折叠计数。相邻多个被滤节点合并成一行。
+ *  措辞刻意中性「未展开节点」：被滤的可能是 img/navigation/list 这类非交互元素，
+ *  也可能是白名单外的 ARIA 角色，说成「纯文本/容器」以偏概全。 */
+function flushFold(lines: string[], depth: number, fold: { n: number }): void {
+  if (fold.n === 0) return;
+  lines.push('  '.repeat(depth) + `… [${fold.n} 个未展开节点]`);
+  fold.n = 0;
+}
+
+/**
+ * 渲染单个元素为快照格式行（不含缩进）。query_page 复用，保证两处格式一字不差。
+ * 与快照内的行相比只少缩进——uid/role/name/states/description/url 全部同源。
+ * 关键是调用现有的 renderLine（含 shortenUrl 的同源省 origin 口径），不复制逻辑。
+ */
+export function renderElementLine(el: Element, uid: number): string {
+  const node: SnapNode = {
+    role: computeRole(el),
+    name: computeName(el),
+    states: computeStates(el),
+    description: computeDescription(el),
+    extras: computeExtras(el),
+    uid,
+    children: [],
+  };
+  const origin = el.ownerDocument.defaultView?.location?.origin ?? '';
+  return renderLine(node, origin);
+}
+
+function renderLine(node: SnapNode, baseOrigin: string): string {
   if (node.role.startsWith('…')) return node.role;
   const esc = (s: string) => s.replace(/\s+/g, ' ').replace(/"/g, '\\"');
   const uid = node.uid != null ? `[${node.uid}] ` : '';
@@ -133,7 +302,7 @@ function renderLine(node: SnapNode): string {
   const ac = node.extras.autocomplete ? ` autocomplete="${esc(node.extras.autocomplete)}"` : '';
   const states = node.states.length ? ` {${node.states.join(',')}}` : '';
   const desc = node.description ? ` description="${esc(node.description)}"` : '';
-  const url = node.extras.url ? ` url="${esc(node.extras.url)}"` : '';
+  const url = node.extras.url ? ` url="${esc(shortenUrl(node.extras.url, baseOrigin))}"` : '';
   return `${uid}${node.role}${name}${hp}${ac}${states}${desc}${url}`;
 }
 

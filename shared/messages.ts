@@ -3,18 +3,29 @@
 // 设计决策：request/response 模式 + correlation id（设计 §4.4）；
 // 例外：cs→bg 的 fire-and-forget 通知（见 HookConsoleNotification / HookNetworkNotification）。
 
-import type { ChatAttachment, ScriptSource, ScriptSummary, ScriptUpdateState, ToolResult, Uid, UserScript } from './types';
+import type { ChatAttachment, Locator, ScriptSource, ScriptSummary, ScriptUpdateState, ToolResult, Uid, UserScript } from './types';
 import type { ConsoleEntry, HookNetEntry } from './hook-bridge';
 
 export interface BgToCsRequestMap {
-  SNAPSHOT: { verbose?: boolean };
+  /** detail 缺省 'interactive'（spec §6.2 新默认）。region 限定子树（uid 或选择器）。
+   *  原 verbose 字段已删——全项目无人消费，是死字段。 */
+  SNAPSHOT: { detail?: 'interactive' | 'full'; region?: Uid | string };
+  /** 按 locator 定向查询（spec §6.3）。与脚本内 $ 同一套语法。 */
+  QUERY: { locator: Locator; limit?: number; within?: Uid };
   CLICK: { uid: Uid; dblClick?: boolean };
   FILL: { uid: Uid; value: string };
   FILL_FORM: { elements: Array<{ uid: Uid; value: string }> };
   HOVER: { uid: Uid };
   SCROLL: { direction: 'up' | 'down' | 'left' | 'right'; amount?: number };
   PRESS_KEY: { key: string; modifiers?: string[] };
-  WAIT_TEXT: { texts: string[]; timeoutMs?: number };
+  /** 四种条件互斥（spec §6.4）。texts 为原有形式，保留向后兼容。 */
+  WAIT_TEXT: {
+    texts?: string[];
+    appear?: Locator;
+    gone?: Locator;
+    idle?: number;
+    timeoutMs?: number;
+  };
   PAGE_META: Record<string, never>;
   /** 脚本运行时调试台直调：SW→CS，宿主 debugCall 经真实桥链路发 GM_API_CALL（spec §3） */
   GM_DEBUG_INVOKE: { scriptId: string; api: string; params: unknown[] };
