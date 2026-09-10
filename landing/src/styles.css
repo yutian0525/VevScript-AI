@@ -648,6 +648,67 @@ h1, h2, h3, h4 { font-weight: var(--w-bold); margin: 0; }
 .docs__aside .eyebrow { margin-bottom: 12px; }
 .docs__aside p { font-size: 13.5px; color: var(--ink-2); line-height: 1.66; }
 
+/* ---------- 文档正文分节 ---------- */
+.docs__body { min-width: 0; }
+.doc-sec { margin-top: clamp(38px, 5vw, 56px); scroll-margin-top: 84px; }
+.doc-sec__k {
+  font-family: var(--mono); font-size: 11px; font-weight: var(--w-bold);
+  letter-spacing: 0.12em; color: var(--signal-ink); display: block; margin-bottom: 8px;
+}
+.doc-sec__h { font-size: clamp(20px, 2.6vw, 26px); margin-bottom: 14px; }
+.doc-p { font-size: 14.5px; line-height: 1.72; color: var(--ink-2); margin: 0 0 14px; max-width: 64ch; }
+.doc-p code, .doc-note code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+.doc-note { font-size: 13px; line-height: 1.66; color: var(--ink-3); margin: 16px 0 0; max-width: 64ch; }
+
+.doc-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 20px; }
+@media (max-width: 640px) { .doc-cards { grid-template-columns: minmax(0, 1fr); } }
+.doc-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px 18px; }
+.doc-card__t { font-size: 14.5px; font-weight: var(--w-bold); margin: 0 0 6px; }
+.doc-card__d { font-size: 13px; line-height: 1.6; color: var(--ink-2); margin: 0; }
+
+/* ---------- GM API 分组 ---------- */
+.gm-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 22px; }
+@media (max-width: 720px) { .gm-groups { grid-template-columns: minmax(0, 1fr); } }
+.gm-group { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px 18px 12px; }
+.gm-group__head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+.gm-group__name { font-size: 14px; font-weight: var(--w-bold); }
+.gm-group__c {
+  font-family: var(--mono); font-size: 10.5px; font-weight: var(--w-bold);
+  color: var(--ink-3); background: var(--paper); border: 1px solid var(--line);
+  border-radius: var(--r-sm); padding: 1px 7px;
+}
+.gm-list { list-style: none; margin: 0; padding: 0; }
+.gm-item { padding: 8px 0; border-top: 1px solid var(--line); }
+.gm-item:first-child { border-top: none; }
+.gm-item__n { display: block; font-family: var(--mono); font-size: 11.5px; color: var(--signal-ink); margin-bottom: 3px; overflow-wrap: anywhere; }
+.gm-item__d { font-size: 12.5px; line-height: 1.55; color: var(--ink-2); }
+.gm-item__d code { font-family: var(--mono); font-size: 11.5px; color: var(--ink); }
+
+/* ---------- Tools 模式对照 ---------- */
+.doc-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 20px; }
+@media (max-width: 640px) { .doc-modes { grid-template-columns: minmax(0, 1fr); } }
+.doc-mode { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px 18px; }
+.doc-mode--agent { background: var(--signal-wash); border-color: transparent; }
+.doc-mode__name { font-family: var(--mono); font-size: 13px; font-weight: var(--w-bold); color: var(--signal-ink); }
+.doc-mode__n { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); margin-left: 8px; }
+.doc-mode__d { font-size: 13px; line-height: 1.6; color: var(--ink-2); margin: 8px 0 0; }
+
+/* ---------- 侧栏目录 ---------- */
+.doc-toc { display: flex; flex-direction: column; gap: 2px; margin-bottom: 22px; }
+.doc-toc__link {
+  display: flex; align-items: baseline; gap: 10px; padding: 8px 10px; border-radius: var(--r-sm);
+  font-size: 13.5px; color: var(--ink-2); text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.doc-toc__link:hover { background: var(--surface); color: var(--ink); }
+.doc-toc__n { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.doc-aside-cta { border-top: 1px solid var(--line); padding-top: 16px; }
+.doc-aside-link {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
+  font-size: 13px; font-weight: var(--w-bold); color: var(--signal-ink); text-decoration: none;
+}
+.doc-aside-link:hover { text-decoration: underline; }
+
 /* ============ 签名装置：仿真侧边栏 + 被操控的网页 ============ */
 .demo {
   display: grid;

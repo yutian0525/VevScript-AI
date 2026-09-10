@@ -945,6 +945,54 @@ body {
 .setting-card__desc { font-size: 11.5px; color: var(--ink-3); line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .setting-card__chev { color: var(--ink-3); flex-shrink: 0; margin-left: auto; }
 
+/* 设置分组：大标题行划分能力域 */
+.settings-group { margin-bottom: 20px; }
+.settings-group:last-child { margin-bottom: 0; }
+.settings-group__title {
+  font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--line);
+}
+
+/* ============ 品牌锁定组合（popup/详情页/关于页共用） ============ */
+.brand { display: flex; align-items: center; }
+.brand__mark { flex-shrink: 0; display: block; }
+.brand__text { display: flex; min-width: 0; }
+.brand__name { font-weight: 600; color: var(--ink); line-height: 1.15; white-space: nowrap; }
+.brand__latin {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-3); line-height: 1.2;
+}
+/* 横排：mark 在左，字标 + 副标纵向堆叠 */
+.brand--inline { gap: 8px; }
+.brand--inline .brand__text { flex-direction: column; justify-content: center; }
+.brand--inline .brand__name { font-size: 14px; }
+/* 纵向居中：mark 在上，字标居中，副标其下 */
+.brand--stacked { flex-direction: column; gap: 6px; text-align: center; }
+.brand--stacked .brand__text { flex-direction: column; align-items: center; gap: 1px; }
+.brand--stacked .brand__name { font-size: 15px; }
+
+/* ============ 关于软件页 ============ */
+.about__hero {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 8px 0 22px; margin-bottom: 4px; border-bottom: 1px solid var(--line);
+}
+.about__tagline { font-size: 12.5px; color: var(--ink-2); text-align: center; line-height: 1.6; max-width: 300px; }
+.about__version { font-size: 11px; color: var(--ink-3); letter-spacing: 0.04em; }
+.about__links { display: flex; flex-direction: column; gap: 8px; }
+.about__link {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 12px 14px;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.about__link:hover { border-color: var(--line-strong); background: var(--paper); }
+.about__link:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+.about__link-icon { color: var(--signal-ink); flex-shrink: 0; display: flex; }
+.about__link-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.about__link-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+.about__link-hint { font-size: 11.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.about__link-ext { color: var(--ink-3); flex-shrink: 0; }
+
 /* ============ 脚本运行时调试台 GM API 行 ============ */
 .gm-api-row.is-disabled { opacity: 0.5; }
 .gm-api-row.is-disabled .tool-row { cursor: not-allowed; }
@@ -1170,6 +1218,11 @@ body {
 
 /* ============ 全屏脚本详情页（script-detail.html） ============ */
 .detail { display: flex; flex-direction: column; height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+/* 顶部品牌信息条：脚本详情页最上方，标明所属产品 */
+.detail__brandbar {
+  display: flex; align-items: center; padding: 8px 16px;
+  border-bottom: 1px solid var(--line); background: var(--paper); flex-shrink: 0;
+}
 .detail--empty { align-items: center; justify-content: center; gap: 10px; display: flex; flex-direction: column; }
 .detail__topbar {
   display: flex; align-items: center; gap: 10px; padding: 10px 16px;
@@ -1279,6 +1332,11 @@ body {
 
 /* ============ 扩展图标 popup（popup.html，宽 360px） ============ */
 .popup { width: 288px; display: flex; flex-direction: column; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+/* 顶部品牌信息：居中，与导航区分隔 */
+.popup__brand {
+  display: flex; justify-content: center; padding: 14px 12px 12px;
+  border-bottom: 1px solid var(--line); background: var(--surface);
+}
 .popup__nav { display: flex; flex-direction: column; padding: 8px; gap: 2px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .popup__navbtn {
   display: flex; align-items: center; gap: 8px; padding: 9px 10px;

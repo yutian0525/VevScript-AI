@@ -1,10 +1,11 @@
 // components/popup/PopupApp.tsx
-// 扩展图标 popup（spec §3）：上区导航（开侧边栏/脚本管理直达）+ 下区当前页运行中脚本。
+// 扩展图标 popup（spec §3）：顶部品牌信息（居中）+ 导航区（织雀AI/脚本管理/设置直达侧边栏）+ 下区当前页运行中脚本。
 // 点脚本 = 触发菜单命令（单条直触/多条展开/零条禁用观感），触发后浮窗关闭。
 import { useEffect, useState } from 'react';
 import { storage } from 'wxt/utils/storage';
-import { PanelLeft, ScrollText, SquarePen } from 'lucide-react';
+import { PanelLeft, ScrollText, SquarePen, Settings as SettingsIcon } from 'lucide-react';
 import { Tooltip } from '../ui/Tooltip';
+import { Brand } from '../ui/Brand';
 import { openScriptTab, sendScriptsRequest } from '../../stores/scripts';
 import type { GmMenuEntry, GmErrorItem } from '../../stores/scripts';
 import type { ScriptsRuntimeEntry } from '../../shared/messages';
@@ -82,10 +83,10 @@ export function PopupApp() {
     if (tab?.id != null) await browser.sidePanel.open({ tabId: tab.id });
   }
 
-  async function gotoScripts(): Promise<void> {
-    // 双通道保时序：storage.session 待航标记（侧边栏挂载消费）+ 实时广播（侧边栏已开时立即切换）
-    await storage.setItem('session:ui:pendingView', 'scripts');
-    await browser.runtime.sendMessage({ type: 'UI_NAV', view: 'scripts' }).catch(() => {});
+  // 跨面导航到侧边栏指定页：双通道保时序（storage.session 待航标记供侧边栏挂载消费 + 实时广播供侧边栏已开时立即切换）
+  async function gotoView(view: 'scripts' | 'settings'): Promise<void> {
+    await storage.setItem('session:ui:pendingView', view);
+    await browser.runtime.sendMessage({ type: 'UI_NAV', view }).catch(() => {});
     await openSidepanel();
   }
 
@@ -108,12 +109,18 @@ export function PopupApp() {
 
   return (
     <div className="popup">
+      <div className="popup__brand">
+        <Brand layout="stacked" size={30} id="popup" />
+      </div>
       <div className="popup__nav">
         <button className="popup__navbtn" onClick={() => void openSidepanel()}>
-          <PanelLeft size={15} aria-hidden /> 打开侧边栏
+          <PanelLeft size={15} aria-hidden /> 织雀AI
         </button>
-        <button className="popup__navbtn" onClick={() => void gotoScripts()}>
+        <button className="popup__navbtn" onClick={() => void gotoView('scripts')}>
           <ScrollText size={15} aria-hidden /> 脚本管理
+        </button>
+        <button className="popup__navbtn" onClick={() => void gotoView('settings')}>
+          <SettingsIcon size={15} aria-hidden /> 设置
         </button>
       </div>
       <div className="popup__run">

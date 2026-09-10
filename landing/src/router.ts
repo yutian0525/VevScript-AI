@@ -26,3 +26,7 @@ export function useRoute(): Route {
 }
 
 export const REPO = 'https://github.com/yutian0525/VevScript-AI';
+/** GitHub Release 下载页（「立即下载」按钮跳向此处） */
+export const RELEASES = `${REPO}/releases`;
+/** 官网 */
+export const SITE = 'https://vevscript.yutkit.com';
