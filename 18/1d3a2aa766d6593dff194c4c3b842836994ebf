@@ -1,0 +1,164 @@
+shared/skill-md.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 100-101,106-109
+landing/package.json
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-24
+fixtures/userscripts/manual/tabs.user.js.src
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+docs/使用指南.md
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1,36,87
+landing/src/components/DemoPage.tsx
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-87
+landing/vite.config.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-10
+fixtures/userscripts/manual/interaction.user.js.src
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+fixtures/userscripts/manual/cookie.user.js.src
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+landing/src/main.tsx
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-13
+tests/shared/gmt-selftest-fixture.test.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 33
+fixtures/userscripts/manual/notify-menu.user.js.src
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+tsconfig.json
+  s_38437cecb13a8d::t_ab0ec3161e14e6 7-12
+fixtures/userscripts/gmt-selftest.user.js
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3,260-261
+fixtures/userscripts/manual/gmt-manual-tabs.user.js
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+landing/public/brand/logo-mark.svg
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-14
+tests/shared/skill-md.test.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 140-151
+tests/shared/gmt-manual-fixtures.test.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 123
+landing/src/components/Demo.tsx
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-53
+landing/src/components/RichText.tsx
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-17
+landing/src/pages/Home.tsx
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-443
+landing/src/components/Logo.tsx
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-49
+agent/context.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 7
+fixtures/userscripts/manual/gmt-manual-storage.user.js
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3,260
+entrypoints/sidepanel/styles.css
+  s_38437cecb13a8d::t_ab0ec3161e14e6 2
+shared/gm-wrapper.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 30
+landing/src/pages/Docs.tsx
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-84
+fixtures/userscripts/manual/gmt-manual-cookie.user.js
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+docs/gm-api-reference.md
+  s_38437cecb13a8d::t_ab0ec3161e14e6 25
+landing/src/components/Chrome.tsx
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-57
+landing/src/demo/useRunner.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-166
+entrypoints/background.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 65,117
+public/brand/icon-tile.svg
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-15
+public/brand/logo-mono.svg
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-14
+tests/shared/gm-wrapper.test.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 22
+fixtures/userscripts/manual/network.user.js.src
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3,25
+entrypoints/sidepanel/index.html
+  s_38437cecb13a8d::t_ab0ec3161e14e6 6
+.gitignore
+  s_38437cecb13a8d::t_ab0ec3161e14e6 7-8
+fixtures/userscripts/manual/gmt-manual-llm.user.js
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3,245
+fixtures/userscripts/manual/gmt-manual-urlchange.user.js
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+public/brand/logo-mark.svg
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-14
+entrypoints/popup/index.html
+  s_38437cecb13a8d::t_ab0ec3161e14e6 6
+fixtures/userscripts/manual/gmt-manual-notify-menu.user.js
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+landing/src/demo/cards.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-21
+fixtures/userscripts/manual/download.user.js.src
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+landing/src/styles.css
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-1062
+fixtures/userscripts/manual/storage.user.js.src
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3,73
+fixtures/userscripts/manual/llm.user.js.src
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3,58
+landing/src/demo/script.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-242
+landing/tsconfig.json
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-17
+wxt.config.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 15-16
+tests/agent/context.test.ts
+  s_38437cecb13a8d::t_f61e6dc6e56340 203
+  s_38437cecb13a8d::t_8cf5521575f971 211
+fixtures/userscripts/manual/dom-resource.user.js.src
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+landing/index.html
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-35
+fixtures/userscripts/manual/gmt-manual-network.user.js
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3,212
+fixtures/userscripts/manual/gmt-manual-interaction.user.js
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+fixtures/userscripts/manual/gmt-manual-dom-resource.user.js
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+CLAUDE.md
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1,60-61,63,66
+  s_38437cecb13a8d::t_921ddadd581802 3,5,21,26-28,32-34,37,39,43,62,64-65,70,72-76,83,94,96,98,100,102-104
+landing/src/App.tsx
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-18
+tests/agent/loop.test.ts
+  s_38437cecb13a8d::t_01b2461db08f86 421
+  s_38437cecb13a8d::t_0e769d515e5fe3 443
+fixtures/userscripts/manual/gmt-manual-download.user.js
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+landing/README.md
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-43
+landing/src/router.ts
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-28
+fixtures/userscripts/manual/urlchange.user.js.src
+  s_38437cecb13a8d::t_ab0ec3161e14e6 3
+public/brand/logo-lockup.svg
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-23
+package.json
+  s_38437cecb13a8d::t_ab0ec3161e14e6 2,4-9
+docs/history.md
+  s_38437cecb13a8d::t_bc7760ca19552e 1-125
+landing/public/brand/logo-lockup.svg
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-23
+README.md
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1,3,5,7,9,11-66,69,72-73,95-97,99,101-131,135-136,139-144,213-229,244,246-247,263,268-269,271-272
+landing/public/brand/logo-mono.svg
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-14
+landing/src/components/DemoPanel.tsx
+  s_38437cecb13a8d::t_ab0ec3161e14e6 1-138
+landing/package-lock.json
+  s_38437cecb13a8d::t_2d642f4848033f 1-1258
+package-lock.json
+  s_38437cecb13a8d::t_7eda38eaa7cd98 2,8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "181d3a2aa766d6593dff194c4c3b842836994ebf",
+  "prompts": {},
+  "sessions": {
+    "s_38437cecb13a8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24eb8560-1383-48e1-85ed-b57bfd9b59eb",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
