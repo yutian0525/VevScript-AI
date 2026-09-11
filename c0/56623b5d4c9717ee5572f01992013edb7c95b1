@@ -1,0 +1,28 @@
+agent/tools/schemas.ts
+  s_eb692ad70a2565::t_e4888131010e5f 202
+entrypoints/sidepanel/styles.css
+  s_eb692ad70a2565::t_a295d326c1dbf3 273-278
+  s_eb692ad70a2565::t_b1bdd8f5ea7a9a 1483-1500
+components/chat/ChatView.tsx
+  s_eb692ad70a2565::t_49930cacc9da91 274-280
+  s_eb692ad70a2565::t_f2ceb7878f8e1b 30-42
+agent/context.ts
+  s_eb692ad70a2565::t_4534eb118bb4d4 12,18-20
+  s_eb692ad70a2565::t_59ee3949c2d0a4 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c056623b5d4c9717ee5572f01992013edb7c95b1",
+  "prompts": {},
+  "sessions": {
+    "s_eb692ad70a2565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f77c901-8f83-4f56-acdc-8c12411a7bcd",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "倪镭 <110873087+yutian0525@users.noreply.github.com>"
+    }
+  }
+}
