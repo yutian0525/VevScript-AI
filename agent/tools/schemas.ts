@@ -199,7 +199,7 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     type: 'function',
     function: {
       name: 'evaluate_script',
-      description: '在页面中执行一段 JavaScript 并返回其结果（必须可 JSON 序列化）。用于读取 a11y 快照无法覆盖的深层数据、或在页内做一次多步操作。函数体可用 await；注意 main world 与 isolated world 各自独立，页面 JS 变量只在 main world 可见。响应慢的页面操作可配合 wait_for 使用。',
+      description: '在页面中执行一段 JavaScript 并返回其结果（必须可 JSON 序列化）。用于读取 a11y 快照无法覆盖的深层数据、在页内做一次多步操作，或对多个元素做同型重复操作（页内循环一次完成，避免逐元素 click/fill 往返）。函数体可用 await；注意 main world 与 isolated world 各自独立，页面 JS 变量只在 main world 可见。响应慢的页面操作可配合 wait_for 使用。',
       parameters: obj(
         {
           function: {
