@@ -27,6 +27,19 @@ function prefersReducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+/**
+ * 首字前空窗判定：运行中且消息流末尾没有任何可见产出（思考中 / 正文 / 运行中工具卡片 / 参数进度）。
+ * 覆盖三类空窗：发消息后等首字、reasoning 流完等正文、工具跑完等下一轮模型输出。
+ * 纯渲染推导，无独立状态——首字到达后条件自然不成立，切标签重连由 attach 回放自动恢复。
+ */
+function isAwaitingFirstToken(messages: ChatItem[], argsProgress: boolean): boolean {
+  const last = messages[messages.length - 1];
+  if (!last) return false;
+  if (last.role === 'assistant') return false;      // thinking 或正文已在流
+  if (last.role === 'tool' && last.status === 'running') return false; // 工具在跑
+  return !argsProgress;
+}
+
 /** 空状态快捷指令（点击填入输入框，不自动发送）。所见即所得：填入 = tag 上展示的完整文案。 */
 const HELLO_SUGGESTIONS: { tag?: string; label: string; text: string }[] = [
   { label: '帮我关闭页面上的弹窗', text: '帮我关闭页面上的弹窗' },
@@ -258,6 +271,13 @@ export function ChatView() {
             {messages.map((m, i) => (
               <MessageRow key={i} index={i} item={m} streaming={status === 'running' && i === lastIdx} />
             ))}
+            {status === 'running' && isAwaitingFirstToken(messages, !!argsProgress) && (
+              <div className="chat-pending rise" aria-label="AI 正在准备回复">
+                <span className="chat-pending__bar" />
+                <span className="chat-pending__bar" />
+                <span className="chat-pending__bar" />
+              </div>
+            )}
             {argsProgress && status === 'running' && (
               <div className="argsprog rise">
                 <span className="mono argsprog__name">{argsProgress.name}</span>
