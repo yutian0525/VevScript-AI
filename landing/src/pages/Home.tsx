@@ -236,15 +236,20 @@ export function Home() {
           <div>
             <span className="eyebrow">装起来</span>
             <h2 className="h-section" style={{ marginBlock: '14px 18px' }}>
-              四步能跑
+              五步能跑
             </h2>
             <ol className="olist">
               <li>
-                <b>克隆并构建。</b>Node ≥ 20，产物落在 <code>.output/chrome-mv3/</code>。
+                <b>下载打包版。</b>在 Release 页取 <code>vevscript-ai-v*-chrome-mv3.zip</code> 解压；不装 Node 也不构建。
+                解压后的目录之后别挪——Chrome 记的是这个路径。
+              </li>
+              <li>
+                <b>或自己构建。</b>Node ≥ 20，<code>npm install</code> 加 <code>npm run build</code>，
+                产物落在 <code>.output/chrome-mv3/</code>。
               </li>
               <li>
                 <b>加载扩展。</b>打开 <code>chrome://extensions</code>，开发者模式 → 加载已解压的扩展程序 →
-                选那个目录。需要 Chrome 120+（<code>chrome.userScripts</code> 的门槛）。
+                选上一步得到的目录。需要 Chrome 120+（<code>chrome.userScripts</code> 的门槛）。
               </li>
               <li>
                 <b>填模型。</b>侧边栏 → 设置 → 模型设置，填 Base URL（到 <code>/v1</code> 为止）、API Key、模型 ID，测试连接后保存。
@@ -261,6 +266,8 @@ export function Home() {
               </div>
               <pre>
                 <code>
+                  <span className="c"># 自己构建（第 2 步）才需要；只想用扩展走第 1 步的下载包</span>
+                  {'\n\n'}
                   <span className="c"># 安装依赖（postinstall 自动 wxt prepare）</span>
                   {'\n'}npm install{'\n\n'}
                   <span className="c"># 生产构建 → .output/chrome-mv3/</span>

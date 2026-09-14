@@ -77,20 +77,25 @@
 
 **环境要求**
 
-- Node.js ≥ 20
 - Chrome 120+（`chrome.userScripts` API 要求；Edge / Brave 等 Chromium 系可用）
 - 一个 OpenAI 兼容 API 的 Key
+- Node.js ≥ 20（只有自己构建才需要；下 Release 打包版不需要）
 
-**构建与加载**
+**安装**（两条路，任选一条）
 
-```bash
-npm install      # 安装依赖（postinstall 自动 wxt prepare 生成类型）
-npm run build    # 生产构建 → .output/chrome-mv3/
-npm run dev      # 或开发模式（热更新 + 自动拉起浏览器）
-```
+- **下载打包版**（免构建）：到 [Releases](https://github.com/yutian0525/VevScript-AI/releases) 取最新的 `vevscript-ai-v<版本>-chrome-mv3.zip`，解压到一个以后不再挪动的目录——Chrome 记住的是这个路径，加载后再挪扩展会失效。
+- **自己构建**：
+
+  ```bash
+  npm install      # 安装依赖（postinstall 自动 wxt prepare 生成类型）
+  npm run build    # 生产构建 → .output/chrome-mv3/
+  npm run dev      # 或开发模式（热更新 + 自动拉起浏览器）
+  ```
+
+**加载**
 
 1. 打开 `chrome://extensions`，右上角开启**开发者模式**
-2. 点**加载已解压的扩展程序**，选择 `.output/chrome-mv3` 目录
+2. 点**加载已解压的扩展程序**，选上一步得到的目录（自建为 `.output/chrome-mv3`，打包版为解压出的目录）
 3. 将扩展图标固定到工具栏；点图标弹出 popup，可开侧边栏 / 直达脚本管理 / 触发菜单命令
 4. 侧边栏 → 设置 → 模型设置，填写 Base URL（以 `/v1` 结尾）/ API Key / 模型 ID，测试连接后保存
 
