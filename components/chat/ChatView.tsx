@@ -19,6 +19,7 @@ import { useChat, type ChatItem } from '../../stores/chat';
 import { useConversations } from '../../stores/conversations';
 import { attachConv, postToAgent } from '../../stores/agent-port-client';
 import { getSettings } from '../../storage/settings';
+import { getDraft, saveDraft } from '../../storage/composer';
 import { resolveContextWindow, DEFAULT_CONTEXT_WINDOW } from '../../agent/model-windows';
 import type { PortMsgFromPanel } from '../../shared/messages';
 import type { ChatAttachment } from '../../shared/types';
@@ -52,6 +53,7 @@ export function ChatView() {
   const { messages, status, pauseReason, applyEvent, promptTokens, compacting, argsProgress } = useChat();
   const { currentId, list, menuOpen, setMenuOpen } = useConversations();
   const [input, setInput] = useState('');
+  const [draftReady, setDraftReady] = useState(false);
   const [contextWindow, setContextWindow] = useState(DEFAULT_CONTEXT_WINDOW);
   const [follow, setFollow] = useState(true);
   const logRef = useRef<HTMLDivElement>(null);
@@ -83,6 +85,24 @@ export function ChatView() {
 
   // 切会话：重置跟随（新会话的内容一律先贴底）+ 清空未发送的附件暂存
   useEffect(() => { setFollow(true); prevTopRef.current = 0; setAttachments([]); setAttachError(''); }, [currentId]);
+
+  // 草稿恢复：侧边栏切标签会被销毁重建，只活在 useState 里的未发送内容会丢（见 storage/composer.ts）。
+  // 恢复完成才置 draftReady——先恢复后回写，否则挂载时的空值会把已存草稿抹掉。
+  useEffect(() => {
+    let alive = true;
+    void getDraft().then((d) => {
+      if (!alive) return;
+      if (d) setInput((cur) => cur || d); // 恢复前用户已敲字则以用户为准
+      setDraftReady(true);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  // 草稿回写：每次变更即落 session 区，不等防抖——切标签随时可能销毁本文档，晚一步就丢。
+  useEffect(() => {
+    if (!draftReady) return;
+    void saveDraft(input);
+  }, [draftReady, input]);
 
   // 直接滚容器而非 sentinel.scrollIntoView：落点精确到底、不牵动外层滚动祖先。
   const scrollToBottom = useCallback((smooth: boolean) => {
