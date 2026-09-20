@@ -107,6 +107,10 @@ export interface ScriptSummary {
 
 // ---------- Skill 系统（spec：skills-and-slash-commands）----------
 
+/** 技能来源：'agent' = AI 在对话中创建（UI 打「AI 创建」徽标）；
+ *  缺省 = 用户从 .md 导入或扩展内置投放（内置另由 builtin 字段区分，两个标记不叠加）。 */
+export type SkillSource = 'user' | 'agent';
+
 export interface Skill {
   id: string;
   /** 显示名（可中文） */
@@ -120,6 +124,8 @@ export interface Skill {
   enabled: boolean;
   /** 内置技能（安装时投放）：不可删除，可停用；升级时内容随扩展更新 */
   builtin?: boolean;
+  /** 来源标记。缺省 = 用户导入 / 内置；只有 AI 主动创建时才写 'agent' */
+  source?: SkillSource;
   createdAt: number;
   updatedAt: number;
 }
@@ -132,6 +138,7 @@ export interface SkillSummary {
   description: string;
   enabled: boolean;
   builtin?: boolean;
+  source?: SkillSource;
   updatedAt: number;
 }
 

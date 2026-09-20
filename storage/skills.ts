@@ -3,17 +3,18 @@
 
 import { storage } from 'wxt/utils/storage';
 import { nanoid } from 'nanoid';
-import type { Skill, SkillSummary } from '../shared/types';
+import type { Skill, SkillSource, SkillSummary } from '../shared/types';
 import { SKILL_COMMAND_RE } from '../shared/skill-md';
 
-const KEY = 'local:skills:index' as const;
+// 导出给 UI 侧 storage.watch 用——键名只此一处，改键不会让 watch 静默失效。
+export const SKILLS_KEY = 'local:skills:index' as const;
 
 export const MAX_SKILLS = 100;
 export const MAX_CONTENT_LENGTH = 64 * 1024;
 export const MAX_DESCRIPTION_LENGTH = 300;
 
 export async function listSkills(): Promise<Skill[]> {
-  return (await storage.getItem<Skill[]>(KEY)) ?? [];
+  return (await storage.getItem<Skill[]>(SKILLS_KEY)) ?? [];
 }
 
 export async function getSkill(id: string): Promise<Skill | undefined> {
@@ -41,7 +42,7 @@ export async function saveSkill(skill: Skill): Promise<void> {
     throw new Error(`简述超过上限（${MAX_DESCRIPTION_LENGTH} 字符）`);
   }
   const next = exists ? all.map((s) => (s.id === skill.id ? skill : s)) : [...all, skill];
-  await storage.setItem(KEY, next);
+  await storage.setItem(SKILLS_KEY, next);
 }
 
 /** 幂等：不存在也成功。内置技能（builtin）拒删——只可停用。 */
@@ -49,24 +50,31 @@ export async function deleteSkill(id: string): Promise<void> {
   const all = await listSkills();
   const hit = all.find((s) => s.id === id);
   if (hit?.builtin) throw new Error('内置技能不可删除，如不需要可停用');
-  await storage.setItem(KEY, all.filter((s) => s.id !== id));
+  await storage.setItem(SKILLS_KEY, all.filter((s) => s.id !== id));
 }
 
 export async function setSkillEnabled(id: string, enabled: boolean): Promise<void> {
   const all = await listSkills();
   const next = all.map((s) => (s.id === id ? { ...s, enabled, updatedAt: Date.now() } : s));
-  await storage.setItem(KEY, next);
+  await storage.setItem(SKILLS_KEY, next);
 }
 
 export function toSkillSummary(s: Skill): SkillSummary {
   return {
     id: s.id, name: s.name, command: s.command,
-    description: s.description, enabled: s.enabled, builtin: s.builtin, updatedAt: s.updatedAt,
+    description: s.description, enabled: s.enabled, builtin: s.builtin, source: s.source, updatedAt: s.updatedAt,
   };
 }
 
-/** 新 skill 工厂：导入通道用。 */
-export function newSkill(fields: { name: string; command: string; description: string; content: string }): Skill {
+/** 新 skill 工厂：导入通道与 AI 写技能通道共用。
+ *  source 只在显式传入时落库——缺省不带该字段（等价于 'user'），内置技能也不打此标。 */
+export function newSkill(
+  fields: { name: string; command: string; description: string; content: string },
+  source?: SkillSource,
+): Skill {
   const now = Date.now();
-  return { id: nanoid(), enabled: true, createdAt: now, updatedAt: now, ...fields };
+  return {
+    id: nanoid(), enabled: true, ...(source ? { source } : {}),
+    createdAt: now, updatedAt: now, ...fields,
+  };
 }
