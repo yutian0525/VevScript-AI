@@ -69,6 +69,13 @@ describe('skill-pool 工具执行器', () => {
     expect((data(await doListSkills({ enabled: false })).skills as unknown[])).toHaveLength(1);
   });
 
+  it('list_skills：enabled 传 null（模型 JSON 透传）不过滤，不静默返回空列表', async () => {
+    await doCreateSkill({ source: mkMd('日报', 'daily-report', 'd1') });
+    const r = await doListSkills({ enabled: null as never });
+    expect(r.ok).toBe(true);
+    expect(data(r).skills as unknown[]).toHaveLength(1);
+  });
+
   it('get_skill：返回完整 .md 全文与两个字符数口径', async () => {
     const md = mkMd('日报', 'daily-report', 'd1');
     const created = await doCreateSkill({ source: md });
@@ -107,6 +114,31 @@ describe('skill-pool 工具执行器', () => {
     const r = await doUpdateSkill({ id, patch: { append: 'x', text: 'y' } });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain('只能传一个');
+  });
+
+  it('update_skill：缺 patch / patch 非对象 → 中文可操作文案，不抛裸英文 TypeError', async () => {
+    const id = data(await doCreateSkill({ source: mkMd('日报', 'daily-report', 'd1') })).id as string;
+    const missing = await doUpdateSkill({ id } as never);
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) expect(missing.error).toMatch(/需要 patch[\s\S]*append/);
+    const wrongType = await doUpdateSkill({ id, patch: 'x' as never });
+    expect(wrongType.ok).toBe(false);
+    if (!wrongType.ok) expect(wrongType.error).toMatch(/需要 patch/);
+  });
+
+  it('delete_skill：只删 AI 自建的技能——用户手写/导入的拒删，且拒绝后技能仍在库里', async () => {
+    // source 缺省（newSkill 不传 source 即不打标）= 用户导入
+    await saveSkill(newSkill({ name: '手写流程', command: 'hand-made', description: 'd', content: BODY }));
+    const handId = (await listSkills())[0]!.id;
+    const r = await doDeleteSkill({ id: handId });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/技能页/);
+    expect(await listSkills()).toHaveLength(1);
+    // 显式 source: 'user' 同理
+    await saveSkill({ ...newSkill({ name: '自建', command: 'mine', description: 'd', content: BODY }), source: 'user' });
+    const userId = (await listSkills()).find((s) => s.command === 'mine')!.id;
+    expect((await doDeleteSkill({ id: userId })).ok).toBe(false);
+    expect(await listSkills()).toHaveLength(2);
   });
 
   it('delete_skill：删除自建技能；builtin 拒删（storage 层兜底）', async () => {

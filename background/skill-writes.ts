@@ -25,7 +25,9 @@ export interface SkillWriteResult {
 }
 
 export interface SkillGetResult {
-  skill: Skill;
+  /** 技能元信息。刻意不含 content——正文的唯一出口是 text（content 是 text 的后缀，
+   *  两个都带等于同一次工具结果里重复一整份正文：64KB 的技能就是白烧 64KB 上下文）。 */
+  skill: Omit<Skill, 'content'>;
   /** 完整 .md（frontmatter + 正文），可直接整份复制改写后喂回 update_skill 的 patch.text */
   text: string;
   /** 正文字符数（不含 frontmatter），对应 storage 的 64KB 上限 */
@@ -85,8 +87,9 @@ export async function handleCreateSkill(input: {
 export async function handleGetSkill(id: string): Promise<SkillGetResult> {
   const skill = await getSkill(id);
   if (!skill) throw new Error(`技能不存在：${id}`);
+  const { content, ...meta } = skill;
   const text = toSkillMd(skill);
-  return { skill, text, contentChars: skill.content.length, totalChars: text.length };
+  return { skill: meta, text, contentChars: content.length, totalChars: text.length };
 }
 
 const TEXT_BRANCHES = ['text', 'append', 'replace'] as const;
@@ -96,6 +99,14 @@ const TEXT_BRANCHES = ['text', 'append', 'replace'] as const;
 export async function handleUpdateSkill(id: string, patch: SkillPatch): Promise<SkillWriteResult> {
   const existing = await getSkill(id);
   if (!existing) throw new Error(`技能不存在：${id}`);
+
+  // 类型守卫：字符串 'false' 是真值，原样落库会让技能实际仍启用，而模型以为已禁用（as boolean
+  // 断言又把它对类型检查器藏了起来）。读写两侧都靠这一道拦——下面两处直接消费 patch.enabled。
+  if (patch.enabled != null && typeof patch.enabled !== 'boolean') {
+    throw new Error(
+      `patch.enabled 必须是布尔值，收到 ${JSON.stringify(patch.enabled)}（禁用传 false，启用传 true）`,
+    );
+  }
 
   // != null 而非 !== undefined：挡掉模型 JSON 透传的 null 分支（如 { append: null }）
   const branches = TEXT_BRANCHES.filter((k) => patch[k] != null);
@@ -126,10 +137,14 @@ export async function handleUpdateSkill(id: string, patch: SkillPatch): Promise<
         );
         break;
       case 'text':
-        if (!patch.text!.trim()) {
+        // 类型守卫先行：非字符串会在 .trim() 上抛裸英文 TypeError（'...trim is not a function'）
+        if (typeof patch.text !== 'string') {
+          throw new Error('patch.text 必须是字符串：完整的技能 .md 文本（--- frontmatter --- + 正文）');
+        }
+        if (!patch.text.trim()) {
           throw new Error('text 必填：完整的技能 .md 文本（--- frontmatter --- + 正文）');
         }
-        md = patch.text!;
+        md = patch.text;
         break;
       default:
         // TEXT_BRANCHES 已穷举三支，走到这里说明类型层被绕过——无穷举保护

@@ -36,7 +36,8 @@ describe('background/skill-writes', () => {
     const got = await handleGetSkill(skill.id);
     expect(got.text.startsWith('---\nname: 日报\n')).toBe(true);
     expect(got.text.endsWith('再检查一遍。')).toBe(true);
-    expect(got.skill.content.endsWith('再检查一遍。')).toBe(true);
+    // 正文只从 text 出：skill 上不再挂一份 content（同一份正文发两遍 = 白烧上下文）
+    expect('content' in got.skill).toBe(false);
     expect(got.skill.command).toBe('daily-report');
   });
 
@@ -68,6 +69,24 @@ describe('background/skill-writes', () => {
     await expect(handleUpdateSkill(skill.id, { append: 'x', enabled: true })).resolves.toBeTruthy();
     await expect(handleUpdateSkill(skill.id, { append: 'x', text: 'y' })).rejects.toThrow('只能传一个');
     await expect(handleUpdateSkill(skill.id, {})).rejects.toThrow('至少包含');
+  });
+
+  it('patch.text 非字符串 → 中文可操作文案，不抛裸 TypeError', async () => {
+    const { skill } = await handleCreateSkill({ md: mkMd('日报', 'daily-report', 'd') });
+    await expect(handleUpdateSkill(skill.id, { text: 123 as never }))
+      .rejects.toThrow(/patch.text 必须是字符串/);
+  });
+
+  it('patch.enabled 非布尔 → 拒绝且不落库（字符串 "false" 是真值，落库会让技能实际仍启用）', async () => {
+    const { skill } = await handleCreateSkill({ md: mkMd('日报', 'daily-report', 'd') });
+    await expect(handleUpdateSkill(skill.id, { enabled: 'false' as never }))
+      .rejects.toThrow(/patch.enabled 必须是布尔值/);
+    // 文本分支同传非布尔：读写两侧走同一道守卫
+    await expect(handleUpdateSkill(skill.id, { append: 'x', enabled: 0 as never }))
+      .rejects.toThrow(/patch.enabled 必须是布尔值/);
+    const after = (await listSkills())[0]!;
+    expect(after.enabled).toBe(true);
+    expect(after.content).not.toContain('x');
   });
 
   it('replace 未命中 → 文案指向 get_skill', async () => {
@@ -109,7 +128,7 @@ describe('background/skill-writes', () => {
     const md = '---\nname: 日报\ndescription: d\ncommand: daily-report\n---\n没有尾换行的正文';
     const { skill } = await handleCreateSkill({ md });
     await handleUpdateSkill(skill.id, { append: '追加段。' });
-    expect((await handleGetSkill(skill.id)).skill.content).toBe('没有尾换行的正文\n追加段。');
+    expect((await handleGetSkill(skill.id)).text.endsWith('没有尾换行的正文\n追加段。')).toBe(true);
   });
 
   it('RF-边界 frontmatter 无任何键 → 报错（name/command 都派生不出来）', async () => {
