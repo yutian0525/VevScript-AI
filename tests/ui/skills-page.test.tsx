@@ -63,4 +63,21 @@ describe('SkillsPage 内置技能保护', () => {
     // 详情页本来就没有删除钮，但确保没引入
     expect(screen.queryByRole('button', { name: /删除/ })).toBeNull();
   });
+
+  it('AI 创建的技能：显示「AI 创建」徽标；用户导入的不显示', async () => {
+    mockList([
+      mkSummary({ id: 'sk1', name: '日报', command: 'daily-report', source: 'agent' }),
+      mkSummary({ id: 'sk2', name: '翻译', command: 'translate' }),
+    ]);
+    useSkills.setState({
+      list: [
+        mkSummary({ id: 'sk1', name: '日报', command: 'daily-report', source: 'agent' }),
+        mkSummary({ id: 'sk2', name: '翻译', command: 'translate' }),
+      ],
+    });
+    render(<SkillsPage onBack={() => {}} />);
+    await screen.findByText('日报');
+    expect(screen.getByText('AI 创建')).toBeTruthy();
+    expect(screen.getAllByText('AI 创建')).toHaveLength(1); // 只有 agent 那条
+  });
 });

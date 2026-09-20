@@ -1,12 +1,15 @@
 // components/skills/SkillsPage.tsx
-// 技能管理二级页（spec §4）：列表（搜索/导入/导出/启停/删除）↔ 详情（仅查看）。无新建无编辑。
+// 技能管理二级页（spec §4）：列表（搜索/导入/导出/启停/删除）↔ 详情（仅查看）。无新建无编辑；
+// 来源徽标区分内置 / AI 创建 / 用户导入。
 import { useEffect, useRef, useState } from 'react';
 import { Download, Search, Trash2, Upload } from 'lucide-react';
+import { storage } from 'wxt/utils/storage';
 import { PageShell } from '../ui/PageShell';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Tooltip } from '../ui/Tooltip';
 import { useSkills, sendSkillsRequest } from '../../stores/skills';
+import { SKILLS_KEY } from '../../storage/skills';
 import type { Skill, SkillSummary } from '../../shared/types';
 
 /** 列表搜索（含停用全量）：name/command/description 子串，大小写不敏感 */
@@ -42,7 +45,12 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [detail, setDetail] = useState<Skill | null>(null);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    void refresh();
+    // AI 在对话中写技能时，正开着这一页也能看到列表刷新（对齐 MemoryPage 的做法）
+    const unwatch = storage.watch<Skill[]>(SKILLS_KEY, () => { void refresh(); });
+    return () => unwatch();
+  }, [refresh]);
 
   // 详情：SkillSummary 无 content，命中详情时单独拉全量
   useEffect(() => {
@@ -169,6 +177,11 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
             <div className="skills-detail__head">
               <span className="mono slash-chip">/{detail.command}</span>
               {detail.builtin && <span className="token">内置</span>}
+              {detail.source === 'agent' && (
+                <Tooltip label="由 AI 在对话中创建，可编辑或删除">
+                  <span className="token">AI 创建</span>
+                </Tooltip>
+              )}
               <button
                 type="button"
                 role="switch"
@@ -283,6 +296,11 @@ export function SkillsPage({ onBack }: { onBack: () => void }) {
               {s.builtin && (
                 <Tooltip label="内置技能：不可删除，可停用">
                   <span className="token">内置</span>
+                </Tooltip>
+              )}
+              {s.source === 'agent' && (
+                <Tooltip label="由 AI 在对话中创建，可编辑或删除">
+                  <span className="token">AI 创建</span>
                 </Tooltip>
               )}
               {!s.builtin && (
