@@ -168,6 +168,19 @@ export interface ScriptPatch {
   replace?: { old: string; new: string; all?: boolean };
 }
 
+/** 技能补丁（spec §4）：与 ScriptPatch 同构，但少一支——技能正文短，不需要 edit 行区间替换，
+ *  且 get_skill 不加行号前缀，没有行号可依。text/append/replace 三支互斥，enabled 独立。 */
+export interface SkillPatch {
+  /** 整文替换：完整的技能 .md（--- frontmatter --- + 正文），替换后整体重解析 */
+  text?: string;
+  /** 追加到全文末尾（= 正文末尾，frontmatter 在开头）。分步写技能的主力原语 */
+  append?: string;
+  /** 字面量精确替换（不依赖行号）。old 需唯一，否则报错列出命中行号 */
+  replace?: { old: string; new: string; all?: boolean };
+  /** 启停（独立，可与文本分支并存） */
+  enabled?: boolean;
+}
+
 /** SCRIPTS_GET 响应 data 形状：传 offset/limit 时 script.text 为行切片（修订 2026-09-02） */
 export interface ScriptGetData {
   script: UserScript;
