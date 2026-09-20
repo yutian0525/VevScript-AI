@@ -151,6 +151,14 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     expect(next.text).toBe(mkText('f();\nh();\nf();'));
   });
 
+  it('handleUpdate：replace 未命中 → 错误文案指向 get_script（真实调用点，非单测常量）', async () => {
+    installFakeUserScripts();
+    const { script } = await handleCreate({ text: mkText('f();') });
+    await expect(handleUpdate(script.id, { replace: { old: '不存在的片段', new: 'x' } }))
+      .rejects.toThrow(/get_script/);
+    expect((await getScript(script.id))!.text).toBe(mkText('f();'));
+  });
+
   it('handleUpdate：文本分支互斥 —— 同传两支报错，列出分支名', async () => {
     installFakeUserScripts();
     const { script } = await handleCreate({ text: mkText('f();') });
