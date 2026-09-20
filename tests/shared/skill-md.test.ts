@@ -199,8 +199,8 @@ describe('serializeSkillMd / serializeSkillsMd / parseSkillMdDocument', () => {
 describe('内置技能资源 builtin.md', () => {
   const docs = parseSkillMdDocument(builtinMd);
 
-  it('三篇文档全部解析成功，无坏文档', () => {
-    expect(docs).toHaveLength(3);
+  it('四篇文档全部解析成功，无坏文档', () => {
+    expect(docs).toHaveLength(4);
     expect(docs.every((d) => d.ok)).toBe(true);
   });
 
