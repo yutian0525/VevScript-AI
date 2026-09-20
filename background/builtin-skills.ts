@@ -1,5 +1,5 @@
 // background/builtin-skills.ts
-// 内置技能投放（onInstalled：安装 + 更新都触发）。三个内置技能以多文档 .md 随扩展打包
+// 内置技能投放（onInstalled：安装 + 更新都触发）。四个内置技能以多文档 .md 随扩展打包
 // （public/skills/builtin.md → 运行时 skills/builtin.md），经 parseSkillMdDocument 解析后
 // 逐条按 command 合入技能池：已存在同 command（含用户从 .md 导入的同名技能）覆盖更新并打
 // builtin 标记（保留用户 id/enabled——升级不重置启停状态）；不存在则新建。builtin 技能
