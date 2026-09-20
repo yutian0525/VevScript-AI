@@ -36,6 +36,27 @@ describe('buildSkillsPrompt / buildContext(skills)', () => {
     expect(buildSkillsPrompt([])).toBe('');
   });
 
+  it('ask 模式 → 清单照旧，但收走自写技能引导（那三个工具在 ask 里既不下发也被硬拒）', () => {
+    const s = buildSkillsPrompt([{ name: '网页翻译', command: 'translate', description: 'd' }], 'ask');
+    expect(s).toContain('/translate');
+    expect(s).toContain('load_skill'); // 读技能在 ask 合法，仍要教模型用
+    for (const t of ['create_skill', 'update_skill', 'delete_skill', '/write-skill']) {
+      expect(s).not.toContain(t);
+    }
+    expect(buildSkillsPrompt([], 'ask')).toBe('');
+  });
+
+  it('buildContext(mode: ask) → system prompt 不宣传写技能工具', () => {
+    const msgs = buildContext(
+      [{ role: 'user', content: 'hi' }],
+      { url: '', title: '' },
+      { skills: [{ name: 'N', command: 'c', description: 'd' }], mode: 'ask' },
+    );
+    const sys = msgs[0]!.content as string;
+    expect(sys).toContain('/c');
+    expect(sys).not.toContain('create_skill');
+  });
+
   it('buildContext 带 skills → 追加到 system prompt 末尾（页面信息仍在）', () => {
     const msgs = buildContext(
       [{ role: 'user', content: 'hi' }],
