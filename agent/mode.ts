@@ -17,6 +17,8 @@ export const ASK_MODE_TOOLS = new Set([
   'get_script',
   'grep_script',      // 脚本检索（纯读）
   'load_skill',
+  'list_skills',   // 技能读（纯 storage）
+  'get_skill',      // 技能读原文
   // 记忆三工具：ask 的语义是「不改网页/浏览器状态」，记忆只改扩展自己的本地笔记；
   // 且「以后都这样」这类交代大多发生在问答里，收走写权限会很别扭（spec §3.4）。
   'memory_list',

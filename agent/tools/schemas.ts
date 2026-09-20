@@ -1,5 +1,5 @@
 // agent/tools/schemas.ts
-// 31 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个 + 记忆的 3 个 + 页面感知的 1 个（query_page）。描述对齐 chrome-devtools-mcp。
+// 36 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个 + 记忆的 3 个 + 页面感知的 1 个（query_page）+ 技能池的 5 个。描述对齐 chrome-devtools-mcp。
 import type { ToolSchema } from '../provider/types';
 
 // 显式声明返回 Record<string, unknown>，避免 type:'object' 字面量收窄导致的赋值报错。
@@ -446,6 +446,84 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
         { command: { type: 'string', description: '技能的斜杠命令名（不含 /），来自系统提示中的可用技能清单' } },
         ['command'],
       ),
+    },
+  },
+  // ---- 技能池（spec §4）：AI 自己写技能。.md 全文为源，头部即配置——与脚本池同构 ----
+  {
+    type: 'function',
+    function: {
+      name: 'list_skills',
+      description:
+        '列出技能库中的技能摘要（不含正文）。写技能之前先调用它查重——已有同 command 或功能相近的技能时，先问用户「改写它还是另建一个」，不要默默建重叠的。contentChars 是正文字符数：超过 8000 说明改写要分步。',
+      parameters: obj({
+        enabled: { type: 'boolean', description: '按启用状态过滤' },
+      }),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_skill',
+      description:
+        '读取单个技能的完整 .md 原文（--- frontmatter --- 三键 + Markdown 指令正文）。改写技能前先读它——update_skill 的 patch.replace 需要原文里的字面量，凭空写会写不准。返回的 text 是完整 .md，可直接整份复制、改好再喂回 update_skill 的 patch.text。id 来自 list_skills。',
+      parameters: obj({ id: { type: 'string', description: '技能 id（来自 list_skills）' } }, ['id']),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_skill',
+      description:
+        '创建一个技能：一段用 /命令 触发、由 AI 在后续对话里遵循的指令正文。写之前先向用户说明技能会做什么、什么时候触发，等用户点头再动手；先 list_skills 查重。source 是完整的 .md：frontmatter 三键 name（中文名）/ description（**什么时候该触发**，不是「它是什么」——这是日后唯一能触发它的依据，必填）/ command（kebab-case，小写字母数字连字符，全库唯一），其后是 Markdown 正文。source 有长度上限（200 行 / 8192 字符）：超限会被拒绝。写长技能请分步——本次只交 frontmatter + 正文开头，再用 update_skill 的 patch.append 按小节逐段追加。command 撞车会被拒绝（不静默覆盖），用 get_skill 读原文后 update_skill 改写，或换个 command。',
+      parameters: obj(
+        {
+          source: { type: 'string', description: '完整技能 .md 文本（--- frontmatter --- + Markdown 正文）' },
+          enabled: { type: 'boolean', description: '创建后是否立即启用，默认 true' },
+        },
+        ['source'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_skill',
+      description:
+        '改写已有技能。patch 至少一项，三个文本分支互斥（一次只能传一支）：append 追加到全文末尾（= 正文末尾，分步写技能的主力，不需要原文）；replace 按字面量精确替换 {old,new,all?}（不依赖行号，old 必须在原文中唯一，命中多处会报错并列出行号——先用 get_skill 确认原文）；text 整文替换（完整 .md，重新解析 frontmatter）；enabled 启停（独立，可与文本分支并存）。改 name/description/command 就是改 frontmatter——没有独立字段可改，用 replace 或 text。返回 contentChars/totalChars：正文过短会带 warning 提示可能还没写完（技能正文是自然语言，没有语法可校验，靠体量自己判断收尾）。',
+      parameters: obj(
+        {
+          id: { type: 'string', description: '技能 id（来自 list_skills）' },
+          patch: {
+            type: 'object',
+            description: '至少包含 text / append / replace / enabled 之一；三个文本分支互斥',
+            properties: {
+              text: { type: 'string', description: '整文替换：完整的技能 .md（--- frontmatter --- + 正文）' },
+              append: { type: 'string', description: '追加到全文末尾（= 正文末尾，不需要原文）；分步写技能的主力' },
+              replace: {
+                type: 'object',
+                description: '字面量精确替换（不依赖行号）；old 需在原文中唯一',
+                properties: {
+                  old: { type: 'string', description: '要被替换的原文片段（字面量，非正则）' },
+                  new: { type: 'string', description: '替换为' },
+                  all: { type: 'boolean', description: 'old 命中多处时全部替换（默认 false，多处则报错）' },
+                },
+                required: ['old', 'new'],
+              },
+              enabled: { type: 'boolean', description: '启停' },
+            },
+          },
+        },
+        ['id', 'patch'],
+      ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_skill',
+      description:
+        '删除技能（不可恢复）。删除前先跟用户确认——这是一次性、不可撤销的操作。内置技能（builtin）不可删除，会报错，如不需要可停用。',
+      parameters: obj({ id: { type: 'string', description: '技能 id（来自 list_skills）' } }, ['id']),
     },
   },
   // ---- Memory（跨会话长期记忆，spec §3.4）----
