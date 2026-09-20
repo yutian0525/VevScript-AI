@@ -22,6 +22,20 @@ describe('buildSkillsPrompt / buildContext(skills)', () => {
     expect(s).toContain('load_skill');
   });
 
+  it('非空 → 清单后追加自写技能的能力引导（先提议、等点头、按 /write-skill 流程）', () => {
+    const s = buildSkillsPrompt([{ name: '网页翻译', command: 'translate', description: '把当前页翻译成中文' }]);
+    for (const t of ['list_skills', 'get_skill', 'create_skill', 'update_skill', 'delete_skill']) {
+      expect(s).toContain(t);
+    }
+    expect(s).toContain('/write-skill');
+    expect(s).toContain('等用户点头再写');
+    expect(s).toContain('一次性的任务不要写');
+  });
+
+  it('空数组 → 空串：引导语随清单一起消失（全停用 = 用户主动关掉技能系统）', () => {
+    expect(buildSkillsPrompt([])).toBe('');
+  });
+
   it('buildContext 带 skills → 追加到 system prompt 末尾（页面信息仍在）', () => {
     const msgs = buildContext(
       [{ role: 'user', content: 'hi' }],
