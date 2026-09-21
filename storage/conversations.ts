@@ -4,6 +4,7 @@ import { storage } from 'wxt/utils/storage';
 import { nanoid } from 'nanoid';
 import type { ChatMessage } from '../agent/provider/types';
 import type { AgentMode } from '../agent/mode';
+import { clearTraces } from './traces';
 
 export type ConversationStatus = 'idle' | 'running' | 'paused';
 
@@ -105,6 +106,7 @@ export async function renameConversation(id: string, title: string): Promise<voi
 
 export async function deleteConversation(id: string): Promise<void> {
   await storage.removeItem(key(id));
+  await clearTraces(id);
   const index = await readIndex();
   await writeIndex(index.filter((m) => m.id !== id));
 }
