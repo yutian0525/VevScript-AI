@@ -1,7 +1,8 @@
 // shared/messages.ts
 // 三环境（background / content script / sidepanel）共享的消息协议。
 // 设计决策：request/response 模式 + correlation id（设计 §4.4）；
-// 例外：cs→bg 的 fire-and-forget 通知（见 HookConsoleNotification / HookNetworkNotification）。
+// 例外：cs→bg 的 fire-and-forget 通知（见 HookConsoleNotification / HookNetworkNotification）
+// 与 bg→面板的深度观测状态广播（DeepObserveStateNotification，类型在 shared/cdp.ts）。
 
 import type { ChatAttachment, Locator, ScriptSource, ScriptSummary, ScriptUpdateState, ToolResult, Uid, UserScript } from './types';
 import type { ConsoleEntry, HookNetEntry } from './hook-bridge';
@@ -292,3 +293,7 @@ export interface ScriptsListData {
   /** chrome.userScripts 可用性（false → UI 顶部警示条） */
   engineAvailable: boolean;
 }
+
+// ---------- 深度观测（CDP）（sidepanel → bg request/response，走 MessageRouter）----------
+// 类型定义在 shared/cdp.ts（agent 工具与 SW 也消费），此处 re-export 保持消息协议单一入口。
+export type { DeepObserveState, DeepObserveStateNotification, DeepObserveRequest } from './cdp';

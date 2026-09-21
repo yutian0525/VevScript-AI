@@ -20,6 +20,7 @@ import { seedBuiltinSkills } from '../background/builtin-skills';
 import { maybeRunStartupUpdateCheck } from '../background/scripts-update';
 import { initConfirmQueue } from '../background/confirm-queue';
 import { syncHookRegistration, initHookRegistration } from '../background/hook-registration';
+import { initCdp, attachCdpListeners } from '../background/cdp/init';
 
 export default defineBackground(() => {
   const router = new MessageRouter();
@@ -92,6 +93,10 @@ export default defineBackground(() => {
 
   attachAgentPort();
   attachObservers();
+
+  // 深度观测（CDP）：事件监听与消息 handler 必须在 SW 顶层同步注册。
+  attachCdpListeners();
+  initCdp(router);
 
   // hook 动态注册对齐（registration:'runtime' 的启动自愈，同 syncRegistrations 时序）。
   // 失败静默：SW 下次冷启动再试；注册 API 缺失（极旧 Chrome）也不阻断其余初始化。

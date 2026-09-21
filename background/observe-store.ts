@@ -60,7 +60,10 @@ function ring<T>(arr: T[]): void {
 }
 
 /** 测试用：清空全部缓冲。 */
-export function resetStore(): void { tabs.clear(); }
+export function resetStore(): void {
+  tabs.clear();
+  networkSuppressed = () => false; // 抑制器一并复位，防前一用例挂上的状态串到后续用例
+}
 
 // ---------- console ----------
 export function ingestConsole(tabId: number, entries: ConsoleEntry[]): void {
