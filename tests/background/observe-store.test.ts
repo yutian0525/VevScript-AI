@@ -120,6 +120,16 @@ describe('network 缓冲：CDP 数据源', () => {
     expect(getCdpEntry(1, 'w2')!.wsFrames![0]!.payload).toHaveLength(4096);
   });
 
+  it('重定向链复用 requestId：就地更新为最新一跳，只留一条条目', () => {
+    // 无条件 push 会留下两条条目，而 findCdp 只命中首条——最终 hop 的 status/headers/body
+    // 全记到首跳 URL 上，模型关心的那个 URL 永远是空白。
+    ingestCdpStart(1, { requestId: 'rd', method: 'GET', url: 'https://x.com/a', type: 'Document', ts: 1 });
+    ingestCdpStart(1, { requestId: 'rd', method: 'GET', url: 'https://x.com/b', type: 'Document', ts: 2 });
+    const list = readNetworkList(1, {});
+    expect(list).toHaveLength(1);
+    expect(list[0]!.url).toBe('https://x.com/b');
+  });
+
   it('clearTab 一并清掉该 tab 暂存的 ExtraInfo 头（不跨 tab 生命期残留）', () => {
     ingestCdpExtraHeaders(1, 'p1', { requestHeaders: { cookie: 'stale=1' } });
     clearTab(1);
