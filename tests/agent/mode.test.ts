@@ -48,9 +48,9 @@ describe('ASK_MODE_TOOLS 白名单', () => {
 });
 
 describe('filterSchemasForMode / getToolSchemas', () => {
-  it('agent 模式返回全量 36 个（schemas.ts 当前 36 工具）', () => {
-    expect(getToolSchemas('agent')).toHaveLength(36);
-    expect(getToolSchemas()).toHaveLength(36); // 缺省 = agent
+  it('agent 模式返回全量 38 个（schemas.ts 当前 38 工具）', () => {
+    expect(getToolSchemas('agent')).toHaveLength(38);
+    expect(getToolSchemas()).toHaveLength(38); // 缺省 = agent
   });
 
   it('ask 模式只返回白名单内的 schema', () => {
@@ -132,11 +132,11 @@ describe('记忆 cap 过滤与守卫', () => {
     expect(names).not.toContain('memory_write');
     expect(names).not.toContain('memory_delete');
     expect(names).toContain('take_snapshot');
-    expect(names).toHaveLength(33); // 36 全量 − 3 个记忆工具
+    expect(names).toHaveLength(35); // 38 全量 − 3 个记忆工具
   });
 
   it('缺省 cap = full（调试台等既有调用点不受影响）', () => {
-    expect(getToolSchemas('agent')).toHaveLength(36);
+    expect(getToolSchemas('agent')).toHaveLength(38);
   });
 
   it('cap 与 mode 二维叠加：ask + read', () => {

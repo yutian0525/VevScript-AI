@@ -11,9 +11,10 @@ export const TOOL_TAGS: Record<string, ToolTag> = {
   take_screenshot: 'PAGE', evaluate_script: 'PAGE',
   // TABS(5)：标签页管理与导航
   navigate_page: 'TABS', list_pages: 'TABS', new_page: 'TABS', close_page: 'TABS', select_page: 'TABS',
-  // NET(4)：后台 fetch / console / 网络元数据
+  // NET(6)：后台 fetch / console / 网络元数据 / CDP 深度观测开关
   http_request: 'NET', list_console_messages: 'NET',
   list_network_requests: 'NET', get_network_request: 'NET',
+  enable_deep_observe: 'NET', disable_deep_observe: 'NET',
   // SCRIPTS(7)：userScripts CRUD 与启停 + 检索
   list_scripts: 'SCRIPTS', get_script: 'SCRIPTS', grep_script: 'SCRIPTS', create_script: 'SCRIPTS',
   update_script: 'SCRIPTS', delete_script: 'SCRIPTS', toggle_script: 'SCRIPTS',

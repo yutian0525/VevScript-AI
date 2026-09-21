@@ -13,6 +13,8 @@ export const ASK_MODE_TOOLS = new Set([
   'list_console_messages',
   'list_network_requests',
   'get_network_request',
+  'enable_deep_observe',   // 深度观测开关：ask 的诊断主场，只读观测工具依赖它（spec §4.3）
+  'disable_deep_observe',
   'list_scripts',
   'get_script',
   'grep_script',      // 脚本检索（纯读）

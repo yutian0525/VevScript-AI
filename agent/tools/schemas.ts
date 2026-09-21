@@ -1,5 +1,5 @@
 // agent/tools/schemas.ts
-// 36 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个 + 记忆的 3 个 + 页面感知的 1 个（query_page）+ 技能池的 5 个。描述对齐 chrome-devtools-mcp。
+// 38 个工具的 OpenAI function calling schema：Phase 2 的 9 个 + Phase 3a 的 7 个（tabs/screenshot/evaluate/http_request）+ Phase 3b 的 3 个（console/network 观测）+ 深度观测开关的 2 个（CDP）+ Phase 4 的 6 个（脚本池）+ Skill 的 1 个 + 脚本检索的 1 个 + 记忆的 3 个 + 页面感知的 1 个（query_page）+ 技能池的 5 个。描述对齐 chrome-devtools-mcp。
 import type { ToolSchema } from '../provider/types';
 
 // 显式声明返回 Record<string, unknown>，避免 type:'object' 字面量收窄导致的赋值报错。
@@ -304,6 +304,24 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
       parameters: obj({
         requestId: { type: 'string', description: '来自 list_network_requests 的 requestId' },
       }, ['requestId']),
+    },
+  },
+  // ---- 深度观测（CDP）开关（设计 §4.1）：无参数，作用于当前操作目标页 ----
+  {
+    type: 'function',
+    function: {
+      name: 'enable_deep_observe',
+      description:
+        '为当前操作目标页面开启「深度观测」（CDP/chrome.debugger 附着）。开启后能拿到完整网络观测（全量响应体、含浏览器自动头的完整请求/响应头、WebSocket 帧、跨域 iframe 与 Web Worker 内的请求）与完整控制台（带调用堆栈、CSP 违规等浏览器级条目）。代价：页面顶部会出现 Chrome 的「正在调试此浏览器」提示条（用户可点取消关闭），且附着期间用户无法为该页打开 DevTools——若用户已打开 DevTools 会附着失败。默认关闭。当 list_console_messages 返回空或 get_network_request 提示缺 body/headers 时，可调用本工具。',
+      parameters: obj({}),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'disable_deep_observe',
+      description: '关闭当前操作目标页面的「深度观测」，解除 CDP 附着（页面顶部的调试提示条随之消失，用户可重新打开 DevTools）。关闭后网络观测退回只有元数据（无响应体与请求头）、控制台观测不可用。未开启时调用是幂等的。',
+      parameters: obj({}),
     },
   },
   // ---- Phase 4：脚本池（19→25 见 schemas.test 注释；与 UI 共用 background/scripts 编排层）----
