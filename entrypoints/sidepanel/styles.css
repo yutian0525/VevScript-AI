@@ -1594,3 +1594,44 @@ body {
 }
 .convdebug__empty { color: var(--ink-3); font-size: 13px; padding: 24px 8px; }
 .convdebug-bad { color: var(--err); }
+
+/* 轮次时间线 */
+.convdebug-timeline { display: flex; flex-direction: column; gap: 6px; }
+.convdebug-turn {
+  background: var(--surface); border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong); border-radius: var(--r-md);
+}
+.convdebug-turn--continue { border-left-color: var(--line-strong); }
+.convdebug-turn--done { border-left-color: var(--ink-3); }
+.convdebug-turn--paused, .convdebug-turn--error { border-left-color: var(--err); }
+.convdebug-turn--aborted { border-left-color: var(--ink-3); opacity: 0.75; }
+.convdebug-turn--truncated-retry { border-left-color: var(--warn); }
+
+.convdebug-turn__head {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 8px 12px; background: transparent; border: 0; font: inherit;
+  color: var(--ink); cursor: pointer; text-align: left;
+}
+.convdebug-turn__head:hover { background: var(--sunken); }
+.convdebug-turn__chev { color: var(--ink-3); transition: transform var(--t-fast) var(--ease); }
+.convdebug-turn__chev--open { transform: rotate(90deg); }
+.convdebug-turn__no { font-weight: 600; }
+.convdebug-turn__stat, .convdebug-turn__outcome { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+.convdebug-turn__outcome { margin-left: auto; color: var(--ink-3); }
+
+.convdebug-turn__body { padding: 4px 12px 12px; border-top: 1px solid var(--line); }
+
+.convdebug-grid { display: grid; grid-template-columns: 72px 1fr; gap: 4px 12px; margin: 10px 0; font-size: 12px; }
+.convdebug-grid dt { color: var(--ink-3); }
+.convdebug-grid dd { margin: 0; font-family: var(--mono); color: var(--ink-2); word-break: break-all; }
+
+.convdebug-tools { width: 100%; border-collapse: collapse; font-size: 12px; }
+.convdebug-tools th {
+  text-align: left; color: var(--ink-3); font-weight: 400;
+  padding: 4px 8px; border-bottom: 1px solid var(--line);
+}
+.convdebug-tools td { padding: 4px 8px; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .convdebug-turn__chev { transition: none; }
+}
