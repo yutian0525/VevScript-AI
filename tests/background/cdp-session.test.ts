@@ -118,6 +118,21 @@ describe('cdp session', () => {
     expect(enableCalls).toEqual([7]);
   });
 
+  it('reconcile：attached 但域启用失败（DevTools 占用）→ error 态，不落 on', async () => {
+    // getTargets 的 attached 对任何调试器客户端都为真（DevTools 前端也算），
+    // 启用域才是「我们是否真的附着着」的确定性探针。
+    initCdpSession({
+      enableDomains: async () => { throw new Error('Debugger is not attached to the tab with id: 11'); },
+      onStateChange: (s) => { stateCalls.push({ tabId: s.tabId, status: s.status }); },
+    });
+    targets = [{ type: 'page', tabId: 11, attached: true }];
+    await reconcile();
+    expect(getState(11).status).toBe('error');
+    expect(getState(11).reason).toBe('调试会话已失效，请重新开启');
+    expect(stateCalls.at(-1)).toEqual({ tabId: 11, status: 'error' });
+    expect(isAttached(11)).toBe(false);
+  });
+
   it('reconcile：内存有记录而浏览器侧未附着 → 清僵尸态', async () => {
     await attach(8);
     targets = [];

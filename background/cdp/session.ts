@@ -137,7 +137,19 @@ export async function reconcile(): Promise<void> {
     // 子 session 映射无从恢复：重新 setAutoAttach 会让子 target 以新 sessionId 重新报到，
     // 旧映射的残留不影响正确性。
     records.set(tabId, { status: 'on', sessions: new Set() });
-    try { await enableDomains?.(tabId); } catch { /* 同上：不脱离 */ }
+    try {
+      await enableDomains?.(tabId);
+    } catch {
+      // getTargets 的 attached 对**任何**调试器客户端都为真（含 DevTools 前端），单看它
+      // 无法区分「我们附着着」与「别人附着着」——这正是 §5.1 要防的「以为附着着、实际已断」。
+      // 启用域是确定性探针：失败即按僵尸态处理（forget + error + 广播），否则会广播出一个
+      // 假的 on 态——抑制器据此掐掉 webRequest 主干，该页将彻底失去网络观测，
+      // 而观测工具还会给模型 deepObserve:true 的空数据。
+      // 注意：attach 路径（用户主动开启）仍保持「部分域可用优于完全不可用」的吞错语义，
+      // 那里附着是我们刚建立的，不存在误判空间。
+      markZombie(tabId);
+      continue; // markZombie 已含 emit
+    }
     emit(tabId);
   }
 }
