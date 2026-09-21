@@ -10,6 +10,8 @@ import { modePrompt, type AgentMode } from './mode';
 import { memoryStateToCap, type MemoryState } from './memory-prompt';
 import { initGuardState, recordTurn, checkGuards, DEFAULT_GUARD_CONFIG, type GuardState } from './loop-guards';
 import { getConversation, appendMessage, setStatus, setLastPromptTokens, setMode } from '../storage/conversations';
+import { readTraces } from '../storage/traces';
+import { createTurnRecorder } from './trace';
 import { meterRatio, COMPACT_THRESHOLD } from './context-meter';
 import { composeUserContent, SCREENSHOT_SENTINEL } from './user-message';
 import type { ChatAttachment } from '../shared/types';
@@ -75,144 +77,217 @@ async function drive(
   let lastPromptTokens: number | undefined;
 
   for (;;) {
-    if (signal.aborted) return void (await finishAborted(convId, deps));
+    // 轮次序号从 storage 读（而非 loop 内自增）：SW 被杀重启后计数不重置
+    const { seq } = await readTraces(convId);
+    const tr = createTurnRecorder({ convId, turn: seq + 1, tabId: targetTab });
+    // try/finally 是刻意的：轮体内有 1 处 continue（截断重试）+ 8 处 return，
+    // finally 在 continue 前同样执行，一处收口覆盖全部 9 处出口。
+    try {
+      if (signal.aborted) {
+        tr.rec.outcome = 'aborted';
+        return void (await finishAborted(convId, deps));
+      }
 
-    // 自动压缩：上一轮 usage 达阈值 → 进下一轮前先摘要一次（不打断已完成的工具链）
-    if (deps.compact && deps.getContextWindow && lastPromptTokens != null) {
-      const windowSize = await deps.getContextWindow();
-      if (meterRatio(lastPromptTokens, windowSize) >= COMPACT_THRESHOLD) {
-        deps.emit({ type: 'compact-start' });
-        const r = await deps.compact(convId).catch(() => ({ ok: false as const }));
-        if (r.ok && r.newPromptTokens != null) {
-          lastPromptTokens = r.newPromptTokens;
-          await setLastPromptTokens(convId, r.newPromptTokens);
-          deps.emit({ type: 'usage', promptTokens: r.newPromptTokens });
-        } else {
-          // 压缩无法再缩减（无新内容可摘）：清空 lastPromptTokens，避免每轮反复空触发
-          // compact-start/done（UI 闪烁 + 浪费调用）；等下一轮 runTurn 的真实 usage 再判定。
-          lastPromptTokens = undefined;
+      // 自动压缩：上一轮 usage 达阈值 → 进下一轮前先摘要一次（不打断已完成的工具链）
+      if (deps.compact && deps.getContextWindow && lastPromptTokens != null) {
+        const windowSize = await deps.getContextWindow();
+        if (meterRatio(lastPromptTokens, windowSize) >= COMPACT_THRESHOLD) {
+          deps.emit({ type: 'compact-start' });
+          const compactAt = Date.now();
+          const r = await deps.compact(convId).catch(() => ({ ok: false as const }));
+          tr.markCompact({
+            ms: Date.now() - compactAt,
+            ok: r.ok,
+            ...(r.ok && r.newPromptTokens != null ? { newPromptTokens: r.newPromptTokens } : {}),
+          });
+          if (r.ok && r.newPromptTokens != null) {
+            lastPromptTokens = r.newPromptTokens;
+            await setLastPromptTokens(convId, r.newPromptTokens);
+            deps.emit({ type: 'usage', promptTokens: r.newPromptTokens });
+          } else {
+            // 压缩无法再缩减（无新内容可摘）：清空 lastPromptTokens，避免每轮反复空触发
+            // compact-start/done（UI 闪烁 + 浪费调用）；等下一轮 runTurn 的真实 usage 再判定。
+            lastPromptTokens = undefined;
+          }
+          deps.emit({ type: 'compact-done', newPromptTokens: r.ok ? r.newPromptTokens : undefined });
         }
-        deps.emit({ type: 'compact-done', newPromptTokens: r.ok ? r.newPromptTokens : undefined });
       }
-    }
-    // 压缩期间用户可能已中断：进 runTurn 前再检查一次，避免浪费一次 API 调用
-    if (signal.aborted) return void (await finishAborted(convId, deps));
-
-    const conv = await getConversation(convId);
-    const page = await deps.getPageInfo(targetTab).catch(() => ({ url: '', title: '' }));
-    const skills = (await deps.getSkills?.()) ?? [];
-    // 模式每轮重读：任务中途用户切 ask/agent，下一轮立即生效（已发出的轮次不回收）
-    const mode = (await deps.getMode?.()) ?? 'agent';
-    const systemPrompt = await deps.getSystemPrompt?.();
-    const memory = await deps.getMemoryState?.();
-    const messages = buildContext(conv.messages, page, { summary: conv.summary, skills, mode, systemPrompt, memory });
-    const memoryCap = memory ? memoryStateToCap(memory) : 'full';
-
-    const maxTokens = (await deps.getMaxTokens?.()) ?? 0;
-    // 参数生成进度节流器：每轮新建，状态不跨轮（下一轮从 0 重新计）
-    const onArgs = makeArgsThrottle((name, bytes) => deps.emit({ type: 'tool-args-delta', name, bytes }));
-    const result = await runTurn(deps.provider, {
-      messages, tools: getToolSchemas(mode, memoryCap), signal,
-      ...(maxTokens > 0 ? { maxTokens } : {}),
-    }, {
-      onTextDelta: (t) => deps.emit({ type: 'text-delta', text: t }),
-      onReasoningDelta: (t) => deps.emit({ type: 'reasoning-delta', text: t }),
-      onToolArgsDelta: onArgs,
-    });
-
-    if (signal.aborted) {
-      if (result.text || result.reasoning) {
-        await appendMessage(convId, { role: 'assistant', content: result.text, reasoning: result.reasoning });
+      // 压缩期间用户可能已中断：进 runTurn 前再检查一次，避免浪费一次 API 调用
+      if (signal.aborted) {
+        tr.rec.outcome = 'aborted';
+        return void (await finishAborted(convId, deps));
       }
-      await finishAborted(convId, deps);
-      return;
-    }
 
-    // usage 计量：无论 finishReason 都消费（供上下文标识 + 下一轮自动压缩判定）
-    if (result.usage?.promptTokens != null) {
-      lastPromptTokens = result.usage.promptTokens;
-      await setLastPromptTokens(convId, result.usage.promptTokens);
-      deps.emit({ type: 'usage', promptTokens: result.usage.promptTokens, completionTokens: result.usage.completionTokens });
-    }
+      const conv = await getConversation(convId);
+      const page = await deps.getPageInfo(targetTab).catch(() => ({ url: '', title: '' }));
+      const skills = (await deps.getSkills?.()) ?? [];
+      // 模式每轮重读：任务中途用户切 ask/agent，下一轮立即生效（已发出的轮次不回收）
+      const mode = (await deps.getMode?.()) ?? 'agent';
+      const systemPrompt = await deps.getSystemPrompt?.();
+      const memory = await deps.getMemoryState?.();
+      const messages = buildContext(conv.messages, page, { summary: conv.summary, skills, mode, systemPrompt, memory });
+      const memoryCap = memory ? memoryStateToCap(memory) : 'full';
+      tr.setMode(mode);
+      tr.markContext(messages, { summary: conv.summary, skills, pageUrl: page.url });
 
-    if (result.error) {
-      deps.emit({ type: 'error', message: result.error });
-      await setStatus(convId, 'idle');
-      return;
-    }
+      const maxTokens = (await deps.getMaxTokens?.()) ?? 0;
+      // 参数生成进度节流器：每轮新建，状态不跨轮（下一轮从 0 重新计）
+      const onArgs = makeArgsThrottle((name, bytes) => deps.emit({ type: 'tool-args-delta', name, bytes }));
+      // TTFT：三个流式 hook 里首次回调即算首 token（工具参数先于正文到达是常态，必须计入）
+      const llmAt = Date.now();
+      let firstTokenAt: number | undefined;
+      const markFirst = () => { if (firstTokenAt == null) firstTokenAt = Date.now(); };
+      const result = await runTurn(deps.provider, {
+        messages, tools: getToolSchemas(mode, memoryCap), signal,
+        ...(maxTokens > 0 ? { maxTokens } : {}),
+      }, {
+        onTextDelta: (t) => { markFirst(); deps.emit({ type: 'text-delta', text: t }); },
+        onReasoningDelta: (t) => { markFirst(); deps.emit({ type: 'reasoning-delta', text: t }); },
+        onToolArgsDelta: (name, bytes) => { markFirst(); onArgs(name, bytes); },
+      });
+      tr.markLlm({ startedAt: llmAt, firstTokenAt, result });
 
-    if (result.finishReason === 'length' && result.toolCalls.length > 0) {
-      await appendMessage(convId, assistantMsg(result.text, result.toolCalls, result.reasoning));
-      const truncFailed: ToolResult[] = [];
-      for (const tc of result.toolCalls) {
-        await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: '错误：模型输出被截断，该工具调用参数不完整。若在写长脚本，请改用分步方式：'
-          + '先 create_script 只提交元数据头 + 未闭合的 IIFE 骨架（如 `(function () {` 结尾，不写 `})();`），'
-          + '再用 update_script 的 patch.append 分次追加代码体，最后一段带上 `})();` 闭合。' });
-        truncFailed.push({ ok: false, error: '模型输出被截断' });
-      }
-      guard = recordTurn(guard, result.toolCalls, truncFailed);
-      const verdict = checkGuards(guard, DEFAULT_GUARD_CONFIG);
-      if (verdict.stop) {
-        await setStatus(convId, 'paused');
-        deps.emit({ type: 'paused', reason: verdict.reason ?? '' });
+      if (signal.aborted) {
+        tr.rec.outcome = 'aborted';
+        if (result.text || result.reasoning) {
+          await appendMessage(convId, { role: 'assistant', content: result.text, reasoning: result.reasoning });
+        }
+        await finishAborted(convId, deps);
         return;
       }
-      continue;
-    }
 
-    if (result.toolCalls.length === 0) {
-      const truncated = result.finishReason === 'length';
-      const finalText = truncated
-        ? `${result.text}\n\n[注意：回复因达到长度上限被截断，可能不完整]`
-        : result.text;
-      await appendMessage(convId, { role: 'assistant', content: finalText, reasoning: result.reasoning });
-      deps.emit({ type: 'done', finalText });
-      await setStatus(convId, 'idle');
-      return;
-    }
-
-    await appendMessage(convId, assistantMsg(result.text, result.toolCalls, result.reasoning));
-    const results: ToolResult[] = [];
-    for (const tc of result.toolCalls) {
-      if (signal.aborted) { await finishAborted(convId, deps); return; }
-      let toolArgs: Record<string, unknown> = {};
-      try { toolArgs = tc.arguments ? JSON.parse(tc.arguments) : {}; } catch { /* 保持空对象 */ }
-      deps.emit({ type: 'tool-start', name: tc.name, args: tc.arguments, callId: tc.id });
-      const r = await deps.executeTool(tc.name, toolArgs, targetTab, signal);
-      results.push(r);
-
-      if (r.ok && (tc.name === 'new_page' || tc.name === 'select_page')) {
-        const d = r.data as { targetTab?: number } | undefined;
-        if (typeof d?.targetTab === 'number') targetTab = d.targetTab;
-      }
-      if (r.ok && tc.name === 'close_page') {
-        const d = r.data as { closed?: number } | undefined;
-        if (d?.closed === targetTab) targetTab = startTabId;
-      }
-      if (r.ok && deps.resolveOpenedTab && TAB_OPENING_TOOLS.has(tc.name)) {
-        const opened = await deps.resolveOpenedTab(tc.name, targetTab, signal);
-        if (typeof opened === 'number') targetTab = opened;
+      // usage 计量：无论 finishReason 都消费（供上下文标识 + 下一轮自动压缩判定）
+      if (result.usage?.promptTokens != null) {
+        lastPromptTokens = result.usage.promptTokens;
+        await setLastPromptTokens(convId, result.usage.promptTokens);
+        deps.emit({ type: 'usage', promptTokens: result.usage.promptTokens, completionTokens: result.usage.completionTokens });
       }
 
-      if (tc.name === 'load_skill' && r.ok) {
-        // 工具卡摘要显示「已加载「技能名」」；tool 消息 content = 正文，喂给模型遵循执行。
-        const d = r.data as { name?: string; command?: string; content?: string } | undefined;
-        const summary = d?.name ? `已加载「${d.name}」` : '已加载技能';
-        const output = `【技能指令 /${d?.command ?? ''}】\n${d?.content ?? ''}`;
-        deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: true, summary, output });
-        await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: output });
+      if (result.error) {
+        tr.rec.outcome = 'error';
+        deps.emit({ type: 'error', message: result.error });
+        await setStatus(convId, 'idle');
+        return;
+      }
+
+      if (result.finishReason === 'length' && result.toolCalls.length > 0) {
+        tr.rec.outcome = 'truncated-retry';
+        await appendMessage(convId, assistantMsg(result.text, result.toolCalls, result.reasoning));
+        const truncFailed: ToolResult[] = [];
+        for (const tc of result.toolCalls) {
+          await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: '错误：模型输出被截断，该工具调用参数不完整。若在写长脚本，请改用分步方式：'
+            + '先 create_script 只提交元数据头 + 未闭合的 IIFE 骨架（如 `(function () {` 结尾，不写 `})();`），'
+            + '再用 update_script 的 patch.append 分次追加代码体，最后一段带上 `})();` 闭合。' });
+          truncFailed.push({ ok: false, error: '模型输出被截断' });
+        }
+        guard = recordTurn(guard, result.toolCalls, truncFailed);
+        const verdict = checkGuards(guard, DEFAULT_GUARD_CONFIG);
+        if (verdict.stop) {
+          tr.rec.outcome = 'paused';
+          tr.rec.guardReason = verdict.reason ?? '';
+          await setStatus(convId, 'paused');
+          deps.emit({ type: 'paused', reason: verdict.reason ?? '' });
+          return;
+        }
         continue;
       }
 
-      // take_screenshot 产截图：tool 消息只留一句话，base64 走独立 user 图片消息
-      //（进视觉通道 + 受 trimImageParts 管理）——若让它留在 toToolContent 的 JSON 里，
-      // 会成为数万 token 的纯文本废料且永不回收。
-      if (tc.name === 'take_screenshot') {
-        const data = (r as { data?: { screenshot?: string } | undefined }).data;
-        const shot = data?.screenshot;
-        deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: r.ok, summary: r.ok ? '已截图' : (r.error ?? '失败'), image: shot });
-        const rest = toToolContent(r.ok ? { ok: true } : r);
-        await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: rest });
+      if (result.toolCalls.length === 0) {
+        const truncated = result.finishReason === 'length';
+        const finalText = truncated
+          ? `${result.text}\n\n[注意：回复因达到长度上限被截断，可能不完整]`
+          : result.text;
+        tr.rec.outcome = 'done';
+        await appendMessage(convId, { role: 'assistant', content: finalText, reasoning: result.reasoning });
+        deps.emit({ type: 'done', finalText });
+        await setStatus(convId, 'idle');
+        return;
+      }
+
+      await appendMessage(convId, assistantMsg(result.text, result.toolCalls, result.reasoning));
+      const results: ToolResult[] = [];
+      for (const tc of result.toolCalls) {
+        if (signal.aborted) {
+          tr.rec.outcome = 'aborted';
+          await finishAborted(convId, deps);
+          return;
+        }
+        let toolArgs: Record<string, unknown> = {};
+        try { toolArgs = tc.arguments ? JSON.parse(tc.arguments) : {}; } catch { /* 保持空对象 */ }
+        deps.emit({ type: 'tool-start', name: tc.name, args: tc.arguments, callId: tc.id });
+        const toolAt = Date.now();
+        const argsBytes = tc.arguments?.length ?? 0;
+        const r = await deps.executeTool(tc.name, toolArgs, targetTab, signal);
+        results.push(r);
+
+        if (r.ok && (tc.name === 'new_page' || tc.name === 'select_page')) {
+          const d = r.data as { targetTab?: number } | undefined;
+          if (typeof d?.targetTab === 'number') targetTab = d.targetTab;
+        }
+        if (r.ok && tc.name === 'close_page') {
+          const d = r.data as { closed?: number } | undefined;
+          if (d?.closed === targetTab) targetTab = startTabId;
+        }
+        if (r.ok && deps.resolveOpenedTab && TAB_OPENING_TOOLS.has(tc.name)) {
+          const opened = await deps.resolveOpenedTab(tc.name, targetTab, signal);
+          if (typeof opened === 'number') targetTab = opened;
+        }
+
+        if (tc.name === 'load_skill' && r.ok) {
+          // 工具卡摘要显示「已加载「技能名」」；tool 消息 content = 正文，喂给模型遵循执行。
+          const d = r.data as { name?: string; command?: string; content?: string } | undefined;
+          const summary = d?.name ? `已加载「${d.name}」` : '已加载技能';
+          const output = `【技能指令 /${d?.command ?? ''}】\n${d?.content ?? ''}`;
+          deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: true, summary, output });
+          tr.markTool({ name: tc.name, callId: tc.id, argsBytes, ms: Date.now() - toolAt, ok: true, summary });
+          await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: output });
+          continue;
+        }
+
+        // take_screenshot 产截图：tool 消息只留一句话，base64 走独立 user 图片消息
+        //（进视觉通道 + 受 trimImageParts 管理）——若让它留在 toToolContent 的 JSON 里，
+        // 会成为数万 token 的纯文本废料且永不回收。
+        if (tc.name === 'take_screenshot') {
+          const data = (r as { data?: { screenshot?: string } | undefined }).data;
+          const shot = data?.screenshot;
+          const summary = r.ok ? '已截图' : (r.error ?? '失败');
+          deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: r.ok, summary, image: shot });
+          tr.markTool({
+            name: tc.name, callId: tc.id, argsBytes, ms: Date.now() - toolAt, ok: r.ok,
+            ...(r.ok ? {} : { error: r.error }), summary,
+          });
+          const rest = toToolContent(r.ok ? { ok: true } : r);
+          await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: rest });
+          if (shot) {
+            const parts: ContentPart[] = [
+              { type: 'text', text: SCREENSHOT_SENTINEL },
+              { type: 'image_url', imageUrl: shot },
+            ];
+            await appendMessage(convId, { role: 'user', content: parts });
+          }
+          continue;
+        }
+
+        const summary = r.ok ? '成功' : (r.error ?? '失败');
+        // data 里若混入 screenshot（防御性：任何工具都不得让 base64 进文本上下文），
+        // 摘掉后单独走 user 图片消息；其余字段照常序列化进 tool 消息。
+        const shot = (r as { data?: { screenshot?: string } | undefined }).data?.screenshot;
+        let output: string;
+        if (shot != null) {
+          const data = (r as { data?: Record<string, unknown> | undefined }).data;
+          const { screenshot: _s, ...keep } = data ?? {};
+          output = r.ok
+            ? toToolContent({ ok: true, data: keep })
+            : `错误：${r.error ?? '未知错误'}\n${JSON.stringify(keep)}`;
+        } else {
+          output = toToolContent(r);
+        }
+        deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: r.ok, summary, image: shot, output });
+        tr.markTool({
+          name: tc.name, callId: tc.id, argsBytes, ms: Date.now() - toolAt, ok: r.ok,
+          ...(r.ok ? {} : { error: r.error }), summary,
+        });
+        await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: output });
         if (shot) {
           const parts: ContentPart[] = [
             { type: 'text', text: SCREENSHOT_SENTINEL },
@@ -220,40 +295,22 @@ async function drive(
           ];
           await appendMessage(convId, { role: 'user', content: parts });
         }
-        continue;
       }
 
-      const summary = r.ok ? '成功' : (r.error ?? '失败');
-      // data 里若混入 screenshot（防御性：任何工具都不得让 base64 进文本上下文），
-      // 摘掉后单独走 user 图片消息；其余字段照常序列化进 tool 消息。
-      const shot = (r as { data?: { screenshot?: string } | undefined }).data?.screenshot;
-      let output: string;
-      if (shot != null) {
-        const data = (r as { data?: Record<string, unknown> | undefined }).data;
-        const { screenshot: _s, ...keep } = data ?? {};
-        output = r.ok
-          ? toToolContent({ ok: true, data: keep })
-          : `错误：${r.error ?? '未知错误'}\n${JSON.stringify(keep)}`;
-      } else {
-        output = toToolContent(r);
+      guard = recordTurn(guard, result.toolCalls, results);
+      const verdict = checkGuards(guard, DEFAULT_GUARD_CONFIG);
+      if (verdict.stop) {
+        tr.rec.outcome = 'paused';
+        tr.rec.guardReason = verdict.reason ?? '';
+        await setStatus(convId, 'paused');
+        deps.emit({ type: 'paused', reason: verdict.reason ?? '' });
+        return;
       }
-      deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: r.ok, summary, image: shot, output });
-      await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: output });
-      if (shot) {
-        const parts: ContentPart[] = [
-          { type: 'text', text: SCREENSHOT_SENTINEL },
-          { type: 'image_url', imageUrl: shot },
-        ];
-        await appendMessage(convId, { role: 'user', content: parts });
-      }
-    }
 
-    guard = recordTurn(guard, result.toolCalls, results);
-    const verdict = checkGuards(guard, DEFAULT_GUARD_CONFIG);
-    if (verdict.stop) {
-      await setStatus(convId, 'paused');
-      deps.emit({ type: 'paused', reason: verdict.reason ?? '' });
-      return;
+      // 轮体末尾自然落下 = 工具跑完、循环回下一轮（最常见的非终态）
+      tr.rec.outcome = 'continue';
+    } finally {
+      await tr.commit();
     }
   }
 }
