@@ -77,11 +77,14 @@ async function drive(
   let lastPromptTokens: number | undefined;
 
   for (;;) {
-    // 轮次序号从 storage 读（而非 loop 内自增）：SW 被杀重启后计数不重置
-    const { seq } = await readTraces(convId);
+    // 轮次序号从 storage 读（而非 loop 内自增）：SW 被杀重启后计数不重置。
+    // 读失败同样吞掉（spec §9）：调试设施不该有能力搞挂主流程。回退值无关紧要——
+    // 同一存储层的读失败必然让 commit() 里的 appendTurnTrace 也失败，那轮根本不会落盘。
+    const { seq } = await readTraces(convId).catch(() => ({ seq: 0, turns: [] }));
     const tr = createTurnRecorder({ convId, turn: seq + 1, tabId: targetTab });
     // try/finally 是刻意的：轮体内有 1 处 continue（截断重试）+ 8 处 return，
-    // finally 在 continue 前同样执行，一处收口覆盖全部 9 处出口。
+    // finally 在 continue 前同样执行，一处收口覆盖全部 9 处出口；轮末自然落下是
+    // 第 10 个 outcome 赋值点，承载最常见的 'continue'（漏赋即被绊线记成 'error'）。
     try {
       if (signal.aborted) {
         tr.rec.outcome = 'aborted';

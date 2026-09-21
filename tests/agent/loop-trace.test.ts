@@ -180,4 +180,92 @@ describe('agent loop trace', () => {
     expect(turns[0]!.compact).toBeUndefined();
     expect(turns[1]!.compact).toEqual({ ms: expect.any(Number), ok: true, newPromptTokens: 400 });
   });
+
+  it('provider error 出口 → outcome=error', async () => {
+    const provider = queuedProvider([[
+      { type: 'error', error: '炸了' },
+      { type: 'message-done' },
+    ]]);
+    await runAgentLoop({ convId: 't9', tabId: 1, userMessage: 'x' }, deps(provider, vi.fn()));
+    const t = (await readTraces('t9')).turns[0]!;
+    expect(t.outcome).toBe('error');
+    expect(t.llm.error).toBe('炸了');
+  });
+
+  it('压缩执行期间 abort（压缩后、runTurn 前）→ outcome=aborted', async () => {
+    const ac = new AbortController();
+    const provider = queuedProvider([
+      [
+        { type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{}' },
+        { type: 'message-done', finishReason: 'tool_calls', usage: { promptTokens: 9000, completionTokens: 10 } },
+      ],
+      [{ type: 'text-delta', text: 'b' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const compact = vi.fn().mockImplementation(async () => {
+      // 压缩执行期间 abort → 命中「压缩后再检查」出口（#2）
+      ac.abort();
+      return { ok: true, newPromptTokens: 400 };
+    });
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true } as ToolResult);
+    await runAgentLoop({ convId: 't10', tabId: 1, userMessage: 'x' },
+      deps(provider, exec, { getContextWindow: async () => 10000, compact }), ac.signal);
+
+    const { turns } = await readTraces('t10');
+    expect(turns).toHaveLength(2);
+    expect(turns[0]!.outcome).toBe('continue');
+    expect(turns[1]!.outcome).toBe('aborted');
+    // abort 省下了那次 API 调用：turn 2 未进 runTurn，llm 停留 recorder 默认值
+    expect(turns[1]!.llm.finishReason).toBe('');
+  });
+
+  it('runTurn 返回后 abort（半截 assistant 已保留）→ outcome=aborted', async () => {
+    const ac = new AbortController();
+    const provider: Provider = {
+      streamChat(_p, onEvent) {
+        queueMicrotask(() => {
+          onEvent({ type: 'text-delta', text: '我正在处理' });
+          ac.abort();
+          onEvent({ type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":1}' });
+          onEvent({ type: 'message-done', finishReason: 'tool_calls' });
+        });
+        return { cancel: vi.fn() };
+      },
+    };
+    const exec = vi.fn<LoopDeps['executeTool']>();
+    await runAgentLoop({ convId: 't11', tabId: 1, userMessage: 'x' }, deps(provider, exec), ac.signal);
+    const t = (await readTraces('t11')).turns[0]!;
+    expect(t.outcome).toBe('aborted');
+    expect(exec).not.toHaveBeenCalled();
+    expect(t.llm.textChars).toBe('我正在处理'.length);
+  });
+
+  it('工具循环内两工具之间 abort → outcome=aborted', async () => {
+    const ac = new AbortController();
+    const provider = queuedProvider([[
+      { type: 'tool-call-delta', index: 0, id: 'c1', name: 'click', argsDelta: '{"uid":1}' },
+      { type: 'tool-call-delta', index: 1, id: 'c2', name: 'click', argsDelta: '{"uid":2}' },
+      { type: 'message-done', finishReason: 'tool_calls' },
+    ]]);
+    let n = 0;
+    const exec = vi.fn<LoopDeps['executeTool']>().mockImplementation(async () => {
+      n += 1;
+      if (n === 1) ac.abort(); // 第一个工具执行后 abort → 命中第二个迭代开头的检查（出口 #7）
+      return { ok: true } as ToolResult;
+    });
+    await runAgentLoop({ convId: 't12', tabId: 1, userMessage: 'x' }, deps(provider, exec), ac.signal);
+    const t = (await readTraces('t12')).turns[0]!;
+    expect(t.outcome).toBe('aborted');
+    expect(t.tools).toHaveLength(1); // 第二个工具没执行，markTool 只有一条
+  });
+
+  it('firstTokenMs 落盘：text-delta 先到 hook 也计入 TTFT', async () => {
+    const provider = queuedProvider([[
+      { type: 'text-delta', text: '正文先到' },
+      { type: 'message-done', finishReason: 'stop' },
+    ]]);
+    await runAgentLoop({ convId: 't13', tabId: 1, userMessage: 'x' }, deps(provider, vi.fn()));
+    const t = (await readTraces('t13')).turns[0]!;
+    expect(typeof t.llm.firstTokenMs).toBe('number');
+    expect(t.llm.firstTokenMs!).toBeGreaterThanOrEqual(0);
+  });
 });
