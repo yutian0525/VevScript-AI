@@ -1323,7 +1323,7 @@ git commit -m "feat(cdp): 域启用 + 事件摄入路由（含子 target flatten
 
 **Interfaces:**
 - Consumes: Task 3 `setNetworkSuppressor`；Task 4 `initCdpSession`/`attach`/`detach`/`getState`/`onDetached`/`forget`/`reconcile`/`tabIdForSession`；Task 5 `enableAll`/`handleEvent`
-- Produces: router 支持 `DEEP_OBSERVE_GET` / `DEEP_OBSERVE_SET`；`initCdp(router: RouterLike): void`
+- Produces: router 支持 `DEEP_OBSERVE_GET` / `DEEP_OBSERVE_SET`；`initCdp(router: RouterLike): void`；`attachCdpListeners(): void`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1640,10 +1640,10 @@ import { doEnableDeepObserve, doDisableDeepObserve } from './deep-observe';
 Run: `npx vitest run tests/agent/deep-observe.test.ts`
 Expected: PASS（5 个用例）
 
-- [ ] **Step 5: 检查工具计数断言**
+- [ ] **Step 5: 跑 agent 目录全量测试**
 
 Run: `npx vitest run tests/agent`
-Expected: 若有用例断言工具总数（如 `TOOL_SCHEMAS.length === 30`），同步改为 32；描述里「36 个工具」的文件头注释一并更新。
+Expected: 全部 PASS。已核实全仓库**没有**硬编码工具总数的断言，唯一相关的是 `tests/agent/mode.test.ts:58` 的 `expect(ask.length).toBe(ASK_MODE_TOOLS.size)`——它是派生量，本 task 同时加 schema 与白名单条目即自然保持一致。若有其它断言意外失败，同步其期望值。另把 `agent/tools/schemas.ts` 文件头注释里过时的「36 个工具」计数更新为 38。
 
 - [ ] **Step 6: Commit**
 
