@@ -17,8 +17,10 @@ export const TOOL_TAGS: Record<string, ToolTag> = {
   // SCRIPTS(7)：userScripts CRUD 与启停 + 检索
   list_scripts: 'SCRIPTS', get_script: 'SCRIPTS', grep_script: 'SCRIPTS', create_script: 'SCRIPTS',
   update_script: 'SCRIPTS', delete_script: 'SCRIPTS', toggle_script: 'SCRIPTS',
-  // SKILLS(1)：技能正文加载
+  // SKILLS(6)：技能正文加载 + 技能池 CRUD（AI 自己写技能）
   load_skill: 'SKILLS',
+  list_skills: 'SKILLS', get_skill: 'SKILLS', create_skill: 'SKILLS',
+  update_skill: 'SKILLS', delete_skill: 'SKILLS',
   // MEMORY(3)：跨会话长期记忆
   memory_list: 'MEMORY', memory_write: 'MEMORY', memory_delete: 'MEMORY',
 };
@@ -33,7 +35,7 @@ export const GROUPS: ReadonlyArray<{ key: ToolTag; label: string; hint: string }
   { key: 'TABS', label: '标签页与导航', hint: 'tabs API / 导航控制' },
   { key: 'NET', label: '网络与观测', hint: '后台 fetch / console / 网络元数据' },
   { key: 'SCRIPTS', label: '脚本池管理', hint: 'userScripts CRUD 与启停' },
-  { key: 'SKILLS', label: '技能', hint: '按 command 加载技能指令正文' },
+  { key: 'SKILLS', label: '技能', hint: '按 command 加载技能正文；技能池 CRUD' },
   { key: 'MEMORY', label: '记忆', hint: '跨会话长期记忆的读写' },
 ];
 

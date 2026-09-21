@@ -2,6 +2,7 @@
 // 脚本池编排层（spec §6）：CRUD（落库 + userScripts 注册同步原子完成）+ 运行态跟踪与广播。
 // UI（sidepanel）与 AI 工具（agent/tools/script-pool.ts）都走本模块导出的 handler——单一数据源。
 // confirmGate 拦截位：下阶段确认门控在本文件各写 handler 入口处统一拦截（pendingOps + 批准卡）。
+// 文本补丁原语（appendText/replaceText）已抽到 shared/text-patch.ts（脚本池与技能池共用）。
 
 import type { MessageRouter } from './router';
 import type { ScriptGetData, ScriptInput, ScriptPatch, ScriptsRuntimeEntry, ScriptsChangedEvent, ScriptsChangedReason } from '../shared/messages';
@@ -11,6 +12,7 @@ import { isValidMatchPattern, matchUrl } from '../shared/match-pattern';
 import { parseUserScript } from '../shared/userscript-meta';
 import { gmErrorCounts, readValuesForSnapshot, cleanupScriptState, __resetLlmSessionFor } from './gm-api'; // Task 7 提供：Record<scriptId, number>
 import { buildWrappedCode } from '../shared/gm-wrapper';
+import { appendText, replaceText } from '../shared/text-patch';
 import { getBridgeToken } from './gm-token';
 import { prefetchResources, getResourceBundle } from './gm-resources';
 import { listAllowedHosts, revokeHost, removeScriptPermissions, getLlmTier, setLlmTier } from './gm-permissions';
@@ -255,59 +257,6 @@ export function spliceLines(text: string, startLine: number, endLine: number, re
   return [...lines.slice(0, startLine - 1), replacement, ...lines.slice(endLine)].join('\n');
 }
 
-/** 追加到原文末尾（原文无尾换行时先补一个）。分步写脚本的主力原语（spec §4.1）。
- *  !addition 守卫同时挡空串与 null/undefined（模型 JSON 透传），避免静默追加 "null"。 */
-export function appendText(text: string, addition: string): string {
-  if (!addition) throw new Error('append 不能为空');
-  if (text === '' || text.endsWith('\n')) return text + addition;
-  return `${text}\n${addition}`;
-}
-
-/** old 在 text 中每处出现的 1-based 行号（非重叠，与 split/join 语义一致）。
- *  换行计数增量推进：idx 单调递增，每次只扫上一匹配之后的新片段，不反复 slice+split 全文。 */
-function occurrenceLines(text: string, needle: string): number[] {
-  const lines: number[] = [];
-  let newlines = 0;
-  let scanned = 0; // 已完成换行计数的前缀长度
-  let idx = text.indexOf(needle);
-  while (idx >= 0) {
-    for (let i = scanned; i < idx; i++) {
-      if (text.charCodeAt(i) === 10) newlines += 1; // '\n'
-    }
-    scanned = idx;
-    lines.push(newlines + 1);
-    idx = text.indexOf(needle, idx + needle.length);
-  }
-  return lines;
-}
-
-/** 错误文案里的 old 预览：换行可视化 + 截断，避免把整段代码打进错误消息。 */
-function previewNeedle(s: string): string {
-  const flat = s.replace(/\n/g, '\\n');
-  return flat.length > 60 ? `${flat.slice(0, 60)}…` : flat;
-}
-
-/**
- * 字面量精确替换（不走正则，避开元字符陷阱）。
- * old 未命中 → throw；命中多处且未传 all → throw 并列出行号；all=true 全替（无需算行号）。
- */
-export function replaceText(text: string, old: string, replacement: string, all = false): string {
-  if (typeof old !== 'string' || !old) throw new Error('replace.old 不能为空'); // 挡 null/undefined 透传
-  if (!text.includes(old)) {
-    throw new Error(`replace 未找到该文本：「${previewNeedle(old)}」——请先用 get_script 或 grep_script 确认原文`);
-  }
-  if (all) return text.split(old).join(replacement);
-  // 非 all 才需要行号：多处命中时要告诉模型落在哪几行
-  const lines = occurrenceLines(text, old);
-  if (lines.length > 1) {
-    throw new Error(
-      `replace.old 命中 ${lines.length} 处（第 ${lines.join('、')} 行）：请加上下文让 old 唯一，或传 all:true 全部替换`,
-    );
-  }
-  const idx = text.indexOf(old);
-  return text.slice(0, idx) + replacement + text.slice(idx + old.length);
-}
-
 /** 文本 → 校验通过的全量 UserScript：投影字段全部由 parseUserScript 生成（spec §6.1 修订）。 */
 function buildFromText(args: {
   text: string; id: string; enabled: boolean; source: ScriptSource; createdAt: number; fallbackName?: string;
@@ -384,7 +333,10 @@ export async function handleUpdate(id: string, patch: ScriptPatch): Promise<User
         text = appendText(existing.text, patch.append!);
         break;
       case 'replace':
-        text = replaceText(existing.text, patch.replace!.old, patch.replace!.new, patch.replace!.all);
+        text = replaceText(
+          existing.text, patch.replace!.old, patch.replace!.new, patch.replace!.all ?? false,
+          '请先用 get_script 或 grep_script 确认原文',
+        );
         break;
       case 'text':
         if (!patch.text!.trim()) throw new Error('text 必填：完整的 .user.js 文本（含 ==UserScript== 头）');

@@ -29,7 +29,7 @@ const GROUPS: Array<{ label: string; entries: Entry[] }> = [
   {
     label: '开发者工具',
     entries: [
-      { key: 'toolbench', title: '工具调试台', desc: '绕过模型，直接对当前页调用 31 个工具', Icon: SquareTerminal },
+      { key: 'toolbench', title: '工具调试台', desc: '绕过模型，直接对当前页调用全部工具', Icon: SquareTerminal },
       { key: 'scriptdebug', title: '脚本运行时调试台', desc: 'GM API 白名单视图 + 经真实桥链路直调', Icon: FlaskConical },
     ],
   },

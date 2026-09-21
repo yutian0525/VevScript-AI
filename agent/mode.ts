@@ -17,6 +17,8 @@ export const ASK_MODE_TOOLS = new Set([
   'get_script',
   'grep_script',      // 脚本检索（纯读）
   'load_skill',
+  'list_skills',   // 技能读（纯 storage）
+  'get_skill',      // 技能读原文
   // 记忆三工具：ask 的语义是「不改网页/浏览器状态」，记忆只改扩展自己的本地笔记；
   // 且「以后都这样」这类交代大多发生在问答里，收走写权限会很别扭（spec §3.4）。
   'memory_list',
@@ -70,5 +72,5 @@ export function modePrompt(mode: AgentMode): string {
   if (mode === 'ask') {
     return `\n\n## 当前模式：ask（只读问答）\n\n你现在处于 ask 模式：只有【只读】工具（看页面结构、截图、读控制台/网络/脚本库、加载技能）。你【不能】点击、填写、导航、开关标签页、执行脚本、发 HTTP 写请求或增删改脚本。\n- 回答「这是什么/为什么/怎么样」类问题，解读页面内容、截图、报错与网络请求。\n- 用户要你执行会改动页面或浏览器状态的操作时，说明当前是只读模式，请他切换到 agent 模式（输入框旁的模式下拉框）。\n- 你依然可以用 load_skill 取技能正文来遵循其问答/分析类流程。`;
   }
-  return `\n\n## 当前模式：agent（完整操控）\n\n你可以使用全部工具：读页面、点击/填写/导航等页面操作、标签页管理、执行脚本、HTTP 请求、脚本池管理与技能加载。先观察（take_snapshot/take_screenshot）再动手；完成任务后用自然语言汇报。`;
+  return `\n\n## 当前模式：agent（完整操控）\n\n你可以使用全部工具：读页面、点击/填写/导航等页面操作、标签页管理、执行脚本、HTTP 请求、脚本池与技能池读写。先观察（take_snapshot/take_screenshot）再动手；完成任务后用自然语言汇报。`;
 }

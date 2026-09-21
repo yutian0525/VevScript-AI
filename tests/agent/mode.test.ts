@@ -13,16 +13,17 @@ describe('ASK_MODE_TOOLS 白名单', () => {
     // 不要把它们加进下面这个列表。
     const writeTools = ['click', 'fill', 'fill_form', 'hover', 'scroll', 'press_key', 'navigate_page',
       'new_page', 'close_page', 'select_page', 'evaluate_script', 'http_request',
-      'create_script', 'update_script', 'delete_script', 'toggle_script'];
+      'create_script', 'update_script', 'delete_script', 'toggle_script',
+      'create_skill', 'update_skill', 'delete_skill'];
     for (const t of writeTools) {
       expect(ASK_MODE_TOOLS.has(t)).toBe(false);
     }
   });
 
-  it('包含读页面/观测/脚本读/技能工具', () => {
+  it('包含读页面/观测/脚本读/技能读工具', () => {
     for (const t of ['take_snapshot', 'take_screenshot', 'wait_for', 'list_pages',
       'list_console_messages', 'list_network_requests', 'get_network_request',
-      'list_scripts', 'get_script', 'load_skill']) {
+      'list_scripts', 'get_script', 'load_skill', 'list_skills', 'get_skill']) {
       expect(ASK_MODE_TOOLS.has(t)).toBe(true);
     }
   });
@@ -47,9 +48,9 @@ describe('ASK_MODE_TOOLS 白名单', () => {
 });
 
 describe('filterSchemasForMode / getToolSchemas', () => {
-  it('agent 模式返回全量 31 个（schemas.ts 当前 31 工具）', () => {
-    expect(getToolSchemas('agent')).toHaveLength(31);
-    expect(getToolSchemas()).toHaveLength(31); // 缺省 = agent
+  it('agent 模式返回全量 36 个（schemas.ts 当前 36 工具）', () => {
+    expect(getToolSchemas('agent')).toHaveLength(36);
+    expect(getToolSchemas()).toHaveLength(36); // 缺省 = agent
   });
 
   it('ask 模式只返回白名单内的 schema', () => {
@@ -131,11 +132,11 @@ describe('记忆 cap 过滤与守卫', () => {
     expect(names).not.toContain('memory_write');
     expect(names).not.toContain('memory_delete');
     expect(names).toContain('take_snapshot');
-    expect(names).toHaveLength(28);
+    expect(names).toHaveLength(33); // 36 全量 − 3 个记忆工具
   });
 
   it('缺省 cap = full（调试台等既有调用点不受影响）', () => {
-    expect(getToolSchemas('agent')).toHaveLength(31);
+    expect(getToolSchemas('agent')).toHaveLength(36);
   });
 
   it('cap 与 mode 二维叠加：ask + read', () => {

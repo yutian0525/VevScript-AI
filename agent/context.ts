@@ -31,10 +31,18 @@ export function resolveSystemPrompt(custom?: string): string {
 
 export interface SkillBrief { name: string; command: string; description: string }
 
-export function buildSkillsPrompt(briefs: SkillBrief[]): string {
+/** 自写技能的能力引导：清单后追加。刻意放 skills 块而非 SYSTEM_PROMPT——
+ *  用户在设置里自定义系统提示词时，这个能力说明不该跟着丢（同记忆块的处理）。
+ *  只讲「什么时候该写」，正文写法全交给内置 /write-skill 技能，避免同一套规范维护两处。 */
+const SKILL_AUTHORING_GUIDE = `\n\n你也可以自己写技能：list_skills 查看全库（写之前先查重）、get_skill 读原文、create_skill + update_skill 分步写入、delete_skill 删除。发现用户反复让你做同类事情、或这套流程以后还会再用时，主动提议「要不要存成 /xxx 技能」——说清它会做什么、什么时候触发，等用户点头再写；一次性的任务不要写。写之前先按 /write-skill 的流程走。`;
+
+export function buildSkillsPrompt(briefs: SkillBrief[], mode: AgentMode = 'agent'): string {
   if (briefs.length === 0) return '';
   const lines = briefs.map((s) => `- /${s.command} ${s.name}：${s.description}`);
-  return `\n\n## 可用技能\n\n下面是可用技能的简述（不含正文）。当用户以 /命令 形式触发某技能，或当前任务与某技能明显匹配时，先调用 load_skill 工具（传该技能的 command，不含 /）取回它的完整指令正文，再遵循正文行事，并向用户说明你正在使用哪个技能。不要凭简述臆测正文内容。\n\n${lines.join('\n')}`;
+  // 自写技能引导只在 agent 模式追加：create/update/delete_skill 既不在 ask 的工具清单里，
+  // 也被 registry 的模式守卫硬拒——在 ask 里宣传它们，等于让模型先答应「我给你存成技能」再撞墙。
+  const guide = mode === 'agent' ? SKILL_AUTHORING_GUIDE : '';
+  return `\n\n## 可用技能\n\n下面是可用技能的简述（不含正文）。当用户以 /命令 形式触发某技能，或当前任务与某技能明显匹配时，先调用 load_skill 工具（传该技能的 command，不含 /）取回它的完整指令正文，再遵循正文行事，并向用户说明你正在使用哪个技能。不要凭简述臆测正文内容。\n\n${lines.join('\n')}${guide}`;
 }
 
 export interface PageInfo { url: string; title: string }
@@ -94,7 +102,7 @@ export function buildContext(
   const pageBlock = page.url
     ? `\n\n当前页面：\n- URL: ${page.url}\n- 标题: ${page.title}`
     : '';
-  const skillsBlock = buildSkillsPrompt(skills ?? []);
+  const skillsBlock = buildSkillsPrompt(skills ?? [], mode);
   const memoryBlock = memory ? buildMemoryPrompt(memory, page.url) : '';
   const base = resolveSystemPrompt(systemPrompt);
   const system: ChatMessage = {

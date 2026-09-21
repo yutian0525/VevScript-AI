@@ -69,7 +69,8 @@ export async function doListScripts(args: { enabled?: boolean; urlContains?: str
       ...toSummary(s, gmErrorCounts()[s.id] ?? 0),
       update: toUpdateHint(updates[s.id]),
     }));
-    if (args.enabled !== undefined) scripts = scripts.filter((s) => s.enabled === args.enabled);
+    // != null 而非 !== undefined：模型 JSON 透传的 null 会被后者当成「要过滤」，静默返回空列表
+    if (args.enabled != null) scripts = scripts.filter((s) => s.enabled === args.enabled);
     if (args.urlContains) {
       const needle = args.urlContains.toLowerCase();
       scripts = scripts.filter((s) => s.matches.some((m) => m.toLowerCase().includes(needle)));

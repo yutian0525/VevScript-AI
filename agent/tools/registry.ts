@@ -15,8 +15,9 @@ import {
 } from './script-pool';
 import { doGrepScript } from './script-grep';
 import { doLoadSkill } from './skills-tool';
+import { doListSkills, doGetSkill, doCreateSkill, doUpdateSkill, doDeleteSkill } from './skill-pool';
 import { doMemoryList, doMemoryWrite, doMemoryDelete } from './memory';
-import type { ScriptPatch } from '../../shared/messages';
+import type { ScriptPatch, SkillPatch } from '../../shared/messages';
 
 export interface ToolCtx {
   tabId: number;
@@ -100,6 +101,13 @@ export async function executeTool(
 
   // load_skill：纯 storage 读取，不碰页面，豁免受限页预检（spec §2.4）。
   if (name === 'load_skill') return doLoadSkill((args as { command: string }).command);
+
+  // 技能池五工具：纯 storage 操作，不碰页面内容，豁免受限页预检（spec §4）。
+  if (name === 'list_skills') return doListSkills(args as { enabled?: boolean });
+  if (name === 'get_skill') return doGetSkill(args as { id: string });
+  if (name === 'create_skill') return doCreateSkill(args as { source?: string; enabled?: boolean });
+  if (name === 'update_skill') return doUpdateSkill(args as { id: string; patch: SkillPatch });
+  if (name === 'delete_skill') return doDeleteSkill(args as { id: string });
 
   // 记忆三工具：纯 storage 读写，不碰页面，豁免受限页预检（spec §3.4）。
   if (name === 'memory_list') return doMemoryList(args as { scope?: string; limit?: number });

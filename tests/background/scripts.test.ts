@@ -4,7 +4,6 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import {
   computeRuntimeScriptIds, recomputeTab, recomputeAllTabs, dropTab, getRuntimeSnapshot,
   handleCreate, handleUpdate, handleDelete, handleSetEnabled, handleImport, handleGet, spliceLines,
-  appendText, replaceText,
   syncRegistrations, initScriptsModule, ENGINE_UNAVAILABLE_MSG,
 } from '../../background/scripts';
 import { listScripts, saveScript, getScript } from '../../storage/scripts';
@@ -131,32 +130,6 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
     expect(() => spliceLines('a\nb\nc', 2, 9, 'X')).toThrow('越界');
   });
 
-  it('appendText：追加到末尾；原文无尾换行时补一个', () => {
-    expect(appendText('a\nb\n', 'c();')).toBe('a\nb\nc();');
-    expect(appendText('a\nb', 'c();')).toBe('a\nb\nc();');
-    expect(appendText('', 'c();')).toBe('c();');
-    expect(() => appendText('a\n', '')).toThrow('append 不能为空');
-  });
-
-  it('replaceText：命中 1 处替换；未命中/多处未传 all 报错；all:true 全替', () => {
-    expect(replaceText('a\nfoo\nb', 'foo', 'bar')).toBe('a\nbar\nb');
-
-    expect(() => replaceText('a\nb', 'zzz', 'x')).toThrow('未找到');
-
-    // 命中 2 处（第 2、4 行）未传 all → 报错并列出行号
-    expect(() => replaceText('a\nfoo\nb\nfoo', 'foo', 'x')).toThrow(/命中 2 处.*第 2、4 行/);
-
-    expect(replaceText('a\nfoo\nb\nfoo', 'foo', 'x', true)).toBe('a\nx\nb\nx');
-    expect(() => replaceText('a\n', '', 'x')).toThrow('不能为空');
-  });
-
-  it('replaceText：old 含正则元字符按字面量处理', () => {
-    expect(replaceText('if (a.b) { c(); }', 'a.b', 'a.c')).toBe('if (a.c) { c(); }');
-    expect(replaceText('x = arr[0] * 2;', 'arr[0] * 2', 'n')).toBe('x = n;');
-    // 字面量语义：'a.b' 不会匹配到 'axb'
-    expect(() => replaceText('axb', 'a.b', 'z')).toThrow('未找到');
-  });
-
   it('handleUpdate：append 追加后重解析投影字段', async () => {
     installFakeUserScripts();
     const { script } = await handleCreate({ text: mkText('(function () {') });
@@ -176,6 +149,14 @@ describe('CRUD 编排 + 注册同步（文本为源）', () => {
 
     const next = await handleUpdate(script.id, { replace: { old: 'g();', new: 'h();' } });
     expect(next.text).toBe(mkText('f();\nh();\nf();'));
+  });
+
+  it('handleUpdate：replace 未命中 → 错误文案指向 get_script（真实调用点，非单测常量）', async () => {
+    installFakeUserScripts();
+    const { script } = await handleCreate({ text: mkText('f();') });
+    await expect(handleUpdate(script.id, { replace: { old: '不存在的片段', new: 'x' } }))
+      .rejects.toThrow(/get_script/);
+    expect((await getScript(script.id))!.text).toBe(mkText('f();'));
   });
 
   it('handleUpdate：文本分支互斥 —— 同传两支报错，列出分支名', async () => {

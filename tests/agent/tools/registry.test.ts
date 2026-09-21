@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { executeTool, getToolSchemas } from '../../../agent/tools/registry';
 import { saveScript } from '../../../storage/scripts';
+import { saveSkill, newSkill } from '../../../storage/skills';
 
 describe('工具 registry', () => {
   // 同时清 fakeBrowser 状态与 vitest spy：spyOn 的 mock 历史不随 fakeBrowser.reset 清除，
@@ -12,7 +13,7 @@ describe('工具 registry', () => {
   });
 
   it('getToolSchemas 返回全部 schema', () => {
-    expect(getToolSchemas().length).toBe(31);
+    expect(getToolSchemas().length).toBe(36);
   });
 
   it('query_page 经 CS 通道分发', async () => {
@@ -161,6 +162,23 @@ describe('工具 registry', () => {
       tabId: 1, sessionId: 'c1', signal: new AbortController().signal,
     });
     expect(r.ok).toBe(true);
+  });
+
+  it('技能池五工具豁免受限页预检（纯 storage，不碰页面）', async () => {
+    fakeBrowser.tabs.get = vi.fn().mockResolvedValue({ id: 1, url: 'chrome://newtab' }) as never;
+    await saveSkill(newSkill({
+      name: '日报', command: 'daily-report', description: 'd',
+      content: '正文占位够长正文占位够长正文占位够长正文占位够长。',
+    }));
+    const ctx = { tabId: 1, sessionId: 's', signal: new AbortController().signal };
+
+    const list = await executeTool('list_skills', {}, ctx);
+    expect(list.ok).toBe(true);
+
+    const created = await executeTool('create_skill', {
+      source: '---\nname: 周报\ndescription: d2\ncommand: weekly\n---\n正文占位够长正文占位够长正文占位够长正文占位够长。',
+    }, ctx);
+    expect(created.ok).toBe(true);
   });
 });
 

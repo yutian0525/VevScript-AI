@@ -2,15 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { TOOL_SCHEMAS } from '../../../agent/tools/schemas';
 
 describe('工具 schema', () => {
-  it('恰好 31 个工具（Phase 2 的 9 + Phase 3a 的 7 + Phase 3b 的 3 + Phase 4 的 6 + Skill 的 1 + 脚本检索的 1 + 记忆的 3 + 页面感知 query_page 的 1）', () => {
+  it('恰好 36 个工具（Phase 2 的 9 + Phase 3a 的 7 + Phase 3b 的 3 + Phase 4 的 6 + Skill 的 1 + 脚本检索的 1 + 记忆的 3 + 页面感知 query_page 的 1 + 技能池的 5）', () => {
     const names = TOOL_SCHEMAS.map((s) => s.function.name).sort();
     expect(names).toEqual([
-      'click', 'close_page', 'create_script', 'delete_script', 'evaluate_script', 'fill',
-      'fill_form', 'get_network_request', 'get_script', 'grep_script', 'hover', 'http_request',
-      'list_console_messages', 'list_network_requests', 'list_pages', 'list_scripts', 'load_skill',
-      'memory_delete', 'memory_list', 'memory_write',
+      'click', 'close_page', 'create_script', 'create_skill', 'delete_script', 'delete_skill',
+      'evaluate_script', 'fill', 'fill_form', 'get_network_request', 'get_script', 'get_skill',
+      'grep_script', 'hover', 'http_request',
+      'list_console_messages', 'list_network_requests', 'list_pages', 'list_scripts', 'list_skills',
+      'load_skill', 'memory_delete', 'memory_list', 'memory_write',
       'navigate_page', 'new_page', 'press_key', 'query_page', 'scroll', 'select_page',
-      'take_screenshot', 'take_snapshot', 'toggle_script', 'update_script', 'wait_for',
+      'take_screenshot', 'take_snapshot', 'toggle_script', 'update_script', 'update_skill', 'wait_for',
     ]);
   });
 

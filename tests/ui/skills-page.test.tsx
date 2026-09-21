@@ -2,10 +2,11 @@
 // 技能管理页：内置技能（builtin）不渲染删除钮 + 显示「内置」徽标；普通技能删除钮照常。
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { cleanup, render, screen, fireEvent } from '@testing-library/react';
+import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { SkillsPage } from '../../components/skills/SkillsPage';
 import { useSkills } from '../../stores/skills';
+import { newSkill, saveSkill } from '../../storage/skills';
 import type { SkillSummary } from '../../shared/types';
 
 afterEach(cleanup);
@@ -62,5 +63,44 @@ describe('SkillsPage 内置技能保护', () => {
     expect(screen.getByRole('switch')).toBeTruthy();
     // 详情页本来就没有删除钮，但确保没引入
     expect(screen.queryByRole('button', { name: /删除/ })).toBeNull();
+  });
+
+  it('AI 创建的技能：显示「AI 创建」徽标；用户导入的不显示', async () => {
+    mockList([
+      mkSummary({ id: 'sk1', name: '日报', command: 'daily-report', source: 'agent' }),
+      mkSummary({ id: 'sk2', name: '翻译', command: 'translate' }),
+    ]);
+    useSkills.setState({
+      list: [
+        mkSummary({ id: 'sk1', name: '日报', command: 'daily-report', source: 'agent' }),
+        mkSummary({ id: 'sk2', name: '翻译', command: 'translate' }),
+      ],
+    });
+    render(<SkillsPage onBack={() => {}} />);
+    await screen.findByText('日报');
+    expect(screen.getByText('AI 创建')).toBeTruthy();
+    expect(screen.getAllByText('AI 创建')).toHaveLength(1); // 只有 agent 那条
+  });
+
+  it('storage.watch：AI 在别处写技能时，正开着这一页自动重拉列表', async () => {
+    let listCalls = 0;
+    browser.runtime.onMessage.addListener((msg: { type: string }, _s, sendResponse) => {
+      if (msg.type === 'SKILLS_LIST') {
+        listCalls += 1;
+        sendResponse({ ok: true, data: { skills: [] } });
+        return true;
+      }
+      sendResponse({ ok: false, error: 'unexpected' });
+      return true;
+    });
+    render(<SkillsPage onBack={() => {}} />);
+    // 挂载时的一次拉取先落地，否则分不清后面的增量是不是 watch 触发的
+    await waitFor(() => expect(listCalls).toBe(1));
+    // 模拟 AI 在对话里写技能（同一 storage 键）——不经过本页的任何交互
+    await saveSkill(newSkill(
+      { name: '日报', command: 'daily-report', description: '每天整理报表时触发', content: '正文'.repeat(30) },
+      'agent',
+    ));
+    await waitFor(() => expect(listCalls).toBeGreaterThan(1));
   });
 });

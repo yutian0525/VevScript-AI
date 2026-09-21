@@ -22,12 +22,12 @@ function stubFetchWith(text: string): void {
 }
 
 describe('public/skills/builtin.md 内容契约', () => {
-  it('恰好三个文档，command 合法且唯一', () => {
+  it('恰好四个文档，command 合法且唯一', () => {
     const docs = parseSkillMdDocument(builtinMd);
     const okDocs = docs.filter((d) => d.ok);
-    expect(okDocs).toHaveLength(3);
+    expect(okDocs).toHaveLength(4);
     const commands = okDocs.map((d) => (d.ok ? d.skill.command : ''));
-    expect(commands.sort()).toEqual(['find-scripts', 'help', 'write-script']);
+    expect(commands.sort()).toEqual(['find-scripts', 'help', 'write-script', 'write-skill']);
     commands.forEach((c) => expect(c).toMatch(CMD_RE));
   });
 
@@ -64,10 +64,10 @@ describe('seedBuiltinSkills', () => {
   it('空池投放：四条全部写入并带 builtin 标记', async () => {
     stubFetchWith(builtinMd);
     const n = await seedBuiltinSkills();
-    expect(n).toBe(3);
+    expect(n).toBe(4);
     const all = await listSkills();
-    expect(all).toHaveLength(3);
-    expect(all.map((s) => s.builtin)).toEqual([true, true, true]);
+    expect(all).toHaveLength(4);
+    expect(all.map((s) => s.builtin)).toEqual([true, true, true, true]);
   });
 
   it('已有同 command（用户导入过）：覆盖内容但保留 id/enabled，并打 builtin', async () => {
@@ -84,9 +84,9 @@ describe('seedBuiltinSkills', () => {
 
     stubFetchWith(builtinMd);
     const n = await seedBuiltinSkills();
-    expect(n).toBe(3);
+    expect(n).toBe(4);
     const all = await listSkills();
-    expect(all).toHaveLength(3);
+    expect(all).toHaveLength(4);
     const help = all.find((s) => s.command === 'help')!;
     expect(help.id).toBe(before.id);
     expect(help.enabled).toBe(false);
@@ -102,7 +102,7 @@ describe('seedBuiltinSkills', () => {
     await seedBuiltinSkills();
     const help = (await listSkills()).find((s) => s.command === 'help')!;
     expect(help.content).toContain('v2');
-    expect((await listSkills()).length).toBe(3);
+    expect((await listSkills()).length).toBe(4);
   });
 
   it('投放后的 builtin 技能不可删除', async () => {

@@ -43,7 +43,7 @@ export function Docs() {
           <section className="doc-sec" id="quickstart">
             <span className="doc-sec__k">02</span>
             <h2 className="h-card doc-sec__h">快速上手</h2>
-            <p className="doc-p">按以下四步完成安装与配置。环境要求：Chrome 120 及以上（<code>chrome.userScripts</code> 依赖）与 Node.js 20 及以上。</p>
+            <p className="doc-p">按以下五步完成安装与配置，只想用起来的话跳过第 2 步。环境要求：Chrome 120 及以上（<code>chrome.userScripts</code> 依赖）；只有自建才需要 Node.js 20 及以上。</p>
             <ol className="olist">
               {QUICKSTART.map((s) => (
                 <li key={s.t}>
@@ -58,6 +58,8 @@ export function Docs() {
               </div>
               <pre>
                 <code>
+                  <span className="c"># 以下是第 2 步「克隆并构建」的内容；只想用扩展走第 1 步的下载包</span>
+                  {'\n\n'}
                   <span className="c"># 安装依赖（postinstall 自动 wxt prepare）</span>
                   {'\n'}npm install{'\n\n'}
                   <span className="c"># 生产构建 → .output/chrome-mv3/</span>
@@ -183,8 +185,9 @@ const INTRO: { t: string; d: string }[] = [
 ];
 
 const QUICKSTART: { t: string; d: string }[] = [
-  { t: '克隆并构建。', d: '在 Node.js 20+ 环境执行 `npm install` 与 `npm run build`，构建产物位于 `.output/chrome-mv3/`；也可直接下载 Release 打包版。' },
-  { t: '加载扩展。', d: '打开 `chrome://extensions`，启用开发者模式，选择「加载已解压的扩展程序」并指向上述目录。需 Chrome 120+。' },
+  { t: '下载打包版。', d: '点下方「下载打包版」到 Release 页，取最新的 `vevscript-ai-v<版本>-chrome-mv3.zip`，解压到一个以后不再挪动的目录——Chrome 记住的是这个路径，加载后再挪扩展会失效。这条路不装 Node、不用构建，是最快的一条。' },
+  { t: '克隆并构建（可选）。', d: '要改代码或自己出包再走这条：Node.js 20+ 环境执行 `npm install` 与 `npm run build`，产物位于 `.output/chrome-mv3/`。' },
+  { t: '加载扩展。', d: '打开 `chrome://extensions`，启用开发者模式，选择「加载已解压的扩展程序」，指向第 1 或第 2 步得到的那个目录。需 Chrome 120+。' },
   { t: '配置模型。', d: '进入侧边栏「设置 → 模型设置」，填写 Base URL（以 `/v1` 结尾）、API Key 与模型 ID，测试连接通过后保存。' },
   { t: '开始使用。', d: '打开任意网页，在侧边栏输入需求。兼容 DeepSeek、Qwen、OpenAI、中转服务及本地 Ollama。' },
 ];

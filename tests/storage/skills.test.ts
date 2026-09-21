@@ -120,6 +120,18 @@ describe('storage/skills', () => {
     expect(toSkillSummary(mkSkill()).builtin).toBeUndefined();
   });
 
+  it('toSkillSummary 透传 source', () => {
+    expect(toSkillSummary(mkSkill({ source: 'agent' }))).toMatchObject({ source: 'agent' });
+    expect(toSkillSummary(mkSkill()).source).toBeUndefined();
+  });
+
+  it('newSkill 缺省不带 source；显式传 agent 才打标（内置/导入都是缺省）', () => {
+    const plain = newSkill({ name: '日报', command: 'daily-report', description: 'd', content: '正文' });
+    expect(plain.source).toBeUndefined();
+    const byAgent = newSkill({ name: '周报', command: 'weekly', description: 'd', content: '正文' }, 'agent');
+    expect(byAgent.source).toBe('agent');
+  });
+
   it('newSkill 工厂：默认 enabled + 时间戳 + 随机 id', () => {
     const s = newSkill({ name: 'N', command: 'c', description: 'd', content: 'C' });
     expect(s.enabled).toBe(true);
