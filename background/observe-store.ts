@@ -1,14 +1,20 @@
 // background/observe-store.ts
 // SW 侧 per-tab 观测环形缓冲（设计 §4、§8.3）。
 // 数据逻辑纯粹、可单测；browser.webRequest 事件接线在 Task 11 的 background.ts（不在本文件初始化时执行）。
-import type { ConsoleEntry, HookNetEntry } from '../shared/hook-bridge';
+import type { HookNetEntry } from '../shared/hook-bridge';
+import type { ConsoleEntry } from '../shared/observe';
 
 const MAX_ENTRIES = 200;      // 每 tab 每通道环形上限
 const MATCH_WINDOW_MS = 2000; // hook body 关联时间窗
 
-/** 合并后的网络条目（webRequest 主干 + hook 富化）。 */
+export const MAX_WS_FRAMES = 200;
+export const MAX_WS_PAYLOAD = 4096;
+
+/** 一条 WebSocket 帧。 */
+export interface WsFrame { dir: 'sent' | 'received'; opcode: number; payload: string; ts: number }
+
 export interface NetEntry {
-  requestId: string;            // webRequest 原生 id，或 hook:<loadNonce>:<seq>
+  requestId: string;            // `wr:<webRequest id>` 或 `cdp:<CDP requestId>`
   method: string;
   url: string;
   type: string;                 // resourceType（document/xmlhttprequest/...）
@@ -20,9 +26,15 @@ export interface NetEntry {
   responseHeaders?: Record<string, string>;
   requestBody?: string;
   responseBody?: string;
+  mimeType?: string;
+  wsFrames?: WsFrame[];
   truncated?: boolean;
-  source: 'webRequest' | 'hook' | 'merged';
+  source: 'webRequest' | 'hook' | 'merged' | 'cdp';
 }
+
+/** id 命名空间前缀：webRequest 与 CDP 的 requestId 是两套独立空间，加前缀防撞号。 */
+export function wrId(raw: string): string { return `wr:${raw}`; }
+export function cdpId(raw: string): string { return `cdp:${raw}`; }
 
 interface TabBuf {
   console: ConsoleEntry[];
@@ -32,6 +44,10 @@ interface TabBuf {
 }
 
 const tabs = new Map<number, TabBuf>();
+
+// CDP 附着时该 tab 的网络由 CDP 独占，webRequest 主干静默（两套 id 无法对齐，硬合并只产生幽灵重复条目）。
+let networkSuppressed: (tabId: number) => boolean = () => false;
+export function setNetworkSuppressor(fn: (tabId: number) => boolean): void { networkSuppressed = fn; }
 
 function buf(tabId: number): TabBuf {
   let b = tabs.get(tabId);
@@ -73,8 +89,9 @@ export function recordRequestStart(
   tabId: number,
   r: { requestId: string; method: string; url: string; type: string; ts: number },
 ): void {
+  if (networkSuppressed(tabId)) return;
   const b = buf(tabId);
-  b.network.push({ requestId: r.requestId, method: r.method, url: r.url, type: r.type, ts: r.ts, source: 'webRequest' });
+  b.network.push({ requestId: wrId(r.requestId), method: r.method, url: r.url, type: r.type, ts: r.ts, source: 'webRequest' });
   ring(b.network);
 }
 
@@ -87,12 +104,12 @@ function findByRequestId(requestId: string): NetEntry | undefined {
 }
 
 export function recordRequestEnd(requestId: string, r: { status: number; ts: number }): void {
-  const e = findByRequestId(requestId);
+  const e = findByRequestId(wrId(requestId));
   if (e) { e.status = r.status; e.endTs = r.ts; }
 }
 
 export function recordRequestError(requestId: string, r: { error: string; ts: number }): void {
-  const e = findByRequestId(requestId);
+  const e = findByRequestId(wrId(requestId));
   if (e) { e.error = r.error; e.endTs = r.ts; }
 }
 
@@ -128,6 +145,68 @@ export function ingestHookNet(tabId: number, entries: HookNetEntry[]): void {
     }
   }
   ring(b.network);
+}
+
+// ---------- network：CDP 数据源 ----------
+// CDP 的 requestId 在 session 内唯一，且摄入时已知道 tabId，故按 tab 内查找即可（无需全局扫描）。
+function findCdp(tabId: number, requestId: string): NetEntry | undefined {
+  const b = tabs.get(tabId);
+  const id = cdpId(requestId);
+  return b?.network.find((n) => n.requestId === id);
+}
+
+export function ingestCdpStart(
+  tabId: number,
+  r: { requestId: string; method: string; url: string; type: string; ts: number;
+       requestHeaders?: Record<string, string>; requestBody?: string },
+): void {
+  const b = buf(tabId);
+  b.network.push({
+    requestId: cdpId(r.requestId), method: r.method, url: r.url, type: r.type, ts: r.ts,
+    requestHeaders: r.requestHeaders, requestBody: r.requestBody, source: 'cdp',
+  });
+  ring(b.network);
+}
+
+export function ingestCdpResponse(
+  tabId: number,
+  r: { requestId: string; status: number; responseHeaders?: Record<string, string>; mimeType?: string },
+): void {
+  const e = findCdp(tabId, r.requestId);
+  if (!e) return;
+  e.status = r.status;
+  if (r.responseHeaders) e.responseHeaders = r.responseHeaders;
+  if (r.mimeType) e.mimeType = r.mimeType;
+}
+
+export function ingestCdpEnd(tabId: number, r: { requestId: string; ts: number }): void {
+  const e = findCdp(tabId, r.requestId);
+  if (e) e.endTs = r.ts;
+}
+
+export function ingestCdpError(tabId: number, r: { requestId: string; error: string; ts: number }): void {
+  const e = findCdp(tabId, r.requestId);
+  if (e) { e.error = r.error; e.endTs = r.ts; }
+}
+
+export function ingestCdpWsFrame(
+  tabId: number,
+  r: { requestId: string; dir: 'sent' | 'received'; opcode: number; payload: string; ts: number },
+): void {
+  const e = findCdp(tabId, r.requestId);
+  if (!e) return;
+  const frames = e.wsFrames ?? (e.wsFrames = []);
+  frames.push({ dir: r.dir, opcode: r.opcode, payload: r.payload.slice(0, MAX_WS_PAYLOAD), ts: r.ts });
+  if (frames.length > MAX_WS_FRAMES) frames.splice(0, frames.length - MAX_WS_FRAMES);
+}
+
+export function getCdpEntry(tabId: number, requestId: string): NetEntry | undefined {
+  return findCdp(tabId, requestId);
+}
+
+export function setCdpBody(tabId: number, requestId: string, r: { body: string; truncated: boolean }): void {
+  const e = findCdp(tabId, requestId);
+  if (e) { e.responseBody = r.body; e.truncated = r.truncated; }
 }
 
 export interface NetSummary {

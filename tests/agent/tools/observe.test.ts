@@ -26,13 +26,13 @@ describe('观测三工具', () => {
     recordRequestEnd('r1', { status: 200, ts: 150 });
     const r = await doListNetworkRequests(1, {});
     const list = (r as { data: { requests: Array<{ requestId: string; hasBody: boolean; durationMs?: number }> } }).data.requests;
-    expect(list[0]!).toMatchObject({ requestId: 'r1', hasBody: false, durationMs: 50 });
+    expect(list[0]!).toMatchObject({ requestId: 'wr:r1', hasBody: false, durationMs: 50 });
   });
 
   it('get_network_request 默认脱敏敏感头', async () => {
     recordRequestStart(1, { requestId: 'r1', method: 'POST', url: 'https://x.com/api', type: 'xmlhttprequest', ts: 100 });
     ingestHookNet(1, [{ loadNonce: 'n1', seq: 1, method: 'POST', url: 'https://x.com/api', ts: 120, requestHeaders: { Authorization: 'Bearer secret', 'Content-Type': 'application/json' }, responseBody: '{"ok":1}' }]);
-    const r = await doGetNetworkRequest(1, { requestId: 'r1' });
+    const r = await doGetNetworkRequest(1, { requestId: 'wr:r1' });
     const d = (r as { data: { requestHeaders?: Record<string, string>; responseBody?: string } }).data;
     expect(d.requestHeaders!.authorization).toBe('[REDACTED]');
     expect(d.requestHeaders!['content-type']).toBe('application/json');
@@ -43,7 +43,7 @@ describe('观测三工具', () => {
     await saveSettings({ agent: { networkCaptureHeaders: 'full' } });
     recordRequestStart(1, { requestId: 'r1', method: 'GET', url: 'https://x.com/api', type: 'xmlhttprequest', ts: 100 });
     ingestHookNet(1, [{ loadNonce: 'n1', seq: 1, method: 'GET', url: 'https://x.com/api', ts: 120, requestHeaders: { Authorization: 'Bearer secret' } }]);
-    const r = await doGetNetworkRequest(1, { requestId: 'r1' });
+    const r = await doGetNetworkRequest(1, { requestId: 'wr:r1' });
     const d = (r as { data: { requestHeaders?: Record<string, string> } }).data;
     expect(d.requestHeaders!.authorization).toBe('Bearer secret');
   });

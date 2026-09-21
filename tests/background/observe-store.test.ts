@@ -3,6 +3,8 @@ import {
   resetStore, ingestConsole, ingestHookNet,
   recordRequestStart, recordRequestEnd, recordRequestError,
   readConsole, readNetworkList, readNetworkDetail, clearTab, clearTabNetwork,
+  setNetworkSuppressor, ingestCdpStart, ingestCdpResponse, ingestCdpEnd,
+  ingestCdpError, ingestCdpWsFrame, getCdpEntry, setCdpBody,
 } from '../../background/observe-store';
 
 beforeEach(() => resetStore());
@@ -40,13 +42,13 @@ describe('network 缓冲：webRequest 主干', () => {
     recordRequestEnd('r1', { status: 200, ts: 150 });
     const list = readNetworkList(1, {});
     expect(list).toHaveLength(1);
-    expect(list[0]!).toMatchObject({ requestId: 'r1', status: 200, durationMs: 50, hasBody: false });
+    expect(list[0]!).toMatchObject({ requestId: 'wr:r1', status: 200, durationMs: 50, hasBody: false });
   });
 
   it('onErrorOccurred 记录错误', () => {
     recordRequestStart(1, { requestId: 'r2', method: 'GET', url: 'https://x.com/b', type: 'image', ts: 10 });
     recordRequestError('r2', { error: 'net::ERR_FAILED', ts: 20 });
-    const d = readNetworkDetail(1, 'r2');
+    const d = readNetworkDetail(1, 'wr:r2');
     expect(d).toBeDefined();
     expect((d as { error?: string }).error).toBe('net::ERR_FAILED');
   });
@@ -56,9 +58,9 @@ describe('network 缓冲：webRequest 主干', () => {
     recordRequestEnd('a', { status: 200, ts: 2 });
     recordRequestStart(1, { requestId: 'b', method: 'POST', url: 'https://x.com/login', type: 'xmlhttprequest', ts: 3 });
     recordRequestEnd('b', { status: 401, ts: 4 });
-    expect(readNetworkList(1, { method: 'POST' }).map((r) => r.requestId)).toEqual(['b']);
-    expect(readNetworkList(1, { urlContains: 'users' }).map((r) => r.requestId)).toEqual(['a']);
-    expect(readNetworkList(1, { status: 401 }).map((r) => r.requestId)).toEqual(['b']);
+    expect(readNetworkList(1, { method: 'POST' }).map((r) => r.requestId)).toEqual(['wr:b']);
+    expect(readNetworkList(1, { urlContains: 'users' }).map((r) => r.requestId)).toEqual(['wr:a']);
+    expect(readNetworkList(1, { status: 401 }).map((r) => r.requestId)).toEqual(['wr:b']);
   });
 });
 
@@ -70,7 +72,7 @@ describe('network 缓冲：hook body 关联', () => {
     const list = readNetworkList(1, {});
     expect(list).toHaveLength(1);        // 关联进同一条，不新增
     expect(list[0]!.hasBody).toBe(true);
-    const d = readNetworkDetail(1, 'r1') as { responseBody?: string; source?: string };
+    const d = readNetworkDetail(1, 'wr:r1') as { responseBody?: string; source?: string };
     expect(d.responseBody).toBe('{"ok":1}');
     expect(d.source).toBe('merged');
   });
@@ -108,5 +110,64 @@ describe('清理', () => {
     clearTabNetwork(1);
     expect(readConsole(1, {})).toHaveLength(1);
     expect(readNetworkList(1, {})).toHaveLength(0);
+  });
+});
+
+describe('network 缓冲：CDP 数据源', () => {
+  it('ingest 全链路建条目，id 带 cdp: 前缀', () => {
+    ingestCdpStart(1, { requestId: 'c1', method: 'POST', url: 'https://x.com/api', type: 'XHR', ts: 100, requestHeaders: { a: '1' }, requestBody: '{"q":1}' });
+    ingestCdpResponse(1, { requestId: 'c1', status: 200, responseHeaders: { 'content-type': 'application/json' }, mimeType: 'application/json' });
+    ingestCdpEnd(1, { requestId: 'c1', ts: 160 });
+    const list = readNetworkList(1, {});
+    expect(list[0]!).toMatchObject({ requestId: 'cdp:c1', status: 200, durationMs: 60, hasBody: true });
+  });
+
+  it('setCdpBody 落库并标 truncated', () => {
+    ingestCdpStart(1, { requestId: 'c2', method: 'GET', url: 'https://x.com/a', type: 'Fetch', ts: 1 });
+    setCdpBody(1, 'c2', { body: '{"ok":1}', truncated: false });
+    expect(getCdpEntry(1, 'c2')!.responseBody).toBe('{"ok":1}');
+  });
+
+  it('ingestCdpError 记录错误', () => {
+    ingestCdpStart(1, { requestId: 'c3', method: 'GET', url: 'https://x.com/b', type: 'XHR', ts: 1 });
+    ingestCdpError(1, { requestId: 'c3', error: 'net::ERR_FAILED', ts: 9 });
+    expect(getCdpEntry(1, 'c3')!.error).toBe('net::ERR_FAILED');
+  });
+
+  it('WS 帧挂到握手条目，超上限淘汰最早', () => {
+    ingestCdpStart(1, { requestId: 'w1', method: 'GET', url: 'wss://x.com/s', type: 'WebSocket', ts: 1 });
+    for (let i = 0; i < 210; i++) {
+      ingestCdpWsFrame(1, { requestId: 'w1', dir: 'sent', opcode: 1, payload: `f${i}`, ts: i });
+    }
+    const frames = getCdpEntry(1, 'w1')!.wsFrames!;
+    expect(frames).toHaveLength(200);
+    expect(frames[frames.length - 1]!.payload).toBe('f209');
+    expect(frames[0]!.payload).toBe('f10');
+  });
+
+  it('WS 单帧 payload 截断', () => {
+    ingestCdpStart(1, { requestId: 'w2', method: 'GET', url: 'wss://x.com/s', type: 'WebSocket', ts: 1 });
+    ingestCdpWsFrame(1, { requestId: 'w2', dir: 'received', opcode: 1, payload: 'y'.repeat(5000), ts: 1 });
+    expect(getCdpEntry(1, 'w2')!.wsFrames![0]!.payload).toHaveLength(4096);
+  });
+
+  it('wr: 与 cdp: 前缀不撞号', () => {
+    recordRequestStart(1, { requestId: 'same', method: 'GET', url: 'https://x.com/1', type: 'xmlhttprequest', ts: 1 });
+    ingestCdpStart(1, { requestId: 'same', method: 'GET', url: 'https://x.com/2', type: 'XHR', ts: 2 });
+    const ids = readNetworkList(1, {}).map((r) => r.requestId);
+    expect(ids).toContain('wr:same');
+    expect(ids).toContain('cdp:same');
+  });
+
+  it('抑制开启时 webRequest 三入口全部不落库', () => {
+    setNetworkSuppressor((tabId) => tabId === 1);
+    recordRequestStart(1, { requestId: 'r9', method: 'GET', url: 'https://x.com/z', type: 'xmlhttprequest', ts: 1 });
+    recordRequestEnd('r9', { status: 200, ts: 2 });
+    recordRequestError('r9', { error: 'x', ts: 3 });
+    expect(readNetworkList(1, {})).toHaveLength(0);
+    // 未抑制的 tab 不受影响
+    recordRequestStart(2, { requestId: 'r10', method: 'GET', url: 'https://x.com/y', type: 'xmlhttprequest', ts: 1 });
+    expect(readNetworkList(2, {})).toHaveLength(1);
+    setNetworkSuppressor(() => false);
   });
 });

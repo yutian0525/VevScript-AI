@@ -7,14 +7,8 @@ export const HOOK_MSG = '__ai_ext_hook__';
 /** ISOLATED→MAIN：中继监听已就绪，请 flush backlog 的 tag。 */
 export const RELAY_READY = '__ai_ext_relay_ready__';
 
-/** 一条 console 观测。 */
-export interface ConsoleEntry {
-  id: string;      // `${loadNonce}:${seq}` 单调去重键
-  level: string;   // log/info/warn/error/debug
-  text: string;    // 序列化后的文本（已截断）
-  ts: number;      // 采集时间戳
-  url?: string;    // 采集时页面 URL
-}
+import type { ConsoleEntry } from './observe';
+export type { ConsoleEntry } from './observe';
 
 /** 一条 hook 捕获的网络观测（fetch/XHR）。 */
 export interface HookNetEntry {
