@@ -91,6 +91,79 @@ describe('handleEvent：网络', () => {
   });
 });
 
+describe('handleEvent：浏览器补全头（ExtraInfo）', () => {
+  // requestWillBeSent / responseReceived 只带渲染进程提供的子集；
+  // Cookie、User-Agent、Origin、Referer、Sec-Fetch-*、Set-Cookie 只出现在 ExtraInfo 里。
+  it('requestWillBeSentExtraInfo 后到 → 并入已有条目', async () => {
+    await handleEvent(1, undefined, 'Network.requestWillBeSent', {
+      requestId: 'x1', timestamp: 1,
+      request: { url: 'https://x.com/api', method: 'GET', headers: { 'x-app': '1' } }, type: 'XHR',
+    });
+    await handleEvent(1, undefined, 'Network.requestWillBeSentExtraInfo', {
+      requestId: 'x1', headers: { cookie: 'sid=1', 'user-agent': 'UA' },
+      associatedCookies: [], connectTiming: {},
+    });
+    expect(getCdpEntry(1, 'x1')!.requestHeaders).toEqual({
+      'x-app': '1', cookie: 'sid=1', 'user-agent': 'UA',
+    });
+  });
+
+  it('responseReceivedExtraInfo 后到 → 并入已有条目（Set-Cookie 可见）', async () => {
+    await handleEvent(1, undefined, 'Network.requestWillBeSent', {
+      requestId: 'x1b', timestamp: 1, request: { url: 'https://x.com/a', method: 'GET', headers: {} }, type: 'XHR',
+    });
+    await handleEvent(1, undefined, 'Network.responseReceived', {
+      requestId: 'x1b', response: { status: 200, headers: { 'content-type': 'text/html' }, mimeType: 'text/html' },
+    });
+    await handleEvent(1, undefined, 'Network.responseReceivedExtraInfo', {
+      requestId: 'x1b', headers: { 'set-cookie': 'sid=1' }, statusCode: 200, blockedCookies: [],
+    });
+    expect(getCdpEntry(1, 'x1b')!.responseHeaders).toEqual({
+      'content-type': 'text/html', 'set-cookie': 'sid=1',
+    });
+  });
+
+  it('ExtraInfo 先到 → 暂存，配对事件建条目时套用（不假设先后）', async () => {
+    await handleEvent(1, undefined, 'Network.responseReceivedExtraInfo', {
+      requestId: 'x2', headers: { 'set-cookie': 'sid=2' }, statusCode: 200, blockedCookies: [],
+    });
+    await handleEvent(1, undefined, 'Network.requestWillBeSent', {
+      requestId: 'x2', timestamp: 1, request: { url: 'https://x.com/a', method: 'GET', headers: {} }, type: 'XHR',
+    });
+    await handleEvent(1, undefined, 'Network.responseReceived', {
+      requestId: 'x2', response: { status: 200, headers: { 'content-type': 'text/html' }, mimeType: 'text/html' },
+    });
+    expect(getCdpEntry(1, 'x2')!.responseHeaders).toEqual({
+      'content-type': 'text/html', 'set-cookie': 'sid=2',
+    });
+  });
+
+  it('同名头以 ExtraInfo（浏览器完整集）为准', async () => {
+    await handleEvent(1, undefined, 'Network.requestWillBeSent', {
+      requestId: 'x3', timestamp: 1,
+      request: { url: 'https://x.com/a', method: 'GET', headers: { accept: 'renderer' } }, type: 'XHR',
+    });
+    await handleEvent(1, undefined, 'Network.requestWillBeSentExtraInfo', {
+      requestId: 'x3', headers: { accept: 'browser' }, associatedCookies: [], connectTiming: {},
+    });
+    expect(getCdpEntry(1, 'x3')!.requestHeaders!.accept).toBe('browser');
+  });
+
+  it('暂存的 ExtraInfo 被消费后不重复套用到后来的同名 requestId', async () => {
+    await handleEvent(1, undefined, 'Network.requestWillBeSentExtraInfo', {
+      requestId: 'x4', headers: { cookie: 'stale=1' }, associatedCookies: [], connectTiming: {},
+    });
+    await handleEvent(1, undefined, 'Network.requestWillBeSent', {
+      requestId: 'x4', timestamp: 1, request: { url: 'https://x.com/a', method: 'GET', headers: {} }, type: 'XHR',
+    });
+    expect(getCdpEntry(1, 'x4')!.requestHeaders).toEqual({ cookie: 'stale=1' });
+    await handleEvent(1, undefined, 'Network.requestWillBeSent', {
+      requestId: 'x5', timestamp: 2, request: { url: 'https://x.com/b', method: 'GET', headers: {} }, type: 'XHR',
+    });
+    expect(getCdpEntry(1, 'x5')!.requestHeaders).toEqual({}); // 只有渲染进程子集，无暂存残留
+  });
+});
+
 describe('handleEvent：console', () => {
   it('consoleAPICalled → 摄入，级别映射 warning→warn', async () => {
     await handleEvent(1, undefined, 'Runtime.consoleAPICalled', {

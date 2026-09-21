@@ -4,7 +4,7 @@ import {
   recordRequestStart, recordRequestEnd, recordRequestError,
   readConsole, readNetworkList, readNetworkDetail, clearTab, clearTabNetwork,
   setNetworkSuppressor, ingestCdpStart, ingestCdpResponse, ingestCdpEnd,
-  ingestCdpError, ingestCdpWsFrame, getCdpEntry, setCdpBody,
+  ingestCdpError, ingestCdpWsFrame, getCdpEntry, setCdpBody, ingestCdpExtraHeaders,
 } from '../../background/observe-store';
 
 beforeEach(() => resetStore());
@@ -118,6 +118,13 @@ describe('network 缓冲：CDP 数据源', () => {
     ingestCdpStart(1, { requestId: 'w2', method: 'GET', url: 'wss://x.com/s', type: 'WebSocket', ts: 1 });
     ingestCdpWsFrame(1, { requestId: 'w2', dir: 'received', opcode: 1, payload: 'y'.repeat(5000), ts: 1 });
     expect(getCdpEntry(1, 'w2')!.wsFrames![0]!.payload).toHaveLength(4096);
+  });
+
+  it('clearTab 一并清掉该 tab 暂存的 ExtraInfo 头（不跨 tab 生命期残留）', () => {
+    ingestCdpExtraHeaders(1, 'p1', { requestHeaders: { cookie: 'stale=1' } });
+    clearTab(1);
+    ingestCdpStart(1, { requestId: 'p1', method: 'GET', url: 'https://x.com/a', type: 'XHR', ts: 1 });
+    expect(getCdpEntry(1, 'p1')!.requestHeaders).toBeUndefined();
   });
 
   it('wr: 与 cdp: 前缀不撞号', () => {

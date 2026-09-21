@@ -5,7 +5,7 @@ import { shouldFetchBody, fetchBody } from './bodies';
 import { rememberSession, forgetSession } from './session';
 import {
   ingestCdpStart, ingestCdpResponse, ingestCdpEnd, ingestCdpError,
-  ingestCdpWsFrame, getCdpEntry, setCdpBody, ingestConsole,
+  ingestCdpWsFrame, getCdpEntry, setCdpBody, ingestConsole, ingestCdpExtraHeaders,
 } from '../observe-store';
 import type { ConsoleEntry } from '../../shared/observe';
 
@@ -109,6 +109,20 @@ export async function handleEvent(
         responseHeaders: res.headers,
         mimeType: res.mimeType,
       });
+      return;
+    }
+    // ExtraInfo 两个事件带浏览器补全后的完整头集（含 Cookie / User-Agent / Set-Cookie 等），
+    // 是上面两个事件里那份渲染进程子集的超集；先后不定，由 observe-store 做顺序容忍的合并。
+    case 'Network.requestWillBeSentExtraInfo': {
+      const headers = params.headers as Record<string, string> | undefined;
+      if (!headers) return;
+      ingestCdpExtraHeaders(tabId, params.requestId as string, { requestHeaders: headers });
+      return;
+    }
+    case 'Network.responseReceivedExtraInfo': {
+      const headers = params.headers as Record<string, string> | undefined;
+      if (!headers) return;
+      ingestCdpExtraHeaders(tabId, params.requestId as string, { responseHeaders: headers });
       return;
     }
     case 'Network.loadingFinished': {

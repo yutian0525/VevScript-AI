@@ -59,6 +59,7 @@ function ring<T>(arr: T[]): void {
 /** 测试用：清空全部缓冲。 */
 export function resetStore(): void {
   tabs.clear();
+  pendingHeaders.clear();
   networkSuppressed = () => false; // 抑制器一并复位，防前一用例挂上的状态串到后续用例
 }
 
@@ -121,16 +122,93 @@ function findCdp(tabId: number, requestId: string): NetEntry | undefined {
   return b?.network.find((n) => n.requestId === id);
 }
 
+/** 暂存头的上限（每 tab）：配对事件始终不来时防 map 随 tab 生命期无限增长。 */
+const MAX_PENDING_HEADERS = 200;
+
+interface PendingHeaders {
+  requestHeaders?: Record<string, string>;
+  responseHeaders?: Record<string, string>;
+}
+
+/** requestId → 暂存的 ExtraInfo 头（配对事件建条目时消费）。 */
+const pendingHeaders = new Map<number, Map<string, PendingHeaders>>();
+
+/** 合并两组头：extra（浏览器完整集）覆盖 base（渲染进程子集）的同名项。 */
+function mergeHeaders(
+  base: Record<string, string> | undefined,
+  extra: Record<string, string> | undefined,
+): Record<string, string> | undefined {
+  if (!extra) return base;
+  if (!base) return extra;
+  return { ...base, ...extra };
+}
+
+/** 取出并清除该 requestId 的暂存头。 */
+function takePending(tabId: number, requestId: string): PendingHeaders | undefined {
+  const m = pendingHeaders.get(tabId);
+  const p = m?.get(requestId);
+  if (!p) return undefined;
+  m!.delete(requestId);
+  if (m!.size === 0) pendingHeaders.delete(tabId);
+  return p;
+}
+
+/** 条目建成/补全时套用暂存头（extra 覆盖条目已有的渲染进程子集）。 */
+function applyPendingHeaders(tabId: number, requestId: string, e: NetEntry): void {
+  const p = takePending(tabId, requestId);
+  if (!p) return;
+  if (p.requestHeaders) e.requestHeaders = mergeHeaders(e.requestHeaders, p.requestHeaders);
+  if (p.responseHeaders) e.responseHeaders = mergeHeaders(e.responseHeaders, p.responseHeaders);
+}
+
+/**
+ * 摄入 `Network.requestWillBeSentExtraInfo` / `responseReceivedExtraInfo` 的头。
+ * 这两个事件携带浏览器补全后的完整头集（请求侧 Cookie / User-Agent / Origin / Referer /
+ * Sec-Fetch-*，响应侧 Set-Cookie），是 requestWillBeSent / responseReceived 里那份
+ * 渲染进程子集的超集；同名以本处为准。
+ * 与配对事件没有固定先后：条目已在则立即并入，否则暂存待建条目时套用。
+ */
+export function ingestCdpExtraHeaders(tabId: number, requestId: string, r: PendingHeaders): void {
+  const e = findCdp(tabId, requestId);
+  if (e) {
+    if (r.requestHeaders) e.requestHeaders = mergeHeaders(e.requestHeaders, r.requestHeaders);
+    if (r.responseHeaders) e.responseHeaders = mergeHeaders(e.responseHeaders, r.responseHeaders);
+    return;
+  }
+  let m = pendingHeaders.get(tabId);
+  if (!m) { m = new Map(); pendingHeaders.set(tabId, m); }
+  const cur = m.get(requestId) ?? {};
+  if (r.requestHeaders) cur.requestHeaders = mergeHeaders(cur.requestHeaders, r.requestHeaders);
+  if (r.responseHeaders) cur.responseHeaders = mergeHeaders(cur.responseHeaders, r.responseHeaders);
+  // 重新 set 以刷新插入序（Map 按插入序迭代，超限时淘汰最早的那条）
+  m.delete(requestId);
+  m.set(requestId, cur);
+  if (m.size > MAX_PENDING_HEADERS) m.delete(m.keys().next().value as string);
+}
+
 export function ingestCdpStart(
   tabId: number,
   r: { requestId: string; method: string; url: string; type: string; ts: number;
        requestHeaders?: Record<string, string>; requestBody?: string },
 ): void {
   const b = buf(tabId);
-  b.network.push({
-    requestId: cdpId(r.requestId), method: r.method, url: r.url, type: r.type, ts: r.ts,
+  const id = cdpId(r.requestId);
+  const existing = b.network.find((n) => n.requestId === id);
+  if (existing) {
+    // CDP 在同一条重定向链上复用 requestId，每个 hop 都会再发一次 requestWillBeSent。
+    // 无条件 push 会得到两条条目，而 findCdp 只命中首条——最终 hop 的 status/headers/body
+    // 全被记到首跳 URL 上，模型真正关心的那个 URL 永远是空白。就地更新为最新一跳。
+    existing.url = r.url;
+    existing.method = r.method;
+    if (r.requestHeaders) existing.requestHeaders = r.requestHeaders;
+    return;
+  }
+  const entry: NetEntry = {
+    requestId: id, method: r.method, url: r.url, type: r.type, ts: r.ts,
     requestHeaders: r.requestHeaders, requestBody: r.requestBody, source: 'cdp',
-  });
+  };
+  applyPendingHeaders(tabId, r.requestId, entry);
+  b.network.push(entry);
   ring(b.network);
 }
 
@@ -141,8 +219,11 @@ export function ingestCdpResponse(
   const e = findCdp(tabId, r.requestId);
   if (!e) return;
   e.status = r.status;
-  if (r.responseHeaders) e.responseHeaders = r.responseHeaders;
+  // 以已有头为高优先级：ExtraInfo 可能抢在 responseReceived 之前到达并已并入（extra 是
+  // 浏览器完整集，渲染进程子集是其子集），此处只补它没覆盖到的名字，不整体覆盖。
+  if (r.responseHeaders) e.responseHeaders = mergeHeaders(r.responseHeaders, e.responseHeaders);
   if (r.mimeType) e.mimeType = r.mimeType;
+  applyPendingHeaders(tabId, r.requestId, e);
 }
 
 export function ingestCdpEnd(tabId: number, r: { requestId: string; ts: number }): void {
@@ -205,7 +286,10 @@ export function readNetworkDetail(tabId: number, requestId: string): NetEntry | 
 }
 
 // ---------- 清理 ----------
-export function clearTab(tabId: number): void { tabs.delete(tabId); }
+export function clearTab(tabId: number): void {
+  tabs.delete(tabId);
+  pendingHeaders.delete(tabId); // 暂存头随 tab 一起走，不跨 tab 生命期残留
+}
 
 export function clearTabNetwork(tabId: number): void {
   const b = tabs.get(tabId);
