@@ -9,10 +9,10 @@ import { readConsole, readNetworkList, readNetworkDetail } from '../../backgroun
 import { getState } from '../../background/cdp/session';
 
 const CONSOLE_HINT =
-  '控制台观测需要深度观测（CDP），当前未开启；可调用 enable_deep_observe 开启'
+  '控制台观测需要深度观测（CDP），当前未开启；可调用 toggle_deep_observe（enabled=true）开启'
   + '（会在页面顶部显示 Chrome 调试提示条，且与页面 DevTools 互斥）';
 const NETWORK_HINT =
-  '当前只有 webRequest 元数据（无响应体、无请求头）；要看这些内容可调用 enable_deep_observe 开启深度观测';
+  '当前只有 webRequest 元数据（无响应体、无请求头）；要看这些内容可调用 toggle_deep_observe（enabled=true）开启深度观测';
 
 function isDeepObserve(tabId: number): boolean {
   return getState(tabId).status === 'on';

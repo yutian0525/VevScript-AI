@@ -14,7 +14,8 @@
 | 4 | 保真范围 | **主帧 + 自动附着子 target**（flatten） | 现有 hook 是 `allFrames: true` 注入，只做主帧会让跨域 iframe 成为净回退 |
 | 5 | CDP 开启时的 webRequest | **该 tab 静默** | 两套 `requestId` 命名空间无法对齐，硬合并只产生幽灵重复条目 |
 | 6 | 响应体抓取时机 | **`loadingFinished` 时立即拉取**（类型白名单） | CDP 的 body 缓冲会被淘汰，等工具调用时再拉不可靠 |
-| 7 | ask 模式 | **`enable`/`disable` 进 `ASK_MODE_TOOLS`** | 见 §4，此条为推荐项，用户可否决 |
+| 7 | ask 模式 | **`toggle_deep_observe` 进 `ASK_MODE_TOOLS`** | 见 §4.3 |
+| 8 | 工具形态 | **单工具带 `enabled` 布尔**（非 enable/disable 两工具） | 形状对齐既有 `toggle_script`；省一份 schema 面积。见 §4.1（终审后合并，原设计为两工具） |
 
 ## 2. 目标与非目标
 
@@ -65,8 +66,9 @@
 
 均无参数，作用于 agent 当前标签页（tabId 由工具上下文提供，与 `agent/tools/observe.ts` 现有签名一致）：
 
-- `enable_deep_observe` → `{ ok: true, data: { tabId, status: 'on' } }`；失败 `{ ok: false, error }`，文案直指原因（如「页面 DevTools 已打开，无法附着」）。
-- `disable_deep_observe` → `{ ok: true, data: { tabId, status: 'off' } }`；未附着时幂等成功。
+- `toggle_deep_observe({ enabled })` → `{ ok: true, data: { tabId, status } }`；`enabled=true` 时若附着失败返回 `{ ok: false, error }`，文案直指原因（如「页面 DevTools 已打开，无法附着」）；`enabled=false` 未附着时幂等成功。
+
+  单工具带布尔（形状对齐既有 `toggle_script({ id, enabled })`）而非 enable/disable 两工具：38 个工具的描述每轮请求都要付 token 并稀释模型的选择准确率，两个工具干一件事的成本每次调用都在付；极性歧义那条不成立——`enabled: true/false` 已是最不易歧义的布尔，且模型在 `toggle_script` 上见过同一形状。（此条为终审后的合并决定，原设计为两工具。）
 
 工具描述里写明开启代价（页面顶部出现 Chrome 调试提示条、与页面 DevTools 互斥），让模型知道自己在做什么。
 
@@ -74,13 +76,13 @@
 
 CDP 关闭时三个观测工具**不报错**，返回空数据 + `deepObserve: false` + `hint`：
 
-- `list_console_messages` → `{ messages: [], deepObserve: false, hint: '控制台观测需要深度观测（CDP），当前未开启；可调用 enable_deep_observe 开启（会在页面顶部显示 Chrome 调试提示条，且与页面 DevTools 互斥）' }`
+- `list_console_messages` → `{ messages: [], deepObserve: false, hint: '控制台观测需要深度观测（CDP），当前未开启；可调用 toggle_deep_observe（enabled=true）开启（会在页面顶部显示 Chrome 调试提示条，且与页面 DevTools 互斥）' }`
 - `list_network_requests` → 照常返回 webRequest 元数据 + `deepObserve: false`（该 tab 未附着时无 body、无 headers）
 - `get_network_request` → 条目来自 webRequest 且无 body 时附 `hint` 说明原因
 
 ### 4.3 ask 模式（推荐项，可否决）
 
-`enable_deep_observe` / `disable_deep_observe` 进 `ASK_MODE_TOOLS`。
+`toggle_deep_observe` 进 `ASK_MODE_TOOLS`。
 
 - 支持理由：ask 模式正是「这页为什么报错」的诊断主场；若不进白名单，三个只读观测工具在 ask 下全部失效，而它们本身在白名单里。附着不修改页面内容，符合 ask 的「不改网页状态」语义。
 - 反对理由：附着确实改变浏览器状态（信息条常驻、DevTools 互斥）。

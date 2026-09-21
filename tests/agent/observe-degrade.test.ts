@@ -24,7 +24,7 @@ describe('CDP 关闭时的降级语义', () => {
     const d = (r as { data: { messages: unknown[]; deepObserve: boolean; hint?: string } }).data;
     expect(d.messages).toEqual([]);
     expect(d.deepObserve).toBe(false);
-    expect(d.hint).toContain('enable_deep_observe');
+    expect(d.hint).toContain('toggle_deep_observe');
   });
 
   it('list_network_requests 仍返回 webRequest 元数据 + deepObserve:false', async () => {
@@ -40,7 +40,7 @@ describe('CDP 关闭时的降级语义', () => {
     const r = await doGetNetworkRequest(1, { requestId: 'wr:r1' });
     const d = (r as { data: { deepObserve: boolean; hint?: string } }).data;
     expect(d.deepObserve).toBe(false);
-    expect(d.hint).toContain('enable_deep_observe');
+    expect(d.hint).toContain('toggle_deep_observe');
   });
 });
 

@@ -10,7 +10,7 @@ import { doScreenshot } from './screenshot';
 import { doEvaluate } from './evaluate';
 import { doHttpRequest } from './http';
 import { doListConsoleMessages, doListNetworkRequests, doGetNetworkRequest } from './observe';
-import { doEnableDeepObserve, doDisableDeepObserve } from './deep-observe';
+import { doToggleDeepObserve } from './deep-observe';
 import {
   doListScripts, doGetScript, doCreateScript, doUpdateScript, doDeleteScript, doToggleScript,
 } from './script-pool';
@@ -85,8 +85,9 @@ export async function executeTool(
   if (name === 'select_page') return doSelectPage(args as { tabId: number });
 
   // 深度观测开关：只操作 debugger 附着，不碰页面内容，豁免受限页预检。
-  if (name === 'enable_deep_observe') return doEnableDeepObserve(ctx.tabId);
-  if (name === 'disable_deep_observe') return doDisableDeepObserve(ctx.tabId);
+  if (name === 'toggle_deep_observe') {
+    return doToggleDeepObserve(ctx.tabId, (args as { enabled: boolean }).enabled === true);
+  }
 
   // 观测类工具读 SW 缓冲、不碰活页面，与 list_pages 同属豁免（受限页返回空比报错更有用）。
   if (name === 'list_console_messages') return doListConsoleMessages(ctx.tabId, args as { level?: string; limit?: number });

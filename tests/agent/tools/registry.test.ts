@@ -13,7 +13,7 @@ describe('工具 registry', () => {
   });
 
   it('getToolSchemas 返回全部 schema', () => {
-    expect(getToolSchemas().length).toBe(38);
+    expect(getToolSchemas().length).toBe(37);
   });
 
   it('query_page 经 CS 通道分发', async () => {
