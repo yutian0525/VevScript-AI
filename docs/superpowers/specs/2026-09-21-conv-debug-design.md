@@ -118,11 +118,20 @@ interface TurnTrace {
     summary: string;         // 与 tool-end 事件的 summary 同源
   }>;
 
-  outcome: 'done' | 'paused' | 'aborted' | 'error' | 'truncated-retry';
+  outcome: 'continue' | 'done' | 'paused' | 'aborted' | 'error' | 'truncated-retry';
   /** 熔断停止时的原因（checkGuards 的 verdict.reason） */
   guardReason?: string;
 }
 ```
+
+`outcome` 的取值语义：
+
+- `continue` — 本轮工具执行完毕、循环回到下一轮（轮体末尾自然落下，最常见的非终态）
+- `done` — 模型不再调工具，任务自然收尾
+- `paused` — 熔断阀判定停止（`guardReason` 带原因）
+- `aborted` — 用户中断
+- `error` — `runTurn` 返回 error
+- `truncated-retry` — 模型输出被 length 截断，走重试分支
 
 `MAX_TURNS = 200`，与 `MAX_MESSAGES` 对齐。
 
@@ -172,7 +181,8 @@ for (;;) {
   const tr = createTurnRecorder({ convId, turn: seq + 1, tabId: targetTab });
   try {
     // ... 原有轮体，接入点见下表 ...
-    // 8 处出口各自显式赋值 tr.rec.outcome
+    tr.rec.outcome = 'continue';   // 轮体末尾自然落下 = 工具跑完继续下一轮
+    // 8 处 return 出口各自显式赋值 tr.rec.outcome
   } finally {
     await tr.commit();   // continue / return 均经此收口
   }
@@ -181,7 +191,7 @@ for (;;) {
 
 `try/finally` 是关键：轮体内有一处 `continue`（模型输出被截断的重试路径，L160）和 8 处 `return`，`finally` 在 `continue` 前同样执行，一处收口覆盖全部出口。
 
-**8 处出口与 `outcome` 取值**
+**9 处出口与 `outcome` 取值**
 
 | loop.ts 位置 | 场景 | outcome |
 |---|---|---|
@@ -193,6 +203,7 @@ for (;;) {
 | L170 | 无工具调用，正常收尾 | `done` |
 | L177 | 工具循环中 signal.aborted | `aborted` |
 | L255 | 工具执行后熔断停止 | `paused` |
+| 轮体末尾（落下） | 工具执行完毕，循环回下一轮 | `continue` |
 
 L160 的 `continue` 不是出口：该轮 trace 记 `truncated-retry` 并照常 commit，下一轮迭代新建 recorder。
 
@@ -318,7 +329,7 @@ openExtensionTab(path: string, opts?: { convId?: string | null }): Promise<void>
 |---|---|
 | `tests/storage/traces.test.ts` | 环形裁剪保最旧/最新边界；`seq` 跨裁剪单调；`readTraces` 对缺失 key 返回空壳；`clearTraces` |
 | `tests/agent/trace.test.ts` | `summarizeContext` 的字符数与条数统计（含 toolCalls、附件数组消息）；recorder 各 mark 方法填入的字段；`commit` 补 `endedAt`；写入失败被吞掉 |
-| `tests/agent/loop-trace.test.ts` | `drive` 的 8 处出口各自 commit 出正确 `outcome`；截断重试路径产出 `truncated-retry` 且下一轮新建 recorder；工具记录条数与 callId 对齐；熔断路径带 `guardReason` |
+| `tests/agent/loop-trace.test.ts` | `drive` 的 9 处出口各自 commit 出正确 `outcome`；截断重试路径产出 `truncated-retry` 且下一轮新建 recorder；工具记录条数与 callId 对齐；熔断路径带 `guardReason` |
 | `tests/convdebug/utils.test.ts` | 时间线投影：`seq > turns.length` 判定为裁剪；耗时/token/相对时间格式化；空 trace 空态 |
 | `tests/settings/tab-entries.test.ts` | `TAB_ENTRIES` 与 GROUPS 中带 `tabUrl` 的条目一致（防止两处漂移） |
 
@@ -326,7 +337,7 @@ openExtensionTab(path: string, opts?: { convId?: string | null }): Promise<void>
 
 ## 9. 风险与取舍
 
-- **`drive()` 的出口数量**：8 处显式赋值 `outcome` 是漏改风险点。缓解：默认值 `'error'` 作绊线 + `loop-trace.test.ts` 逐出口断言。
+- **`drive()` 的出口数量**：9 处显式赋值 `outcome` 是漏改风险点。缓解：默认值 `'error'` 作绊线 + `loop-trace.test.ts` 逐出口断言。
 - **每轮一次额外 storage 读**（取 `seq`）：相对一次 LLM 调用可忽略。若将来成为热点，可把 `seq` 缓存进 collector 并仅在 SW 冷启动时重读。
 - **`storage.watch` 首次在本仓使用**：wxt 0.21 经 `@wxt-dev/storage` 导出，已确认存在。若实测在标签页上下文行为异常，退化为「选中会话时读一次 + 手动刷新按钮」，页面其余部分不受影响。
 - **trace 写失败静默**：quota 打满时丢该轮 trace 而不阻断 loop——调试设施不该有能力搞挂主流程。
