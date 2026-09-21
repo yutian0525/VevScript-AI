@@ -212,7 +212,7 @@ interface DeepObserveStore {
   - 开：`深度观测：开 · 本页已附着（点击关闭）`
   - 异常：`深度观测：已断开——页面 DevTools 占用中（点击重试）`（reason 有值时替换破折号后文案）
 - **当前标签页跟踪**：组件内部维护 `useActiveTabId()`（监听 `browser.tabs.onActivated` 与 `onRemoved`，初值用 `tabs.query({ active: true, currentWindow: true })`，回退 `lastFocusedWindow`——同 `ChatView.tsx:140` 现有写法）。tabId 变化时 `DEEP_OBSERVE_GET` 重新取态。
-- **disabled 条件**：无当前会话或无当前标签页（同 ContextRing 的 `!currentId` 口径）。
+- **disabled 条件**：无当前标签页（`tabId == null`），或父组件传入的 `disabled`（`ChatView` 在 `status === 'running'` 时传，避免运行中改附着态）。**与「有没有会话」无关**——深度观测是 per-tab 的浏览器状态，不依赖会话是否存在，故不采用 ContextRing 的 `!currentId` 口径。
 - **点击**：`DEEP_OBSERVE_SET { tabId, enabled: !isOn }`；异常态点击等同重试开启。
 - 状态切换 transition 走 `prefers-reduced-motion` 兜底。
 - **不设设置页项**：附着态跨浏览器重启不存活，无可持久化状态——「默认关闭」即这个无状态的自然结果。

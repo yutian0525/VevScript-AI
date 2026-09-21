@@ -34,7 +34,7 @@ export function getTag(name: string): ToolTag {
 export const GROUPS: ReadonlyArray<{ key: ToolTag; label: string; hint: string }> = [
   { key: 'PAGE', label: '页面操作', hint: 'content script 或 SW 直操作当前页' },
   { key: 'TABS', label: '标签页与导航', hint: 'tabs API / 导航控制' },
-  { key: 'NET', label: '网络与观测', hint: '后台 fetch / console / 网络元数据' },
+  { key: 'NET', label: '网络与观测', hint: '后台 fetch / console / 网络元数据 / CDP 深度观测开关' },
   { key: 'SCRIPTS', label: '脚本池管理', hint: 'userScripts CRUD 与启停' },
   { key: 'SKILLS', label: '技能', hint: '按 command 加载技能正文；技能池 CRUD' },
   { key: 'MEMORY', label: '记忆', hint: '跨会话长期记忆的读写' },

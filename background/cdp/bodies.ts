@@ -3,7 +3,7 @@
 // CDP 的 body 缓冲会被淘汰，等工具调用时再拉不可靠。
 export const MAX_BODY = 64 * 1024;
 
-/** 抓体白名单：与旧 hook 的 fetch/XHR 语义对齐，另加 Document（HTML 正文有诊断价值）。 */
+/** 抓体白名单：XHR / Fetch（「页面 JS 发起的接口调用」正是诊断主场），另加 Document（HTML 正文有诊断价值）。 */
 const BODY_TYPE_ALLOWLIST = new Set(['XHR', 'Fetch', 'Document']);
 /** 非文本 mimeType 前缀/片段，命中即跳过。 */
 const NON_TEXT_MIME = ['image/', 'font/', 'audio/', 'video/'];

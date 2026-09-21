@@ -4,7 +4,8 @@
 // 直接互相 import 会成环；background.ts 负责把两者接起来）。
 import type { DeepObserveState } from '../../shared/cdp';
 
-/** CDP 协议版本：'0.1' 起兼容，取当前稳定档。 */
+/** CDP 协议版本：chrome.debugger.attach 要求与浏览器 CDP 的主版本号一致，
+ *  受支持的 Chrome 上只有 '1.3' 可用（'0.1' 会直接 attach 失败）。 */
 export const PROTOCOL_VERSION = '1.3';
 /** 被 DevTools 抢占时的原因文案。 */
 export const DEVTOOLS_REASON = '页面 DevTools 占用中';
