@@ -1,5 +1,40 @@
 import { describe, it, expect } from 'vitest';
-import { serializeRemoteObjects, MAX_CONSOLE_TEXT } from '../../background/cdp/console-text';
+import {
+  serializeRemoteObjects, formatStackTrace, MAX_CONSOLE_TEXT, MAX_CONSOLE_STACK,
+} from '../../background/cdp/console-text';
+
+describe('formatStackTrace', () => {
+  it('每帧一行「函数名 @ url:行:列」', () => {
+    expect(formatStackTrace({
+      callFrames: [{ functionName: 'fn', url: 'https://x.com/a.js', lineNumber: 1, columnNumber: 2 }],
+    })).toBe('fn @ https://x.com/a.js:1:2');
+  });
+
+  it('截到 10 帧（深层递归不炸条目）', () => {
+    const callFrames = Array.from({ length: 50 }, (_, i) => ({
+      functionName: `f${i}`, url: 'https://x.com/a.js', lineNumber: i, columnNumber: 0,
+    }));
+    const lines = formatStackTrace({ callFrames })!.split('\n');
+    expect(lines).toHaveLength(10);
+    expect(lines[0]).toBe('f0 @ https://x.com/a.js:0:0');
+    expect(lines[9]).toBe('f9 @ https://x.com/a.js:9:0');
+  });
+
+  it('无 callFrames / 空数组 → undefined（调用方据此不写 stack 键）', () => {
+    expect(formatStackTrace(undefined)).toBeUndefined();
+    expect(formatStackTrace({})).toBeUndefined();
+    expect(formatStackTrace({ callFrames: [] })).toBeUndefined();
+  });
+
+  it('超长堆栈截断到 MAX_CONSOLE_STACK 并加省略号', () => {
+    const callFrames = Array.from({ length: 10 }, () => ({
+      functionName: 'f', url: `https://x.com/${'p'.repeat(300)}.js`, lineNumber: 1, columnNumber: 1,
+    }));
+    const out = formatStackTrace({ callFrames })!;
+    expect(out).toHaveLength(MAX_CONSOLE_STACK + 1);
+    expect(out.endsWith('…')).toBe(true);
+  });
+});
 
 describe('serializeRemoteObjects', () => {
   it('字符串不加引号，多参以空格连接', () => {

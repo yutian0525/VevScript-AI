@@ -173,6 +173,27 @@ describe('handleEvent：console', () => {
     expect(msgs[0]!).toMatchObject({ level: 'warn', text: 'careful' });
   });
 
+  it('consoleAPICalled 带 stackTrace → 条目带 stack（每帧「函数 @ url:行:列」一行）', async () => {
+    await handleEvent(1, undefined, 'Runtime.consoleAPICalled', {
+      type: 'error', timestamp: 1, args: [{ type: 'string', value: 'boom' }],
+      stackTrace: {
+        callFrames: [
+          { functionName: 'foo', url: 'https://x.com/a.js', lineNumber: 10, columnNumber: 3 },
+          { functionName: 'bar', url: 'https://x.com/b.js', lineNumber: 20, columnNumber: 7 },
+        ],
+      },
+    });
+    expect(readConsole(1, {})[0]!.stack)
+      .toBe('foo @ https://x.com/a.js:10:3\nbar @ https://x.com/b.js:20:7');
+  });
+
+  it('consoleAPICalled 无 stackTrace → 条目不带 stack 键', async () => {
+    await handleEvent(1, undefined, 'Runtime.consoleAPICalled', {
+      type: 'log', timestamp: 1, args: [{ type: 'string', value: 'plain' }],
+    });
+    expect(readConsole(1, {})[0]!).not.toHaveProperty('stack');
+  });
+
   it('exceptionThrown → error 级 console 条目', async () => {
     await handleEvent(1, undefined, 'Runtime.exceptionThrown', {
       timestamp: 1,

@@ -15,6 +15,15 @@ describe('观测三工具', () => {
     expect(msgs.map((m) => m.text)).toEqual(['b']);
   });
 
+  it('list_console_messages 原样透出条目上的 stack（CDP 调用堆栈）', async () => {
+    ingestConsole(1, [{
+      id: 'cdp:1', level: 'error', text: 'boom', ts: 1, stack: 'foo @ https://x.com/a.js:1:1',
+    }]);
+    const r = await doListConsoleMessages(1, {});
+    const msgs = (r as { data: { messages: Array<{ stack?: string }> } }).data.messages;
+    expect(msgs[0]!.stack).toBe('foo @ https://x.com/a.js:1:1');
+  });
+
   it('list_console_messages 空缓冲返回空数组（不报错）', async () => {
     const r = await doListConsoleMessages(999, {});
     expect(r.ok).toBe(true);

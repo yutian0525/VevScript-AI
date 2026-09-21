@@ -1,6 +1,8 @@
 // background/cdp/domains.ts
 // CDP 域启用 + 事件 → observe-store 摄入（设计 §5.2）。
-import { serializeRemoteObjects, type RemoteObjectLike } from './console-text';
+import {
+  serializeRemoteObjects, formatStackTrace, type RemoteObjectLike, type StackTraceLike,
+} from './console-text';
 import { shouldFetchBody, fetchBody } from './bodies';
 import { rememberSession, forgetSession } from './session';
 import {
@@ -62,8 +64,11 @@ function consoleLevel(type: string): string {
   return 'log';
 }
 
-function pushConsole(tabId: number, level: string, text: string, ts: number, url?: string): void {
+function pushConsole(
+  tabId: number, level: string, text: string, ts: number, url?: string, stack?: string,
+): void {
   const entry: ConsoleEntry = { id: `cdp:${++consoleSeq}`, level, text, ts, url };
+  if (stack) entry.stack = stack; // 无堆栈时不写该键（条目形状与旧 hook 时代保持一致）
   ingestConsole(tabId, [entry]);
 }
 
@@ -157,7 +162,10 @@ export async function handleEvent(
     }
     case 'Runtime.consoleAPICalled': {
       const args = (params.args ?? []) as RemoteObjectLike[];
-      pushConsole(tabId, consoleLevel((params.type as string) ?? 'log'), serializeRemoteObjects(args), tsOf(params));
+      pushConsole(
+        tabId, consoleLevel((params.type as string) ?? 'log'), serializeRemoteObjects(args), tsOf(params),
+        undefined, formatStackTrace(params.stackTrace as StackTraceLike | undefined),
+      );
       return;
     }
     case 'Runtime.exceptionThrown': {

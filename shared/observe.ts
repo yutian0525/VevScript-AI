@@ -9,4 +9,7 @@ export interface ConsoleEntry {
   text: string;    // 序列化后的文本（已截断）
   ts: number;      // 采集时间戳
   url?: string;    // 采集时页面 URL
+  /** 调用堆栈（`函数名 @ url:行:列` 每帧一行，已按帧数/长度截断）。仅 CDP 的
+   *  consoleAPICalled 提供，无堆栈时不写该键。 */
+  stack?: string;
 }
