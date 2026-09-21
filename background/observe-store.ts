@@ -259,6 +259,8 @@ export function setCdpBody(tabId: number, requestId: string, r: { body: string; 
 export interface NetSummary {
   requestId: string; method: string; url: string; status?: number; type: string;
   ts: number; durationMs?: number; hasBody: boolean;
+  /** WebSocket 收发帧数；无帧时不写（WS 条目的 hasBody 恒为 false，靠它才发现得了）。 */
+  wsFrameCount?: number;
 }
 
 export function readNetworkList(
@@ -276,6 +278,7 @@ export function readNetworkList(
     requestId: n.requestId, method: n.method, url: n.url, status: n.status, type: n.type, ts: n.ts,
     durationMs: n.endTs != null ? n.endTs - n.ts : undefined,
     hasBody: n.requestBody != null || n.responseBody != null,
+    wsFrameCount: n.wsFrames?.length || undefined,
   }));
 }
 

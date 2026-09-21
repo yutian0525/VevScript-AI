@@ -287,7 +287,7 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     type: 'function',
     function: {
       name: 'list_network_requests',
-      description: '列出当前操作目标页面发生过的网络请求（摘要：方法/URL/状态/类型/耗时/是否有 body）。用于观察页面调了哪些接口。要看某条的请求头/响应体，用 get_network_request。深度观测未开启时只有 webRequest 元数据（无响应体与请求头）。',
+      description: '列出当前操作目标页面发生过的网络请求（摘要：方法/URL/状态/类型/耗时/是否有 body/wsFrameCount）。用于观察页面调了哪些接口。要看某条的请求头/响应体/WebSocket 帧，用 get_network_request。深度观测未开启时只有 webRequest 元数据（无响应体与请求头）。',
       parameters: obj({
         method: { type: 'string', description: '按方法过滤（如 GET/POST，可选）' },
         urlContains: { type: 'string', description: '按 URL 子串过滤（可选）' },
@@ -300,7 +300,7 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     type: 'function',
     function: {
       name: 'get_network_request',
-      description: '按 requestId 取单条网络请求的完整信息（含请求头/响应头/请求体/响应体，若页面 JS 发起时被捕获）。requestId 来自 list_network_requests。敏感头默认脱敏。深度观测未开启时响应体与请求头可能缺失（附 hint 说明）。',
+      description: '按 requestId 取单条网络请求的完整信息（含请求头/响应头/请求体/响应体，若页面 JS 发起时被捕获）。requestId 来自 list_network_requests。WebSocket 条目没有 body，内容在 wsFrames（按时间顺序的收发帧，含方向/opcode/payload，单帧截断 4096 字符）；摘要里 wsFrameCount>0 的条目就是这类，值得用本工具展开看。敏感头默认脱敏。深度观测未开启时响应体与请求头可能缺失（附 hint 说明）。',
       parameters: obj({
         requestId: { type: 'string', description: '来自 list_network_requests 的 requestId' },
       }, ['requestId']),

@@ -114,6 +114,16 @@ describe('network 缓冲：CDP 数据源', () => {
     expect(frames[0]!.payload).toBe('f10');
   });
 
+  it('readNetworkList 摘要带 wsFrameCount，WS 条目因此可从列表发现', () => {
+    ingestCdpStart(1, { requestId: 'w1', method: 'GET', url: 'wss://x.com/s', type: 'WebSocket', ts: 1 });
+    ingestCdpWsFrame(1, { requestId: 'w1', dir: 'sent', opcode: 1, payload: 'a', ts: 2 });
+    ingestCdpWsFrame(1, { requestId: 'w1', dir: 'received', opcode: 1, payload: 'b', ts: 3 });
+    ingestCdpStart(1, { requestId: 'n1', method: 'GET', url: 'https://x.com/a', type: 'XHR', ts: 4 });
+    const byId = (id: string) => readNetworkList(1, {}).find((r) => r.requestId === id)!;
+    expect(byId('cdp:w1').wsFrameCount).toBe(2);
+    expect(byId('cdp:n1').wsFrameCount).toBeUndefined(); // 无帧的条目不添噪声字段
+  });
+
   it('WS 单帧 payload 截断', () => {
     ingestCdpStart(1, { requestId: 'w2', method: 'GET', url: 'wss://x.com/s', type: 'WebSocket', ts: 1 });
     ingestCdpWsFrame(1, { requestId: 'w2', dir: 'received', opcode: 1, payload: 'y'.repeat(5000), ts: 1 });
