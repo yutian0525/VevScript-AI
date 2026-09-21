@@ -60,14 +60,18 @@ describe('DeepObserveToggle', () => {
   it('SW 广播经组件自己注册的 onMessage 监听器更新开关（生产接线）', async () => {
     render(<DeepObserveToggle />);
     const btn = await screen.findByRole('button', { name: /深度观测/ });
-    expect(btn.className).toContain('deepobs--off');
+    // 先等挂载时的 DEEP_OBSERVE_GET 回话落地：它的回包同样会写 states[7]，
+    // 若晚于广播到达会把广播结果覆盖回 off（测试竞态，非组件缺陷）。
+    await waitFor(() => expect(useDeepObserve.getState().states[7]?.status).toBe('off'));
 
     // 走 fakeBrowser 的事件触发：消息真正经过组件注册的监听器（而非直接写 store），
     // 所以 'DEEP_OBSERVE_STATE' 字面量或 payload.state 路径写错都会被这条用例抓住。
-    await fakeBrowser.runtime.onMessage.trigger({
+    // （trigger 的声明带 onMessage 的三参签名，这里只喂消息体。）
+    const trigger = fakeBrowser.runtime.onMessage.trigger as unknown as (msg: unknown) => Promise<unknown>;
+    await trigger({
       type: 'DEEP_OBSERVE_STATE',
       payload: { state: { tabId: 7, status: 'error', reason: '页面 DevTools 占用中' } },
-    } as never);
+    });
 
     await waitFor(() => expect(btn.className).toContain('deepobs--error'));
     expect(btn.getAttribute('aria-label')).toContain('页面 DevTools 占用中');
