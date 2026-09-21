@@ -58,7 +58,6 @@ export function DeepObserveToggle({ disabled }: { disabled?: boolean }) {
 
   const status: DeepObserveStatus = state?.status ?? 'off';
   const tip = tipFor(status, state?.reason);
-  const isOff = status === 'off';
 
   return (
     <Tooltip label={tip} placement="top">
@@ -67,7 +66,8 @@ export function DeepObserveToggle({ disabled }: { disabled?: boolean }) {
         className={`deepobs deepobs--${status}`}
         aria-label={tip}
         disabled={disabled || tabId == null}
-        onClick={() => { if (tabId != null) void setEnabled(tabId, isOff); }}
+        /* error 态点击等同重试开启（spec §6）：只有 on 才发关闭，绝不从 error 态发 disable */
+        onClick={() => { if (tabId != null) void setEnabled(tabId, status !== 'on'); }}
       >
         <Activity size={14} aria-hidden />
       </button>

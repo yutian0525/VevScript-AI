@@ -56,6 +56,22 @@ describe('DeepObserveToggle', () => {
     expect(btn.className).toContain('deepobs--error');
   });
 
+  it('error 态点击重试开启：发出 enabled=true 而非 false', async () => {
+    render(<DeepObserveToggle />);
+    const btn = await screen.findByRole('button', { name: /深度观测/ });
+    await waitFor(() => expect(sent.length).toBeGreaterThan(0));
+    // 前情：本页处于 error 态（DevTools 抢占）
+    useDeepObserve.getState().applyState({ tabId: 7, status: 'error', reason: '页面 DevTools 占用中' });
+    await waitFor(() => expect(btn.className).toContain('deepobs--error'));
+    fireEvent.click(btn);
+    // 点击本身不改本地态：SW 回话前类名仍是 error（同步窗口内断言，尚无重渲染）
+    expect(btn.className).toContain('deepobs--error');
+    // 回归核心：error 态点击发的是重试开启（enabled=true），而非误发关闭（enabled=false）
+    const sets = sent.filter((m) => (m as { type: string }).type === 'DEEP_OBSERVE_SET') as Array<{ enabled?: boolean }>;
+    expect(sets).toHaveLength(1);
+    expect(sets[0]!.enabled).toBe(true);
+  });
+
   it('disabled 时按钮禁用', async () => {
     render(<DeepObserveToggle disabled />);
     const btn = await screen.findByRole('button', { name: /深度观测/ });
