@@ -23,7 +23,9 @@ function serializeOne(arg: RemoteObjectLike): string {
   if (arg.subtype === 'null') return 'null';
   switch (arg.type) {
     case 'string': return String(arg.value ?? '');
-    case 'number': case 'boolean': return String(arg.value);
+    // Infinity / NaN / -0 走 unserializableValue：value 缺席而 description 才是正确文本，
+    // 直接 String(value) 会渲染成 'undefined'。（?? 只在 null/undefined 时回退，0/false 不受影响。）
+    case 'number': case 'boolean': return String(arg.value ?? arg.description);
     case 'undefined': return 'undefined';
     case 'bigint': case 'symbol': case 'function':
       return arg.description || (arg.type === 'function' ? 'ƒ' : arg.type);

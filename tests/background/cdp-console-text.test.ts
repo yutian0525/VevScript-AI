@@ -45,6 +45,16 @@ describe('serializeRemoteObjects', () => {
     ])).toBe('hello 42 true');
   });
 
+  it('Infinity / NaN / -0 走 unserializableValue：回退 description，不渲染成 undefined', () => {
+    // CDP 把这三个放进 unserializableValue，value 缺席，description 才是正确文本
+    expect(serializeRemoteObjects([{ type: 'number', description: 'Infinity' }])).toBe('Infinity');
+    expect(serializeRemoteObjects([{ type: 'number', description: 'NaN' }])).toBe('NaN');
+    expect(serializeRemoteObjects([{ type: 'number', description: '-0' }])).toBe('-0');
+    // 常规数字仍走 value（0 / false 不能被 ?? 误判为缺席）
+    expect(serializeRemoteObjects([{ type: 'number', value: 0, description: '0' }])).toBe('0');
+    expect(serializeRemoteObjects([{ type: 'boolean', value: false }])).toBe('false');
+  });
+
   it('null / undefined / bigint', () => {
     expect(serializeRemoteObjects([
       { type: 'object', subtype: 'null', value: null },
