@@ -1552,3 +1552,45 @@ body {
 }
 .mem-empty__icon { color: var(--line-strong); }
 .mem-empty__text { font-size: 12.5px; line-height: 1.7; max-width: 280px; }
+
+/* ---------- AI 会话调试页（conv-debug.html）---------- */
+/* 独立标签页：全宽仪表盘。左列表 + 右详情，双声道排版。 */
+.convdebug { display: flex; flex-direction: column; height: 100%; background: var(--paper); }
+
+.convdebug__bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 10px 16px;
+  background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.convdebug__brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--ink); }
+.convdebug__follow { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 13px; cursor: pointer; }
+
+.convdebug__body { display: flex; flex: 1; min-height: 0; }
+
+.convdebug__list {
+  width: 240px; flex: none; overflow-y: auto;
+  border-right: 1px solid var(--line); background: var(--surface); padding: 6px;
+}
+.convdebug-item {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
+  padding: 8px 10px; border: 1px solid transparent; border-radius: var(--r-md);
+  background: transparent; color: var(--ink); font: inherit; cursor: pointer;
+  transition: background var(--t-fast) var(--ease);
+}
+.convdebug-item:hover { background: var(--sunken); }
+.convdebug-item--active { background: var(--signal-wash); border-color: var(--signal); }
+.convdebug-item__title { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.convdebug-item__meta { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+
+.convdebug__detail { flex: 1; min-width: 0; overflow-y: auto; padding: 16px 20px; }
+.convdebug__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.convdebug__title { font-size: 16px; margin: 0; }
+.convdebug__meta { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+.convdebug__views { margin-left: auto; display: inline-flex; gap: 6px; }
+.convdebug__note {
+  font-family: var(--mono); font-size: 12px; color: var(--warn);
+  background: var(--warn-wash); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 6px 10px; margin: 0 0 12px;
+}
+.convdebug__empty { color: var(--ink-3); font-size: 13px; padding: 24px 8px; }
+.convdebug-bad { color: var(--err); }
