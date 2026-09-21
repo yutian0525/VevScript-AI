@@ -56,8 +56,8 @@
 - `shared/messages.ts`：新增深度观测消息。
 - `agent/tools/schemas.ts`、`agent/tools/registry.ts`：两个新工具。
 - `agent/mode.ts`：`ASK_MODE_TOOLS` 增补。
-- `components/chat/ChatView.tsx`：`.composer__actions` 内挂开关。
-- `entrypoints/sidepanel/styles.css`：`.deepobs` 样式。
+- `components/chat/ChatView.tsx`：`.composer__bar` 左侧挂开关；`ModeSelect` 移入 `.composer__actions`。
+- `entrypoints/sidepanel/styles.css`：`.deepobs` 样式；`.modeselect` 间隙方向调整与注释更新。
 
 ## 4. 工具与权限模型
 
@@ -181,7 +181,23 @@ interface DeepObserveStore {
 
 ## 6. UI 设计
 
-- **位置**：`ChatView.tsx` 的 `.composer__actions` 内，`<ContextRing>` **之前**（即上下文精度条左侧）。
+- **位置**：`ChatView.tsx` 的 `.composer__bar` **左侧**，紧跟 `.composer__attach` 之后——即原 `ModeSelect` 的位置。`ModeSelect` 相应移入右侧操作簇 `.composer__actions`，成为该簇最左元素（`ContextRing` 之前），保持环形钮与发送钮的既有相邻关系。
+
+  新布局：
+  ```
+  .composer__bar
+  ├─ [hidden file input]
+  ├─ .composer__attach  (30×30)
+  ├─ .deepobs           (26×26)   ← 新增
+  └─ .composer__actions (margin-left: auto)
+     ├─ .modeselect     ← 从左侧移来
+     ├─ .ctxring
+     └─ .composer__send
+  ```
+
+  两点须同步改的样式：`.modeselect` 的 `margin-right: 2px` 删除（右簇已有 `gap: 6px`，且间隙方向反转）；`.composer__actions` 上方注释「附件钮 + 模式选择器成组靠左」改写。
+  `.modeselect__pop` 浮层锚定 `.composer` 卡片（`position: absolute; left: 8px; right: 8px`）而非触发器，**移动触发器不影响浮层定位**，无需改动。
+
 - **形态**：26×26 圆形按钮，尺寸与 `.ctxring` 对齐（`border-radius: 50%`），内嵌 lucide 图标 `size={14}`。图标用 `Activity`（心电线），与 ContextRing 的环形几何明确区分；备选 `Radar` / `Stethoscope`。
 - **三态颜色**（全部走 CSS 变量，禁硬编码色值）：
 
@@ -244,18 +260,19 @@ jsdom 限制：真实 `debugger` API 不可用 → 全 mock；真实附着行为
 
 **手测清单**
 
-1. 开关默认灰；点开 → 页面顶部出现信息条 + 开关转 signal 色。
-2. 页面 `console.log` / 未捕获异常 → `list_console_messages` 有数据且带堆栈。
-3. fetch / XHR / img / 跨域 iframe 内请求 → `list_network_requests` 全都有；`get_network_request` 拿得到 XHR/Fetch 的 body 与完整 headers（含浏览器自动头）。
-4. CSP 违规页面 → console 列表出现 `Log.entryAdded` 来源的条目。
-5. 打开页面 DevTools → 开关转 warn，工具返回明确文案。
-6. 先开 DevTools 再点开关 → 落 warn 态。
-7. 切标签页 → 开关显示未开启；切回 → 恢复「开」。
-8. 同标签页内导航 → 保持附着。
-9. 关闭标签页 → 状态清理，无残留。
-10. WebSocket 站 → 帧条目可见。
-11. Boss直聘 → 不再有 MAIN world 注入，正常打开（且不需要排除名单）。
-12. CDP 关闭状态下 → `list_network_requests` 仍有 webRequest 元数据；`list_console_messages` 返回 hint 而非报错。
+1. 开关默认灰，位于附件钮右侧；模式选择器已右对齐到操作簇内、上下文环左侧，点开浮层定位正常（仍左右贴卡片边）。
+2. 点开开关 → 页面顶部出现信息条 + 开关转 signal 色。
+3. 页面 `console.log` / 未捕获异常 → `list_console_messages` 有数据且带堆栈。
+4. fetch / XHR / img / 跨域 iframe 内请求 → `list_network_requests` 全都有；`get_network_request` 拿得到 XHR/Fetch 的 body 与完整 headers（含浏览器自动头）。
+5. CSP 违规页面 → console 列表出现 `Log.entryAdded` 来源的条目。
+6. 打开页面 DevTools → 开关转 warn，工具返回明确文案。
+7. 先开 DevTools 再点开关 → 落 warn 态。
+8. 切标签页 → 开关显示未开启；切回 → 恢复「开」。
+9. 同标签页内导航 → 保持附着。
+10. 关闭标签页 → 状态清理，无残留。
+11. WebSocket 站 → 帧条目可见。
+12. Boss直聘 → 不再有 MAIN world 注入，正常打开（且不需要排除名单）。
+13. CDP 关闭状态下 → `list_network_requests` 仍有 webRequest 元数据；`list_console_messages` 返回 hint 而非报错。
 
 ## 10. 已知边界
 
