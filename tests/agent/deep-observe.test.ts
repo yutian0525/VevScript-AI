@@ -42,6 +42,11 @@ describe('工具分发与模式', () => {
     expect(r.ok).toBe(true);
   });
 
+  it('disable 也经 registry 分发（写错名字会落「未知工具」而非报错）', async () => {
+    const r = await executeTool('disable_deep_observe', {}, { tabId: 1, sessionId: 's', signal: new AbortController().signal });
+    expect(r).toEqual({ ok: true, data: { tabId: 1, status: 'off' } });
+  });
+
   it('ask 模式放行（诊断主场，只读观测工具依赖它）', async () => {
     const r = await executeTool('enable_deep_observe', {}, { tabId: 1, sessionId: 's', signal: new AbortController().signal, mode: 'ask' });
     expect(r.ok).toBe(true);

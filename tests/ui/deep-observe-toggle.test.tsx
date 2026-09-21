@@ -49,11 +49,28 @@ describe('DeepObserveToggle', () => {
     render(<DeepObserveToggle />);
     const btn = await screen.findByRole('button', { name: /深度观测/ });
     await waitFor(() => expect(sent.length).toBeGreaterThan(0));
-    // 模拟 SW 广播：beforeEach 的 mock 覆写了 runtime.sendMessage，同页消息不会转发给组件的
-    // onMessage 监听器（brief 注明的退化路径）——直接把广播载荷落进 store，等价于监听器收到后 applyState。
+    // 只验「store 落成 error 后渲染成 error 态」这一段：beforeEach 的 mock 覆写了
+    // runtime.sendMessage，同页消息不会自动转发给组件的 onMessage 监听器。
+    // 监听器本身的接线由下一个用例（onMessage.trigger）覆盖。
     useDeepObserve.getState().applyState({ tabId: 7, status: 'error', reason: '页面 DevTools 占用中' });
     await waitFor(() => expect(useDeepObserve.getState().states[7]?.status).toBe('error'));
     expect(btn.className).toContain('deepobs--error');
+  });
+
+  it('SW 广播经组件自己注册的 onMessage 监听器更新开关（生产接线）', async () => {
+    render(<DeepObserveToggle />);
+    const btn = await screen.findByRole('button', { name: /深度观测/ });
+    expect(btn.className).toContain('deepobs--off');
+
+    // 走 fakeBrowser 的事件触发：消息真正经过组件注册的监听器（而非直接写 store），
+    // 所以 'DEEP_OBSERVE_STATE' 字面量或 payload.state 路径写错都会被这条用例抓住。
+    await fakeBrowser.runtime.onMessage.trigger({
+      type: 'DEEP_OBSERVE_STATE',
+      payload: { state: { tabId: 7, status: 'error', reason: '页面 DevTools 占用中' } },
+    } as never);
+
+    await waitFor(() => expect(btn.className).toContain('deepobs--error'));
+    expect(btn.getAttribute('aria-label')).toContain('页面 DevTools 占用中');
   });
 
   it('error 态点击重试开启：发出 enabled=true 而非 false', async () => {
