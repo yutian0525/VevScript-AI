@@ -1,7 +1,7 @@
 // tests/convdebug/conv-debug-app.test.tsx
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { ConvDebugApp } from '../../components/convdebug/ConvDebugApp';
 import { createConversation, appendMessage } from '../../storage/conversations';
@@ -49,5 +49,32 @@ describe('ConvDebugApp', () => {
   it('initialConvId 指向不存在的会话 → 提示不存在', async () => {
     render(<ConvDebugApp initialConvId="ghost" />);
     await waitFor(() => expect(screen.getByText('会话不存在或已删除')).toBeTruthy());
+  });
+
+  it('切会话时时间线折叠态不串扰（key=convId 重挂载）', async () => {
+    // 两个会话各自都有一轮 —— 轮次号都从 1 起，撞号是常态而非例外
+    const a = await createConversation();
+    await appendTurnTrace(a.id, turn(1));
+    const b = await createConversation();
+    await appendTurnTrace(b.id, turn(1));
+
+    const { container } = render(<ConvDebugApp initialConvId={a.id} />);
+    // 等 A 的时间线渲染出来（#1 默认展开 → 恰好一个展开体）
+    await waitFor(() => expect(screen.getAllByText('上下文').length).toBe(1));
+
+    // 手动收起 A 的第 1 轮
+    fireEvent.click(screen.getByText('#1'));
+    expect(screen.queryAllByText('上下文').length).toBe(0);
+
+    // 切到 B：两个会话标题都是默认的「新会话」会撞多个，故按「非当前选中项」
+    // 定位——index 按 updatedAt 倒序是实现的偶然，不该让用例依赖列表排序。
+    const other = Array.from(container.querySelectorAll<HTMLButtonElement>('.convdebug-item')).find(
+      (el) => !el.classList.contains('convdebug-item--active'),
+    );
+    expect(other).toBeTruthy();
+    fireEvent.click(other!);
+
+    // B 的 #1 必须仍是展开态——若 TurnTimeline 没按 convId 重挂载，toggled[1] 会带过来
+    await waitFor(() => expect(screen.getAllByText('上下文').length).toBe(1));
   });
 });
