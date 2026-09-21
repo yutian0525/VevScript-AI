@@ -18,7 +18,6 @@ entrypoints/
   sidepanel/          侧边栏主 UI（App.tsx、styles.css）
   background.ts       Service Worker 入口
   content/            content script 入口
-  hook.content.ts     MAIN world 观测 hook（SW 动态注册）
 agent/
   tools/              工具注册表、schema、具体工具实现
   provider/           LLM provider 抽象

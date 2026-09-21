@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { doListConsoleMessages, doListNetworkRequests, doGetNetworkRequest } from '../../../agent/tools/observe';
-import { resetStore, ingestConsole, recordRequestStart, recordRequestEnd, ingestHookNet } from '../../../background/observe-store';
+import { resetStore, ingestConsole, recordRequestStart, recordRequestEnd, ingestCdpStart, setCdpBody } from '../../../background/observe-store';
 import { saveSettings } from '../../../storage/settings';
 
 describe('观测三工具', () => {
@@ -30,9 +30,9 @@ describe('观测三工具', () => {
   });
 
   it('get_network_request 默认脱敏敏感头', async () => {
-    recordRequestStart(1, { requestId: 'r1', method: 'POST', url: 'https://x.com/api', type: 'xmlhttprequest', ts: 100 });
-    ingestHookNet(1, [{ loadNonce: 'n1', seq: 1, method: 'POST', url: 'https://x.com/api', ts: 120, requestHeaders: { Authorization: 'Bearer secret', 'Content-Type': 'application/json' }, responseBody: '{"ok":1}' }]);
-    const r = await doGetNetworkRequest(1, { requestId: 'wr:r1' });
+    ingestCdpStart(1, { requestId: 'c1', method: 'POST', url: 'https://x.com/api', type: 'XHR', ts: 100, requestHeaders: { Authorization: 'Bearer secret', 'Content-Type': 'application/json' } });
+    setCdpBody(1, 'c1', { body: '{"ok":1}', truncated: false });
+    const r = await doGetNetworkRequest(1, { requestId: 'cdp:c1' });
     const d = (r as { data: { requestHeaders?: Record<string, string>; responseBody?: string } }).data;
     expect(d.requestHeaders!.authorization).toBe('[REDACTED]');
     expect(d.requestHeaders!['content-type']).toBe('application/json');
@@ -41,9 +41,8 @@ describe('观测三工具', () => {
 
   it('get_network_request full 模式原样返回敏感头', async () => {
     await saveSettings({ agent: { networkCaptureHeaders: 'full' } });
-    recordRequestStart(1, { requestId: 'r1', method: 'GET', url: 'https://x.com/api', type: 'xmlhttprequest', ts: 100 });
-    ingestHookNet(1, [{ loadNonce: 'n1', seq: 1, method: 'GET', url: 'https://x.com/api', ts: 120, requestHeaders: { Authorization: 'Bearer secret' } }]);
-    const r = await doGetNetworkRequest(1, { requestId: 'wr:r1' });
+    ingestCdpStart(1, { requestId: 'c2', method: 'GET', url: 'https://x.com/api', type: 'XHR', ts: 100, requestHeaders: { Authorization: 'Bearer secret' } });
+    const r = await doGetNetworkRequest(1, { requestId: 'cdp:c2' });
     const d = (r as { data: { requestHeaders?: Record<string, string> } }).data;
     expect(d.requestHeaders!.authorization).toBe('Bearer secret');
   });

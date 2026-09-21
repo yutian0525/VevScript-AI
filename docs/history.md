@@ -134,3 +134,20 @@
 已知边界：(1) 附件暂存不入草稿——图片走 dataURL，session 区配额 10MB，且非文本内容序列化收益不抵风险，切标签仍会丢附件；(2) 草稿是全局单份、不按会话分桶，与既有行为一致（切会话本就不清输入框）；(3) 未覆盖其它输入框（脚本页 URL 框、各搜索框），那些是一次性输入，丢与不丢都无妨。
 
 测试：`tests/ui/composer-draft.test.tsx`（敲字 → `cleanup()` 模拟文档销毁 → 重挂载仍在；清空即删键；空串删键语义）。已验无修复时该用例红、修复后绿。
+
+## CDP 深度观测（2026-09-21）
+
+设计见 `docs/superpowers/specs/2026-09-21-cdp-deep-observe-design.md`。已完成：新增 CDP（`chrome.debugger`）观测通道，网络与控制台观测从「页面内包装」搬到「浏览器级附着」。`background/cdp/` 四模块——`session.ts` 附着/脱离 + per-tab 会话注册表（含 SW 冷启动 `reconcile()` 对账自愈，绝不信任内存标志位，一律以 `getTargets()` 为准）、`domains.ts` 七类 CDP 事件 → observe-store 摄入（含子 target 的 `sessionId` 路由）、`console-text.ts` 的 `RemoteObject[]` 文本序列化（零 `getProperties` 往返，对象只到 description/preview 浅层）、`bodies.ts` 响应体抓取（XHR/Fetch/Document 白名单 + 非文本 mimeType 跳过 + 64KB 截断）。`observe-store` 接纳第二数据源：id 加 `wr:` / `cdp:` 前缀分号，附着期间该 tab 的 webRequest 三入口静默（两套 `requestId` 命名空间无法对齐，硬合并只产生幽灵重复条目）。输入坞新增圆形开关（三态：关 / 开 / 异常，异常态点击即重试），模型侧新增 `enable_deep_observe` / `disable_deep_observe` 两工具并进 ask 白名单（附着不改页面内容，符合 ask 语义），`permissions` 增 `debugger`。CDP 关闭时观测工具不报错、不空转：`list_network_requests` 照常回 webRequest 元数据，`list_console_messages` 回空数组 + `deepObserve: false` + hint 说明如何开启。
+
+**hook 退役**：MAIN world hook 整条链路全部删除——`entrypoints/hook.content.ts` 的 fetch/XHR/console 包装、`background/hook-registration.ts` 的 SW 动态注册、`background/hook-exclusions.ts` 的敏感站排除名单、`shared/hook-bridge.ts` 的 window.postMessage 桥协议（`ConsoleEntry` 早已迁出，存活于 `shared/observe.ts`）、`stores/hook-exclusions.ts` 与设置页「敏感站点排除」入口/路由/`SettingsSub` 成员、`content.ts` 的 postMessage 中继块与 `RELAY_READY` 握手、`HOOK_CONSOLE` / `HOOK_NETWORK` 两个 router handler、`observe-store` 的 `ingestHookNet` / `MATCH_WINDOW_MS` / `TabBuf.hookKeys`，`observe/serialize.ts` 随之失去唯一消费方。两条退役理由：① **包装即指纹**——改写 `console.*` / `fetch` / `XHR` 会在页面里留下 `toString()` 一查即明的替换函数，Boss直聘等强风控站据此判定环境异常直接拒服务，此前只能靠排除名单逐个站点绕过；② **观测天然残缺**——响应体只覆盖 fetch/XHR，无浏览器自动请求头、无 WebSocket 帧、无浏览器级错误（CSP 违规、资源加载失败、弃用警告），console 无堆栈。CDP 从根上取消了注入，保真度又是另一档。**保留**：`scripting` 权限（脚本池仍用）、`webRequest` 权限与元数据主干（CDP 关闭时的兜底观测）、`entrypoints/content.ts` 本身（页面操作能力，uid 树与 DOM 动作照旧）。
+
+**两条硬代价**（写进工具描述，让模型知道自己在做什么）：① 附着期间页面顶部常驻 Chrome 调试信息条，用户可见、可撤销（点「取消」即 `canceled_by_user`）；② 与页面 DevTools **双向互斥**——先开 DevTools 再点开关则 attach 失败落 `error` 态并给出明确文案，附着后用户开 DevTools 则被踢下线转 `error`（且不自动重附着，避免与 DevTools 抢占成死循环）。
+
+**四条边界**：
+
+1. **CDP 不是零可检测**。页面仍可用 `console.log` getter 陷阱、`debugger` 语句计时探测调试器附着，信息条本身也是明示的。去掉的是**最廉价的那类包装指纹**（`window.fetch.toString()` 一眼假），不是隐身。
+2. **Shared Worker / Service Worker 够不到**。`chrome.debugger` 的附着单位是标签页，`Target.setAutoAttach` 只能收该页的子 target（跨域 iframe、Dedicated Worker）；Shared Worker 与 Service Worker 是独立 target，不在页的子树里。
+3. **`sessionId` 定位子会话需 Chrome 125+**（`DebuggerSession` 自 Chrome 125 引入）。更低版本只覆盖主帧，跨域 iframe 内的请求观测不到。
+4. **WebSocket 帧 payload 不过脱敏**。`networkCaptureHeaders` 只作用于 headers，帧体（可能夹带 token）原样落库——与响应体同一立场，但 WS 场景更容易夹带凭据，要收紧需另设规则。
+
+另：新增 `debugger` 权限会让已安装的扩展被 Chrome 禁用，直到用户重新同意——老用户升级有一次摩擦。敏感站排除名单随之删除，CDP 关闭时该类站点无 console 观测（webRequest 元数据仍在），但不再需要维护名单。

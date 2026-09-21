@@ -8,7 +8,6 @@ import { ScriptDebugPage } from '../scriptdebug/ScriptDebugPage';
 import { SkillsPage } from '../skills/SkillsPage';
 import { SystemPromptPage } from './SystemPromptPage';
 import { MemoryPage } from './MemoryPage';
-import { HookExclusionsPage } from './HookExclusionsPage';
 import { AboutPage } from './AboutPage';
 
 export function SettingsView() {
@@ -29,8 +28,6 @@ export function SettingsView() {
         <ScriptDebugPage onBack={back} />
       ) : sub === 'skills' ? (
         <SkillsPage onBack={back} />
-      ) : sub === 'hookexclusions' ? (
-        <HookExclusionsPage onBack={back} />
       ) : sub === 'about' ? (
         <AboutPage onBack={back} />
       ) : (

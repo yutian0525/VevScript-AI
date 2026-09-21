@@ -437,7 +437,7 @@ const FEATS: { icon: React.ReactNode; t: string; d: string }[] = [
   {
     icon: <Eye aria-hidden="true" />,
     t: '页面观测',
-    d: 'MAIN world hook 包装 fetch / XHR / console，`webRequest` 记全量网络元数据，读取时按设置脱敏敏感头。强风控站可加排除名单。',
+    d: '默认 webRequest 记全量网络元数据；一键开启深度观测（CDP）拿全量响应体、完整请求头、WebSocket 帧与带堆栈的 console，且不向页面注入 MAIN world 脚本。',
   },
   {
     icon: <Wrench aria-hidden="true" />,

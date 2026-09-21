@@ -1,11 +1,9 @@
 // background/observe-store.ts
 // SW 侧 per-tab 观测环形缓冲（设计 §4、§8.3）。
-// 数据逻辑纯粹、可单测；browser.webRequest 事件接线在 Task 11 的 background.ts（不在本文件初始化时执行）。
-import type { HookNetEntry } from '../shared/hook-bridge';
+// 数据逻辑纯粹、可单测；browser.webRequest 事件接线在 background.ts（不在本文件初始化时执行）。
 import type { ConsoleEntry } from '../shared/observe';
 
 const MAX_ENTRIES = 200;      // 每 tab 每通道环形上限
-const MATCH_WINDOW_MS = 2000; // hook body 关联时间窗
 
 export const MAX_WS_FRAMES = 200;
 export const MAX_WS_PAYLOAD = 4096;
@@ -29,7 +27,7 @@ export interface NetEntry {
   mimeType?: string;
   wsFrames?: WsFrame[];
   truncated?: boolean;
-  source: 'webRequest' | 'hook' | 'merged' | 'cdp';
+  source: 'webRequest' | 'cdp';
 }
 
 /** id 命名空间前缀：webRequest 与 CDP 的 requestId 是两套独立空间，加前缀防撞号。 */
@@ -40,7 +38,6 @@ interface TabBuf {
   console: ConsoleEntry[];
   consoleIds: Set<string>;
   network: NetEntry[];
-  hookKeys: Set<string>;   // 已消费的 hook 网络条目键（loadNonce:seq），防双投递重复关联/建条
 }
 
 const tabs = new Map<number, TabBuf>();
@@ -51,7 +48,7 @@ export function setNetworkSuppressor(fn: (tabId: number) => boolean): void { net
 
 function buf(tabId: number): TabBuf {
   let b = tabs.get(tabId);
-  if (!b) { b = { console: [], consoleIds: new Set(), network: [], hookKeys: new Set() }; tabs.set(tabId, b); }
+  if (!b) { b = { console: [], consoleIds: new Set(), network: [] }; tabs.set(tabId, b); }
   return b;
 }
 
@@ -114,40 +111,6 @@ export function recordRequestEnd(requestId: string, r: { status: number; ts: num
 export function recordRequestError(requestId: string, r: { error: string; ts: number }): void {
   const e = findByRequestId(wrId(requestId));
   if (e) { e.error = r.error; e.endTs = r.ts; }
-}
-
-// ---------- network：hook body 关联富化 ----------
-export function ingestHookNet(tabId: number, entries: HookNetEntry[]): void {
-  const b = buf(tabId);
-  for (const h of entries) {
-    const key = `${h.loadNonce}:${h.seq}`;
-    if (b.hookKeys.has(key)) continue; // 双投递（backlog flush + live）去重
-    b.hookKeys.add(key);
-    const match = b.network.find(
-      (n) => n.source === 'webRequest' &&
-        n.method === h.method && n.url === h.url &&
-        Math.abs(n.ts - h.ts) <= MATCH_WINDOW_MS,
-    );
-    if (match) {
-      match.source = 'merged';
-      if (h.status != null && match.status == null) match.status = h.status;
-      if (h.endTs != null && match.endTs == null) match.endTs = h.endTs;
-      match.requestHeaders = h.requestHeaders;
-      match.responseHeaders = h.responseHeaders;
-      match.requestBody = h.requestBody;
-      match.responseBody = h.responseBody;
-      match.truncated = h.truncated;
-    } else {
-      b.network.push({
-        requestId: `hook:${key}`, method: h.method, url: h.url, type: 'fetch',
-        ts: h.ts, endTs: h.endTs, status: h.status,
-        requestHeaders: h.requestHeaders, responseHeaders: h.responseHeaders,
-        requestBody: h.requestBody, responseBody: h.responseBody, truncated: h.truncated,
-        source: 'hook',
-      });
-    }
-  }
-  ring(b.network);
 }
 
 // ---------- network：CDP 数据源 ----------
@@ -246,5 +209,5 @@ export function clearTab(tabId: number): void { tabs.delete(tabId); }
 
 export function clearTabNetwork(tabId: number): void {
   const b = tabs.get(tabId);
-  if (b) { b.network = []; b.hookKeys.clear(); }
+  if (b) b.network = [];
 }

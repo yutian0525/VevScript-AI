@@ -5,7 +5,6 @@ import {
   isResponseFor,
   type BgToCsRequest,
   type CsResponse,
-  type HookNetworkNotification,
 } from '../../shared/messages';
 
 describe('消息协议', () => {
@@ -26,11 +25,6 @@ describe('消息协议', () => {
     expect(isResponseFor(resp, req)).toBe(true);
     expect(isResponseFor({ ...resp, correlationId: '999' }, req)).toBe(false);
     expect(isResponseFor({ ...resp, type: 'SNAPSHOT' as const }, req)).toBe(false);
-  });
-
-  it('HookNetworkNotification 类型可赋值（编译期契约）', () => {
-    const msg: HookNetworkNotification = { type: 'HOOK_NETWORK', payload: { entries: [] } };
-    expect(msg.type).toBe('HOOK_NETWORK');
   });
 
   it('BgToCsRequest 类型可赋值（编译期契约）', () => {

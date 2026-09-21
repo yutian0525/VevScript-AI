@@ -3,7 +3,6 @@
 // 静态注册 <all_urls> + allFrames + document_idle → 导航后浏览器自动重注入。
 import type { BgToCsRequest, CsResponse, CsReadyNotification } from '../shared/messages';
 import type { ToolResult } from '../shared/types';
-import { HOOK_MSG, RELAY_READY, type HookWindowMsg } from '../shared/hook-bridge';
 import { buildSnapshot, resolveUid } from '../content/snapshot/build';
 import { doQuery } from '../content/query';
 import { doClick, doFill, doFillForm, doHover, doScroll, doPressKey } from '../content/interact';
@@ -84,18 +83,6 @@ export default defineContentScript({
         });
       return true; // 异步响应
     });
-    // MAIN world hook（hook.content.ts）经 window.postMessage 送来的 console/network 观测：
-    // ISOLATED 侧在此中继到 background（runtime.sendMessage），SW 写入 observe-store。
-    window.addEventListener('message', (ev) => {
-      if (ev.source !== window) return;
-      const d = ev.data as HookWindowMsg | undefined;
-      if (!d || d.source !== HOOK_MSG) return;
-      const type = d.kind === 'console' ? 'HOOK_CONSOLE' : 'HOOK_NETWORK';
-      browser.runtime.sendMessage({ type, payload: { entries: [d.entry] } }).catch(() => {});
-    });
-    // 告诉 hook「中继已就绪」→ hook flush 掉 document_idle 之前缓冲的早期观测。
-    // 先加上面的 listener 再发，保证 flush 出来的消息被接住。
-    window.postMessage({ source: RELAY_READY }, '*');
     // GM 桥宿主（Phase 5 spec §6）：拉 token 表 + 转发 gmreq/gmevt
     initBridgeHost();
     // SW 下行 GM_EVENT → 页面 gmevt（与上面 CS 请求 listener 并存，各自按 type 过滤）

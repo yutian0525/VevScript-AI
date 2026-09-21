@@ -1,11 +1,11 @@
 // components/settings/SettingsHome.tsx
 // 设置列表页：入口卡片按能力域分组（大标题行划分），点卡走 onOpen 切二级页。
-import { SlidersHorizontal, SquareTerminal, FlaskConical, ChevronRight, Sparkles, ScrollText, Brain, ShieldOff, Info } from 'lucide-react';
+import { SlidersHorizontal, SquareTerminal, FlaskConical, ChevronRight, Sparkles, ScrollText, Brain, Info } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Tooltip } from '../ui/Tooltip';
 import { useTruncated } from '../ui/useTruncated';
 
-export type SettingsSub = 'model' | 'prompt' | 'memory' | 'toolbench' | 'scriptdebug' | 'skills' | 'hookexclusions' | 'about';
+export type SettingsSub = 'model' | 'prompt' | 'memory' | 'toolbench' | 'scriptdebug' | 'skills' | 'about';
 
 type Entry = { key: SettingsSub; title: string; desc: string; Icon: typeof SlidersHorizontal };
 
@@ -18,12 +18,6 @@ const GROUPS: Array<{ label: string; entries: Entry[] }> = [
       { key: 'prompt', title: '系统提示词', desc: '查看并改写内置系统提示词（Markdown）', Icon: ScrollText },
       { key: 'memory', title: 'AI 记忆', desc: '跨会话长期记忆，AI 自主记录，可人工编辑', Icon: Brain },
       { key: 'skills', title: '技能管理', desc: '导入 .md 技能，注入会话上下文，斜杠指令调用', Icon: Sparkles },
-    ],
-  },
-  {
-    label: '隐私与安全',
-    entries: [
-      { key: 'hookexclusions', title: '敏感站点排除', desc: '风控站（如 Boss直聘）不注入观测 hook，防止被指纹检测拒开', Icon: ShieldOff },
     ],
   },
   {

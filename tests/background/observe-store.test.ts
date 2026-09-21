@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  resetStore, ingestConsole, ingestHookNet,
+  resetStore, ingestConsole,
   recordRequestStart, recordRequestEnd, recordRequestError,
   readConsole, readNetworkList, readNetworkDetail, clearTab, clearTabNetwork,
   setNetworkSuppressor, ingestCdpStart, ingestCdpResponse, ingestCdpEnd,
@@ -61,37 +61,6 @@ describe('network 缓冲：webRequest 主干', () => {
     expect(readNetworkList(1, { method: 'POST' }).map((r) => r.requestId)).toEqual(['wr:b']);
     expect(readNetworkList(1, { urlContains: 'users' }).map((r) => r.requestId)).toEqual(['wr:a']);
     expect(readNetworkList(1, { status: 401 }).map((r) => r.requestId)).toEqual(['wr:b']);
-  });
-});
-
-describe('network 缓冲：hook body 关联', () => {
-  it('hook body 按 method+url+时间窗关联到 webRequest 条目', () => {
-    recordRequestStart(1, { requestId: 'r1', method: 'POST', url: 'https://x.com/api', type: 'xmlhttprequest', ts: 1000 });
-    recordRequestEnd('r1', { status: 200, ts: 1100 });
-    ingestHookNet(1, [{ loadNonce: 'n1', seq: 1, method: 'POST', url: 'https://x.com/api', ts: 1050, endTs: 1090, status: 200, responseBody: '{"ok":1}', requestBody: '{"q":1}' }]);
-    const list = readNetworkList(1, {});
-    expect(list).toHaveLength(1);        // 关联进同一条，不新增
-    expect(list[0]!.hasBody).toBe(true);
-    const d = readNetworkDetail(1, 'wr:r1') as { responseBody?: string; source?: string };
-    expect(d.responseBody).toBe('{"ok":1}');
-    expect(d.source).toBe('merged');
-  });
-
-  it('关联不上（时间窗外）→ 作独立 hook 条目保留', () => {
-    recordRequestStart(1, { requestId: 'r1', method: 'GET', url: 'https://x.com/api', type: 'xmlhttprequest', ts: 1000 });
-    ingestHookNet(1, [{ loadNonce: 'n1', seq: 5, method: 'GET', url: 'https://x.com/api', ts: 9000, responseBody: 'late' }]);
-    const list = readNetworkList(1, {});
-    expect(list).toHaveLength(2); // r1 + 独立 hook 条目
-    const hook = list.find((r) => r.requestId.startsWith('hook:'));
-    expect(hook).toBeDefined();
-  });
-
-  it('同一 hook 条目双投递（backlog flush + live）按 loadNonce:seq 去重', () => {
-    const e = { loadNonce: 'n1', seq: 3, method: 'GET', url: 'https://x.com/dup', ts: 5000, responseBody: 'x' };
-    ingestHookNet(1, [e]);
-    ingestHookNet(1, [e]); // 重复投递
-    const list = readNetworkList(1, {});
-    expect(list.filter((r) => r.url === 'https://x.com/dup')).toHaveLength(1);
   });
 });
 

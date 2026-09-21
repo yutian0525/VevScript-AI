@@ -4,22 +4,18 @@ import type { CsReadyNotification, DebugExecRequest } from '../shared/messages';
 import { attachAgentPort, notifyCsReady } from '../background/agent-port';
 import { handleDebugExec } from '../background/debug-exec';
 import {
-  ingestConsole,
-  ingestHookNet,
   recordRequestStart,
   recordRequestEnd,
   recordRequestError,
   clearTab,
   clearTabNetwork,
 } from '../background/observe-store';
-import type { ConsoleEntry, HookNetEntry } from '../shared/hook-bridge';
 import { initScriptsModule } from '../background/scripts';
 import { initGmApi } from '../background/gm-api';
 import { initSkillsModule } from '../background/skills';
 import { seedBuiltinSkills } from '../background/builtin-skills';
 import { maybeRunStartupUpdateCheck } from '../background/scripts-update';
 import { initConfirmQueue } from '../background/confirm-queue';
-import { syncHookRegistration, initHookRegistration } from '../background/hook-registration';
 import { initCdp, attachCdpListeners } from '../background/cdp/init';
 
 export default defineBackground(() => {
@@ -36,20 +32,6 @@ export default defineBackground(() => {
     void (msg as unknown as CsReadyNotification);
     const tabId = sender?.tab?.id;
     if (tabId != null) notifyCsReady(tabId);
-    return { ok: true };
-  });
-
-  // MAIN hook 经 content.ts 中继来的观测：tabId 以 sender.tab.id 为准（payload 内不带）。
-  router.on('HOOK_CONSOLE', async (msg, sender) => {
-    const tabId = sender?.tab?.id;
-    const entries = (msg as { payload?: { entries?: ConsoleEntry[] } }).payload?.entries ?? [];
-    if (tabId != null) ingestConsole(tabId, entries);
-    return { ok: true };
-  });
-  router.on('HOOK_NETWORK', async (msg, sender) => {
-    const tabId = sender?.tab?.id;
-    const entries = (msg as { payload?: { entries?: HookNetEntry[] } }).payload?.entries ?? [];
-    if (tabId != null) ingestHookNet(tabId, entries);
     return { ok: true };
   });
 
@@ -98,14 +80,9 @@ export default defineBackground(() => {
   attachCdpListeners();
   initCdp(router);
 
-  // hook 动态注册对齐（registration:'runtime' 的启动自愈，同 syncRegistrations 时序）。
-  // 失败静默：SW 下次冷启动再试；注册 API 缺失（极旧 Chrome）也不阻断其余初始化。
-  void syncHookRegistration().catch(() => {});
-
   initScriptsModule(router);
   initGmApi(router);
   initSkillsModule(router);
-  initHookRegistration(router);
 
   // 脚本更新的批量检查（fire-and-forget，不阻塞 SW）。三条路径统一走 maybeRunStartupUpdateCheck：
   //  1) SW 冷启动（本行）：节流兜底——onStartup 在 MV3 不可靠（unpacked 几乎不触发、SW 被唤醒不补触发），

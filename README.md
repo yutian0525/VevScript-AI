@@ -141,12 +141,12 @@
 - **脚本池** — 完整 `.user.js` 源码为唯一真源，`chrome.userScripts` 注入（Chrome 120+）；支持启停、搜索、导入导出、URL 直链安装，全屏详情页内置 CodeMirror 6 编辑器，`@updateURL` 更新检查。
 - **GM\_\* API** — 29 个函数 grant + 4 个特殊 grant，按 `@grant` 精确安装：值存储、菜单命令、通知、资源、DOM、XHR（`@connect` 门控 + 跨域确认页）、cookie、download、标签页、`window.onurlchange` 等。详见 [docs/gm-api.md](docs/gm-api.md)。
 - **AI 分步写入** — 长脚本受单次输出长度限制，流程为先建骨架（元数据头 + 未闭合 IIFE）再分次追加，每次写入经词法级括号配平校验。
-- **页面观测** — MAIN world hook 包装 `fetch` / `XHR` / `console`，`webRequest` 记录全量网络元数据；强风控站可加入敏感站点排除名单，不注入 hook。
+- **页面观测** — 默认用 `webRequest` 记录全量网络元数据；在输入坞一键开启「深度观测」（CDP）后可拿到全量响应体、完整请求头、WebSocket 帧与带堆栈的控制台日志，且不再向页面注入任何 MAIN world 脚本。
 
 ## 项目结构
 
 ```text
-entrypoints/     Service Worker / content script / MAIN hook / 侧边栏 / popup / 脚本详情页 / 确认页
+entrypoints/     Service Worker / content script / 侧边栏 / popup / 脚本详情页 / 确认页
 agent/           工具注册表 + LLM provider 抽象 + 多轮循环 + 单轮执行 + 模式 + 上下文组装
 background/      消息路由 + 脚本池编排 + userScripts 注入 + GM_* SW 中心 + 观测缓冲
 components/      UI 组件（chat / scripts / settings / detail / debug / popup / ui ...）
