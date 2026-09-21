@@ -23,10 +23,18 @@ describe('TurnTimeline', () => {
 
   it('最近一轮默认展开，其余收起', () => {
     render(<TurnTimeline turns={[turn(1), turn(2)]} />);
-    // #2 展开 → 它的工具表头可见；#1 收起 → 没有
+    // #2 展开 → 只有一个展开体；#1 收起 → 不贡献
     expect(screen.getAllByText('上下文').length).toBe(1);
     expect(screen.getByText('#2')).toBeTruthy();
     expect(screen.getByText('#1')).toBeTruthy();
+  });
+
+  it('turns 异步到达后，最近一轮仍默认展开', () => {
+    const { rerender } = render(<TurnTimeline turns={[]} />);
+    expect(screen.getByText(/还没有 loop 记录/)).toBeTruthy();   // 首帧空态
+    rerender(<TurnTimeline turns={[turn(1), turn(2)]} />);
+    expect(screen.getAllByText('上下文').length).toBe(1);        // 恰好一个展开体
+    expect(screen.getByText('#2')).toBeTruthy();
   });
 
   it('点击折叠头切换展开态', () => {

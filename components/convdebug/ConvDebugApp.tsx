@@ -135,8 +135,11 @@ export function ConvDebugApp({ initialConvId }: { initialConvId: string }) {
                 </p>
               )}
 
+              {/* key=convId：切会话时整体重挂载时间线。toggled 以裸轮次号为键，
+                  两个会话的轮次都从 1 起号，不重挂载就会串扰（A 里收起的第 5 轮
+                  会让 B 的第 5 轮也呈收起态，违反「最近一轮默认展开」）。 */}
               {view === 'timeline'
-                ? <TurnTimeline turns={traces.turns} />
+                ? <TurnTimeline key={convId} turns={traces.turns} />
                 : <RawMessages messages={conv?.messages ?? []} />}
             </>
           )}
