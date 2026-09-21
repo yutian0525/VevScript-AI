@@ -768,7 +768,7 @@ body {
 /* ============ 行为模式下拉（ask/agent，自绘浮层） ============ */
 /* 浮层锚定整个 composer 卡片（.composer 上加 relative），从卡片上缘弹出、左右贴边，
    避免以小触发器为锚时 264px 浮层溢出面板右缘 + 与输入框之间隔出大空隙。 */
-.modeselect { flex-shrink: 0; margin-right: 2px; }
+.modeselect { flex-shrink: 0; }
 .modeselect__trigger {
   display: inline-flex;
   align-items: center;
@@ -1018,8 +1018,27 @@ body {
 }
 
 /* ============ 右侧操作簇：上下文小环 + 圆形发送钮 ============ */
-/* 右侧操作区（上下文环 + 发送）推到最右；附件钮 + 模式选择器成组靠左 */
+/* 右侧操作区（模式选择器 + 上下文环 + 发送）推到最右；附件钮与深度观测开关成组靠左 */
 .composer__actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; }
+
+/* ============ 深度观测（CDP）开关 ============ */
+/* 颜色即信息：关=--ink-3 / 开=--signal / 异常（DevTools 抢占、附着失败）=--warn */
+.deepobs {
+  width: 26px; height: 26px; padding: 0; flex-shrink: 0;
+  border: 1px solid transparent; background: transparent; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--ink-3); border-radius: 50%;
+  transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease),
+              border-color var(--t-fast) var(--ease);
+}
+.deepobs:hover:not(:disabled) { background: var(--sunken); color: var(--ink-2); }
+.deepobs:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+.deepobs:disabled { cursor: default; opacity: 0.5; }
+.deepobs--on { color: var(--signal); background: var(--signal-wash); border-color: var(--signal); }
+.deepobs--on:hover:not(:disabled) { background: var(--signal-wash); color: var(--signal); }
+.deepobs--error { color: var(--warn); background: var(--warn-wash); border-color: var(--warn); }
+.deepobs--error:hover:not(:disabled) { background: var(--warn-wash); color: var(--warn); }
+@media (prefers-reduced-motion: reduce) { .deepobs { transition: none; } }
 
 /* 上下文占比小环 = 压缩按钮 */
 .ctxring {

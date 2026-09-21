@@ -11,6 +11,7 @@ import { ConversationMenu } from './ConversationMenu';
 import { SlashMenu } from './SlashMenu';
 import { AttachmentChips } from './AttachmentChips';
 import { ModeSelect } from './ModeSelect';
+import { DeepObserveToggle } from './DeepObserveToggle';
 import { shouldOpenSlash, handleSlashKey, completeSlash } from './slash';
 import { fileToAttachment, MAX_ATTACHMENTS } from './attachments';
 import { filterSkills, useSkills } from '../../stores/skills';
@@ -394,8 +395,9 @@ export function ChatView() {
                 <Paperclip size={16} />
               </button>
             </Tooltip>
-            <ModeSelect disabled={status === 'running' ? false : compacting} />
+            <DeepObserveToggle disabled={status === 'running'} />
             <div className="composer__actions">
+              <ModeSelect disabled={status === 'running' ? false : compacting} />
               <ContextRing
                 used={promptTokens}
                 windowSize={contextWindow}
