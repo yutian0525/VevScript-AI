@@ -1,7 +1,10 @@
 // tests/agent/trace.test.ts
-import { describe, it, expect } from 'vitest';
-import { measureMessages, summarizeContext } from '../../agent/trace';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { createTurnRecorder, measureMessages, summarizeContext } from '../../agent/trace';
+import { readTraces } from '../../storage/traces';
 import type { ChatMessage } from '../../agent/provider/types';
+import type { TurnResult } from '../../agent/run-turn';
 
 describe('measureMessages', () => {
   it('累加字符串 content 的长度', () => {
@@ -61,5 +64,83 @@ describe('summarizeContext', () => {
   it('首条不是 system 时 systemPromptChars 为 0', () => {
     const msgs: ChatMessage[] = [{ role: 'user', content: 'hi' }];
     expect(summarizeContext(msgs, { pageUrl: '' }).systemPromptChars).toBe(0);
+  });
+});
+
+const llmResult = (over?: Partial<TurnResult>): TurnResult => ({
+  text: '好的',
+  toolCalls: [],
+  finishReason: 'stop',
+  usage: { promptTokens: 100, completionTokens: 20 },
+  ...over,
+});
+
+describe('createTurnRecorder', () => {
+  beforeEach(() => fakeBrowser.reset());
+
+  it('commit 补 endedAt 并把整轮写进 storage', async () => {
+    const tr = createTurnRecorder({ convId: 'r1', turn: 1, tabId: 3 });
+    tr.setMode('ask');
+    tr.markLlm({ startedAt: Date.now() - 50, result: llmResult() });
+    await tr.commit();
+    const { seq, turns } = await readTraces('r1');
+    expect(seq).toBe(1);
+    expect(turns[0]!.tabId).toBe(3);
+    expect(turns[0]!.mode).toBe('ask');
+    expect(turns[0]!.llm.finishReason).toBe('stop');
+    expect(turns[0]!.llm.usage).toEqual({ promptTokens: 100, completionTokens: 20 });
+    expect(turns[0]!.llm.textChars).toBe(2);
+    expect(turns[0]!.endedAt).toBeGreaterThanOrEqual(turns[0]!.startedAt);
+  });
+
+  it('未赋值时 outcome 默认 error（漏设是 bug，不做静默伪装）', async () => {
+    const tr = createTurnRecorder({ convId: 'r2', turn: 1, tabId: 1 });
+    await tr.commit();
+    expect((await readTraces('r2')).turns[0]!.outcome).toBe('error');
+  });
+
+  it('firstTokenAt 换算成 firstTokenMs；缺省则字段不存在', async () => {
+    const startedAt = 1000;
+    const a = createTurnRecorder({ convId: 'r3', turn: 1, tabId: 1 });
+    a.markLlm({ startedAt, firstTokenAt: 1240, result: llmResult() });
+    await a.commit();
+
+    const b = createTurnRecorder({ convId: 'r4', turn: 1, tabId: 1 });
+    b.markLlm({ startedAt, result: llmResult() });
+    await b.commit();
+
+    const [ta] = (await readTraces('r3')).turns;
+    const [tb] = (await readTraces('r4')).turns;
+    expect(ta!.llm.firstTokenMs).toBe(240);
+    expect(tb!.llm.firstTokenMs).toBeUndefined();
+  });
+
+  it('markContext 走 summarizeContext', async () => {
+    const tr = createTurnRecorder({ convId: 'r5', turn: 1, tabId: 1 });
+    tr.markContext([{ role: 'system', content: 'sys' }, { role: 'user', content: 'hi' }], { pageUrl: 'https://a.com' });
+    await tr.commit();
+    const c = (await readTraces('r5')).turns[0]!.context;
+    expect(c.messageCount).toBe(2);
+    expect(c.systemPromptChars).toBe(3);
+    expect(c.pageUrl).toBe('https://a.com');
+  });
+
+  it('markTool 按调用顺序累计，markCompact 记下压缩', async () => {
+    const tr = createTurnRecorder({ convId: 'r6', turn: 1, tabId: 1 });
+    tr.markTool({ name: 'click', callId: 'c1', argsBytes: 9, ms: 12, ok: true, summary: '成功' });
+    tr.markTool({ name: 'scroll', callId: 'c2', argsBytes: 20, ms: 30, ok: false, error: '炸了', summary: '炸了' });
+    tr.markCompact({ ms: 800, ok: true, newPromptTokens: 340 });
+    await tr.commit();
+    const t = (await readTraces('r6')).turns[0]!;
+    expect(t.tools.map((x) => x.callId)).toEqual(['c1', 'c2']);
+    expect(t.tools[1]!.error).toBe('炸了');
+    expect(t.compact).toEqual({ ms: 800, ok: true, newPromptTokens: 340 });
+  });
+
+  it('storage 写失败被吞掉，不阻断 loop', async () => {
+    const spy = vi.spyOn(browser.storage.local, 'set').mockRejectedValue(new Error('QUOTA_BYTES exceeded'));
+    const tr = createTurnRecorder({ convId: 'r7', turn: 1, tabId: 1 });
+    await expect(tr.commit()).resolves.toBeUndefined();
+    spy.mockRestore();
   });
 });

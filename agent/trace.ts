@@ -3,7 +3,10 @@
 // loop 只调语义方法（markLlm/markTool/...），storage 细节封在这里。
 import type { ChatMessage } from './provider/types';
 import type { SkillBrief } from './context';
-import type { TurnContextSummary } from '../storage/traces';
+import type { TurnResult } from './run-turn';
+import type { AgentMode } from './mode';
+import type { TurnContextSummary, TurnToolRecord, TurnTrace } from '../storage/traces';
+import { appendTurnTrace } from '../storage/traces';
 
 /** 统计消息数组的字符体积（content + toolCalls + reasoning）。 */
 export function measureMessages(messages: ChatMessage[]): number {
@@ -40,5 +43,63 @@ export function summarizeContext(
     skillCount: opts.skills?.length ?? 0,
     systemPromptChars: systemChars,
     pageUrl: opts.pageUrl,
+  };
+}
+
+export interface TurnRecorder {
+  /** 可变轮次记录：loop 直接写 rec.outcome / rec.guardReason。 */
+  rec: TurnTrace;
+  /** 模式在轮体中部才重读出来，晚于 recorder 创建。 */
+  setMode(mode: AgentMode): void;
+  markContext(
+    messages: ChatMessage[],
+    opts: { summary?: { text: string; coversUpTo: number }; skills?: SkillBrief[]; pageUrl: string },
+  ): void;
+  markLlm(args: { startedAt: number; firstTokenAt?: number; result: TurnResult }): void;
+  markTool(t: TurnToolRecord): void;
+  markCompact(c: { ms: number; ok: boolean; newPromptTokens?: number }): void;
+  commit(): Promise<void>;
+}
+
+export function createTurnRecorder(init: { convId: string; turn: number; tabId: number }): TurnRecorder {
+  const now = Date.now();
+  const rec: TurnTrace = {
+    turn: init.turn,
+    startedAt: now,
+    endedAt: now,
+    tabId: init.tabId,
+    mode: 'agent',
+    context: {
+      messageCount: 0, chars: 0, hasSummary: false, summaryChars: 0,
+      skillCount: 0, systemPromptChars: 0, pageUrl: '',
+    },
+    llm: { ms: 0, finishReason: '', textChars: 0, reasoningChars: 0 },
+    tools: [],
+    // 默认 'error' 是绊线：loop 的 9 处出口都必须显式赋值，漏设即暴露为错误而非伪装成 done
+    outcome: 'error',
+  };
+
+  return {
+    rec,
+    setMode(mode) { rec.mode = mode; },
+    markContext(messages, opts) { rec.context = summarizeContext(messages, opts); },
+    markLlm({ startedAt, firstTokenAt, result }) {
+      rec.llm = {
+        ms: Date.now() - startedAt,
+        ...(firstTokenAt != null ? { firstTokenMs: firstTokenAt - startedAt } : {}),
+        finishReason: result.finishReason ?? '',
+        ...(result.usage ? { usage: result.usage } : {}),
+        textChars: result.text.length,
+        reasoningChars: result.reasoning?.length ?? 0,
+        ...(result.error ? { error: result.error } : {}),
+      };
+    },
+    markTool(t) { rec.tools.push(t); },
+    markCompact(c) { rec.compact = c; },
+    async commit() {
+      rec.endedAt = Date.now();
+      // 调试设施不该有能力搞挂主流程：quota 打满就丢这一轮 trace
+      await appendTurnTrace(init.convId, rec).catch(() => {});
+    },
   };
 }
