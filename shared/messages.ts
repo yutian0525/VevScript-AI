@@ -290,3 +290,34 @@ export interface ScriptsListData {
 // ---------- 深度观测（CDP）（sidepanel → bg request/response，走 MessageRouter）----------
 // 类型定义在 shared/cdp.ts（agent 工具与 SW 也消费），此处 re-export 保持消息协议单一入口。
 export type { DeepObserveState, DeepObserveStateNotification, DeepObserveRequest } from './cdp';
+
+// ---------- 存储管理（sidepanel → bg request/response，走 MessageRouter）----------
+
+/** 物理键（无 local: 前缀）→ 数据域分类结果，UI 据此显示中文名 */
+export type StorageGroupKey =
+  | 'conv' | 'trace' | 'scripts' | 'skills' | 'memory' | 'settings'
+  | 'gm-resources' | 'gm-auth' | 'gm-values' | 'update-state' | 'other';
+
+export interface StorageUsageGroup { group: StorageGroupKey; bytes: number; items?: number }
+
+export interface StorageTraceItem { convId: string; title?: string; bytes: number }
+
+export interface StorageUsage {
+  totalBytes: number;
+  groups: StorageUsageGroup[];   // 按字节降序
+  traces: StorageTraceItem[];    // 有 trace 的会话，按字节降序（清理列表）
+  gmResources: { bytes: number; count: number };
+}
+
+export type StorageCleanScope =
+  | { kind: 'gm-resources' }
+  | { kind: 'trace'; convIds?: string[] };  // 缺省 = 全清
+
+export type StorageManagerRequest =
+  | { type: 'STORAGE_USAGE_GET' }
+  | { type: 'STORAGE_CLEAN'; scope: StorageCleanScope }
+  | { type: 'STORAGE_EXPORT'; includeApiKey: boolean }
+  | { type: 'STORAGE_IMPORT'; payload: string };
+
+export interface StorageExportData { filename: string; dataUrl: string }
+export interface StorageImportResult { apiKeyMissing: boolean }
