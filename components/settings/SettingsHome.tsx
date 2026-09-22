@@ -1,13 +1,14 @@
 // components/settings/SettingsHome.tsx
 // 设置列表页：入口卡片按能力域分组（大标题行划分），点卡走 onOpen 切二级页。
-import { SlidersHorizontal, SquareTerminal, FlaskConical, ChevronRight, Sparkles, ScrollText, Brain, Info } from 'lucide-react';
+import { SlidersHorizontal, SquareTerminal, FlaskConical, ChevronRight, Sparkles, ScrollText, Brain, Info, Activity } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Tooltip } from '../ui/Tooltip';
 import { useTruncated } from '../ui/useTruncated';
 
-export type SettingsSub = 'model' | 'prompt' | 'memory' | 'toolbench' | 'scriptdebug' | 'skills' | 'about';
+export type SettingsSub = 'model' | 'prompt' | 'memory' | 'toolbench' | 'scriptdebug' | 'skills' | 'about' | 'convdebug';
 
-type Entry = { key: SettingsSub; title: string; desc: string; Icon: typeof SlidersHorizontal };
+/** tabUrl 存在 = 该条目不开二级页，直接在新标签页打开该扩展页面。 */
+type Entry = { key: SettingsSub; title: string; desc: string; Icon: typeof SlidersHorizontal; tabUrl?: string };
 
 // 分组：大标题行划分能力域。每组一个 mono eyebrow + 卡片列表。
 const GROUPS: Array<{ label: string; entries: Entry[] }> = [
@@ -25,6 +26,7 @@ const GROUPS: Array<{ label: string; entries: Entry[] }> = [
     entries: [
       { key: 'toolbench', title: '工具调试台', desc: '绕过模型，直接对当前页调用全部工具', Icon: SquareTerminal },
       { key: 'scriptdebug', title: '脚本运行时调试台', desc: 'GM API 白名单视图 + 经真实桥链路直调', Icon: FlaskConical },
+      { key: 'convdebug', title: 'AI 会话调试', desc: '会话历史与 agent loop 调用记录（新标签页打开）', Icon: Activity, tabUrl: '/conv-debug.html' },
     ],
   },
   {
@@ -34,6 +36,13 @@ const GROUPS: Array<{ label: string; entries: Entry[] }> = [
     ],
   },
 ];
+
+/** 不走二级页、直接开独立标签页的设置项（key → 目标页面路径）。由 GROUPS 派生，避免两处漂移。 */
+export const TAB_ENTRIES: Partial<Record<SettingsSub, string>> = Object.fromEntries(
+  GROUPS.flatMap((g) => g.entries)
+    .filter((e): e is Entry & { tabUrl: string } => e.tabUrl != null)
+    .map((e) => [e.key, e.tabUrl]),
+) as Partial<Record<SettingsSub, string>>;
 
 function SettingCard({
   title, desc, Icon, onOpen,
