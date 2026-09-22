@@ -13,6 +13,8 @@
 | agent 模式 | 1,925 字符 | 19,783 字符（37 个工具） | 21,708 字符 ≈ 6.5K token |
 | ask 模式 | 1,843 字符 | 10,018 字符（18 个工具） | 11,861 字符 ≈ 3.9K token |
 
+> 口径注（实施后追记）：本表「工具 schema」列按整组数组一次 `JSON.stringify` 计（含数组括号与件间逗号的包装开销），§0.1 与 §2 的目标数字按逐工具 `JSON.stringify` 求和计——agent 19,783 = 19,745 + 38（37 件），ask 10,018 = 9,999 + 19（18 件）。两套数字指同一份 schema，只差口径。
+
 拆解（agent 模式，字符）：
 
 | 块 | 大小 | 是否逐轮稳定 |
@@ -68,9 +70,9 @@
 
 1. agent 模式工具 schema：19,745 → ~17,380 字符（**-12%**；实施后实测落点，原估 -23% 已作废，见 §5.4）。
 2. agent 模式新对话固定开销：21,708 → ~19,600 字符（**-10%**；同上）。
-3. ask 模式工具 schema：9,999 → ~4,000 字符（**-60%**——主要来自砍掉 8 个工具，而非改描述）。
+3. ask 模式工具 schema：9,999 → ~4,000 字符（**-60%**——主要来自砍掉 8 个工具，而非改描述；9,999 为逐工具求和口径，§0 表的 10,018 是整组数组一次序列化，差 19 字符是数组括号/逗号包装，见 §0 口径注）。
 4. ask 模式新对话固定开销：11,861 → ~6,400 字符（**-46%**）。
-5. tools + system 前缀在整段会话内**逐字节稳定**，只有尾部 volatile 块随页面/记忆变化——导航、写记忆、标题抖动都不再打断前缀缓存。**这一条不减少字符，但它是本次收益最大的那条腿**（保护的是整段历史正文的缓存，不只是 system 尾巴）。
+5. tools + system 前缀在整段会话内**逐字节稳定**，只有尾部 volatile 块随页面/记忆变化——导航、写记忆、标题抖动都不再打断前缀缓存。**这一条不减少字符，但它是本次收益最大的那条腿**（保护的是整段历史正文的缓存，不只是 system 尾巴）。**适用边界（实施后补）**：历史正文部分的保护以 history ≤ `keepRecent + 1`（默认 61 条）为界——`truncateMessages` 在此区间原样返回、前缀单调增长；超界后每轮从尾部重切，历史正文逐轮失效，收益退回 tools+system（决策 4 的既知代价，§9.2）。代码与决策 4 一致，是本条原表述对长会话过度承诺。
 6. 技能清单大小有确定上界，不随技能数线性膨胀。
 7. 模型感知的信息量不减少：页面信息、记忆条目、全部工具操作要点都还在，只是换了位置。
 
@@ -324,8 +326,7 @@ export function truncateDescription(desc: string, limit = SKILL_DESC_MAX): strin
 
 - 调 `selectSkillBriefs` 拿 `{ shown, hidden }`。
 - 行格式不变：`- /<command> <name>：<截断后描述>`。
-- `hidden > 0` 时追加一行：`另有 ${hidden} 个技能未列出，用 list_skills（可传 query 模糊搜索）查看`。
-- 块首说明文案补一句「下面只列前 N 个」。
+- **溢出提示是条件尾行而非块首句**（实施后勘误）：`hidden > 0` 时在清单末尾追加一行 `以上只列了前 ${shown.length} 个技能；另有 ${hidden} 个未列出，用 list_skills（可传 query 模糊搜索）查看。`；`hidden === 0` 时整条不出现。上行原稿的两条（「hidden > 0 时追加一行」＋「块首说明文案补一句『下面只列前 N 个』」）落地合并成了这一条尾行方案——无隐藏时零噪音，且「还有没列出的」落在读者刚看完清单的位置更顺。
 - `briefs.length === 0` 仍返回 `''`（与现状一致）。
 - `SKILL_AUTHORING_GUIDE` 仍只在 agent 模式追加（现状保留）。
 
@@ -379,6 +380,8 @@ export function searchSkills(skills: SkillSearchHit['skill'][], query: string): 
 
 `TurnContextSummary` 加 `volatileChars: number`（尾部易变块字符数），`summarizeContext` 统计末条 volatile 消息长度。conv-debug 轮次时间线展示。
 
+> 勘误（实施后追记）：落地字段是**可选**的 `volatileChars?: number`（`storage/traces.ts`），不是上行原稿的必填——本字段之前落盘的 trace 没有它，给持久化记录上的字段标必填是在对存储形状撒谎。conv-debug 对缺字段的旧行显示 `—` 而非 `0`。
+
 理由：布局改动后，「system 变小了、但总量没变」是可能的误判来源，把 volatile 单独计一列才能看清构成。**这只是字符计量，不是缓存命中计量**（决策 12）。
 
 ## 9. 已知盲区（本期不解决，显式记录）
@@ -386,6 +389,7 @@ export function searchSkills(skills: SkillSearchHit['skill'][], query: string): 
 1. **无法验证缓存实际命中率**。决策 12 决定不做 `Usage.cachedTokens`（OpenAI `prompt_tokens_details.cached_tokens` / DeepSeek `prompt_cache_hit_tokens`）解析与展示。因此「前缀稳定化到底省了多少」只能靠推理，不能靠观测。若后续想验证，接入点明确：`agent/provider/openai-compat.ts` 的 usage 解析 + `agent/provider/types.ts` 的 `Usage` + conv-debug 时间线。
 2. **历史超过 61 条后，历史正文的缓存每轮失效**（决策 4 不做分块滑窗）。tools+system 前缀不受影响。
 3. **网关是否做前缀缓存不由本扩展控制**。前缀稳定化零行为成本，命中与否取决于上游；中转网关可能整段不计缓存。
+4. **记忆 stable 段的冷启动翻转**。`buildMemoryPrompt` 的冷启动句以 `entries.length === 0` 为键（`agent/memory-prompt.ts`）——首次向空库写入（或删光最后一条）会让 `stable` 变一次，当轮 tools+system+history 缓存失效一次。每库一次性的状态转移，不是逐轮抖动；把该句挪进 volatile 可修掉它，代价是每轮全价多计一句文案去换一辈子一次的失效，不划算，接受。
 
 ## 10. 测试计划
 
@@ -432,3 +436,5 @@ export function searchSkills(skills: SkillSearchHit['skill'][], query: string): 
 **不动**
 
 - `agent/compact.ts`、`agent/loop.ts`（仅 `buildContext` 调用点，签名不变）、`agent/tools/registry.ts`、`agent/permission.ts`、确认卡链路、GM API
+
+> 勘误（实施后追记）：上行两处与事实不符。**`agent/permission.ts` 被改了**——其只读集原本借用 `ASK_MODE_TOOLS` 派生，ask 白名单砍到 10 个会让六个真纯读工具掉出只读集、在敏感档开始要确认，故改为独立 16 名集合（与旧派生逐元素等价，注释见 `agent/permission.ts:20-23`）；原稿列它「不动」，建立在该文件与 ask 白名单相互独立这个未经核实的假设上。**`agent/tools/registry.ts` 也被改了**——`executeTool` 分发处 `list_skills` 的类型收窄放宽为含 `query`。其余条目属实。
