@@ -36,7 +36,8 @@ interface ImportAggregate extends SkillsImportData {
   kind: 'import' | 'export';
 }
 
-export function SkillsPage({ onBack }: { onBack: () => void }) {
+/** onBack 缺省 = 主导航 tab 用法（无返回钮）；传值 = 设置二级页用法。 */
+export function SkillsPage({ onBack }: { onBack?: () => void }) {
   const { list, refresh } = useSkills();
   const [detailId, setDetailId] = useState<string | null>(null);
   const [query, setQuery] = useState('');

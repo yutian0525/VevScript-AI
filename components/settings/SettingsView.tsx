@@ -7,7 +7,6 @@ import { getCurrentConvId } from '../../storage/conversations';
 import { ModelSettings } from './ModelSettings';
 import { ToolBenchPage } from '../debug/ToolBenchPage';
 import { ScriptDebugPage } from '../scriptdebug/ScriptDebugPage';
-import { SkillsPage } from '../skills/SkillsPage';
 import { SystemPromptPage } from './SystemPromptPage';
 import { MemoryPage } from './MemoryPage';
 import { AboutPage } from './AboutPage';
@@ -38,8 +37,6 @@ export function SettingsView() {
         <ToolBenchPage onBack={back} />
       ) : sub === 'scriptdebug' ? (
         <ScriptDebugPage onBack={back} />
-      ) : sub === 'skills' ? (
-        <SkillsPage onBack={back} />
       ) : sub === 'about' ? (
         <AboutPage onBack={back} />
       ) : (

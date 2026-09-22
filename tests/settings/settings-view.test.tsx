@@ -22,6 +22,8 @@ describe('SettingsView 壳', () => {
     expect(screen.getByText('AI 记忆')).toBeTruthy();
     expect(screen.getByText('工具调试台')).toBeTruthy();
     expect(screen.getByText('脚本运行时调试台')).toBeTruthy();
+    // 技能管理已升为主导航 tab，设置列表不再有该入口
+    expect(screen.queryByText('技能管理')).toBeNull();
   });
 
   it('点「工具调试台」入口进二级页（TOOLBENCH），返回回列表', async () => {

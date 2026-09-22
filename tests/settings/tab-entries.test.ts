@@ -11,7 +11,6 @@ describe('TAB_ENTRIES', () => {
     expect(TAB_ENTRIES.model).toBeUndefined();
     expect(TAB_ENTRIES.prompt).toBeUndefined();
     expect(TAB_ENTRIES.memory).toBeUndefined();
-    expect(TAB_ENTRIES.skills).toBeUndefined();
     expect(TAB_ENTRIES.toolbench).toBeUndefined();
     expect(TAB_ENTRIES.scriptdebug).toBeUndefined();
     expect(TAB_ENTRIES.about).toBeUndefined();

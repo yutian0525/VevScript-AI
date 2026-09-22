@@ -42,6 +42,15 @@ describe('SkillsPage 内置技能保护', () => {
     expect(screen.getByText('内置')).toBeTruthy();
   });
 
+  it('主 tab 用法（不传 onBack）：无返回钮；设置二级页用法（传入）有「返回设置」钮', async () => {
+    mockList([mkSummary()]);
+    const { rerender } = render(<SkillsPage />);
+    await screen.findByText('帮助');
+    expect(screen.queryByLabelText('返回设置')).toBeNull();
+    rerender(<SkillsPage onBack={() => {}} />);
+    expect(await screen.findByLabelText('返回设置')).toBeTruthy();
+  });
+
   it('builtin 详情页：显示「内置」徽标与启停开关', async () => {
     browser.runtime.onMessage.addListener((msg: { type: string }, _s, sendResponse) => {
       if (msg.type === 'SKILLS_LIST') { sendResponse({ ok: true, data: { skills: [mkSummary({ builtin: true })] } }); return true; }
