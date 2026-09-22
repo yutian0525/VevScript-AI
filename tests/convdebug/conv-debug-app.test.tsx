@@ -9,7 +9,7 @@ import { appendTurnTrace, type TurnTrace } from '../../storage/traces';
 
 const turn = (n: number): TurnTrace => ({
   turn: n, startedAt: 1000, endedAt: 1400, tabId: 1, mode: 'agent',
-  context: { messageCount: 2, chars: 100, hasSummary: false, summaryChars: 0, skillCount: 0, systemPromptChars: 50, pageUrl: 'https://x.com' },
+  context: { messageCount: 2, chars: 100, hasSummary: false, summaryChars: 0, skillCount: 0, systemPromptChars: 50, volatileChars: 0, pageUrl: 'https://x.com' },
   llm: { ms: 300, finishReason: 'stop', textChars: 2, reasoningChars: 0 },
   tools: [], outcome: 'done',
 });

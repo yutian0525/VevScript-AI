@@ -13,7 +13,7 @@ function turn(n: number): TurnTrace {
     mode: 'agent',
     context: {
       messageCount: 1, chars: 10, hasSummary: false, summaryChars: 0,
-      skillCount: 0, systemPromptChars: 5, pageUrl: 'https://x.com',
+      skillCount: 0, systemPromptChars: 5, volatileChars: 0, pageUrl: 'https://x.com',
     },
     llm: { ms: 400, finishReason: 'stop', textChars: 3, reasoningChars: 0 },
     tools: [],

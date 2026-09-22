@@ -51,6 +51,7 @@ export function TurnTimeline({ turns }: { turns: TurnTrace[] }) {
                     {t.context.messageCount} 条 · {formatChars(t.context.chars)} · 摘要{' '}
                     {t.context.hasSummary ? formatChars(t.context.summaryChars) : '无'} · 技能 {t.context.skillCount} · 系统提示词{' '}
                     {formatChars(t.context.systemPromptChars)}
+                    {' '}· 易变块 {t.context.volatileChars != null ? formatChars(t.context.volatileChars) : '—'}
                   </dd>
                   <dt>页面</dt>
                   <dd className="mono">{t.context.pageUrl || '—'}</dd>

@@ -7,7 +7,7 @@ import type { TurnTrace } from '../../storage/traces';
 
 const turn = (n: number, over?: Partial<TurnTrace>): TurnTrace => ({
   turn: n, startedAt: 0, endedAt: 2400, tabId: 1, mode: 'agent',
-  context: { messageCount: 18, chars: 42000, hasSummary: false, summaryChars: 0, skillCount: 0, systemPromptChars: 500, pageUrl: 'https://x.com' },
+  context: { messageCount: 18, chars: 42000, hasSummary: false, summaryChars: 0, skillCount: 0, systemPromptChars: 500, volatileChars: 1200, pageUrl: 'https://x.com' },
   llm: { ms: 1900, firstTokenMs: 400, finishReason: 'stop', usage: { promptTokens: 1200, completionTokens: 340 }, textChars: 20, reasoningChars: 0 },
   tools: [], outcome: 'done',
   ...over,

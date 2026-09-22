@@ -15,6 +15,10 @@ export interface TurnContextSummary {
   summaryChars: number;
   skillCount: number;
   systemPromptChars: number;
+  /** 尾部易变块（【环境】…）的字符数。布局改动后「system 变小了但总量没变」是常见误判，
+   *  单独计一列才能看清构成。注意这只是字符计量，不是缓存命中计量。
+   *  可选：本字段之前落盘的 trace 没有它（环形缓冲 200 轮后自然消失）。 */
+  volatileChars?: number;
   pageUrl: string;
 }
 

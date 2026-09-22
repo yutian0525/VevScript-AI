@@ -65,6 +65,21 @@ describe('summarizeContext', () => {
     const msgs: ChatMessage[] = [{ role: 'user', content: 'hi' }];
     expect(summarizeContext(msgs, { pageUrl: '' }).systemPromptChars).toBe(0);
   });
+
+  it('summarizeContext 统计尾部易变块字符数', () => {
+    const msgs = [
+      { role: 'system' as const, content: 'S' },
+      { role: 'user' as const, content: 'hi' },
+      { role: 'user' as const, content: '【环境】以下为…\n\n当前页面：\n- URL: https://a.com' },
+    ];
+    const s = summarizeContext(msgs, { pageUrl: 'https://a.com' });
+    expect(s.volatileChars).toBe(msgs[2]!.content.length);
+  });
+
+  it('没有易变块时 volatileChars = 0', () => {
+    const s = summarizeContext([{ role: 'system' as const, content: 'S' }], { pageUrl: '' });
+    expect(s.volatileChars).toBe(0);
+  });
 });
 
 const llmResult = (over?: Partial<TurnResult>): TurnResult => ({

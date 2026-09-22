@@ -9,7 +9,7 @@ import type { ChatMessage } from '../../agent/provider/types';
 
 const turn = (n: number): TurnTrace => ({
   turn: n, startedAt: 0, endedAt: 0, tabId: 1, mode: 'agent',
-  context: { messageCount: 0, chars: 0, hasSummary: false, summaryChars: 0, skillCount: 0, systemPromptChars: 0, pageUrl: '' },
+  context: { messageCount: 0, chars: 0, hasSummary: false, summaryChars: 0, skillCount: 0, systemPromptChars: 0, volatileChars: 0, pageUrl: '' },
   llm: { ms: 0, finishReason: '', textChars: 0, reasoningChars: 0 },
   tools: [], outcome: 'done',
 });

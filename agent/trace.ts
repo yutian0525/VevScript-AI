@@ -35,6 +35,15 @@ export function summarizeContext(
   const systemChars = head && head.role === 'system' && typeof head.content === 'string'
     ? head.content.length
     : 0;
+  // 易变块按「末条 user 消息以【环境】开头」识别，与 context.ts 的注入哨兵一致；
+  // 前缀撞车只影响计量不影响行为，是已知盲区（spec §9）。
+  const last = messages[messages.length - 1];
+  const volatileChars = last
+    && last.role === 'user'
+    && typeof last.content === 'string'
+    && last.content.startsWith('【环境】')
+    ? last.content.length
+    : 0;
   return {
     messageCount: messages.length,
     chars: measureMessages(messages),
@@ -42,6 +51,7 @@ export function summarizeContext(
     summaryChars: opts.summary?.text.length ?? 0,
     skillCount: opts.skills?.length ?? 0,
     systemPromptChars: systemChars,
+    volatileChars,
     pageUrl: opts.pageUrl,
   };
 }
@@ -73,7 +83,7 @@ export function createTurnRecorder(init: { convId: string; turn: number; tabId: 
     // 调试工具展示假数据比缺数据更有害，故留空由 setMode() 填入。
     context: {
       messageCount: 0, chars: 0, hasSummary: false, summaryChars: 0,
-      skillCount: 0, systemPromptChars: 0, pageUrl: '',
+      skillCount: 0, systemPromptChars: 0, volatileChars: 0, pageUrl: '',
     },
     llm: { ms: 0, finishReason: '', textChars: 0, reasoningChars: 0 },
     tools: [],
