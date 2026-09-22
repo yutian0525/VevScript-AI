@@ -158,13 +158,16 @@ describe('工具 schema', () => {
     expect(d).toContain('})();');
   });
 
-  it('update_script description：写明 append/replace 语义与互斥', () => {
+  it('update_script：append/replace 语义在参数级，互斥与 balance 在工具级', () => {
     const u = TOOL_SCHEMAS.find((s) => s.function.name === 'update_script')!;
-    const props = (u.function.parameters as { properties: { patch: { properties: Record<string, unknown> } } })
-      .properties.patch.properties;
-    expect(Object.keys(props).sort()).toEqual(['append', 'applyUpdate', 'edit', 'enabled', 'replace', 'text']);
-    expect(u.function.description).toContain('append');
-    expect(u.function.description).toContain('replace');
+    const patch = (u.function.parameters as {
+      properties: { patch: { description: string; properties: Record<string, { description?: string }> } };
+    }).properties.patch;
+    expect(Object.keys(patch.properties).sort()).toEqual(['append', 'applyUpdate', 'edit', 'enabled', 'replace', 'text']);
+    // 分支语义归参数级（工具级只留调度约束），故 append/replace 改在参数 description 上断言
+    expect(patch.properties.append!.description).toContain('追加');
+    expect(patch.properties.replace!.description).toContain('唯一');
+    expect(patch.description).toContain('互斥');
     expect(u.function.description).toContain('balance');
   });
 
