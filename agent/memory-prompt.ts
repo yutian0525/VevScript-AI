@@ -1,5 +1,7 @@
 // agent/memory-prompt.ts
-// 记忆注入的纯函数（spec §3.3）：三层分组 + 半预算装箱 + 站点清单聚合。
+// 记忆注入的纯函数（spec §3.3）：三层分组 + 半预算装箱 + 站点清单聚合，输出拆 stable / volatile 两段。
+// 拆分的动因：说明与用法不随页面变（进 system，是缓存前缀的一部分），条目与站点清单依赖 page.url
+// （每轮都可能变），两者混在一段会让整个前缀失去缓存价值（spec §4）。
 //
 // 三层的动因：记忆过滤依赖 page.url，而 page.url 每轮循环顶部才重读（loop 的 getPageInfo）。
 // 模型在导航【前】规划路线时看不到目标站的记忆，第 3 层（站点清单）让它知道「那站有 N 条」，
@@ -15,7 +17,7 @@ export interface MemoryBrief {
 }
 
 export interface MemoryState {
-  /** 总开关。false → buildMemoryPrompt 返回空串（连冷启动文案都不注入） */
+  /** 总开关。false → 两段皆返回空串（连冷启动文案都不注入） */
   enabled: boolean;
   /** false 时说明文案不提写工具（工具没下发，避免幻觉调用） */
   writable: boolean;
@@ -86,14 +88,21 @@ function usageBlock(writable: boolean): string {
   ].join('\n');
 }
 
+export interface MemoryPromptParts {
+  /** 稳定部分：说明与用法。进 system 消息，是缓存前缀的一部分。 */
+  stable: string;
+  /** 易变部分：条目与站点清单（依赖 page.url）。进尾部易变块，无内容时为 ''。 */
+  volatile: string;
+}
+
 /**
- * 组装记忆块。三层：全局全文 → 当前页命中全文 → 其余站点清单（无正文）。
+ * 组装记忆块，返回 stable / volatile 两段。三层：全局全文 → 当前页命中全文 → 其余站点清单（无正文）。
  *
  * 预算 INJECT_BUDGET_CHARS 由全局与站点两层【各分半】，某层未用满的额度让给另一层——
  * 全局记忆被挤掉会立刻被用户察觉，站点记忆被挤掉会让 agent 在当前页重复踩坑，都不能牺牲。
  */
-export function buildMemoryPrompt(state: MemoryState, url: string): string {
-  if (!state.enabled) return '';
+export function buildMemoryPrompt(state: MemoryState, url: string): MemoryPromptParts {
+  if (!state.enabled) return { stable: '', volatile: '' };
 
   const globals = state.entries.filter((m) => m.matches.length === 0).sort(byRecent);
   const others = state.entries.filter((m) => m.matches.length > 0);
@@ -115,24 +124,27 @@ export function buildMemoryPrompt(state: MemoryState, url: string): string {
   const droppedCount =
     globals.length - shownGlobals.length + (hits.length - shownHits.length);
 
-  const lines: string[] = ['\n\n## 记忆\n'];
+  const stable: string[] = ['\n\n## 记忆\n'];
   if (state.entries.length === 0) {
-    lines.push('你具备跨会话的长期记忆，当前为空。\n');
+    stable.push('你具备跨会话的长期记忆，当前为空。\n');
   } else {
-    lines.push('下面是你在之前的会话中记录的、以及用户手工维护的长期记忆，它们跨会话持久存在。\n');
+    stable.push('下面是你在之前的会话中记录的、以及用户手工维护的长期记忆，它们跨会话持久存在。\n');
   }
-  lines.push(usageBlock(state.writable));
+  stable.push(usageBlock(state.writable));
 
+  // 易变部分：条目依赖 page.url，站点清单依赖「哪些站点没命中」——两者都随页面变化，
+  // 必须与稳定部分分开承载，否则每轮前缀都变（spec §4）。
+  const vol: string[] = [];
   if (shownGlobals.length > 0 || shownHits.length > 0) {
-    lines.push('');
-    for (const m of shownGlobals) lines.push(renderEntry(m));
-    for (const m of shownHits) lines.push(renderEntry(m));
+    vol.push('记忆条目（当前生效）：');
+    for (const m of shownGlobals) vol.push(renderEntry(m));
+    for (const m of shownHits) vol.push(renderEntry(m));
   }
   if (droppedCount > 0) {
-    lines.push(`\n另有 ${droppedCount} 条记忆因长度限制未列出，可用 memory_list 查看。`);
+    vol.push('', `另有 ${droppedCount} 条记忆因长度限制未列出，可用 memory_list 查看。`);
   }
   if (misses.length > 0) {
-    lines.push(`\n已有其他站点的记忆（需要时用 memory_list 取全文）：\n${siteList(misses)}`);
+    vol.push('', `其他站点已有记忆（需要时用 memory_list 取全文）：\n${siteList(misses)}`);
   }
-  return lines.join('\n');
+  return { stable: stable.join('\n'), volatile: vol.join('\n') };
 }

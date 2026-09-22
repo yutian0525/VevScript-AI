@@ -110,11 +110,12 @@ export function buildContext(
     ? `\n\n当前页面：\n- URL: ${page.url}\n- 标题: ${page.title}`
     : '';
   const skillsBlock = buildSkillsPrompt(skills ?? [], mode);
-  const memoryBlock = memory ? buildMemoryPrompt(memory, page.url) : '';
+  // buildMemoryPrompt 已拆 stable/volatile；布局重排前两段仍都进 system（下个任务把 volatile 挪到末尾易变块）。
+  const memParts = memory ? buildMemoryPrompt(memory, page.url) : { stable: '', volatile: '' };
   const base = resolveSystemPrompt(systemPrompt);
   const system: ChatMessage = {
     role: 'system',
-    content: base + pageBlock + skillsBlock + memoryBlock + modePrompt(mode),
+    content: base + pageBlock + skillsBlock + memParts.stable + memParts.volatile + modePrompt(mode),
   };
 
   if (summary) {
