@@ -28,6 +28,22 @@
 
 技能清单每条约 68–90 字符，无上限：20 个技能 → 1,350 字符，100 个 → ~8,500 字符。
 
+### 0.1 工具 schema 的构成（决定瘦身上限）
+
+在真实 wire JSON（`JSON.stringify(getToolSchemas('agent','full'))` 逐工具求和 = 19,745 字符）上按字段拆解：
+
+| 构成 | 字符 | 占比 | 可删性 |
+|---|---|---|---|
+| 工具级 `description` | 6,060 | 30.7% | 部分（重复 + 论证） |
+| 参数级 `description` | 2,391 | 12.1% | 部分（与工具级重复） |
+| 结构管道（`type:"function"`、`properties`、`additionalProperties:false`、嵌套 anyOf、enum、`required:[]`） | 11,294 | 57.2% | **基本不可删** |
+
+**11,294 是字数地板**——散文全部删光也降不到它以下。因此「缩短描述」这条杠杆的上限约 -30%（需把描述压到一句话），中等力度约 -23%，保守力度约 -12%。
+
+**由此得出的关键判断：能真正压低 agent 地板的手段是「减少工具数」，不是「缩短描述」**（ask 模式的 -52% 正是来自砍掉 8 个工具，而非改描述）。工具懒加载已被用户否决（多一轮往返），本设计不重开该决定，但该结论记在此处备查。
+
+> 测量方法备注：`agent/tools/schemas.ts` 里 `obj()` 辅助函数在**运行时**才生成 `type:'object'/properties/required/additionalProperties` 那层包装，所以按源码文本统计会把结构开销漏算成 43%。任何后续的体积统计都必须基于序列化后的 schema，不能基于源码。
+
 ## 1. 关键决策记录
 
 | # | 决策 | 选择 | 理由 |
@@ -36,7 +52,7 @@
 | 2 | 易变块位置 | 尾部 `user` 消息：`[system, ...history, volatile]` | 前缀 = tools+system+history 单调增长，缓存命中最大；所有 OpenAI 兼容网关都接受末尾 user；与既有 `【前情摘要】` user 消息约定一致。末尾 `system` 消息被部分网关 400 或静默改写（否决）；内联进最后一条 user 会污染用户原话、且末条是 tool 消息时无处可拼（否决） |
 | 3 | 记忆块拆分 | 说明/用法留 system，**条目**移 volatile | 说明文案稳定（~250 字符），整块挪会让它每轮按全价计费 |
 | 4 | 分块滑窗（`truncateMessages`） | **不做** | 缓存匹配的是最长公共前缀，滑窗的分歧点在窗口起点，tools+system 照样命中——它只丢历史正文的缓存。收益不够抵「边界每 20 轮突然掉 20 条」的行为陡变 |
-| 5 | schema 瘦身力度 | 保守：删重复与设计论证、合并重复的参数描述；保留全部操作要点与用户可感知后果 | 用户选定。合并参数重复描述信息一条不删（`query_page` 的 `locator` 从四遍变一遍），仍在保守档内 |
+| 5 | schema 瘦身力度 | **中等**：删重复与设计论证、合并工具级/参数级重复描述、压长枚举与示例；保留全部操作要点与用户可感知后果 | 用户先选保守，在 §0.1 测出 57% 是结构管道、保守实际只能降 -12% 后**改选中等**（-23%）。中等档仍不删任何操作要点，只删重复与论证，风险可控 |
 | 6 | ask 工具集 | 18 → 10 | 用户选定「看页面 + 答问 + 加载技能」档 |
 | 7 | ask 下的记忆写工具 | 收走（**推翻 spec §3.4 的一半**） | 用户选定。§3.4 原文「记忆只改扩展自己的本地笔记，收走写权限会很别扭」——修订为 ask 保留 `memory_list`（读），写工具随其余写能力一并收走，边界更整齐：ask = 完全不产生任何持久化副作用 |
 | 8 | 技能清单封顶 | 内置 4 个常驻不占名额 + 用户技能最多 20 个；描述超 60 字符截断 | 封顶后约 2,300 字符上限（~700 token），100 个技能也只多一行提示 |
@@ -48,13 +64,15 @@
 
 ## 2. 目标与非目标
 
-**目标**
+**目标**（数字已按 §0.1 的实测构成修正）
 
-1. agent 模式新对话固定开销：21,708 → ~15,200 字符（**-30%**）。
-2. ask 模式新对话固定开销：11,861 → ~5,400 字符（**-56%**）。
-3. tools + system 前缀在整段会话内**逐字节稳定**，只有尾部 volatile 块随页面/记忆变化——导航、写记忆、标题抖动都不再打断前缀缓存。
-4. 技能清单大小有确定上界，不随技能数线性膨胀。
-5. 模型感知的信息量不减少：页面信息、记忆条目、全部工具操作要点都还在，只是换了位置。
+1. agent 模式工具 schema：19,745 → ≤15,200 字符（**-23%**）。
+2. agent 模式新对话固定开销：21,708 → ~18,400 字符（**-15%**）。
+3. ask 模式工具 schema：10,018 → ~4,500 字符（**-55%**，主要来自砍掉 8 个工具而非改描述）。
+4. ask 模式新对话固定开销：11,861 → ~6,400 字符（**-46%**）。
+5. tools + system 前缀在整段会话内**逐字节稳定**，只有尾部 volatile 块随页面/记忆变化——导航、写记忆、标题抖动都不再打断前缀缓存。**这一条不减少字符，但它是本次收益最大的那条腿**（保护的是整段历史正文的缓存，不只是 system 尾巴）。
+6. 技能清单大小有确定上界，不随技能数线性膨胀。
+7. 模型感知的信息量不减少：页面信息、记忆条目、全部工具操作要点都还在，只是换了位置。
 
 **非目标（YAGNI）**
 
@@ -150,27 +168,55 @@ export function buildMemoryPrompt(state: MemoryState, url: string): { stable: st
 
 ## 5. 工具 schema 瘦身（`agent/tools/schemas.ts`）
 
-### 5.1 规则
+### 5.1 规则（中等档）
 
 | 动作 | 判据 | 例子 |
 |---|---|---|
 | **删** | 与 `SYSTEM_PROMPT`「工具使用要点」重复的跨工具引导 | `take_snapshot` 的「已知目标是什么时，优先用 query_page 定向查询而非倒整棵树」——系统提示词已有一份且它在前缀里 |
 | **删** | 设计论证（实现理由、为什么这么设计） | 「描述对齐 chrome-devtools-mcp」这类元信息 |
-| **压** | 冗长的边界说明压成短句 | 「穿透同源 iframe；跨域 iframe 内容无法读取，返回值的 skippedFrames 会计数」→「穿透同源 iframe；跨域 iframe 读不到，skippedFrames 计数」 |
-| **合并** | 同一参数在多处重复的描述 | `query_page` 的 `locator` 现在在 `anyOf[0..2].description` + `properties` + 顶层 `locator.description` 共写了四遍 → 一份 |
-| **留** | 工具特有操作要点 | uid 来源与失效、`detail` 档位差异、`region` 用法、长内容分步写入 |
+| **删** | 工具级 `description` 里逐分支复述、而参数级 `description` 已完整承载的内容 | `update_skill` 的工具描述把 append/replace/text/enabled 四个分支各讲一遍（~250 字符），而每个分支在 `patch.properties` 里又讲了一遍——工具级只留「四支互斥、一次一支」的调度约束，分支语义归参数级 |
+| **合并** | 同一参数在多处重复的描述 | `query_page` 的 `locator` 在 `anyOf[0..2].description` + `properties` + 顶层 `locator.description` 共写了四遍 → 一份 |
+| **压** | 冗长边界说明与长枚举/示例压成短句缩写 | 「穿透同源 iframe；跨域 iframe 内容无法读取，返回值的 skippedFrames 会计数」→「穿透同源 iframe；跨域 iframe 读不到，skippedFrames 计数」 |
+| **留** | 工具特有操作要点 | uid 来源与失效、`detail` 档位差异、`region` 用法、长内容分步写入、`balance` 配平状态的含义 |
 | **留** | 用户可感知的后果 | 深度观测会出「正在调试此浏览器」提示条、附着期间用户开不了 DevTools |
+| **留** | 参数级 `description` | 它是模型填参的唯一依据，只删与工具级重复的部分，不删参数语义 |
 
-### 5.2 逐工具过一遍
+**不动的部分**：结构管道（`obj()` 生成的 `type/properties/required/additionalProperties`、`anyOf` 结构、enum 取值、协议包装）一律不动——它们占 57.2%，是地板，也是防幻觉填参的实际约束。
 
-37 个全部过，重点是最贵的几个：`update_script`(2,292) / `query_page`(1,804) / `update_skill`(1,547) / `create_script`(953) / `evaluate_script`(909) / `memory_write`(834)。
+### 5.2 逐工具目标
+
+目标值按 `结构管道 + 散文 × 0.45` 从 §0.1 的实测基线推导（结构管道不可删，散文砍到 45%）。**单位：序列化字符数。**
+
+| 工具 | 现在 | 目标 | | 工具 | 现在 | 目标 |
+|---|---|---|---|---|---|---|
+| `update_script` | 1745 | ≤1300 | | `get_skill` | 411 | ≤300 |
+| `query_page` | 1314 | ≤1000 | | `load_skill` | 389 | ≤295 |
+| `update_skill` | 1197 | ≤900 | | `fill_form` | 378 | ≤370 |
+| `create_script` | 886 | ≤560 | | `take_screenshot` | 377 | ≤320 |
+| `evaluate_script` | 785 | ≤570 | | `press_key` | 345 | ≤310 |
+| `create_skill` | 729 | ≤470 | | `navigate_page` | 334 | ≤310 |
+| `list_scripts` | 716 | ≤465 | | `click` | 331 | ≤285 |
+| `memory_write` | 715 | ≤500 | | `list_skills` | 326 | ≤320 |
+| `take_snapshot` | 712 | ≤470 | | `scroll` | 313 | ≤300 |
+| `grep_script` | 660 | ≤515 | | `toggle_script` | 313 | ≤285 |
+| `toggle_deep_observe` | 633 | ≤410 | | `memory_delete` | 311 | ≤255 |
+| `get_script` | 619 | ≤440 | | `fill` | 306 | ≤275 |
+| `wait_for` | 580 | ≤465 | | `new_page` | 296 | ≤270 |
+| `list_network_requests` | 563 | ≤445 | | `delete_skill` | 291 | ≤245 |
+| `http_request` | 520 | ≤470 | | `close_page` | 263 | ≤235 |
+| `get_network_request` | 505 | ≤350 | | `select_page` | 253 | ≤230 |
+| `list_console_messages` | 484 | ≤385 | | `hover` | 238 | ≤215 |
+| `memory_list` | 483 | ≤350 | | `delete_script` | 223 | ≤215 |
+| | | | | `list_pages` | 201 | ≤180 |
+
+**已经贴着地板、几乎无散文可删的工具**（`fill_form` 378→370、`scroll` 313→300、`list_pages` 201→180、`delete_script` 223→215）**不要硬改**——它们的目标值与现值只差几个字符，动它们只会引入风险。
 
 ### 5.3 防回涨
 
 新增 `tests/agent/schema-budget.test.ts`：
 
-- 全部 schema 序列化字符数 ≤ **14,500**（当前 19,783，瘦身后预计 ~12,900，留约 13% 余量）
-- 单工具 ≤ **1,600** 字符（当前最大 2,292）
+- 全部 schema 序列化字符数 ≤ **15,800**（当前 19,745；目标 15,150，留约 4% 余量）
+- 单工具 ≤ **1,400** 字符（当前最大 1,745）
 
 超限即测试失败，把「描述又写长了」变成 CI 可见的回归。
 
@@ -322,7 +368,7 @@ export function searchSkills(skills: SkillSearchHit['skill'][], query: string): 
   - volatile 为空时不追加消息（数组长度与改前一致）。
 - `tests/agent/skill-brief.test.ts`：排序（内置在前、用户降序、`command` 兜底全序）、封顶 20、`hidden` 计数、描述在分隔符处截断、无分隔符硬切、内置 4 个不被截断。
 - `tests/shared/skill-search.test.ts`：五档打分、command 精确置顶、子序列命中、中文子串、空 query 原序、命中 0 个返回空数组、同分 `command` 兜底。
-- `tests/agent/schema-budget.test.ts`：总量 ≤ 14,500、单工具 ≤ 1,600。
+- `tests/agent/schema-budget.test.ts`：总量 ≤ 15,800、单工具 ≤ 1,400（**必须基于序列化后的 schema，不能基于源码文本**——见 §0.1 测量方法备注）。
 - `tests/agent/mode.test.ts` 补：ask 工具集恰为 §6.1 的 10 个（集合相等断言，防止悄悄加回）。
 
 **更新**
