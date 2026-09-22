@@ -41,7 +41,7 @@ describe('settings storage', () => {
     await saveSettings({ agent: { confirmGate: false, screenshotPolicy: 'never' } });
     await saveSettings({ agent: { screenshotPolicy: 'on-demand' } });
     const s = await getSettings();
-    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted', llmTimeoutSec: 60, llmMaxRetries: 2, maxTokens: 8192, memoryEnabled: true, memoryWritable: true });
+    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted', llmTimeoutSec: 60, llmMaxRetries: 2, maxTokens: 8192, memoryEnabled: true, memoryWritable: true, confirmLevel: 'sensitive' });
   });
 
   it('saveSettings 持久化到 local:settings（fakeBrowser storage 驱动）', async () => {
@@ -68,7 +68,7 @@ describe('settings storage', () => {
     });
     const s = await getSettings();
     expect(s.provider).toEqual({ baseUrl: 'https://old.com/v1', apiKey: '', model: '' });
-    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted', llmTimeoutSec: 60, llmMaxRetries: 2, maxTokens: 8192, memoryEnabled: true, memoryWritable: true });
+    expect(s.agent).toEqual({ screenshotPolicy: 'on-demand', confirmGate: false, networkCaptureHeaders: 'redacted', llmTimeoutSec: 60, llmMaxRetries: 2, maxTokens: 8192, memoryEnabled: true, memoryWritable: true, confirmLevel: 'sensitive' });
   });
 
   it('AgentConfig 默认 networkCaptureHeaders=redacted', async () => {
@@ -80,6 +80,14 @@ describe('settings storage', () => {
     await saveSettings({ agent: { networkCaptureHeaders: 'full' } });
     const s = await getSettings();
     expect(s.agent.networkCaptureHeaders).toBe('full');
+  });
+
+  it('confirmLevel 默认仅敏感，改档可回读', async () => {
+    expect((await getSettings()).agent.confirmLevel).toBe('sensitive');
+    await saveSettings({ agent: { confirmLevel: 'all' } });
+    expect((await getSettings()).agent.confirmLevel).toBe('all');
+    await saveSettings({ agent: { confirmLevel: 'auto' } });
+    expect((await getSettings()).agent.confirmLevel).toBe('auto');
   });
 });
 

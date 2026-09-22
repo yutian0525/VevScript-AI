@@ -1,5 +1,6 @@
 // storage/settings.ts
 import { storage } from 'wxt/utils/storage';
+import type { ConfirmLevel } from '../agent/permission';
 
 export interface ProviderConfig {
   baseUrl: string; // OpenAI 兼容，如 https://api.deepseek.com/v1
@@ -29,6 +30,8 @@ export interface AgentConfig {
   memoryEnabled: boolean;
   /** AI 是否可写记忆。false = 只注入 + 只下发 memory_list，记忆改由人工维护。 */
   memoryWritable: boolean;
+  /** 三级确认策略（spec §4）：all=全部询问 / sensitive=仅敏感 / auto=自动放行。每发工具现读，中途改档下一发生效。 */
+  confirmLevel: ConfirmLevel;
 }
 
 /** 系统提示词自定义（覆盖式）。见 spec §2。 */
@@ -59,6 +62,7 @@ export const DEFAULT_SETTINGS: Settings = {
     maxTokens: 8192,
     memoryEnabled: true,
     memoryWritable: true,
+    confirmLevel: 'sensitive',
   },
   prompt: { custom: '' },
 };
