@@ -1,12 +1,12 @@
 // components/settings/SettingsHome.tsx
 // 设置列表页：入口卡片按能力域分组（大标题行划分），点卡走 onOpen 切二级页。
-import { SlidersHorizontal, SquareTerminal, FlaskConical, ChevronRight, ScrollText, Brain, Info, Activity } from 'lucide-react';
+import { SlidersHorizontal, SquareTerminal, FlaskConical, ChevronRight, ScrollText, Brain, Info, Activity, Database } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Tooltip } from '../ui/Tooltip';
 import { useTruncated } from '../ui/useTruncated';
 import { useUi } from '../../stores/ui';
 
-export type SettingsSub = 'model' | 'prompt' | 'memory' | 'toolbench' | 'scriptdebug' | 'about' | 'convdebug';
+export type SettingsSub = 'model' | 'prompt' | 'memory' | 'toolbench' | 'scriptdebug' | 'storage' | 'about' | 'convdebug';
 
 /** tabUrl 存在 = 该条目不开二级页，直接在新标签页打开该扩展页面。 */
 type Entry = { key: SettingsSub; title: string; desc: string; Icon: typeof SlidersHorizontal; tabUrl?: string };
@@ -27,6 +27,12 @@ const GROUPS: Array<{ label: string; entries: Entry[] }> = [
       { key: 'toolbench', title: '工具调试台', desc: '绕过模型，直接对当前页调用全部工具', Icon: SquareTerminal },
       { key: 'scriptdebug', title: '脚本运行时调试台', desc: 'GM API 白名单视图 + 经真实桥链路直调', Icon: FlaskConical },
       { key: 'convdebug', title: 'AI 会话调试', desc: '会话历史与 agent loop 调用记录（新标签页打开）', Icon: Activity, tabUrl: '/conv-debug.html' },
+    ],
+  },
+  {
+    label: '数据',
+    entries: [
+      { key: 'storage', title: '存储管理', desc: '各域占用 / 清理缓存 / 导出导入备份', Icon: Database },
     ],
   },
   {

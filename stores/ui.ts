@@ -1,6 +1,6 @@
 // stores/ui.ts
 import { create } from 'zustand';
-import type { ExtUpdateRequest } from '../shared/messages';
+import type { ExtUpdateRequest, StorageManagerRequest } from '../shared/messages';
 import type { ExtUpdateState } from '../shared/types';
 
 export type Page = 'chat' | 'scripts' | 'skills' | 'settings';
@@ -22,5 +22,9 @@ export const useUi = create<UiState>((set) => ({
 }));
 
 export async function sendExtUpdateRequest<T = unknown>(req: ExtUpdateRequest): Promise<T> {
+  return (await browser.runtime.sendMessage(req)) as T;
+}
+
+export async function sendStorageRequest<T = unknown>(req: StorageManagerRequest): Promise<T> {
   return (await browser.runtime.sendMessage(req)) as T;
 }

@@ -79,4 +79,12 @@ describe('SettingsView 壳', () => {
     // 返回钮，列表页没有；「模型设置」这类列表条目在死点击回退成 SettingsHome 时也渲染，区分不了两态
     expect(screen.queryByLabelText(/返回/)).toBeNull();
   });
+
+  it('点「存储管理」入口进二级页（STORAGE），返回回列表', () => {
+    render(<SettingsView />);
+    fireEvent.click(screen.getByText('存储管理'));
+    expect(screen.getByText('STORAGE')).toBeTruthy(); // eyebrow
+    fireEvent.click(screen.getByLabelText('返回设置'));
+    expect(screen.getByText('模型设置')).toBeTruthy();
+  });
 });
