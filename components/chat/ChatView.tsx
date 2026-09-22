@@ -12,6 +12,7 @@ import { SlashMenu } from './SlashMenu';
 import { AttachmentChips } from './AttachmentChips';
 import { ModeSelect } from './ModeSelect';
 import { DeepObserveToggle } from './DeepObserveToggle';
+import { ToolConfirmCard, type ConfirmDecision } from './ToolConfirmCard';
 import { shouldOpenSlash, handleSlashKey, completeSlash } from './slash';
 import { fileToAttachment, MAX_ATTACHMENTS } from './attachments';
 import { filterSkills, useSkills } from '../../stores/skills';
@@ -224,6 +225,11 @@ export function ChatView() {
     postToPort({ type: 'agent:compact', convId: currentId });
   };
 
+  const onConfirm = (callId: string, decision: ConfirmDecision) => {
+    if (!currentId) return;
+    postToPort({ type: 'agent:confirm', convId: currentId, callId, decision });
+  };
+
   const title = list.find((c) => c.id === currentId)?.title ?? '新会话';
   const lastIdx = messages.length - 1;
 
@@ -290,7 +296,7 @@ export function ChatView() {
               </div>
             )}
             {messages.map((m, i) => (
-              <MessageRow key={i} index={i} item={m} streaming={status === 'running' && i === lastIdx} />
+              <MessageRow key={i} index={i} item={m} streaming={status === 'running' && i === lastIdx} onConfirm={onConfirm} />
             ))}
             {status === 'running' && isAwaitingFirstToken(messages, !!argsProgress) && (
               <div className="chat-pending rise" aria-label="AI 正在准备回复">
@@ -428,7 +434,7 @@ export function ChatView() {
   );
 }
 
-function MessageRow({ item, index, streaming }: { item: ChatItem; index: number; streaming: boolean }) {
+function MessageRow({ item, index, streaming, onConfirm }: { item: ChatItem; index: number; streaming: boolean; onConfirm?: (callId: string, decision: ConfirmDecision) => void }) {
   const toggleExpand = useChat((s) => s.toggleExpand);
 
   if (item.role === 'user') {
@@ -470,6 +476,18 @@ function MessageRow({ item, index, streaming }: { item: ChatItem; index: number;
     );
   }
   // tool
+  if (item.status === 'confirm') {
+    return (
+      <div className="rise">
+        <ToolConfirmCard
+          name={item.name ?? ''}
+          args={item.args ? formatArgs(item.args) : undefined}
+          until={item.confirmUntil ?? Date.now()}
+          onDecide={(d) => { if (item.callId) onConfirm?.(item.callId, d); }}
+        />
+      </div>
+    );
+  }
   const state = item.status === 'running' ? 'running' : item.ok ? 'ok' : 'err';
   const canExpand = item.status === 'done';
   const open = !!item.expanded;

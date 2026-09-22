@@ -765,6 +765,23 @@ body {
 }
 .composer__attach-err svg { flex-shrink: 0; }
 
+/* ============ 工具确认卡（会话流内，三级确认策略） ============ */
+.toolconfirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--signal);
+  border-radius: var(--r-md);
+  background: var(--sunken);
+}
+.toolconfirm__head { display: flex; align-items: center; gap: 6px; color: var(--signal-ink); }
+.toolconfirm__name { font-size: 12px; font-weight: 600; }
+.toolconfirm__risk { margin-left: auto; }
+.toolconfirm__left { color: var(--ink-2); font-size: 10.5px; }
+.toolconfirm__args { max-height: 160px; overflow: auto; font-size: 11px; }
+.toolconfirm__actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
 /* ============ 行为模式下拉（ask/agent，自绘浮层） ============ */
 /* 浮层锚定整个 composer 卡片（.composer 上加 relative），从卡片上缘弹出、左右贴边，
    避免以小触发器为锚时 264px 浮层溢出面板右缘 + 与输入框之间隔出大空隙。 */
