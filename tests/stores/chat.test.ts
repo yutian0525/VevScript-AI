@@ -385,3 +385,45 @@ describe('chat store：重挂载后接住流式尾巴', () => {
     expect(items.find((m) => m.callId === 'c2')).toMatchObject({ status: 'running' });
   });
 });
+
+describe('chat store：工具确认卡', () => {
+  beforeEach(() => useChat.getState().reset());
+
+  it('tool-confirm 建确认卡（confirm 态 + 截止时间戳）', () => {
+    useChat.getState().applyEvent({ type: 'tool-confirm', callId: 'c9', name: 'evaluate_script', args: '{"function":"1+1"}', until: 123456 });
+    const tool = useChat.getState().messages.find((m) => m.role === 'tool');
+    expect(tool).toMatchObject({ name: 'evaluate_script', status: 'confirm', confirmUntil: 123456, args: '{"function":"1+1"}' });
+  });
+
+  it('tool-confirm 幂等：翻转既有 running 卡而不建新卡（attach 回放场景）', () => {
+    useChat.getState().loadFromStorage([
+      { role: 'assistant', content: '', toolCalls: [{ id: 'c1', name: 'click', arguments: '{}' }] },
+    ] as ChatMessage[]);
+    expect(useChat.getState().messages.find((m) => m.role === 'tool')?.status).toBe('running');
+    useChat.getState().applyEvent({ type: 'tool-confirm', callId: 'c1', name: 'click', args: '{}', until: 1 });
+    const tools = useChat.getState().messages.filter((m) => m.role === 'tool' && m.callId === 'c1');
+    expect(tools).toHaveLength(1);
+    expect(tools[0]!.status).toBe('confirm');
+  });
+
+  it('tool-confirm 清空 argsProgress 并收起思考块', () => {
+    useChat.getState().applyEvent({ type: 'reasoning-delta', text: '想' });
+    useChat.getState().applyEvent({ type: 'tool-args-delta', name: 'x', bytes: 10 });
+    useChat.getState().applyEvent({ type: 'tool-confirm', callId: 'c1', name: 'x', args: '{}', until: 1 });
+    expect(useChat.getState().argsProgress).toBeUndefined();
+    expect(useChat.getState().messages[0]).toMatchObject({ thinking: false });
+  });
+
+  it('tool-start 把 confirm 卡翻回 running（用户批准放行）', () => {
+    useChat.getState().applyEvent({ type: 'tool-confirm', callId: 'c1', name: 'x', args: '{}', until: 1 });
+    useChat.getState().applyEvent({ type: 'tool-start', name: 'x', args: '{}', callId: 'c1' });
+    expect(useChat.getState().messages.find((m) => m.role === 'tool')?.status).toBe('running');
+  });
+
+  it('tool-end 直接终结 confirm 卡（拒绝/超时路径，中间没有 tool-start）', () => {
+    useChat.getState().applyEvent({ type: 'tool-confirm', callId: 'c1', name: 'x', args: '{}', until: 1 });
+    useChat.getState().applyEvent({ type: 'tool-end', name: 'x', callId: 'c1', ok: false, summary: '已拒绝' });
+    const tool = useChat.getState().messages.find((m) => m.role === 'tool');
+    expect(tool).toMatchObject({ status: 'done', ok: false, summary: '已拒绝' });
+  });
+});

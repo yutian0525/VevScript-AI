@@ -17,7 +17,8 @@ export interface ChatItem {
   sealed?: boolean;          // 由 storage 载入的历史项：流式增量不得再往它上面追加
   attachments?: ChatAttachment[]; // user 消息携带的上传附件（气泡内以 tag/缩略图展示）
   name?: string; args?: string; callId?: string;
-  status?: 'running' | 'done'; ok?: boolean; summary?: string;
+  status?: 'running' | 'done' | 'confirm'; ok?: boolean; summary?: string;
+  confirmUntil?: number;       // confirm 态的确认截止绝对时间戳（ms）
   output?: string;           // 工具完整输出（供展开）
   image?: string;            // 截图缩略图 dataURL（take_screenshot）
   usage?: { prompt?: number; completion?: number }; // 该轮 token 用量（消息下方标注）
@@ -156,11 +157,26 @@ export const useChat = create<ChatState>((set) => ({
         return { argsProgress: { name: e.name, bytes: e.bytes } };
       case 'tool-start': {
         collapseTrailingThinking(messages);
-        // 按 callId 幂等：重复的 tool-start（同 callId）不再新推卡片，避免"一张 done 一张永远 running"
-        if (e.callId && messages.some((m) => m.role === 'tool' && m.callId === e.callId)) {
+        const idx = messages.findIndex((m) => m.role === 'tool' && m.callId === e.callId);
+        if (idx >= 0) {
+          // 幂等；confirm 态卡（用户批准放行）翻回运行态
+          if (messages[idx]!.status === 'confirm') {
+            messages[idx] = { ...messages[idx]!, status: 'running' };
+          }
           return { messages, argsProgress: undefined };
         }
         messages.push({ role: 'tool', name: e.name, args: e.args, callId: e.callId, status: 'running' });
+        return { messages, argsProgress: undefined };
+      }
+      case 'tool-confirm': {
+        collapseTrailingThinking(messages);
+        const idx = messages.findIndex((m) => m.role === 'tool' && m.callId === e.callId);
+        if (idx >= 0) {
+          // 幂等：attach 回放/重复事件翻转既有卡（loadFromStorage 把无结果调用渲染成 running）
+          messages[idx] = { ...messages[idx]!, status: 'confirm', confirmUntil: e.until };
+        } else {
+          messages.push({ role: 'tool', name: e.name, args: e.args, callId: e.callId, status: 'confirm', confirmUntil: e.until });
+        }
         return { messages, argsProgress: undefined };
       }
       case 'tool-end': {
