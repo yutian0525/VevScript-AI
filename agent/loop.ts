@@ -218,6 +218,10 @@ async function drive(
 
       await appendMessage(convId, assistantMsg(result.text, result.toolCalls, result.reasoning));
       const results: ToolResult[] = [];
+      // 本轮产出的截图图片消息，延后到全部工具响应之后才落库：OpenAI 协议要求 tool_calls 的
+      // 响应必须是连续的 tool 消息，user 插在中间会 400 "insufficient tool messages"
+      // （实机验证发现：并行 take_screenshot + take_snapshot 必现）。
+      const pendingImages: ContentPart[][] = [];
       for (const tc of result.toolCalls) {
         if (signal.aborted) {
           tr.rec.outcome = 'aborted';
@@ -298,11 +302,10 @@ async function drive(
           const rest = toToolContent(r.ok ? { ok: true } : r);
           await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: rest });
           if (shot) {
-            const parts: ContentPart[] = [
+            pendingImages.push([
               { type: 'text', text: SCREENSHOT_SENTINEL },
               { type: 'image_url', imageUrl: shot },
-            ];
-            await appendMessage(convId, { role: 'user', content: parts });
+            ]);
           }
           continue;
         }
@@ -329,12 +332,17 @@ async function drive(
         });
         await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: output });
         if (shot) {
-          const parts: ContentPart[] = [
+          pendingImages.push([
             { type: 'text', text: SCREENSHOT_SENTINEL },
             { type: 'image_url', imageUrl: shot },
-          ];
-          await appendMessage(convId, { role: 'user', content: parts });
+          ]);
         }
+      }
+
+      // 本轮全部工具响应已连续落库，图片消息此时才追加（协议安全；UI 上图片气泡
+      // 随之移到本轮工具卡之后而非紧跟截图卡——换取 wire 合法性，值得）。
+      for (const parts of pendingImages) {
+        await appendMessage(convId, { role: 'user', content: parts });
       }
 
       guard = recordTurn(guard, result.toolCalls, results);

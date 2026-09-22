@@ -702,3 +702,62 @@ describe('loop 注入记忆', () => {
     expect((captured[0]!.tools ?? []).map((t) => t.function.name)).toContain('memory_list');
   });
 });
+
+describe('工具响应连续性（wire 协议约束）', () => {
+  beforeEach(() => fakeBrowser.reset());
+
+  it('同一轮并行 take_screenshot + take_snapshot：图片消息必须落在全部 tool 响应之后，不得插队', async () => {
+    // OpenAI 协议：assistant(tool_calls) 的响应必须是连续的 tool 消息；user 消息插在中间
+    // 会 400 "insufficient tool messages following tool_calls message"（实机验证发现）。
+    const provider = queuedProvider([
+      [
+        { type: 'tool-call-delta', index: 0, id: 'tc-shot', name: 'take_screenshot', argsDelta: '{}' },
+        { type: 'tool-call-delta', index: 1, id: 'tc-snap', name: 'take_snapshot', argsDelta: '{}' },
+        { type: 'message-done', finishReason: 'tool_calls' },
+      ],
+      [{ type: 'text-delta', text: '完成' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>(async (name) =>
+      name === 'take_screenshot'
+        ? { ok: true, data: { screenshot: 'data:image/png;base64,AAAA' } }
+        : { ok: true, data: { result: 'snapshot' } });
+    await runAgentLoop({ convId: 'c-wire', tabId: 1, userMessage: '看一眼' }, deps(provider, exec));
+
+    const messages = (await getConversation('c-wire')).messages;
+    const ai = messages.findIndex((m) => m.role === 'assistant' && m.toolCalls?.length);
+    expect(ai).toBeGreaterThanOrEqual(0);
+    const ids = new Set(messages[ai]!.toolCalls!.map((tc) => tc.id));
+    let answered = 0;
+    let i = ai + 1;
+    for (; answered < ids.size; i++) {
+      expect(messages[i]!.role).toBe('tool');
+      expect(ids.has(messages[i]!.toolCallId ?? '')).toBe(true);
+      answered += 1;
+    }
+    // 修复不得以丢图片为代价：图片消息仍在，且位于最后一个工具响应之后
+    const afterTools = messages[i]!;
+    expect(afterTools.role).toBe('user');
+    expect(Array.isArray(afterTools.content)).toBe(true);
+    expect(JSON.stringify(afterTools.content)).toContain('image_url');
+  });
+
+  it('单独一次 take_screenshot（无并行工具）：行为不变——图片紧跟其 tool 响应', async () => {
+    const provider = queuedProvider([
+      [
+        { type: 'tool-call-delta', index: 0, id: 'tc-only', name: 'take_screenshot', argsDelta: '{}' },
+        { type: 'message-done', finishReason: 'tool_calls' },
+      ],
+      [{ type: 'text-delta', text: '完成' }, { type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({
+      ok: true, data: { screenshot: 'data:image/png;base64,AAAA' },
+    } as ToolResult);
+    await runAgentLoop({ convId: 'c-wire2', tabId: 1, userMessage: '截图' }, deps(provider, exec));
+
+    const messages = (await getConversation('c-wire2')).messages;
+    const ti = messages.findIndex((m) => m.role === 'tool' && m.toolCallId === 'tc-only');
+    expect(ti).toBeGreaterThan(0);
+    expect(messages[ti + 1]!.role).toBe('user');
+    expect(JSON.stringify(messages[ti + 1]!.content)).toContain('image_url');
+  });
+});
