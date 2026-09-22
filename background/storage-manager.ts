@@ -92,11 +92,59 @@ export async function cleanStorage(scope: StorageCleanScope): Promise<void> {
   if (traceKeys.length) await browser.storage.local.remove(traceKeys);
 }
 
+// ---------- 备份导出（spec §3.3） ----------
+
+interface SettingsLike { provider?: { apiKey?: string } }
+
+export function buildBackup(
+  dump: Record<string, unknown>,
+  includeApiKey: boolean,
+  extVersion: string,
+  now = new Date(),
+): { json: string; filename: string } {
+  // 深拷贝后处理，绝不改调用方的 dump
+  const data = JSON.parse(JSON.stringify(dump)) as Record<string, unknown>;
+  if (!includeApiKey) {
+    const s = data[PHYS_SETTINGS] as SettingsLike | undefined;
+    if (s?.provider) s.provider.apiKey = ''; // 剔除 = 置空串：保住 settings 形状
+  }
+  const meta = {
+    app: 'vevscript-ai',
+    kind: 'full-backup',
+    exportedAt: now.toISOString(),
+    extVersion,
+    includesApiKey: includeApiKey,
+  };
+  const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  return {
+    json: JSON.stringify({ meta, data }, null, 2),
+    filename: `vevscript-ai-backup-v${extVersion}-${ymd}.json`,
+  };
+}
+
+/** MV3 SW 无 URL.createObjectURL，导出走 data: URL。btoa 只收 Latin1，经 TextEncoder
+ *  转字节后分块转二进制串（中文等 BMP 外字符不烂）。 */
+export function jsonDataUrl(json: string): string {
+  const bytes = new TextEncoder().encode(json);
+  let bin = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return `data:application/json;base64,${btoa(bin)}`;
+}
+
 export function initStorageManagerModule(router: MessageRouter): void {
   router.on('STORAGE_USAGE_GET', async () => ({ ok: true, data: await getStorageUsage() }));
   router.on('STORAGE_CLEAN', async (msg) => {
     const { scope } = msg as unknown as { scope: StorageCleanScope };
     await cleanStorage(scope);
     return { ok: true };
+  });
+  router.on('STORAGE_EXPORT', async (msg) => {
+    const { includeApiKey } = msg as unknown as { includeApiKey: boolean };
+    const dump = await browser.storage.local.get(null);
+    const b = buildBackup(dump, includeApiKey, browser.runtime.getManifest().version);
+    return { ok: true, data: { filename: b.filename, dataUrl: jsonDataUrl(b.json) } };
   });
 }

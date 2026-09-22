@@ -4,7 +4,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 // Task 1/2 已实现四个函数；Task 3/4 落地时把 buildBackup/jsonDataUrl/parseBackup/importBackup 补进这行 import
-import { classifyKey, byteLength, getStorageUsage, cleanStorage } from '../../background/storage-manager';
+import {
+  classifyKey, byteLength, getStorageUsage, cleanStorage, buildBackup, jsonDataUrl,
+} from '../../background/storage-manager';
 
 beforeEach(() => {
   fakeBrowser.reset();
@@ -111,5 +113,47 @@ describe('cleanStorage（只清可再生数据）', () => {
     expect(dump['conv:a:trace']).toBeUndefined();
     expect(dump['conv:b:trace']).toBeUndefined();
     expect(dump['conv:a']).toBeDefined();
+  });
+});
+
+describe('buildBackup / jsonDataUrl（备份文件拼装）', () => {
+  const dump = {
+    'settings': { provider: { baseUrl: 'https://api.x.com', apiKey: 'sk-secret', model: 'm' }, agent: {}, prompt: {} },
+    'conv:a': { id: 'a', title: '中文会话' },
+  };
+
+  it('includeApiKey=false：provider.apiKey 置空串，settings 其余字段保留', () => {
+    const b = buildBackup(dump, false, '1.2.3', new Date('2026-09-22T10:00:00Z'));
+    const parsed = JSON.parse(b.json) as { meta: Record<string, unknown>; data: typeof dump };
+    expect(parsed.meta).toMatchObject({ app: 'vevscript-ai', kind: 'full-backup', extVersion: '1.2.3', includesApiKey: false });
+    const s = parsed.data['settings'] as typeof dump.settings;
+    expect(s.provider.apiKey).toBe('');
+    expect(s.provider.baseUrl).toBe('https://api.x.com'); // 其余字段不动
+    expect(parsed.data['conv:a']).toEqual({ id: 'a', title: '中文会话' });
+  });
+
+  it('includeApiKey=true：Key 原样保留', () => {
+    const b = buildBackup(dump, true, '1.2.3', new Date('2026-09-22T10:00:00Z'));
+    const parsed = JSON.parse(b.json) as { meta: { includesApiKey: boolean }; data: typeof dump };
+    expect(parsed.meta.includesApiKey).toBe(true);
+    const s = parsed.data['settings'] as typeof dump.settings;
+    expect(s.provider.apiKey).toBe('sk-secret');
+  });
+
+  it('文件名：vevscript-ai-backup-v{版本}-{YYYYMMDD}.json；不改动传入 dump', () => {
+    const snapshot = JSON.stringify(dump);
+    const b = buildBackup(dump, false, '1.2.3', new Date('2026-09-22T10:00:00Z'));
+    expect(b.filename).toBe('vevscript-ai-backup-v1.2.3-20260922.json');
+    expect(JSON.stringify(dump)).toBe(snapshot); // 深拷贝，剔除不改原对象
+  });
+
+  it('jsonDataUrl：unicode 安全，可解码还原', () => {
+    const b = buildBackup(dump, true, '1.2.3', new Date());
+    const url = jsonDataUrl(b.json);
+    expect(url.startsWith('data:application/json;base64,')).toBe(true);
+    const b64 = url.slice('data:application/json;base64,'.length);
+    const bin = atob(b64);
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    expect(new TextDecoder().decode(bytes)).toBe(b.json); // 中文不烂
   });
 });
