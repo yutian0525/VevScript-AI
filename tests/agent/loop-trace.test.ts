@@ -259,7 +259,10 @@ describe('agent loop trace', () => {
     await runAgentLoop({ convId: 't12', tabId: 1, userMessage: 'x' }, deps(provider, exec), ac.signal);
     const t = (await readTraces('t12')).turns[0]!;
     expect(t.outcome).toBe('aborted');
-    expect(t.tools).toHaveLength(1); // 第二个工具没执行，markTool 只有一条
+    // 第一条是真实执行；第二条是中断收尾给未执行调用补的合成记录（保持 wire 协议合法）
+    expect(t.tools).toHaveLength(2);
+    expect(t.tools[0]!.summary).toBe('成功');
+    expect(t.tools[1]!.summary).toBe('已中断');
   });
 
   it('firstTokenMs 落盘：text-delta 先到 hook 也计入 TTFT', async () => {

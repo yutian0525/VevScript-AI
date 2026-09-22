@@ -761,3 +761,39 @@ describe('工具响应连续性（wire 协议约束）', () => {
     expect(JSON.stringify(messages[ti + 1]!.content)).toContain('image_url');
   });
 });
+
+describe('中断后的 wire 协议合法性', () => {
+  beforeEach(() => fakeBrowser.reset());
+
+  it('工具循环中途 abort：未执行的 tool_calls 补合成响应，storage 不留悬空调用', async () => {
+    const ac = new AbortController();
+    const provider = queuedProvider([
+      [
+        { type: 'tool-call-delta', index: 0, id: 'tc-a', name: 'take_snapshot', argsDelta: '{}' },
+        { type: 'tool-call-delta', index: 1, id: 'tc-b', name: 'query_page', argsDelta: '{}' },
+        { type: 'message-done', finishReason: 'tool_calls' },
+      ],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>(async (name) => {
+      if (name === 'take_snapshot') {
+        ac.abort(); // 第一个工具执行时用户按下停止
+        return { ok: true, data: { result: 'a' } };
+      }
+      return { ok: true, data: { result: 'b' } };
+    });
+    await runAgentLoop({ convId: 'c-abort', tabId: 1, userMessage: 'x' }, deps(provider, exec), ac.signal);
+
+    const messages = (await getConversation('c-abort')).messages;
+    const ai = messages.findIndex((m) => m.role === 'assistant' && m.toolCalls?.length);
+    expect(ai).toBeGreaterThanOrEqual(0);
+    const ids = new Set(messages[ai]!.toolCalls!.map((tc) => tc.id));
+    let answered = 0;
+    for (let i = ai + 1; answered < ids.size; i++) {
+      expect(messages[i]!.role).toBe('tool');
+      expect(ids.has(messages[i]!.toolCallId ?? '')).toBe(true);
+      answered += 1;
+    }
+    // 合成响应把发生的事说清楚（与确认拒绝路径同一文案约定：错误：前缀）
+    expect(String(messages[ai + answered]!.content)).toContain('中断');
+  });
+});

@@ -224,6 +224,15 @@ async function drive(
       const pendingImages: ContentPart[][] = [];
       for (const tc of result.toolCalls) {
         if (signal.aborted) {
+          // 中断收尾：为本轮未应答的 tool_calls 补合成响应。否则 storage 里留着悬空调用，
+          // 用户停止后继续对话必现 400 "insufficient tool messages"（与截图图片插队同类，
+          // 实机验证期间排查发现）。文案沿用确认拒绝路径的错误：前缀约定。
+          for (const missed of result.toolCalls.slice(result.toolCalls.indexOf(tc))) {
+            const content = '错误：用户中断（已停止），该调用未执行。';
+            deps.emit({ type: 'tool-end', name: missed.name, callId: missed.id, ok: false, summary: '已中断' });
+            tr.markTool({ name: missed.name, callId: missed.id, argsBytes: missed.arguments?.length ?? 0, ms: 0, ok: false, summary: '已中断' });
+            await appendMessage(convId, { role: 'tool', toolCallId: missed.id, name: missed.name, content });
+          }
           tr.rec.outcome = 'aborted';
           await finishAborted(convId, deps);
           return;
