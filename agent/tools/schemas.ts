@@ -199,7 +199,7 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     type: 'function',
     function: {
       name: 'evaluate_script',
-      description: '在页面中执行一段 JavaScript 并返回结果（必须可 JSON 序列化）。函数体可用 await。',
+      description: '在页面中执行一段 JavaScript 并返回结果（必须可 JSON 序列化）。函数体可用 await。用于读取 a11y 快照覆盖不到的深层数据。',
       parameters: obj(
         {
           function: {
@@ -340,7 +340,7 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
         '读取单个用户脚本：完整 text（.user.js 原文）+ 解析投影 + totalLines。可选 offset/limit 读行区间（越界钳制），此时 text 为切片、startLine/endLine 为实际返回区间。每行带 `  12| ` 形式行号前缀——是标注不是文件内容，写回时不要带上。不传 offset/limit 时默认只返回前 200 行，notice 给出续读位置。',
       parameters: obj(
         {
-          id: { type: 'string', description: '脚本 id' },
+          id: { type: 'string', description: '脚本 id（来自 list_scripts）' },
           offset: { type: 'number', description: '起始行（1-based，缺省 1）' },
           limit: { type: 'number', description: '行数（缺省读到末尾）' },
         },
@@ -371,7 +371,7 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'create_script',
       description:
-        '创建用户脚本：以用户脚本权限在匹配规则命中的页面上自动运行。创建前先向用户说明脚本用途与作用范围。source 为完整 .user.js（@字段即配置、无独立名称/匹配参数，解析后须有 @match 或 pattern 形式的 @include），url 为直链（下载安装并记为更新源），二者选一。代码以页面脚本原样执行，无 GM_* API。source 上限 200 行 / 8192 字符。分步写：本次只交元数据头 + 未闭合的 IIFE 骨架（写到 `(function () {` 为止），再用 update_script 的 patch.append 追加代码体，末段带 `})();` 闭合；骨架提前闭合会让代码落到 IIFE 外。',
+        '创建用户脚本：以用户脚本权限在匹配规则命中的页面上自动运行。创建前先向用户说明脚本用途与作用范围。source 为完整 .user.js（@字段即配置（@name/@match/@include/@run-at/@world/@grant），无独立名称/匹配参数，解析后须有 @match 或 pattern 形式的 @include），url 为直链（下载安装并记为更新源），二者选一。代码以页面脚本原样执行，无 GM_* API。source 上限 200 行 / 8192 字符。分步写：本次只交元数据头 + 未闭合的 IIFE 骨架（写到 `(function () {` 为止），再用 update_script 的 patch.append 追加代码体，末段带 `})();` 闭合；骨架提前闭合会让代码落到 IIFE 外。',
       parameters: obj(
         {
           source: { type: 'string', description: '完整 .user.js 文本（含 ==UserScript== 头）；与 url 二选一' },
