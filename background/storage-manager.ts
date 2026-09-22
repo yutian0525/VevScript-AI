@@ -4,7 +4,7 @@
 // 分组函数按物理键分类；对照表见 spec §1。
 
 import type {
-  StorageCleanScope, StorageGroupKey, StorageUsage, StorageUsageGroup,
+  StorageCleanScope, StorageGroupKey, StorageImportResult, StorageUsage, StorageUsageGroup,
 } from '../shared/messages';
 import type { MessageRouter } from './router';
 
@@ -76,7 +76,7 @@ export async function getStorageUsage(): Promise<StorageUsage> {
   return { totalBytes, groups: groupArr, traces, gmResources };
 }
 
-// ---------- 清理（导出 / 导入 Task 3/4 实现） ----------
+// ---------- 清理（Task 1-2 已实现） ----------
 
 export async function cleanStorage(scope: StorageCleanScope): Promise<void> {
   if (scope.kind === 'gm-resources') {
@@ -134,6 +134,44 @@ export function jsonDataUrl(json: string): string {
   return `data:application/json;base64,${btoa(bin)}`;
 }
 
+// ---------- 备份导入（spec §3.4，全量替换） ----------
+
+interface BackupMeta { app?: string; kind?: string; includesApiKey?: boolean }
+
+export function parseBackup(text: string): { meta: BackupMeta; data: Record<string, unknown> } {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error('不是有效的 JSON 文件');
+  }
+  const obj = parsed as { meta?: BackupMeta; data?: unknown };
+  if (obj?.meta?.app !== 'vevscript-ai' || obj?.meta?.kind !== 'full-backup') {
+    throw new Error('不是本扩展的完整备份文件（缺少有效文件头）');
+  }
+  if (typeof obj.data !== 'object' || obj.data === null) {
+    throw new Error('备份缺少 data 数据体');
+  }
+  return { meta: obj.meta, data: obj.data as Record<string, unknown> };
+}
+
+export async function importBackup(payload: string): Promise<StorageImportResult> {
+  const { data } = parseBackup(payload); // 校验不过不碰现有数据
+  const current = await browser.storage.local.get(null);
+  // 留存先行：固定含 Key 的完整备份（留存是给自己看的），下载成功才动库
+  const backup = buildBackup(current, true, browser.runtime.getManifest().version);
+  try {
+    await browser.downloads.download({ url: jsonDataUrl(backup.json), filename: backup.filename });
+  } catch (e) {
+    throw new Error(`留存下载失败，已中止导入：${e instanceof Error ? e.message : String(e)}`);
+  }
+  const hadKey = Boolean((current[PHYS_SETTINGS] as SettingsLike | undefined)?.provider?.apiKey);
+  const importedKey = Boolean((data[PHYS_SETTINGS] as SettingsLike | undefined)?.provider?.apiKey);
+  await browser.storage.local.clear();
+  await browser.storage.local.set(data);
+  return { apiKeyMissing: hadKey && !importedKey };
+}
+
 export function initStorageManagerModule(router: MessageRouter): void {
   router.on('STORAGE_USAGE_GET', async () => ({ ok: true, data: await getStorageUsage() }));
   router.on('STORAGE_CLEAN', async (msg) => {
@@ -146,5 +184,9 @@ export function initStorageManagerModule(router: MessageRouter): void {
     const dump = await browser.storage.local.get(null);
     const b = buildBackup(dump, includeApiKey, browser.runtime.getManifest().version);
     return { ok: true, data: { filename: b.filename, dataUrl: jsonDataUrl(b.json) } };
+  });
+  router.on('STORAGE_IMPORT', async (msg) => {
+    const { payload } = msg as unknown as { payload: string };
+    return { ok: true, data: await importBackup(payload) };
   });
 }

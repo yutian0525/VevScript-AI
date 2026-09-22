@@ -3,9 +3,10 @@
 // 注意：裸 browser.storage.local 用物理键（无 local: 前缀）；种子数据一律物理键直写。
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-// Task 1/2 已实现四个函数；Task 3/4 落地时把 buildBackup/jsonDataUrl/parseBackup/importBackup 补进这行 import
+// 全量函数：Task 1/2 统计与清理，Task 3 导出，Task 4 导入（parseBackup 由 importBackup 间接覆盖）
 import {
   classifyKey, byteLength, getStorageUsage, cleanStorage, buildBackup, jsonDataUrl,
+  parseBackup, importBackup,
 } from '../../background/storage-manager';
 
 beforeEach(() => {
@@ -155,5 +156,70 @@ describe('buildBackup / jsonDataUrl（备份文件拼装）', () => {
     const bin = atob(b64);
     const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
     expect(new TextDecoder().decode(bytes)).toBe(b.json); // 中文不烂
+  });
+});
+
+describe('importBackup（校验 + 留存先行 + 全量替换）', () => {
+  /** fakeBrowser 的 downloads 桩（WXT fakeBrowser 未内置；留存下载走它） */
+  function installFakeDownloads() {
+    (browser as unknown as Record<string, unknown>).downloads = {
+      download: vi.fn(async () => 1),
+    };
+  }
+  function fakeDownload(): ReturnType<typeof vi.fn> {
+    return (browser as unknown as { downloads: { download: ReturnType<typeof vi.fn> } }).downloads.download;
+  }
+  function validPayload(): string {
+    const b = buildBackup({ 'conv:new': { id: 'new' }, 'settings': { provider: { baseUrl: '', apiKey: 'sk-new', model: 'm' } } }, true, '1.2.3');
+    return b.json;
+  }
+
+  beforeEach(() => {
+    installFakeDownloads();
+    // fakeBrowser 未实现 runtime.getManifest（留存文件名要版本号），直接赋值桩掉
+    (browser.runtime as unknown as { getManifest: () => { version: string } }).getManifest = () => ({ version: '1.2.3' });
+    // 导入前的旧数据：含 sentinel + 旧 apiKey
+    return browser.storage.local.set({
+      'conv:old': { id: 'old' },
+      'settings': { provider: { baseUrl: '', apiKey: 'sk-old', model: 'm' } },
+    });
+  });
+
+  it.each([
+    ['not json', '坏 JSON'],
+    ['wrong meta', JSON.stringify({ meta: { app: 'other', kind: 'full-backup' }, data: {} })],
+    ['wrong kind', JSON.stringify({ meta: { app: 'vevscript-ai', kind: 'partial' }, data: {} })],
+    ['no data', JSON.stringify({ meta: { app: 'vevscript-ai', kind: 'full-backup' } })],
+  ])('%s → 抛错且不动现有数据', async (_name, bad) => {
+    await expect(importBackup(bad)).rejects.toThrow();
+    const dump = await browser.storage.local.get(null);
+    expect(dump['conv:old']).toBeDefined(); // sentinel 完好
+  });
+
+  it('合法 payload：留存下载 → clear + 整体替换', async () => {
+    const res = await importBackup(validPayload());
+    expect(res).toEqual({ apiKeyMissing: false });
+    expect(fakeDownload()).toHaveBeenCalledTimes(1); // 留存先下载
+    const dump = await browser.storage.local.get(null);
+    expect(dump['conv:old']).toBeUndefined();
+    expect(dump['conv:new']).toBeDefined();
+    const s = dump['settings'] as { provider: { apiKey: string } };
+    expect(s.provider.apiKey).toBe('sk-new');
+  });
+
+  it('本地有 Key、导入不含 Key → apiKeyMissing=true；本地没有则 false', async () => {
+    const noKey = buildBackup({ 'conv:new': {} }, false, '1.2.3').json;
+    expect((await importBackup(noKey)).apiKeyMissing).toBe(true);
+    // 再造一次「本地无 Key」的前置状态
+    await browser.storage.local.set({ 'conv:old': {}, 'settings': { provider: { baseUrl: '', apiKey: '', model: 'm' } } });
+    expect((await importBackup(noKey)).apiKeyMissing).toBe(false);
+  });
+
+  it('留存下载失败 → 中止导入，现有数据完好', async () => {
+    fakeDownload().mockRejectedValueOnce(new Error('disk full'));
+    await expect(importBackup(validPayload())).rejects.toThrow('留存下载失败');
+    const dump = await browser.storage.local.get(null);
+    expect(dump['conv:old']).toBeDefined();
+    expect(dump['conv:new']).toBeUndefined();
   });
 });
