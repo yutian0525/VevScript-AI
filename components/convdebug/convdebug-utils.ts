@@ -14,9 +14,15 @@ export function firstKeptTurn(store: ConvTraceStore): number {
   return store.turns[0]?.turn ?? 0;
 }
 
-/** getConversation 对未知 id 返回 createdAt=0 的空壳（conversations.ts 的 EPOCH 哨兵）。 */
+/** getConversation 对未知 id 返回 updatedAt=0 的空壳（conversations.ts 的 EPOCH 哨兵）。
+ *
+ * 判据必须用 updatedAt 而非 createdAt：saveConversation 每次都刷新 updatedAt，
+ * 所以 0 只可能来自那个空壳。createdAt 不行——新会话是客户端草稿 id（newConversation 不落库），
+ * 首条消息经 appendMessage → getConversation(空壳) → saveConversation 建档时，createdAt
+ * 会带着哨兵值 0 被永久写进库，于是每个真实会话都长着 createdAt=0，拿它判会把全部会话误判为不存在。
+ * 这与 stores/conversations.ts 的 rename 用 `conv.updatedAt === 0` 识别草稿是同一条约定。 */
 export function isMissingConversation(conv: Conversation): boolean {
-  return conv.createdAt === 0;
+  return conv.updatedAt === 0;
 }
 
 /** 毫秒 → 人读耗时。>=1000 用秒一位小数，否则毫秒整数。 */

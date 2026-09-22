@@ -27,9 +27,22 @@ describe('convdebug-utils', () => {
     expect(firstKeptTurn(store(0, 0))).toBe(0);
   });
 
-  it('isMissingConversation：createdAt 为 0 是未知会话哨兵', () => {
+  it('isMissingConversation：updatedAt 为 0 才是「从未落库」的哨兵', () => {
+    // getConversation 对未知 id 返回 updatedAt=0 的空壳
     expect(isMissingConversation({ id: 'x', title: '新会话', messages: [], status: 'idle', createdAt: 0, updatedAt: 0 })).toBe(true);
     expect(isMissingConversation({ id: 'x', title: 'a', messages: [], status: 'idle', createdAt: 1, updatedAt: 1 })).toBe(false);
+  });
+
+  it('isMissingConversation：草稿出生的真实会话不能被误判为不存在', () => {
+    // 回归：新会话是客户端草稿 id（stores/conversations.ts 的 newConversation 不落库），
+    // 首条消息经 appendMessage → getConversation(空壳) → saveConversation 建档，
+    // 于是 createdAt 永久停留在哨兵值 0，而 updatedAt 被 saveConversation 刷新。
+    // 拿 createdAt 判「不存在」会把每一个真实会话都判成不存在。
+    expect(isMissingConversation({
+      id: 'draft-abc', title: '你好', status: 'idle',
+      messages: [{ role: 'user', content: '你好' }],
+      createdAt: 0, updatedAt: Date.now(),
+    })).toBe(false);
   });
 
   it('formatMs：>=1000 用秒一位小数，否则毫秒整数', () => {

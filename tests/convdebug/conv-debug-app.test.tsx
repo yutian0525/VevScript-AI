@@ -46,6 +46,19 @@ describe('ConvDebugApp', () => {
     await waitFor(() => expect(screen.getByText(/trace 仅保留最近/)).toBeTruthy());
   });
 
+  it('草稿出生的会话（createdAt 停在 0）不能被误判为不存在', async () => {
+    // 端到端复现真实路径：侧边栏「新会话」是客户端草稿 id（stores/conversations.ts 的
+    // newConversation 不落库），首条消息经 appendMessage → getConversation(空壳) →
+    // saveConversation 建档，createdAt 因此永久停留在哨兵值 0，只有 updatedAt 被刷新。
+    // 早先拿 createdAt 判「不存在」，导致每个真实会话打开都显示「会话不存在或已删除」。
+    const draftId = 'draft-abc';
+    await appendMessage(draftId, { role: 'user', content: '你好' });
+
+    render(<ConvDebugApp initialConvId={draftId} />);
+    await waitFor(() => expect(screen.getByText(/1 消息 · 0 轮/)).toBeTruthy());
+    expect(screen.queryByText('会话不存在或已删除')).toBeNull();
+  });
+
   it('initialConvId 指向不存在的会话 → 提示不存在', async () => {
     render(<ConvDebugApp initialConvId="ghost" />);
     await waitFor(() => expect(screen.getByText('会话不存在或已删除')).toBeTruthy());

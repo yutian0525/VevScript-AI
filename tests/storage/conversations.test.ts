@@ -117,4 +117,32 @@ describe('conversations storage', () => {
     expect((await getConversation(a.id)).messages[0]!.content).toBe('A的话');
     expect((await getConversation(b.id)).messages[0]!.content).toBe('B的话');
   });
+
+  // 下面两条钉住一条反直觉的不变量，别拿 createdAt 判「会话是否已落库」。
+  it('草稿 id 经 appendMessage 建档：updatedAt 被刷新，createdAt 永久停在 0', async () => {
+    // 侧边栏「新会话」是客户端草稿 id（stores/conversations.ts 的 newConversation 不落库），
+    // 首条消息经 appendMessage → getConversation(返回 EPOCH 空壳) → saveConversation 建档，
+    // 而 saveConversation 只刷新 updatedAt，于是哨兵值 0 被永久写进 createdAt。
+    const draftId = 'draft-abc';
+    await appendMessage(draftId, { role: 'user', content: '你好' });
+    const conv = await getConversation(draftId);
+    expect(conv.title).toBe('你好');
+    expect(conv.messages).toHaveLength(1);
+    expect(conv.updatedAt).toBeGreaterThan(0);
+    expect(conv.createdAt).toBe(0);
+    expect((await listConversations()).map((m) => m.id)).toContain(draftId);
+  });
+
+  it('「从未落库」的判据是 updatedAt === 0（createdAt 不可用）', async () => {
+    // createConversation 走的是另一条路径，它把 createdAt 设对了；只有草稿出生的会话是 0。
+    // 故 updatedAt 是唯一可靠的哨兵——saveConversation 每次都会刷新它。
+    const created = await createConversation();
+    const fetched = await getConversation(created.id);
+    expect(fetched.updatedAt).toBeGreaterThan(0);
+    expect(fetched.createdAt).toBeGreaterThan(0);
+
+    const neverSaved = await getConversation('never-saved');
+    expect(neverSaved.updatedAt).toBe(0);
+    expect(neverSaved.createdAt).toBe(0);
+  });
 });
