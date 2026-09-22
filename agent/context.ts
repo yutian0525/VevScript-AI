@@ -1,5 +1,5 @@
 // agent/context.ts
-// 上下文组装（设计 §2、§8）：system prompt + 页面信息 + 简单截断。
+// 上下文组装（设计 §2、§8）：system prompt（稳定内容）+ 简单截断 + 末条易变块（页面/记忆条目）。
 import type { ChatMessage, ContentPart } from './provider/types';
 import { modePrompt, type AgentMode } from './mode';
 import { buildMemoryPrompt, type MemoryState } from './memory-prompt';
@@ -106,18 +106,20 @@ export function buildContext(
   opts: BuildContextOptions = {},
 ): ChatMessage[] {
   const { keepRecent = 60, summary, skills, mode = 'agent', systemPrompt, memory } = opts;
-  const pageBlock = page.url
-    ? `\n\n当前页面：\n- URL: ${page.url}\n- 标题: ${page.title}`
-    : '';
   const skillsBlock = buildSkillsPrompt(skills ?? [], mode);
-  // buildMemoryPrompt 已拆 stable/volatile；布局重排前两段仍都进 system（下个任务把 volatile 挪到末尾易变块）。
-  const memParts = memory ? buildMemoryPrompt(memory, page.url) : { stable: '', volatile: '' };
+  // ask 模式下记忆按只读渲染：写工具不在 ASK_MODE_TOOLS 里（被 registry 硬拒），
+  // 文案不能宣传一个没下发的工具（spec §6.3）。
+  const memState = memory ? { ...memory, writable: memory.writable && mode === 'agent' } : undefined;
+  const memParts = memState ? buildMemoryPrompt(memState, page.url) : { stable: '', volatile: '' };
   const base = resolveSystemPrompt(systemPrompt);
+  // system 只放稳定内容：提示词 + 技能块 + 记忆说明 + 模式段。页面与记忆条目进末尾易变块，
+  // 否则导航/写记忆/标题抖动都会打断 tools+system+history 的缓存前缀（spec §3.1）。
   const system: ChatMessage = {
     role: 'system',
-    content: base + pageBlock + skillsBlock + memParts.stable + memParts.volatile + modePrompt(mode),
+    content: base + skillsBlock + memParts.stable + modePrompt(mode),
   };
 
+  let body: ChatMessage[];
   if (summary) {
     // coversUpTo 之后的原始消息为保留段；剥掉头部孤立 tool 消息（其 assistant(toolCalls)
     // 已被折进摘要，回放会因 tool_call_id 悬空 400）。摘要作为一条 user 消息置于顶部。
@@ -127,9 +129,26 @@ export function buildContext(
     while (start < recent.length && recent[start]!.role === 'tool') start += 1;
     recent = recent.slice(start);
     const summaryMsg: ChatMessage = { role: 'user', content: `【前情摘要】\n${summary.text}` };
-    return [system, summaryMsg, ...trimImageParts(recent)];
+    body = [summaryMsg, ...trimImageParts(recent)];
+  } else {
+    body = trimImageParts(truncateMessages(history, keepRecent));
   }
 
-  const trimmed = trimImageParts(truncateMessages(history, keepRecent));
-  return [system, ...trimmed];
+  const volatile = buildVolatileBlock(page, memParts.volatile);
+  return volatile ? [system, ...body, volatile] : [system, ...body];
+}
+
+/** 易变块：当前页面 + 记忆条目，置于消息数组最末（spec §3.2）。
+ *  位置是刻意的——放最末才能让 tools+system+history 成为稳定前缀；
+ *  首行显式声明「系统注入、非用户发言」，避免模型把它当成用户的最新指令。
+ *  两段都空则不产生该消息。 */
+export function buildVolatileBlock(page: PageInfo, memoryVolatile: string): ChatMessage | undefined {
+  const parts: string[] = [];
+  if (page.url) parts.push(`当前页面：\n- URL: ${page.url}\n- 标题: ${page.title}`);
+  if (memoryVolatile) parts.push(memoryVolatile);
+  if (parts.length === 0) return undefined;
+  return {
+    role: 'user',
+    content: `【环境】以下为当前页面与记忆的即时状态（由系统注入，非用户发言）：\n\n${parts.join('\n\n')}`,
+  };
 }

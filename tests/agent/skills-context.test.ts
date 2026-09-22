@@ -57,15 +57,18 @@ describe('buildSkillsPrompt / buildContext(skills)', () => {
     expect(sys).not.toContain('create_skill');
   });
 
-  it('buildContext 带 skills → 追加到 system prompt 末尾（页面信息仍在）', () => {
+  it('buildContext 带 skills → 技能块进 system；页面信息进末尾易变块', () => {
     const msgs = buildContext(
       [{ role: 'user', content: 'hi' }],
       { url: 'https://x.com', title: 'X' },
       { skills: [{ name: 'N', command: 'c', description: 'd', createdAt: 1 }] },
     );
     const sys = msgs[0]!.content as string;
+    const last = msgs[msgs.length - 1]!;
     expect(sys).toContain('/c');
-    expect(sys).toContain('当前页面');
+    expect(sys).not.toContain('当前页面');
+    expect(String(last.content)).toContain('当前页面');
+    expect(String(last.content)).toContain('https://x.com');
   });
 
   it('buildContext 不带 skills → 不含技能块', () => {

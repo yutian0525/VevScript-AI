@@ -4,6 +4,17 @@ import type { ChatMessage, ContentPart } from '../../agent/provider/types';
 
 const u = (c: string): ChatMessage => ({ role: 'user', content: c });
 
+/** 去掉末条易变块（【环境】…）。多数断言只关心「system + 历史」，不关心尾部块。 */
+const body = (msgs: ChatMessage[]): ChatMessage[] => {
+  const last = msgs[msgs.length - 1]!;
+  return typeof last.content === 'string' && last.content.startsWith('【环境】') ? msgs.slice(0, -1) : msgs;
+};
+/** 末条易变块的文本；没有则空串。 */
+const volatileOf = (msgs: ChatMessage[]): string => {
+  const last = msgs[msgs.length - 1]!;
+  return typeof last.content === 'string' && last.content.startsWith('【环境】') ? last.content : '';
+};
+
 describe('context 组装', () => {
   it('第一条是 system，含工具指南与不可信输入声明', () => {
     const msgs = buildContext([u('hi')], { url: 'https://x.com', title: 'X' });
@@ -36,14 +47,14 @@ describe('context 组装', () => {
 
   it('注入当前页 URL/title', () => {
     const msgs = buildContext([u('hi')], { url: 'https://x.com', title: '标题' });
-    const sys = msgs[0]!.content as string;
-    expect(sys).toContain('https://x.com');
-    expect(sys).toContain('标题');
+    expect(volatileOf(msgs)).toContain('https://x.com');
+    expect(volatileOf(msgs)).toContain('标题');
+    expect(msgs[0]!.content as string).not.toContain('https://x.com');
   });
 
   it('历史消息接在 system 之后', () => {
     const msgs = buildContext([u('a'), u('b')], { url: '', title: '' });
-    expect(msgs.slice(1).map((m) => m.content)).toEqual(['a', 'b']);
+    expect(body(msgs).slice(1).map((m) => m.content)).toEqual(['a', 'b']);
   });
 
   it('truncateMessages 保留首条 user + 最近 N 条', () => {
@@ -83,11 +94,11 @@ describe('历史图片裁剪', () => {
   it('保留最近 2 条图片，更早的图片替换为文本占位', () => {
     const history = [img('a'), img('b'), img('c'), img('d')];
     const msgs = buildContext(history, { url: '', title: '' });
-    const body = msgs.slice(1); // 去掉 system
+    const bodyMsgs = body(msgs).slice(1); // 去掉 system（尾部若有易变块也去掉）
     const hasImage = (m: ChatMessage) => Array.isArray(m.content) && m.content.some((p) => p.type === 'image_url');
-    const imgCount = body.filter(hasImage).length;
+    const imgCount = bodyMsgs.filter(hasImage).length;
     expect(imgCount).toBe(2); // 只剩 c、d 带图
-    const a = body[0]!;
+    const a = bodyMsgs[0]!;
     const aParts = a.content as ContentPart[];
     expect(aParts.some((p) => p.type === 'image_url')).toBe(false);
     expect(aParts.some((p) => p.type === 'text' && p.text.includes('历史截图'))).toBe(true);
@@ -96,7 +107,7 @@ describe('历史图片裁剪', () => {
   it('图片数 <= 2 时不动', () => {
     const history = [img('a'), img('b')];
     const msgs = buildContext(history, { url: '', title: '' });
-    const withImg = msgs.filter((m) => Array.isArray(m.content) && m.content.some((p) => p.type === 'image_url'));
+    const withImg = body(msgs).filter((m) => Array.isArray(m.content) && m.content.some((p) => p.type === 'image_url'));
     expect(withImg).toHaveLength(2);
   });
 });
@@ -108,7 +119,7 @@ describe('buildContext summary 分支', () => {
     const history: ChatMessage[] = [{ role: 'user', content: 'hi' }];
     const out = buildContext(history, page);
     expect(out[0]!.role).toBe('system');
-    expect(out[1]).toEqual({ role: 'user', content: 'hi' });
+    expect(body(out)[1]).toEqual({ role: 'user', content: 'hi' });
   });
 
   it('有 summary 时：system + 前情摘要(user) + coversUpTo 之后的原始消息', () => {
@@ -123,7 +134,7 @@ describe('buildContext summary 分支', () => {
     expect(out[1]!.role).toBe('user');
     expect(String(out[1]!.content)).toContain('前情：做了 m0-m1');
     // coversUpTo=1 → 保留 index 2,3
-    expect(out.slice(2)).toEqual([
+    expect(body(out).slice(2)).toEqual([
       { role: 'user', content: 'm2' },
       { role: 'assistant', content: 'm3' },
     ]);
@@ -137,7 +148,7 @@ describe('buildContext summary 分支', () => {
     ];
     // coversUpTo=0 → 保留段从 index1 起是 tool（悬空），应被剥掉，留 assistant
     const out = buildContext(history, page, { summary: { text: 's', coversUpTo: 0 } });
-    const afterSummary = out.slice(2);
+    const afterSummary = body(out).slice(2);
     expect(afterSummary[0]!.role).not.toBe('tool');
     expect(afterSummary).toEqual([{ role: 'assistant', content: 'm2' }]);
   });
@@ -148,7 +159,8 @@ describe('buildContext summary 分支', () => {
       { role: 'assistant', content: 'm1' },
     ];
     const out = buildContext(history, page, { summary: { text: 's', coversUpTo: 5 } });
-    expect(out).toHaveLength(2);
+    expect(body(out)).toHaveLength(2);
+    expect(out).toHaveLength(3); // 尾部多一条易变块
     expect(out[0]!.role).toBe('system');
     expect(out[1]!.role).toBe('user');
     expect(String(out[1]!.content)).toContain('s');
@@ -165,7 +177,7 @@ describe('buildContext opts 签名', () => {
     const out = buildContext(history, page, { summary: { text: '前情 S', coversUpTo: 1 } });
     expect(out[0]!.role).toBe('system');
     expect(String(out[1]!.content)).toContain('前情 S');
-    expect(out.slice(2)).toEqual([{ role: 'user', content: 'm2' }]);
+    expect(body(out).slice(2)).toEqual([{ role: 'user', content: 'm2' }]);
   });
 
   it('opts.keepRecent 生效', () => {
@@ -173,8 +185,8 @@ describe('buildContext opts 签名', () => {
       role: 'user' as const, content: `m${i}`,
     }));
     const out = buildContext(history, page, { keepRecent: 2 });
-    // system + 首条 + 最近 2 条
-    expect(out).toHaveLength(4);
+    // system + 首条 + 最近 2 条（尾部另有易变块）
+    expect(body(out)).toHaveLength(4);
     expect(out[1]).toEqual({ role: 'user', content: 'm0' });
   });
 
@@ -218,7 +230,7 @@ describe('buildContext opts.systemPrompt', () => {
     const sys = String(msgs[0]!.content);
     expect(sys).toContain('【自定义】只听我的');
     expect(sys).not.toContain('你是「织雀AI脚本」');
-    expect(sys).toContain('当前页面');
+    expect(volatileOf(msgs)).toContain('当前页面');
     expect(sys).toContain('/c');
     expect(sys).toContain('ask（只读问答）');
   });
@@ -237,12 +249,13 @@ describe('buildContext opts.memory', () => {
   };
 
   it('记忆块进 system 消息，位置在技能块之后、模式块之前', () => {
-    const sys = String(buildContext([], page, {
+    const msgs = buildContext([], page, {
       skills: [{ name: 'N', command: 'c', description: 'd', createdAt: 1 }],
       memory: memState,
       mode: 'agent',
-    })[0]!.content);
-    expect(sys).toContain('偏好中文回复');
+    });
+    const sys = String(msgs[0]!.content);
+    expect(volatileOf(msgs)).toContain('偏好中文回复'); // 条目是易变的，进尾部块
     expect(sys.indexOf('可用技能')).toBeLessThan(sys.indexOf('## 记忆'));
     expect(sys.indexOf('## 记忆')).toBeLessThan(sys.indexOf('当前模式'));
   });
@@ -252,7 +265,7 @@ describe('buildContext opts.memory', () => {
   });
 
   it('记忆块按当前页 URL 过滤（命中出全文，未命中只出站点清单）', () => {
-    const sys = String(buildContext([], { url: 'https://www.bilibili.com/x', title: 'B' }, {
+    const msgs = buildContext([], { url: 'https://www.bilibili.com/x', title: 'B' }, {
       memory: {
         enabled: true, writable: true,
         entries: [
@@ -260,18 +273,19 @@ describe('buildContext opts.memory', () => {
           { id: 'o1', content: 'GitHub 专属经验', matches: ['*://github.com/*'], updatedAt: 1 },
         ],
       },
-    })[0]!.content);
-    expect(sys).toContain('B 站专属经验');
-    expect(sys).not.toContain('GitHub 专属经验');
-    expect(sys).toContain('*://github.com/*');
+    });
+    const vol = volatileOf(msgs);
+    expect(vol).toContain('B 站专属经验');
+    expect(vol).not.toContain('GitHub 专属经验');
+    expect(vol).toContain('*://github.com/*');
   });
 
   it('自定义提示词 + 记忆并存（覆盖提示词不影响记忆块）', () => {
-    const sys = String(buildContext([], page, {
+    const msgs = buildContext([], page, {
       systemPrompt: '【自定义】',
       memory: memState,
-    })[0]!.content);
-    expect(sys).toContain('【自定义】');
-    expect(sys).toContain('偏好中文回复');
+    });
+    expect(String(msgs[0]!.content)).toContain('【自定义】');
+    expect(volatileOf(msgs)).toContain('偏好中文回复');
   });
 });

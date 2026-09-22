@@ -627,7 +627,7 @@ describe('loop 注入记忆', () => {
     },
   });
 
-  it('getMemoryState 的条目进 system 消息，且三个记忆工具在工具清单里', async () => {
+  it('getMemoryState 的条目进末条易变块，且三个记忆工具在工具清单里', async () => {
     const captured: ChatParams[] = [];
     await runAgentLoop(
       { convId: 'cm1', tabId: 1, userMessage: 'hi' },
@@ -642,8 +642,8 @@ describe('loop 注入记忆', () => {
         }),
       },
     );
-    const sys = String(captured[0]!.messages[0]!.content);
-    expect(sys).toContain('偏好中文回复');
+    const last = String(captured[0]!.messages[captured[0]!.messages.length - 1]!.content);
+    expect(last).toContain('偏好中文回复');
     const names = (captured[0]!.tools ?? []).map((t) => t.function.name);
     expect(names).toContain('memory_write');
   });
@@ -680,7 +680,8 @@ describe('loop 注入记忆', () => {
         }),
       },
     );
-    expect(String(captured[0]!.messages[0]!.content)).toContain('人工维护的记忆');
+    const last = String(captured[0]!.messages[captured[0]!.messages.length - 1]!.content);
+    expect(last).toContain('人工维护的记忆');
     const names = (captured[0]!.tools ?? []).map((t) => t.function.name);
     expect(names).toContain('memory_list');
     expect(names).not.toContain('memory_write');
