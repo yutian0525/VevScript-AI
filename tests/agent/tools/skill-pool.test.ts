@@ -76,6 +76,30 @@ describe('skill-pool 工具执行器', () => {
     expect(data(r).skills as unknown[]).toHaveLength(1);
   });
 
+  it('list_skills：query 命中时只返回命中项', async () => {
+    await saveSkill(newSkill({ name: '网页翻译', command: 'translate', description: '把当前页翻成中文', content: 'x' }));
+    await saveSkill(newSkill({ name: '别的', command: 'other', description: '无关', content: 'x' }));
+    const r = await doListSkills({ query: '翻译' });
+    expect(r.ok).toBe(true);
+    expect((data(r).skills as Array<{ command: string }>).map((s) => s.command)).toEqual(['translate']);
+  });
+
+  it('list_skills：query 命中 0 个 → 空列表 + 诊断提示（不返回裸空数组）', async () => {
+    await saveSkill(newSkill({ name: '网页翻译', command: 'translate', description: 'd', content: 'x' }));
+    const r = await doListSkills({ query: 'zzzzz' });
+    expect(r.ok).toBe(true);
+    expect(data(r).skills).toEqual([]);
+    expect(String(data(r).hint)).toContain('无匹配');
+    expect(String(data(r).hint)).toContain('/translate');
+  });
+
+  it('list_skills：不传 query → 全量原序（行为不变）', async () => {
+    await saveSkill(newSkill({ name: 'A', command: 'aaa', description: 'd', content: 'x' }));
+    const r = await doListSkills({});
+    expect(r.ok).toBe(true);
+    expect(data(r).skills).toHaveLength(1);
+  });
+
   it('get_skill：返回完整 .md 全文与两个字符数口径', async () => {
     const md = mkMd('日报', 'daily-report', 'd1');
     const created = await doCreateSkill({ source: md });

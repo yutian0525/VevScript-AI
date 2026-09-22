@@ -5,6 +5,7 @@
 import type { Skill, SkillSummary, ToolResult } from '../../shared/types';
 import type { SkillPatch } from '../../shared/messages';
 import { getSkill, listSkills, toSkillSummary } from '../../storage/skills';
+import { searchSkills } from '../../shared/skill-search';
 import {
   handleCreateSkill, handleDeleteSkill, handleGetSkill, handleUpdateSkill, toSkillMd,
 } from '../../background/skill-writes';
@@ -45,7 +46,7 @@ function toWriteResult(skill: Skill, warnings: string[]) {
 /** 列表条目：摘要 + 正文字符数（体量感——看到 8000 字符就知道改写要分步）。 */
 export type SkillListEntry = SkillSummary & { contentChars: number };
 
-export async function doListSkills(args: { enabled?: boolean }): Promise<ToolResult> {
+export async function doListSkills(args: { enabled?: boolean; query?: string }): Promise<ToolResult> {
   try {
     let skills: SkillListEntry[] = (await listSkills()).map((s) => ({
       ...toSkillSummary(s), contentChars: s.content.length,
@@ -53,7 +54,23 @@ export async function doListSkills(args: { enabled?: boolean }): Promise<ToolRes
     // != null 而非 !== undefined：模型 JSON 透传的 null 会被后者当成「要过滤」，于是静默返回空列表——
     // 读起来就是「技能库是空的」，而查重恰恰是写技能前的第一步。写路径用的是同一个判据。
     if (args.enabled != null) skills = skills.filter((s) => s.enabled === args.enabled);
-    return { ok: true, data: { skills } };
+
+    const q = typeof args.query === 'string' ? args.query.trim() : '';
+    if (!q) return { ok: true, data: { skills } };
+
+    const hits = searchSkills(skills, q);
+    // 命中 0 个时不返回空列表——模型读到空数组会以为技能库是空的。给诊断（同 query_page 命中 0 个的思路）
+    if (hits.length === 0) {
+      return {
+        ok: true,
+        data: {
+          skills: [],
+          hint: `无匹配「${q}」；技能库共 ${skills.length} 个，前 10 个是：`
+            + skills.slice(0, 10).map((s) => `/${s.command} ${s.name}`).join('、'),
+        },
+      };
+    }
+    return { ok: true, data: { skills: hits.map((h) => h.skill) } };
   } catch (e) {
     return { ok: false, error: `list_skills 失败：${err(e)}` };
   }

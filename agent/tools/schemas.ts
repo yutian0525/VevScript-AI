@@ -467,9 +467,10 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
     function: {
       name: 'list_skills',
       description:
-        '列出技能库中的技能摘要（不含正文）。写技能之前先调用它查重——已有同 command 或功能相近的技能时，先问用户「改写它还是另建一个」，不要默默建重叠的。contentChars 是正文字符数，超过 8000 说明改写要分步。',
+        '列出技能库中的技能摘要（不含正文）。系统提示里只列前 20 个技能，找未列出的用 query 模糊搜索（子串匹配 command/名字/简述，也支持缩写如 wscr）。写技能之前先调用它查重——已有同 command 或功能相近的技能时，先问用户「改写它还是另建一个」，不要默默建重叠的。contentChars 是正文字符数：超过 8000 说明改写要分步。',
       parameters: obj({
         enabled: { type: 'boolean', description: '按启用状态过滤' },
+        query: { type: 'string', description: '模糊搜索关键词；缺省列出全部' },
       }),
     },
   },
