@@ -7,6 +7,7 @@ import { getSettings } from '../storage/settings';
 import { listMemories } from '../storage/memory';
 import { memoryStateToCap, type MemoryState } from '../agent/memory-prompt';
 import { runAgentLoop, resumeAgentLoop, type LoopDeps } from '../agent/loop';
+import { CONFIRM_TIMEOUT_MS } from '../agent/permission';
 import { executeTool } from '../agent/tools/registry';
 import { compactConversation } from '../agent/compact';
 import { resolveContextWindow } from '../agent/model-windows';
@@ -142,6 +143,9 @@ function makeDeps(provider: Provider, convId: string): LoopDeps {
       return resolveSystemPrompt(s?.prompt.custom);
     },
     getMemoryState: readMemoryState,
+    getConfirmLevel: async () => (await getSettings()).agent.confirmLevel,
+    confirmToolCall: (req, signal) =>
+      registerToolConfirm(convId, { callId: req.callId, name: req.name, args: req.rawArgs }, signal),
     compact: (id) => compactConversation(id, { provider }),
     getSkills: async () =>
       (await listSkills().catch(() => [] as Skill[]))
@@ -161,6 +165,63 @@ const runningConvs = new Map<string, AbortController>();
  *  map 的生命周期 = loop 生命周期（agent:start 写入、finally 清除），中途 setMode 只改值不重建 loop。 */
 const convModeRef: { mode: 'ask' | 'agent' } = { mode: 'agent' };
 
+// ---------- 三级确认槽（spec §7）：per-conv 单槽（单 conv 单 loop，loop 内逐个 await） ----------
+type ConfirmVerdict = 'allow' | 'allow-session' | 'deny' | 'timeout';
+
+interface PendingConfirm {
+  callId: string;
+  name: string;
+  args: string;
+  until: number;
+  resolve: (d: ConfirmVerdict) => void;
+}
+const pendingConfirms = new Map<string, PendingConfirm>();
+
+/** 登记待确认项并等决策：120s 超时 → 'timeout'；abort → 'deny'；agent:confirm 消息经 resolveToolConfirm 回传。 */
+export function registerToolConfirm(
+  convId: string,
+  entry: { callId: string; name: string; args: string },
+  signal: AbortSignal,
+): Promise<ConfirmVerdict> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const until = Date.now() + CONFIRM_TIMEOUT_MS;
+    const finish = (d: ConfirmVerdict) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+      if (pendingConfirms.get(convId)?.callId === entry.callId) pendingConfirms.delete(convId);
+      resolve(d);
+    };
+    const timer = setTimeout(() => finish('timeout'), CONFIRM_TIMEOUT_MS);
+    const onAbort = () => finish('deny');
+    signal.addEventListener('abort', onAbort);
+    pendingConfirms.set(convId, { ...entry, until, resolve: finish });
+  });
+}
+
+/** agent:confirm 消息入口：callId 一致才 resolve（防陈旧确认串轮），否则空操作（幂等）。 */
+export function resolveToolConfirm(convId: string, callId: string, decision: 'allow' | 'allow-session' | 'deny'): void {
+  const p = pendingConfirms.get(convId);
+  if (!p || p.callId !== callId) return;
+  p.resolve(decision);
+}
+
+/** loop 结束的兜底清理：槽里还挂着就强制 resolve（理论上 abort 已收口，这里防悬挂）。 */
+export function discardToolConfirm(convId: string): void {
+  const p = pendingConfirms.get(convId);
+  if (!p) return;
+  pendingConfirms.delete(convId);
+  p.resolve('deny');
+}
+
+/** 仅测试用。 */
+export function __resetToolConfirms(): void {
+  for (const p of pendingConfirms.values()) p.resolve('deny');
+  pendingConfirms.clear();
+}
+
 /** 算出附着时该补发给面板的事件序列（权威运行态 + 未落库的流式尾巴）。
  *  running 与否只认后台有没有活着的 loop，不认 storage：SW 被杀会在 storage 里留下假 running，
  *  此处顺手改回 idle，避免面板输入框永久禁用。 */
@@ -168,7 +229,17 @@ export async function buildAttachEvents(convId: string, running: boolean, tail: 
   const conv = await getConversation(convId);
   const modeEvent: AgentEvent = { type: 'mode', mode: convModeRef.mode };
   if (running) {
-    return [modeEvent, { type: 'state', status: 'running', messageCount: conv.messages.length }, ...replayTail(tail)];
+    const events: AgentEvent[] = [
+      modeEvent,
+      { type: 'state', status: 'running', messageCount: conv.messages.length },
+      ...replayTail(tail),
+    ];
+    // 待确认状态跨面板重挂载：放序列末尾，让它赢下同帧的 argsProgress 清理
+    const pending = pendingConfirms.get(convId);
+    if (pending) {
+      events.push({ type: 'tool-confirm', callId: pending.callId, name: pending.name, args: pending.args, until: pending.until });
+    }
+    return events;
   }
   if (conv.status === 'running') await setStatus(convId, 'idle');
   const status = conv.status === 'running' ? 'idle' : conv.status;
@@ -241,6 +312,12 @@ export function attachAgentPort(): void {
         return;
       }
 
+      // 确认卡决策回传：查槽 resolve（callId 不匹配/已超时清槽 = 空操作）
+      if (msg.type === 'agent:confirm') {
+        resolveToolConfirm(msg.convId, msg.callId, msg.decision);
+        return;
+      }
+
       if (msg.type !== 'agent:start' && msg.type !== 'agent:resume') return;
       if (runningConvs.has(msg.convId)) {
         safePost({ type: 'error', message: '该会话已有任务在运行，请等待完成或停止后再试' });
@@ -272,6 +349,7 @@ export function attachAgentPort(): void {
       } finally {
         runningConvs.delete(msg.convId);
         tails.delete(msg.convId);
+        discardToolConfirm(msg.convId);
       }
     });
   });
