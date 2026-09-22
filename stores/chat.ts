@@ -117,6 +117,7 @@ export const useChat = create<ChatState>((set) => ({
             items.push({ role: 'tool', name: tc.name, args: tc.arguments, callId: tc.id, status: 'running' });
             continue;
           }
+          // 工具消息的成败只能靠「错误：」前缀反推（协议层无显式标记）：任何新增的失败落库文案都必须以「错误：」开头，否则重载后会渲染成绿色成功。
           const ok = !output.startsWith('错误：');
           items.push({
             role: 'tool', name: tc.name, args: tc.arguments, callId: tc.id,

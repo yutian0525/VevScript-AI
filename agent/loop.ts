@@ -242,8 +242,8 @@ async function drive(
           if (verdict === 'deny' || verdict === 'timeout') {
             const summary = verdict === 'deny' ? '已拒绝' : '确认超时';
             const content = verdict === 'deny'
-              ? `用户拒绝了该操作（${tc.name}）。不要原样重试；向用户说明情况或提出替代方案。`
-              : `确认超时（120 秒无响应），已自动取消 ${tc.name}。可继续其他操作，或询问用户。`;
+              ? `错误：用户拒绝了该操作（${tc.name}）。不要原样重试；向用户说明情况或提出替代方案。`
+              : `错误：确认超时（120 秒无响应），已自动取消 ${tc.name}。可继续其他操作，或询问用户。`;
             deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: false, summary });
             tr.markTool({ name: tc.name, callId: tc.id, argsBytes, ms: 0, ok: false, error: summary, summary, confirm: verdict, confirmMs });
             await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content });

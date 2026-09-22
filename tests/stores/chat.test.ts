@@ -156,6 +156,16 @@ describe('chat store', () => {
     expect(toolItem.ok).toBe(false);
   });
 
+  it('loadFromStorage：拒绝落库文案（错误：前缀）渲染成失败而非成功', () => {
+    const history: ChatMessage[] = [
+      { role: 'assistant', content: '', toolCalls: [{ id: 'c1', name: 'click', arguments: '{}' }] },
+      { role: 'tool', toolCallId: 'c1', name: 'click', content: '错误：用户拒绝了该操作（click）。不要原样重试；向用户说明情况或提出替代方案。' },
+    ];
+    useChat.getState().loadFromStorage(history);
+    const toolItem = useChat.getState().messages.find((m) => m.callId === 'c1')!;
+    expect(toolItem).toMatchObject({ status: 'done', ok: false, summary: '失败' });
+  });
+
   it('loadFromStorage：注入的截图 user 消息回挂到 take_screenshot 卡片，不产生幽灵气泡', () => {
     const stored = [
       { role: 'user', content: '截个图' },

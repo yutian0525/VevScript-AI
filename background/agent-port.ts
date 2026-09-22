@@ -184,6 +184,8 @@ export function registerToolConfirm(
   signal: AbortSignal,
 ): Promise<ConfirmVerdict> {
   return new Promise((resolve) => {
+    // addEventListener 对已 aborted 的 signal 不追溯派发，必须入口自查，否则永挂到 120s 超时。
+    if (signal.aborted) { resolve('deny'); return; }
     let settled = false;
     const until = Date.now() + CONFIRM_TIMEOUT_MS;
     const finish = (d: ConfirmVerdict) => {

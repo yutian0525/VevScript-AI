@@ -22,6 +22,9 @@ describe('registerToolConfirm', () => {
     const p = registerToolConfirm('cv1', ENTRY, ac.signal);
     resolveToolConfirm('cv1', 'call-1', 'allow-session');
     await expect(p).resolves.toBe('allow-session');
+    // 清槽真断言：决策后 attach 回放不再重发 tool-confirm
+    const events = await buildAttachEvents('cv1', true, emptyTail());
+    expect(events.some((e) => e.type === 'tool-confirm')).toBe(false);
   });
 
   it('callId 不匹配不 resolve（防陈旧确认串轮）', async () => {
@@ -45,6 +48,13 @@ describe('registerToolConfirm', () => {
     const ac = new AbortController();
     const p = registerToolConfirm('cv4', ENTRY, ac.signal);
     ac.abort();
+    await expect(p).resolves.toBe('deny');
+  });
+
+  it('入口处 signal 已 aborted：直接 resolve deny（addEventListener 不追溯派发）', async () => {
+    const ac = new AbortController();
+    ac.abort();
+    const p = registerToolConfirm('cv-abort', ENTRY, ac.signal);
     await expect(p).resolves.toBe('deny');
   });
 

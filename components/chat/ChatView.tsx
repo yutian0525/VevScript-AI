@@ -31,15 +31,17 @@ function prefersReducedMotion(): boolean {
 }
 
 /**
- * 首字前空窗判定：运行中且消息流末尾没有任何可见产出（思考中 / 正文 / 运行中工具卡片 / 参数进度）。
+ * 首字前空窗判定：运行中且消息流末尾没有任何可见产出（思考中 / 正文 / 运行中工具卡片 / 确认卡 / 参数进度）。
  * 覆盖三类空窗：发消息后等首字、reasoning 流完等正文、工具跑完等下一轮模型输出。
  * 纯渲染推导，无独立状态——首字到达后条件自然不成立，切标签重连由 attach 回放自动恢复。
+ * 确认卡（confirm 态）是可见产出：等用户决策期间「请确认」不能和「AI 正在准备回复」同屏。
  */
 function isAwaitingFirstToken(messages: ChatItem[], argsProgress: boolean): boolean {
   const last = messages[messages.length - 1];
   if (!last) return false;
   if (last.role === 'assistant') return false;      // thinking 或正文已在流
-  if (last.role === 'tool' && last.status === 'running') return false; // 工具在跑
+  // 工具在跑（running）或正等确认（confirm）：确认卡本身就是可见产出
+  if (last.role === 'tool' && (last.status === 'running' || last.status === 'confirm')) return false;
   return !argsProgress;
 }
 
