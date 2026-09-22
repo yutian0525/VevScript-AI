@@ -4,6 +4,7 @@ import { SlidersHorizontal, SquareTerminal, FlaskConical, ChevronRight, ScrollTe
 import { PageShell } from '../ui/PageShell';
 import { Tooltip } from '../ui/Tooltip';
 import { useTruncated } from '../ui/useTruncated';
+import { useUi } from '../../stores/ui';
 
 export type SettingsSub = 'model' | 'prompt' | 'memory' | 'toolbench' | 'scriptdebug' | 'about' | 'convdebug';
 
@@ -63,13 +64,22 @@ function SettingCard({
 }
 
 export function SettingsHome({ onOpen }: { onOpen: (sub: SettingsSub) => void }) {
+  const extUpdate = useUi((s) => s.extUpdate);
+  // 「关于软件」卡在有新版时动态换简述（静态 desc 见 GROUPS），把更新入口顶到设置首页
+  const aboutDesc = extUpdate?.status === 'available' ? `有新版本 v${extUpdate.remoteVersion} · 去更新` : undefined;
   return (
     <PageShell title="设置" eyebrow="CONFIG">
       {GROUPS.map((group) => (
         <section key={group.label} className="settings-group">
           <h2 className="settings-group__title">{group.label}</h2>
           {group.entries.map(({ key, title, desc, Icon }) => (
-            <SettingCard key={key} title={title} desc={desc} Icon={Icon} onOpen={() => onOpen(key)} />
+            <SettingCard
+              key={key}
+              title={title}
+              desc={key === 'about' && aboutDesc ? aboutDesc : desc}
+              Icon={Icon}
+              onOpen={() => onOpen(key)}
+            />
           ))}
         </section>
       ))}

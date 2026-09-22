@@ -4,7 +4,7 @@
 // 例外：cs→bg 的 fire-and-forget 通知（见 CsReadyNotification）
 // 与 bg→面板的深度观测状态广播（见 DeepObserveStateNotification，类型在 shared/cdp.ts）。
 
-import type { ChatAttachment, Locator, ScriptSource, ScriptSummary, ScriptUpdateState, ToolResult, Uid, UserScript } from './types';
+import type { ChatAttachment, ExtUpdateState, Locator, ScriptSource, ScriptSummary, ScriptUpdateState, ToolResult, Uid, UserScript } from './types';
 
 export interface BgToCsRequestMap {
   /** detail 缺省 'interactive'（spec §6.2 新默认）。region 限定子树（uid 或选择器）。
@@ -266,6 +266,18 @@ export interface ScriptsChangedEvent {
 export interface UiNavNotification {
   type: 'UI_NAV';
   view: 'chat' | 'scripts' | 'settings';
+}
+
+// ---------- 扩展自身更新（sidepanel → bg request/response + bg → 扩展页面广播）----------
+
+export type ExtUpdateRequest =
+  | { type: 'EXT_UPDATE_GET' }    // 读当前状态（不发网络）
+  | { type: 'EXT_UPDATE_CHECK' }; // 立即检查（无视节流）
+
+/** bg → 扩展页面广播：扩展自身更新状态（每次检查落库后，fire-and-forget） */
+export interface ExtUpdateStateEvent {
+  type: 'EXT_UPDATE_STATE';
+  update: ExtUpdateState | null;
 }
 
 /** SCRIPTS_LIST 响应 data 形状 */

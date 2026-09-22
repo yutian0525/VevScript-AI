@@ -79,6 +79,23 @@ export interface ScriptUpdateState {
  * 读写必须都走 WXT storage（它把 local: 当区域前缀剥离）——裸 browser.storage.local 会按字面量键查找，永远读不到。 */
 export const UPDATE_STATE_KEY = 'local:scripts:update-state';
 
+/** 扩展自身更新检查结果（纯自分发：Chrome 对 unpacked 不做任何自动更新，见 background/ext-update.ts）。
+ *  与 ScriptUpdateState 同构但单条存储（扩展只有一个本体），多出 zipUrl/notes（远端 latest.json 提供）。 */
+export interface ExtUpdateState {
+  remoteVersion: string;
+  checkedAt: number;
+  status: 'available' | 'up-to-date' | 'error';
+  /** status='error' 时的原因（全部清单源失败…） */
+  message?: string;
+  /** 远端清单提供的 zip 下载直链（GitHub Releases latest/download） */
+  zipUrl?: string;
+  /** 远端清单提供的 release notes（纯文本/markdown，UI 直接展示） */
+  notes?: string;
+}
+
+/** chrome.storage.local 键：扩展自身更新检查结果（单条 ExtUpdateState）。读写同上必须走 WXT storage。 */
+export const EXT_UPDATE_STATE_KEY = 'local:ext-update:state';
+
 /** 列表/摘要形状（无 code） */
 export interface ScriptSummary {
   id: string;
