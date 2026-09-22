@@ -3,7 +3,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { cleanup, render, screen, fireEvent } from '@testing-library/react';
+import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SettingsView } from '../../components/settings/SettingsView';
 
 beforeEach(() => {
@@ -52,11 +52,29 @@ describe('SettingsView 壳', () => {
   });
 
   it('关于页官网链接点击开新标签页到 vevscript.yutkit.com', async () => {
-    const createSpy = vi.fn().mockResolvedValue({});
-    (browser.tabs as unknown as { create: typeof createSpy }).create = createSpy;
+    // 用 spyOn 而非裸赋值：裸赋值不进 restoreAllMocks 回收链，会泄漏给文件里排在后面的用例
+    const createSpy = vi.spyOn(browser.tabs, 'create').mockResolvedValue({} as never);
     render(<SettingsView />);
     fireEvent.click(await screen.findByText('关于软件'));
     fireEvent.click(await screen.findByText('官方网站'));
     expect(createSpy).toHaveBeenCalledWith({ url: 'https://vevscript.yutkit.com' });
+  });
+
+  it('点「AI 会话调试」→ 开新标签页且不进二级页', async () => {
+    // openExtensionTab 先 query 探测已开页再决定 create/update，query 返回空即走 create 分支
+    vi.spyOn(browser.tabs, 'query').mockResolvedValue([] as never);
+    const create = vi.spyOn(browser.tabs, 'create').mockResolvedValue({ id: 1 } as never);
+    // spyOn 撞上属性里已存在的 mock 会复用同一实例（历史 mock.calls 随之残留），先清掉再计数
+    create.mockClear();
+
+    render(<SettingsView />);
+    fireEvent.click(await screen.findByText('AI 会话调试'));
+
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    const arg = create.mock.calls[0]![0] as { url: string };
+    expect(arg.url).toContain('/conv-debug.html');
+    // tabUrl 分流不得切 sub。判据用「返回钮缺席」：PageShell 只在传 onBack（二级页）时渲染
+    // 返回钮，列表页没有；「模型设置」这类列表条目在死点击回退成 SettingsHome 时也渲染，区分不了两态
+    expect(screen.queryByLabelText(/返回/)).toBeNull();
   });
 });

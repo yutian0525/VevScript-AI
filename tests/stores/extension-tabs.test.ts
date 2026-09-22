@@ -26,10 +26,12 @@ describe('openExtensionTab', () => {
   });
 
   it('已开 → tabs.update 导航 + 聚焦，不再 create', async () => {
-    vi.spyOn(browser.tabs, 'query').mockResolvedValue([{ id: 7 }] as never);
+    const query = vi.spyOn(browser.tabs, 'query').mockResolvedValue([{ id: 7 }] as never);
     const update = vi.spyOn(browser.tabs, 'update').mockResolvedValue({ id: 7 } as never);
     const create = vi.spyOn(browser.tabs, 'create').mockResolvedValue({ id: 8 } as never);
     await openExtensionTab('/conv-debug.html', { convId: 'xyz' });
+    // 匹配模式必须带 '*' 通配：锁住「同路径任意查询串都算已开」的复用语义
+    expect(query).toHaveBeenCalledWith({ url: expect.stringContaining('/conv-debug.html*') });
     expect(update).toHaveBeenCalledTimes(1);
     const [tabId, props] = update.mock.calls[0]! as unknown as [number, { url: string; active: boolean }];
     expect(tabId).toBe(7);
