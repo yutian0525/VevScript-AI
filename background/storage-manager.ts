@@ -76,8 +76,27 @@ export async function getStorageUsage(): Promise<StorageUsage> {
   return { totalBytes, groups: groupArr, traces, gmResources };
 }
 
-// ---------- 清理 / 导出 / 导入（Task 2/3/4 实现，先挂路由空位） ----------
+// ---------- 清理（导出 / 导入 Task 3/4 实现） ----------
+
+export async function cleanStorage(scope: StorageCleanScope): Promise<void> {
+  if (scope.kind === 'gm-resources') {
+    await browser.storage.local.remove(PHYS_GM_RESOURCES); // 下次用到重新预取（7 天 TTL 原语义）
+    return;
+  }
+  if (scope.convIds) {
+    await browser.storage.local.remove(scope.convIds.map((id) => `conv:${id}${TRACE_SUFFIX}`));
+    return;
+  }
+  const dump = await browser.storage.local.get(null);
+  const traceKeys = Object.keys(dump).filter((k) => classifyKey(k) === 'trace');
+  if (traceKeys.length) await browser.storage.local.remove(traceKeys);
+}
 
 export function initStorageManagerModule(router: MessageRouter): void {
   router.on('STORAGE_USAGE_GET', async () => ({ ok: true, data: await getStorageUsage() }));
+  router.on('STORAGE_CLEAN', async (msg) => {
+    const { scope } = msg as unknown as { scope: StorageCleanScope };
+    await cleanStorage(scope);
+    return { ok: true };
+  });
 }

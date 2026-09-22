@@ -3,8 +3,8 @@
 // 注意：裸 browser.storage.local 用物理键（无 local: 前缀）；种子数据一律物理键直写。
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-// Task 1 只 import 本任务实现的三个函数；Task 2/3/4 落地时把 cleanStorage/buildBackup/jsonDataUrl/parseBackup/importBackup 补进这行 import
-import { classifyKey, byteLength, getStorageUsage } from '../../background/storage-manager';
+// Task 1/2 已实现四个函数；Task 3/4 落地时把 buildBackup/jsonDataUrl/parseBackup/importBackup 补进这行 import
+import { classifyKey, byteLength, getStorageUsage, cleanStorage } from '../../background/storage-manager';
 
 beforeEach(() => {
   fakeBrowser.reset();
@@ -77,5 +77,39 @@ describe('getStorageUsage', () => {
     const ghost = u.traces.find((t) => t.convId === 'ghost');
     expect(ghost).toBeDefined();
     expect(ghost!.title).toBeUndefined();
+  });
+});
+
+describe('cleanStorage（只清可再生数据）', () => {
+  beforeEach(async () => {
+    await browser.storage.local.set({
+      'gm:resources': { 'https://x/1.js': { content: 'x', fetchedAt: 1 } },
+      'conv:a': { id: 'a', messages: [] },
+      'conv:a:trace': { turns: [1, 2, 3] },
+      'conv:b:trace': { turns: [] },
+    });
+  });
+
+  it('gm-resources：整键删除，其余不动', async () => {
+    await cleanStorage({ kind: 'gm-resources' });
+    const dump = await browser.storage.local.get(null);
+    expect(dump['gm:resources']).toBeUndefined();
+    expect(dump['conv:a:trace']).toBeDefined(); // trace 不受影响
+  });
+
+  it('trace 按 convIds：只删指定会话，本体保留', async () => {
+    await cleanStorage({ kind: 'trace', convIds: ['a'] });
+    const dump = await browser.storage.local.get(null);
+    expect(dump['conv:a:trace']).toBeUndefined();
+    expect(dump['conv:b:trace']).toBeDefined();
+    expect(dump['conv:a']).toBeDefined(); // 会话本体不动
+  });
+
+  it('trace 缺省全清：所有 :trace 键删除，会话本体保留', async () => {
+    await cleanStorage({ kind: 'trace' });
+    const dump = await browser.storage.local.get(null);
+    expect(dump['conv:a:trace']).toBeUndefined();
+    expect(dump['conv:b:trace']).toBeUndefined();
+    expect(dump['conv:a']).toBeDefined();
   });
 });
