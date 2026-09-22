@@ -64,11 +64,11 @@
 
 ## 2. 目标与非目标
 
-**目标**（数字已按 §0.1 的实测构成修正）
+**目标**（数字已按 §0.1 的实测构成修正；工具字符数均为序列化后口径）
 
-1. agent 模式工具 schema：19,745 → ≤15,200 字符（**-23%**）。
-2. agent 模式新对话固定开销：21,708 → ~18,400 字符（**-15%**）。
-3. ask 模式工具 schema：10,018 → ~4,500 字符（**-55%**，主要来自砍掉 8 个工具而非改描述）。
+1. agent 模式工具 schema：19,745 → ~15,200 字符（**-23%**）。
+2. agent 模式新对话固定开销：21,708 → ~17,400 字符（**-20%**）。
+3. ask 模式工具 schema：9,999 → ~4,000 字符（**-60%**——主要来自砍掉 8 个工具，而非改描述）。
 4. ask 模式新对话固定开销：11,861 → ~6,400 字符（**-46%**）。
 5. tools + system 前缀在整段会话内**逐字节稳定**，只有尾部 volatile 块随页面/记忆变化——导航、写记忆、标题抖动都不再打断前缀缓存。**这一条不减少字符，但它是本次收益最大的那条腿**（保护的是整段历史正文的缓存，不只是 system 尾巴）。
 6. 技能清单大小有确定上界，不随技能数线性膨胀。
@@ -183,39 +183,43 @@ export function buildMemoryPrompt(state: MemoryState, url: string): { stable: st
 
 **不动的部分**：结构管道（`obj()` 生成的 `type/properties/required/additionalProperties`、`anyOf` 结构、enum 取值、协议包装）一律不动——它们占 57.2%，是地板，也是防幻觉填参的实际约束。
 
-### 5.2 逐工具目标
+### 5.2 逐工具可削空间
 
-目标值按 `结构管道 + 散文 × 0.45` 从 §0.1 的实测基线推导（结构管道不可删，散文砍到 45%）。**单位：序列化字符数。**
+**单位：序列化字符数。** `散文` = 工具级 + 参数级 description 之和（可削）；`地板` = 结构管道（不可削）。
 
-| 工具 | 现在 | 目标 | | 工具 | 现在 | 目标 |
-|---|---|---|---|---|---|---|
-| `update_script` | 1745 | ≤1300 | | `get_skill` | 411 | ≤300 |
-| `query_page` | 1314 | ≤1000 | | `load_skill` | 389 | ≤295 |
-| `update_skill` | 1197 | ≤900 | | `fill_form` | 378 | ≤370 |
-| `create_script` | 886 | ≤560 | | `take_screenshot` | 377 | ≤320 |
-| `evaluate_script` | 785 | ≤570 | | `press_key` | 345 | ≤310 |
-| `create_skill` | 729 | ≤470 | | `navigate_page` | 334 | ≤310 |
-| `list_scripts` | 716 | ≤465 | | `click` | 331 | ≤285 |
-| `memory_write` | 715 | ≤500 | | `list_skills` | 326 | ≤320 |
-| `take_snapshot` | 712 | ≤470 | | `scroll` | 313 | ≤300 |
-| `grep_script` | 660 | ≤515 | | `toggle_script` | 313 | ≤285 |
-| `toggle_deep_observe` | 633 | ≤410 | | `memory_delete` | 311 | ≤255 |
-| `get_script` | 619 | ≤440 | | `fill` | 306 | ≤275 |
-| `wait_for` | 580 | ≤465 | | `new_page` | 296 | ≤270 |
-| `list_network_requests` | 563 | ≤445 | | `delete_skill` | 291 | ≤245 |
-| `http_request` | 520 | ≤470 | | `close_page` | 263 | ≤235 |
-| `get_network_request` | 505 | ≤350 | | `select_page` | 253 | ≤230 |
-| `list_console_messages` | 484 | ≤385 | | `hover` | 238 | ≤215 |
-| `memory_list` | 483 | ≤350 | | `delete_script` | 223 | ≤215 |
-| | | | | `list_pages` | 201 | ≤180 |
+削的目标是 `地板 + 散文 × 0.45`。**逐工具不必强求某个具体数字——硬指标是 §5.3 的预算测试。**
 
-**已经贴着地板、几乎无散文可删的工具**（`fill_form` 378→370、`scroll` 313→300、`list_pages` 201→180、`delete_script` 223→215）**不要硬改**——它们的目标值与现值只差几个字符，动它们只会引入风险。
+| 工具 | 现在 | 散文 | 地板 | | 工具 | 现在 | 散文 | 地板 |
+|---|---|---|---|---|---|---|---|---|
+| `update_script` | 1745 | 850 | 895 | | `get_skill` | 411 | 210 | 201 |
+| `query_page` | 1314 | 645 | 669 | | `load_skill` | 389 | 177 | 212 |
+| `update_skill` | 1197 | 586 | 611 | | `fill_form` | 378 | **19** | 359 |
+| `create_script` | 886 | 594 | 292 | | `take_screenshot` | 377 | 103 | 274 |
+| `evaluate_script` | 785 | 393 | 392 | | `press_key` | 345 | 68 | 277 |
+| `create_skill` | 729 | 471 | 258 | | `navigate_page` | 334 | 43 | 291 |
+| `list_scripts` | 716 | 461 | 255 | | `click` | 331 | 85 | 246 |
+| `memory_write` | 715 | 391 | 324 | | `list_skills` | 326 | 121 | 205 |
+| `take_snapshot` | 712 | 445 | 267 | | `scroll` | 313 | **21** | 292 |
+| `grep_script` | 660 | 265 | 395 | | `toggle_script` | 313 | 52 | 261 |
+| `toggle_deep_observe` | 633 | 411 | 222 | | `memory_delete` | 311 | 106 | 205 |
+| `get_script` | 619 | 330 | 289 | | `fill` | 306 | 57 | 249 |
+| `wait_for` | 580 | 211 | 369 | | `new_page` | 296 | 45 | 251 |
+| `list_network_requests` | 563 | 214 | 349 | | `delete_skill` | 291 | 87 | 204 |
+| `http_request` | 520 | **90** | 430 | | `close_page` | 263 | 55 | 208 |
+| `get_network_request` | 505 | 280 | 225 | | `select_page` | 253 | 44 | 209 |
+| `list_console_messages` | 484 | 184 | 300 | | `hover` | 238 | 39 | 199 |
+| `memory_list` | 483 | 238 | 245 | | `delete_script` | 223 | **18** | 205 |
+| | | | | | `list_pages` | 201 | 42 | 159 |
+
+**散文极少的工具不要动**（`fill_form` 19、`delete_script` 18、`scroll` 21、`list_pages` 42、`hover` 39、`navigate_page` 43、`select_page` 44、`new_page` 45）——它们已贴着地板，动它们只会引入行为退化风险。
+
+**散文最多、最值得动的**：`update_script` 850、`query_page` 645、`create_script` 594、`update_skill` 586、`create_skill` 471、`list_scripts` 461、`take_snapshot` 445、`toggle_deep_observe` 411、`evaluate_script` 393、`memory_write` 391。
 
 ### 5.3 防回涨
 
 新增 `tests/agent/schema-budget.test.ts`：
 
-- 全部 schema 序列化字符数 ≤ **15,800**（当前 19,745；目标 15,150，留约 4% 余量）
+- 全部 schema 序列化字符数 ≤ **15,800**（当前 19,745；目标 15,200，留约 4% 余量）
 - 单工具 ≤ **1,400** 字符（当前最大 1,745）
 
 超限即测试失败，把「描述又写长了」变成 CI 可见的回归。
