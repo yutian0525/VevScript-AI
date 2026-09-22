@@ -41,6 +41,9 @@ export function reduceTail(tail: AgentTail, e: AgentEvent): AgentTail {
       // bytes 是累计值 → 覆盖写而非累加
       return { ...tail, argsProgress: { name: e.name, bytes: e.bytes } };
     case 'tool-start':
+    case 'tool-confirm':
+      // tool-confirm 与 tool-start 同界：assistant 消息此前必已 appendMessage，
+      // 文本尾巴作废（确认等待可能长达 120s，不清会在重挂载时回放出重复段落）。
     case 'done':
     case 'paused':
     case 'error':

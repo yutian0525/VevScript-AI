@@ -100,7 +100,9 @@ export type PortMsgFromPanel =
   | { type: 'agent:resume'; convId: string; tabId: number }
   | { type: 'agent:compact'; convId: string }
   /** 切换会话行为模式（ask/agent）：落库 + 通知运行中 loop 下一轮生效。 */
-  | { type: 'agent:setMode'; convId: string; mode: 'ask' | 'agent' };
+  | { type: 'agent:setMode'; convId: string; mode: 'ask' | 'agent' }
+  /** 确认卡决策回传：allow-session = 本会话此工具不再问（记名动作在 loop）。 */
+  | { type: 'agent:confirm'; convId: string; callId: string; decision: 'allow' | 'allow-session' | 'deny' };
 
 /** agent 领域事件（loop 只关心语义，不关心投递给谁）。 */
 export type AgentEvent =
@@ -109,6 +111,9 @@ export type AgentEvent =
   /** 工具参数流式生成中（bytes = 已累计字节数，非增量）。根治「模型在写长参数时 UI 全静默」。 */
   | { type: 'tool-args-delta'; name: string; bytes: number }
   | { type: 'tool-start'; name: string; args: string; callId: string }
+  /** 工具调用待用户确认（三级确认策略 spec §5-6）：卡片以 confirm 态呈现；
+   *  until = 截止绝对时间戳（跨面板重挂载倒计时连续）。args 为模型原始参数串（未解析）。 */
+  | { type: 'tool-confirm'; callId: string; name: string; args: string; until: number }
   | { type: 'tool-end'; name: string; callId: string; ok: boolean; summary: string; output?: string; image?: string }
   | { type: 'usage'; promptTokens?: number; completionTokens?: number }
   | { type: 'compact-start' }

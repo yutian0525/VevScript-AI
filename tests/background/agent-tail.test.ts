@@ -113,6 +113,12 @@ describe('agent-tail：未落库的流式尾巴', () => {
     expect(reduceTail(t, { type: 'error', message: 'e' }).argsProgress).toBeUndefined();
   });
 
+  it('tool-confirm 清空尾巴：确认等待横跨重挂载时不回放陈旧文本（assistant 已落库）', () => {
+    let tail = reduceTail(emptyTail(), { type: 'text-delta', text: '半句' });
+    tail = reduceTail(tail, { type: 'tool-confirm', callId: 'c1', name: 'x', args: '{}', until: 1 });
+    expect(tail).toEqual(emptyTail());
+  });
+
   it('replayTail 末尾补发 argsProgress（重新附着能看到进度）', () => {
     const t = reduceTail(emptyTail(), { type: 'tool-args-delta', name: 'create_script', bytes: 300 });
     const events = replayTail({ ...t, text: '写脚本' });

@@ -33,6 +33,10 @@ export interface TurnToolRecord {
   callId: string;
   argsBytes: number;
   ms: number;
+  /** 确认决策（走确认闸门的调用才有）。 */
+  confirm?: 'allow' | 'allow-session' | 'deny' | 'timeout';
+  /** 决策等待时长 ms（含人思考的时间）。deny 时 ms 恒为 0（未执行），耗时看这里。 */
+  confirmMs?: number;
   ok: boolean;
   error?: string;
   summary: string;
