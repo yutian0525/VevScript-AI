@@ -109,7 +109,7 @@ export async function executeTool(
   if (name === 'load_skill') return doLoadSkill((args as { command: string }).command);
 
   // 技能池五工具：纯 storage 操作，不碰页面内容，豁免受限页预检（spec §4）。
-  if (name === 'list_skills') return doListSkills(args as { enabled?: boolean });
+  if (name === 'list_skills') return doListSkills(args as { enabled?: boolean; query?: string });
   if (name === 'get_skill') return doGetSkill(args as { id: string });
   if (name === 'create_skill') return doCreateSkill(args as { source?: string; enabled?: boolean });
   if (name === 'update_skill') return doUpdateSkill(args as { id: string; patch: SkillPatch });

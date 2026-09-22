@@ -100,6 +100,24 @@ describe('skill-pool 工具执行器', () => {
     expect(data(r).skills).toHaveLength(1);
   });
 
+  it('list_skills：enabled 与 query 叠加——只在过滤后的范围内检索，诊断基数同口径', async () => {
+    await saveSkill(newSkill({ name: '网页翻译', command: 'translate', description: 'd', content: 'x' }));
+    await saveSkill(newSkill({ name: '脚本翻译', command: 'script-translate', description: 'd', content: 'x' }));
+    const disabled = (await listSkills()).find((s) => s.command === 'script-translate')!;
+    await saveSkill({ ...disabled, enabled: false });
+
+    // 两技能的名字都命中「翻译」，但检索只发生在 enabled 过滤后的集合里
+    const r = await doListSkills({ enabled: true, query: '翻译' });
+    expect(r.ok).toBe(true);
+    expect((data(r).skills as Array<{ command: string }>).map((s) => s.command)).toEqual(['translate']);
+
+    // 只命中被禁用的那个 → 零命中诊断；基数 1 是过滤后的范围，不是全库的 2
+    const zero = await doListSkills({ enabled: true, query: 'script' });
+    expect(zero.ok).toBe(true);
+    expect(data(zero).skills).toEqual([]);
+    expect(String(data(zero).hint)).toContain('检索范围内共 1 个');
+  });
+
   it('get_skill：返回完整 .md 全文与两个字符数口径', async () => {
     const md = mkMd('日报', 'daily-report', 'd1');
     const created = await doCreateSkill({ source: md });

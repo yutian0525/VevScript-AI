@@ -59,13 +59,15 @@ export async function doListSkills(args: { enabled?: boolean; query?: string }):
     if (!q) return { ok: true, data: { skills } };
 
     const hits = searchSkills(skills, q);
-    // 命中 0 个时不返回空列表——模型读到空数组会以为技能库是空的。给诊断（同 query_page 命中 0 个的思路）
+    // 命中 0 个时不返回空列表——模型读到空数组会以为技能库是空的。给诊断（同 query_page 命中 0 个的思路）。
+    // 基数口径是检索范围（enabled 过滤后的集合）而非全库：紧随其后的前 10 个出自同一集合，两种口径混用
+    // 会让模型把「范围内无命中」误读成「全库没技能」，查重（写技能前的第一步）随之误判。
     if (hits.length === 0) {
       return {
         ok: true,
         data: {
           skills: [],
-          hint: `无匹配「${q}」；技能库共 ${skills.length} 个，前 10 个是：`
+          hint: `无匹配「${q}」；检索范围内共 ${skills.length} 个，前 10 个是：`
             + skills.slice(0, 10).map((s) => `/${s.command} ${s.name}`).join('、'),
         },
       };
