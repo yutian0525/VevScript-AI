@@ -77,4 +77,38 @@ describe('ConvDebugApp', () => {
     // B 的 #1 必须仍是展开态——若 TurnTimeline 没按 convId 重挂载，toggled[1] 会带过来
     await waitFor(() => expect(screen.getAllByText('上下文').length).toBe(1));
   });
+
+  it('切会话时消息视图折叠态不串扰（key=convId 重挂载）', async () => {
+    // 两个会话各一条带 reasoning 的 assistant 消息——行 key 都是 `${i}-${role}`，
+    // 同下标必然撞 key，这是常态而非例外
+    const a = await createConversation();
+    await appendMessage(a.id, { role: 'assistant', content: '甲', reasoning: '甲的思考' });
+    const b = await createConversation();
+    await appendMessage(b.id, { role: 'assistant', content: '乙', reasoning: '乙的思考' });
+
+    const { container } = render(<ConvDebugApp initialConvId={a.id} />);
+    // 切到「原始消息流」视图
+    fireEvent.click(await screen.findByText('原始消息流'));
+    await waitFor(() => expect(screen.getByText('甲的思考')).toBeTruthy());
+
+    // 展开 A 的 reasoning 折叠块。断言用 details.open（真实 DOM 属性）而非类名/CSS——
+    // open 正是会被 reconcile 复用节点带过去的那份非受控状态。
+    const details = screen.getByText('reasoning').closest('details')!;
+    expect(details.open).toBe(false);
+    fireEvent.click(screen.getByText('reasoning'));
+    expect(details.open).toBe(true);
+
+    // 切到 B：标题都是默认的「新会话」会撞名，故按「非当前选中项」定位——
+    // 复用 Task 7 那条用例的稳定写法，不依赖列表排序（updatedAt 倒序是实现的偶然）。
+    const other = Array.from(container.querySelectorAll<HTMLButtonElement>('.convdebug-item')).find(
+      (el) => !el.classList.contains('convdebug-item--active'),
+    );
+    expect(other).toBeTruthy();
+    fireEvent.click(other!);
+
+    // B 的 reasoning 必须仍是闭合态——若 RawMessages 没按 convId 重挂载，
+    // React 会复用 A 的 <details> 节点，把它的 open 带过来
+    await waitFor(() => expect(screen.getByText('乙的思考')).toBeTruthy());
+    expect(screen.getByText('reasoning').closest('details')!.open).toBe(false);
+  });
 });

@@ -137,10 +137,14 @@ export function ConvDebugApp({ initialConvId }: { initialConvId: string }) {
 
               {/* key=convId：切会话时整体重挂载时间线。toggled 以裸轮次号为键，
                   两个会话的轮次都从 1 起号，不重挂载就会串扰（A 里收起的第 5 轮
-                  会让 B 的第 5 轮也呈收起态，违反「最近一轮默认展开」）。 */}
+                  会让 B 的第 5 轮也呈收起态，违反「最近一轮默认展开」）。
+                  消息视图同理：行 key 是 `${i}-${role}`（见 convdebug-utils），
+                  两个会话都以 0-system/1-user 开头，reconcile 会复用同一批
+                  <details> 节点——而 open 是非受控 DOM 态，React 不会重置它。
+                  两个分支各自带 key，重挂载键只覆盖自己那棵子树。 */}
               {view === 'timeline'
                 ? <TurnTimeline key={convId} turns={traces.turns} />
-                : <RawMessages messages={conv?.messages ?? []} />}
+                : <RawMessages key={convId} messages={conv?.messages ?? []} />}
             </>
           )}
         </main>
