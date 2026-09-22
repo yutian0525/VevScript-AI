@@ -53,7 +53,7 @@ describe('summarizeContext', () => {
     ];
     const s = summarizeContext(msgs, {
       summary: { text: 'abc', coversUpTo: 3 },
-      skills: [{ name: 'A', command: 'a', description: '' }],
+      skills: [{ name: 'A', command: 'a', description: '', createdAt: 1 }],
       pageUrl: '',
     });
     expect(s.hasSummary).toBe(true);

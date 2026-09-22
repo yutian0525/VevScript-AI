@@ -150,7 +150,10 @@ function makeDeps(provider: Provider, convId: string): LoopDeps {
     getSkills: async () =>
       (await listSkills().catch(() => [] as Skill[]))
         .filter((s) => s.enabled)
-        .map((s) => ({ name: s.name, command: s.command, description: s.description })),
+        .map((s) => ({
+          name: s.name, command: s.command, description: s.description,
+          builtin: s.builtin, createdAt: s.createdAt,
+        })),
     // 每轮开跑前重读模式：中途切换下一轮生效（ref 读的是最新值）
     getMode: async () => convModeRef.mode,
     // 断开的端口在 postTo 内被吞掉：loop 不受面板生死影响，继续跑到底

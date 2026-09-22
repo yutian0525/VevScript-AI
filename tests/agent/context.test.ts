@@ -181,7 +181,7 @@ describe('buildContext opts 签名', () => {
   it('opts.mode 与 opts.skills 同时生效', () => {
     const out = buildContext([], page, {
       mode: 'ask',
-      skills: [{ name: 'N', command: 'c', description: 'd' }],
+      skills: [{ name: 'N', command: 'c', description: 'd', createdAt: 1 }],
     });
     const sys = String(out[0]!.content);
     expect(sys).toContain('ask（只读问答）');
@@ -212,7 +212,7 @@ describe('buildContext opts.systemPrompt', () => {
   it('传自定义 → system 消息用它，且动态块仍在（页面/技能/模式）', () => {
     const msgs = buildContext([], page, {
       systemPrompt: '【自定义】只听我的',
-      skills: [{ name: 'N', command: 'c', description: 'd' }],
+      skills: [{ name: 'N', command: 'c', description: 'd', createdAt: 1 }],
       mode: 'ask',
     });
     const sys = String(msgs[0]!.content);
@@ -238,7 +238,7 @@ describe('buildContext opts.memory', () => {
 
   it('记忆块进 system 消息，位置在技能块之后、模式块之前', () => {
     const sys = String(buildContext([], page, {
-      skills: [{ name: 'N', command: 'c', description: 'd' }],
+      skills: [{ name: 'N', command: 'c', description: 'd', createdAt: 1 }],
       memory: memState,
       mode: 'agent',
     })[0]!.content);

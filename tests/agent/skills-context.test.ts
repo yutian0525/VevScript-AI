@@ -14,7 +14,7 @@ describe('buildSkillsPrompt / buildContext(skills)', () => {
 
   it('非空 → 清单格式（含 /command、name、description、引导调用 load_skill）', () => {
     const s = buildSkillsPrompt([
-      { name: '网页翻译', command: 'translate', description: '把当前页翻译成中文' },
+      { name: '网页翻译', command: 'translate', description: '把当前页翻译成中文', createdAt: 1 },
     ]);
     expect(s).toContain('/translate');
     expect(s).toContain('网页翻译');
@@ -23,7 +23,7 @@ describe('buildSkillsPrompt / buildContext(skills)', () => {
   });
 
   it('非空 → 清单后追加自写技能的能力引导（先提议、等点头、按 /write-skill 流程）', () => {
-    const s = buildSkillsPrompt([{ name: '网页翻译', command: 'translate', description: '把当前页翻译成中文' }]);
+    const s = buildSkillsPrompt([{ name: '网页翻译', command: 'translate', description: '把当前页翻译成中文', createdAt: 1 }]);
     for (const t of ['list_skills', 'get_skill', 'create_skill', 'update_skill', 'delete_skill']) {
       expect(s).toContain(t);
     }
@@ -37,7 +37,7 @@ describe('buildSkillsPrompt / buildContext(skills)', () => {
   });
 
   it('ask 模式 → 清单照旧，但收走自写技能引导（那三个工具在 ask 里既不下发也被硬拒）', () => {
-    const s = buildSkillsPrompt([{ name: '网页翻译', command: 'translate', description: 'd' }], 'ask');
+    const s = buildSkillsPrompt([{ name: '网页翻译', command: 'translate', description: 'd', createdAt: 1 }], 'ask');
     expect(s).toContain('/translate');
     expect(s).toContain('load_skill'); // 读技能在 ask 合法，仍要教模型用
     for (const t of ['create_skill', 'update_skill', 'delete_skill', '/write-skill']) {
@@ -50,7 +50,7 @@ describe('buildSkillsPrompt / buildContext(skills)', () => {
     const msgs = buildContext(
       [{ role: 'user', content: 'hi' }],
       { url: '', title: '' },
-      { skills: [{ name: 'N', command: 'c', description: 'd' }], mode: 'ask' },
+      { skills: [{ name: 'N', command: 'c', description: 'd', createdAt: 1 }], mode: 'ask' },
     );
     const sys = msgs[0]!.content as string;
     expect(sys).toContain('/c');
@@ -61,7 +61,7 @@ describe('buildSkillsPrompt / buildContext(skills)', () => {
     const msgs = buildContext(
       [{ role: 'user', content: 'hi' }],
       { url: 'https://x.com', title: 'X' },
-      { skills: [{ name: 'N', command: 'c', description: 'd' }] },
+      { skills: [{ name: 'N', command: 'c', description: 'd', createdAt: 1 }] },
     );
     const sys = msgs[0]!.content as string;
     expect(sys).toContain('/c');
@@ -71,6 +71,41 @@ describe('buildSkillsPrompt / buildContext(skills)', () => {
   it('buildContext 不带 skills → 不含技能块', () => {
     const msgs = buildContext([{ role: 'user', content: 'hi' }], { url: '', title: '' });
     expect(msgs[0]!.content as string).not.toContain('可用技能');
+  });
+
+  it('超过 20 个用户技能 → 只列 20 个 + 溢出行，最新的在前', () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({
+      name: `技能${i}`, command: `skill-${String(i).padStart(2, '0')}`, description: 'd', createdAt: i,
+    }));
+    const s = buildSkillsPrompt(many);
+    expect(s).toContain('另有 5 个未列出');
+    expect(s).toContain('/skill-24'); // createdAt 最大 → 最新在前
+    expect(s).not.toContain('/skill-00'); // 被挤出
+  });
+
+  it('内置技能不占名额：4 内置 + 20 用户全部列出，无溢出行', () => {
+    const builtins = Array.from({ length: 4 }, (_, i) => ({
+      name: `内置${i}`, command: `bi-${i}`, description: 'd', builtin: true, createdAt: i,
+    }));
+    const users = Array.from({ length: 20 }, (_, i) => ({
+      name: `用户${i}`, command: `u-${String(i).padStart(2, '0')}`, description: 'd', createdAt: 100 + i,
+    }));
+    const s = buildSkillsPrompt([...builtins, ...users]);
+    expect(s).toContain('/bi-0');
+    expect(s).toContain('/u-19');
+    expect(s).not.toContain('未列出');
+  });
+
+  it('描述超 60 字符被截断（不硬切，在分隔符处收）', () => {
+    const long = '第一件事的说明；第二件事的说明；第三件事的说明；第四件事的补充说明文字还有很多很多需要继续展开描述才能把总长度推过六十个字符的截断线';
+    const s = buildSkillsPrompt([{ name: 'N', command: 'c', description: long, createdAt: 1 }]);
+    expect(s).toContain('…');
+    expect(s).not.toContain('第四件事的补充说明');
+  });
+
+  it('20 个技能以内不出现溢出行', () => {
+    const s = buildSkillsPrompt([{ name: 'N', command: 'c', description: 'd', createdAt: 1 }]);
+    expect(s).not.toContain('未列出');
   });
 });
 
@@ -99,7 +134,7 @@ describe('loop 斜杠触发与常驻注入', () => {
       { convId: 'c6', tabId: 1, userMessage: '普通' },
       {
         ...minimalDeps(captureProvider(captured)),
-        getSkills: async () => [{ name: '翻译', command: 'translate', description: '简述标记ABC' }],
+        getSkills: async () => [{ name: '翻译', command: 'translate', description: '简述标记ABC', createdAt: 1 }],
       },
     );
     expect(String(captured[0]!.messages[0]!.content)).toContain('简述标记ABC');
@@ -121,7 +156,7 @@ describe('loop 斜杠触发与常驻注入', () => {
       { convId: 'c1', tabId: 1, userMessage: '/translate 把这段翻成中文' },
       {
         ...minimalDeps(captureProvider(captured)),
-        getSkills: async () => [{ name: '翻译', command: 'translate', description: 'd' }],
+        getSkills: async () => [{ name: '翻译', command: 'translate', description: 'd', createdAt: 1 }],
       },
     );
     // 原文入历史；正文不注入（只剩主 system，含常驻简述）
@@ -211,7 +246,7 @@ describe('loop 斜杠触发与常驻注入', () => {
       { convId: 'c7', tabId: 1, userMessage: '看页面再说' },
       {
         ...minimalDeps(provider),
-        getSkills: async () => [{ name: '翻译', command: 'translate', description: '常驻标记DEF' }],
+        getSkills: async () => [{ name: '翻译', command: 'translate', description: '常驻标记DEF', createdAt: 1 }],
         executeTool: async () => ({ ok: true, data: { result: 'snapshot' } }),
       },
     );
