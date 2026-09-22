@@ -151,3 +151,23 @@
 4. **WebSocket 帧 payload 不过脱敏**。`networkCaptureHeaders` 只作用于 headers，帧体（可能夹带 token）原样落库——与响应体同一立场，但 WS 场景更容易夹带凭据，要收紧需另设规则。
 
 另：新增 `debugger` 权限会让已安装的扩展被 Chrome 禁用，直到用户重新同意——老用户升级有一次摩擦。敏感站排除名单随之删除，CDP 关闭时该类站点无 console 观测（webRequest 元数据仍在），但不再需要维护名单。
+
+## AI 会话调试页（2026-09-22）
+
+设计见 `docs/superpowers/specs/2026-09-21-conv-debug-design.md`。已完成：agent loop 的「过程」首次落盘可查。动机：消息流只持久化了「结果」（assistant 正文、reasoning、toolCalls、tool 输出），而排障时真正要看的「过程」此前全无记录——单轮耗时、TTFT、usage 明细、每个工具的执行耗时与成败、压缩触发与效果、熔断原因、上下文组装体积。这些量要么是瞬态广播（`compact-start/done`），要么纯内存（`loop-guards` 的 `GuardState`、`agent-tail` 的流式尾巴、`observe-store` 的环形缓冲），SW 一重启即失。
+
+**数据模型**：每会话一个独立 key `local:conv:{id}:trace`（`storage/traces.ts`），形状 `{ seq, turns }`，环形保留最近 200 轮（`MAX_TURNS`，与消息的 `MAX_MESSAGES=200` 对齐）；`seq` 是会话内累计轮数、**不随环形裁剪回退**，`seq > turns.length` 即「已被裁过」的判据。随会话删除（`deleteConversation` 连带 `clearTraces`）。**每会话独立 key 而非与消息共用是刻意的**：trace 每轮写一次，共用 key 会把写放大到整个消息数组。
+
+**关键取舍——不存 prompt 全文**：manifest 无 `unlimitedStorage`，quota 即默认 10MB，而 prompt 全文与已落盘的消息流高度重复；trace 只存组装摘要（消息条数、字符数、是否带 summary、技能数、系统提示词长度、页面 URL）。调试页**直读 `storage/*`** 不走消息协议——扩展页面读 `chrome.storage` 无障碍（先例 `ChatView`/`MemoryPage`），那层间接省掉一个编排层、一组消息类型。
+
+**`drive()` 的接线**（`agent/loop.ts` + `agent/trace.ts` 采集器）：每轮迭代包一层 `try/finally`，`await tr.commit()` 一处收口——轮体内有 1 处 `continue`（截断重试）+ 8 处 `return`，`finally` 在 `continue` 前同样执行。9 处出口各自显式赋值 `outcome`，轮末自然落下是第 10 个赋值点（承载最常见的 `'continue'`）。`rec.outcome` 默认值 `'error'` 是刻意的绊线：漏赋值暴露成错误而非伪装成 `done`。`outcome` 六值：`'continue' | 'done' | 'paused' | 'aborted' | 'error' | 'truncated-retry'`。
+
+**页面**：`entrypoints/conv-debug/` 单页 master-detail（左会话列表 + 右详情，`components/convdebug/`），`?convId=` 深链（`history.replaceState`），`storage.watch` 自动跟随——每轮 commit 后页面自动刷新，带「自动跟随」开关。详情区双视图：「轮次时间线」（`TurnTimeline`，每轮一个折叠块，展开见上下文摘要/LLM/TTFT/工具明细/压缩/熔断）与「原始消息流」（`RawMessages`，逐条渲染，user/assistant 走 `Markdown`）。
+
+**入口**：设置页「开发者工具」组新增「AI 会话调试」。`Entry` 加可选 `tabUrl` 字段——有 tabUrl = 不开二级页、直接开独立标签页；`TAB_ENTRIES` 由 `GROUPS` 派生（防两处漂移）。`stores/extension-tabs.ts` 的 `openExtensionTab`：已开同路径标签页则 `tabs.update` 导航 + 聚焦（复用 `confirm-queue` 的 hub 模式），未开则 `tabs.create`。
+
+**降级**：trace 环形裁剪后时间线只覆盖保留下来的轮次，头部提示「trace 仅保留最近 200 轮，更早的轮次请查看原始消息流」；trace 写失败静默吞掉（含读侧 `readTraces` 的 `.catch`）——调试设施不该有能力搞挂主流程。
+
+**踩过的坑（勿重犯）**：(1) **wxt storage 的 key 映射**：`local:x` 在 driver 里存成裸 `x`（按第一个冒号切分 area），测试里要直接写 storage 时得用裸 key；(2) **切会话的状态串扰**：`<details>` 的 `open` 是非受控 DOM 态，`TurnTimeline` 与 `RawMessages` 的折叠态都靠调用处 `key={convId}` 重挂载隔离——不加 key 时 React 原地 reconcile 复用同一批节点，折叠态会跨会话串扰（两条护栏用例已覆盖）。
+
+测试：`tests/agent/trace.test.ts`、`tests/agent/loop-trace.test.ts`（含 9 处出口断言与 TTFT）、`tests/convdebug/` 四件（App 壳/时间线/原始消息流/投影纯函数）、`tests/stores/extension-tabs.test.ts`、`tests/settings/tab-entries.test.ts`。

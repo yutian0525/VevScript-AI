@@ -16,6 +16,7 @@
 ```text
 entrypoints/
   sidepanel/          侧边栏主 UI（App.tsx、styles.css）
+  conv-debug/         AI 会话调试页（独立标签页，从设置页打开）
   background.ts       Service Worker 入口
   content/            content script 入口
 agent/
@@ -37,6 +38,7 @@ components/
   scripts/            脚本/快捷指令视图
   settings/           设置视图（壳 + 二级页）
   debug/              调试台视图
+  convdebug/          AI 会话调试页（会话列表 + 轮次时间线 + 原始消息流）
 shared/
   messages.ts         前后台/CS 消息类型
   gm-apis.ts          GM API 注册表（唯一入口）
@@ -98,6 +100,6 @@ npm run test         # 运行测试
 
 ## 当前阶段
 
-- 已完成各迭代的记录（Phase 1/3a/3b/4/5、多会话与上下文压缩、Markdown 渲染、流式续播、技能系统、写脚本流程优化、系统提示词自定义 + Agent 记忆、GM API 扩充 Tier A+B、深度观测（CDP 接管观测并退役 MAIN world hook）、品牌、宣传页）全部在 `docs/history.md`。
+- 已完成各迭代的记录（Phase 1/3a/3b/4/5、多会话与上下文压缩、Markdown 渲染、流式续播、技能系统、写脚本流程优化、系统提示词自定义 + Agent 记忆、GM API 扩充 Tier A+B、深度观测（CDP 接管观测并退役 MAIN world hook）、品牌、宣传页、AI 会话调试页）全部在 `docs/history.md`。
 - 工具总数 30（27 个功能工具 + 记忆三工具），GM 函数 grant 29 + 特殊 grant 4。
 - 已知降级与待做清单见 `docs/history.md` 各节及 `docs/superpowers/plans/2026-09-01-ai-browser-extension-phase3b.md` 末尾 handoff。
