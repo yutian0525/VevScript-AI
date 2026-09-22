@@ -32,14 +32,14 @@ describe('DeepObserveToggle', () => {
 
   it('默认渲染关态，aria-label 提示点击开启', async () => {
     render(<DeepObserveToggle />);
-    const btn = await screen.findByRole('button', { name: /深度观测/ });
+    const btn = await screen.findByRole('button', { name: /网页调试/ });
     expect(btn.className).toContain('deepobs--off');
     expect(btn.getAttribute('aria-label')).toContain('点击开启');
   });
 
   it('点击后发出 SET enabled=true 并转开态', async () => {
     render(<DeepObserveToggle />);
-    const btn = await screen.findByRole('button', { name: /深度观测/ });
+    const btn = await screen.findByRole('button', { name: /网页调试/ });
     fireEvent.click(btn);
     await waitFor(() => expect(btn.className).toContain('deepobs--on'));
     expect(sent.some((m) => (m as { type: string; enabled?: boolean }).enabled === true)).toBe(true);
@@ -47,7 +47,7 @@ describe('DeepObserveToggle', () => {
 
   it('广播到达时更新为 error 态（DevTools 抢占）', async () => {
     render(<DeepObserveToggle />);
-    const btn = await screen.findByRole('button', { name: /深度观测/ });
+    const btn = await screen.findByRole('button', { name: /网页调试/ });
     await waitFor(() => expect(sent.length).toBeGreaterThan(0));
     // 只验「store 落成 error 后渲染成 error 态」这一段：beforeEach 的 mock 覆写了
     // runtime.sendMessage，同页消息不会自动转发给组件的 onMessage 监听器。
@@ -59,7 +59,7 @@ describe('DeepObserveToggle', () => {
 
   it('SW 广播经组件自己注册的 onMessage 监听器更新开关（生产接线）', async () => {
     render(<DeepObserveToggle />);
-    const btn = await screen.findByRole('button', { name: /深度观测/ });
+    const btn = await screen.findByRole('button', { name: /网页调试/ });
     // 先等挂载时的 DEEP_OBSERVE_GET 回话落地：它的回包同样会写 states[7]，
     // 若晚于广播到达会把广播结果覆盖回 off（测试竞态，非组件缺陷）。
     await waitFor(() => expect(useDeepObserve.getState().states[7]?.status).toBe('off'));
@@ -79,7 +79,7 @@ describe('DeepObserveToggle', () => {
 
   it('error 态点击重试开启：发出 enabled=true 而非 false', async () => {
     render(<DeepObserveToggle />);
-    const btn = await screen.findByRole('button', { name: /深度观测/ });
+    const btn = await screen.findByRole('button', { name: /网页调试/ });
     await waitFor(() => expect(sent.length).toBeGreaterThan(0));
     // 前情：本页处于 error 态（DevTools 抢占）
     useDeepObserve.getState().applyState({ tabId: 7, status: 'error', reason: '页面 DevTools 占用中' });
@@ -95,7 +95,7 @@ describe('DeepObserveToggle', () => {
 
   it('disabled 时按钮禁用', async () => {
     render(<DeepObserveToggle disabled />);
-    const btn = await screen.findByRole('button', { name: /深度观测/ });
+    const btn = await screen.findByRole('button', { name: /网页调试/ });
     expect(btn).toBeDisabled();
   });
 });

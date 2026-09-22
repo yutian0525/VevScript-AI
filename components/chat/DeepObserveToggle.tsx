@@ -31,9 +31,9 @@ function useActiveTabId(): number | null {
 }
 
 function tipFor(status: DeepObserveStatus, reason?: string): string {
-  if (status === 'on') return '深度观测：开 · 本页已附着（点击关闭）';
-  if (status === 'error') return `深度观测：已断开——${reason ?? '附着失败'}（点击重试）`;
-  return '深度观测：关（点击开启）';
+  if (status === 'on') return '网页调试：开 · 本页已附着（点击关闭）';
+  if (status === 'error') return `网页调试：已断开——${reason ?? '附着失败'}（点击重试）`;
+  return '网页调试：关（点击开启）';
 }
 
 export function DeepObserveToggle({ disabled }: { disabled?: boolean }) {
