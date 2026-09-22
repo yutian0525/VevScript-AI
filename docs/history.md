@@ -171,3 +171,15 @@
 **踩过的坑（勿重犯）**：(1) **wxt storage 的 key 映射**：`local:x` 在 driver 里存成裸 `x`（按第一个冒号切分 area），测试里要直接写 storage 时得用裸 key；(2) **切会话的状态串扰**：两个视图机理不同、结论相同——`RawMessages` 的行折叠是 `<details>`，`open` 属非受控 DOM 态且行 key 撞号（两会话都以 `0-system`/`1-user` 开头），React 原地 reconcile 复用同一批 DOM 节点、不会重置 `open`；`TurnTimeline` 的折叠是 React `useState`（以裸轮次号为键，两会话都从 1 起号），不加 key 时复用的是组件实例、state 原样带过去。所以两者都靠调用处 `key={convId}` 重挂载隔离，折叠态才不跨会话串扰（两条护栏用例已覆盖）；(3) **判「会话是否已落库」只能用 `updatedAt === 0`，不能用 `createdAt`**：侧边栏「新会话」是客户端草稿 id（`stores/conversations.ts` 的 `newConversation` 不落库），首条消息经 `appendMessage` → `getConversation`(返回 EPOCH 空壳) → `saveConversation` 建档，而 `saveConversation` 只刷新 `updatedAt`——哨兵值 `createdAt: 0` 被**永久**写进库，于是每个真实会话都长着 `createdAt === 0`。调试页最初拿它判「会话不存在」，结果打开任何会话都显示「会话不存在或已删除」（`tests/storage/conversations.test.ts` 有两条用例钉住这条不变量）。`stores/conversations.ts` 的 `rename` 早就用 `conv.updatedAt === 0` 识别草稿，是同一条约定。
 
 测试：`tests/agent/trace.test.ts`、`tests/agent/loop-trace.test.ts`（含 9 处出口断言与 TTFT）、`tests/convdebug/` 四件（App 壳/时间线/原始消息流/投影纯函数）、`tests/storage/conversations.test.ts`（草稿时间戳不变量）、`tests/stores/extension-tabs.test.ts`、`tests/settings/tab-entries.test.ts`。
+
+## 工具确认卡与三级确认策略（2026-09-22）
+
+spec: `docs/superpowers/specs/2026-09-22-tool-confirm-and-permission-levels-design.md`
+
+- agent 工具调用新增会话流内确认卡（单卡双态：待确认展开面板 → 决策后折叠一行工具卡）与三级确认策略（全部询问 / 仅敏感 / 自动放行，默认仅敏感）。档位存 `settings.agent.confirmLevel`，全局生效，选择器浮窗切换。
+- 判定核心 `agent/permission.ts`：敏感集 12（任意 JS/跨域请求/导航开闭页/脚本池技能池写入）、微操集 9（click/fill 等页面细节 + 记忆写）、只读 = ask 白名单减记忆写。sensitive 档按白名单放行微操，未分类工具默认要问（fail-safe）。
+- 协议增量：下行 `tool-confirm` 事件 + 上行 `agent:confirm` 消息；卡片状态转移复用既有 `tool-start`/`tool-end`（allow 后补发 tool-start 翻卡，deny/timeout 直接 tool-end 终结）。
+- 闸门在 loop（spec §6）：`confirmToolCall` 缺省 = 不设闸；会话放行集（allow-session）随 loop 生灭不落库；拒绝计入熔断阀失败统计。
+- 后台确认槽（spec §7）：120s 超时自动拒绝、停止键 abort 收口为拒绝、`agent:confirm` 按 convId+callId 幂等、attach 回放待确认状态（until 为绝对时间戳，倒计时跨重挂载连续）。
+- ModeSelect 触发钮改「模式图标 + 权限状态」chip（去右箭头、加底色，auto 档 warn 前景），浮窗两组（行为模式 + 确认策略，ask 下确认组禁用），键盘导航扁平跨五项。
+- 确认决策进 trace（`TurnToolRecord.confirm/confirmMs`），convdebug 时间线工具行带决策标记。

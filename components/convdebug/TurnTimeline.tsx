@@ -97,7 +97,10 @@ export function TurnTimeline({ turns }: { turns: TurnTrace[] }) {
                     <tbody>
                       {t.tools.map((tool) => (
                         <tr key={tool.callId} className={tool.ok ? '' : 'convdebug-bad'}>
-                          <td className="mono">{tool.name}</td>
+                          <td className="mono">
+                            {tool.name}
+                            {tool.confirm && <span title={`确认 ${tool.confirm}`}>·{tool.confirm}</span>}
+                          </td>
                           <td className="mono">{tool.argsBytes}B</td>
                           <td className="mono">{formatMs(tool.ms)}</td>
                           <td>{tool.ok ? tool.summary : (tool.error ?? tool.summary)}</td>
