@@ -445,6 +445,123 @@ describe('agent loop', () => {
     expect(calls[0]).toMatchObject({ type: 'tool-args-delta', name: 'create_script', bytes: 2 });
     expect(calls[calls.length - 1]).toMatchObject({ name: 'create_script', bytes: 1202 });
   });
+
+  // ---- 三级确认闸门（spec §6）----
+
+  const toolScript = (name: string, args: string): StreamEvent[][] => [[
+    { type: 'tool-call-delta', index: 0, id: 'tc1', name, argsDelta: args },
+    { type: 'message-done', finishReason: 'tool_calls' },
+  ]];
+
+  it('敏感工具先 emit tool-confirm，allow 后才 tool-start 并执行', async () => {
+    const provider = queuedProvider([
+      ...toolScript('evaluate_script', '{"function":"1+1"}'),
+      [{ type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true, data: {} } as ToolResult);
+    const confirmToolCall = vi.fn().mockResolvedValue('allow');
+    const d = deps(provider, exec, { confirmToolCall, getConfirmLevel: async () => 'sensitive' });
+    await runAgentLoop({ convId: 'cf1', tabId: 1, userMessage: 'x' }, d);
+    expect(confirmToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({ callId: 'tc1', name: 'evaluate_script' }),
+      expect.any(AbortSignal),
+    );
+    const order = vi.mocked(d.emit).mock.calls.map((c) => (c[0] as { type: string }).type);
+    expect(order).toContain('tool-confirm');
+    expect(order.indexOf('tool-confirm')).toBeLessThan(order.indexOf('tool-start'));
+    expect(exec).toHaveBeenCalledOnce();
+  });
+
+  it('deny：不执行工具，tool 消息告知模型被拒，拒绝计入结果（熔断阀可见失败）', async () => {
+    const provider = queuedProvider([
+      ...toolScript('evaluate_script', '{}'),
+      [{ type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true } as ToolResult);
+    const d = deps(provider, exec, {
+      confirmToolCall: async () => 'deny',
+      getConfirmLevel: async () => 'sensitive',
+    });
+    await runAgentLoop({ convId: 'cf2', tabId: 2, userMessage: 'x' }, d);
+    expect(exec).not.toHaveBeenCalled();
+    const conv = await getConversation('cf2');
+    const toolMsg = conv.messages.find((m) => m.role === 'tool')!;
+    expect(String(toolMsg.content)).toContain('拒绝');
+    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', ok: false, summary: '已拒绝' }));
+    expect(conv.status).toBe('idle'); // 循环继续到自然终止
+  });
+
+  it('timeout：文案不同（超时未确认）', async () => {
+    const provider = queuedProvider([
+      ...toolScript('http_request', '{}'),
+      [{ type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const d = deps(provider, vi.fn<LoopDeps['executeTool']>(), {
+      confirmToolCall: async () => 'timeout',
+      getConfirmLevel: async () => 'sensitive',
+    });
+    await runAgentLoop({ convId: 'cf3', tabId: 3, userMessage: 'x' }, d);
+    const conv = await getConversation('cf3');
+    const toolMsg = conv.messages.find((m) => m.role === 'tool')!;
+    expect(String(toolMsg.content)).toContain('超时');
+    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool-end', ok: false, summary: '确认超时' }));
+  });
+
+  it('allow-session：同工具第二发不再询问', async () => {
+    const provider = queuedProvider([
+      ...toolScript('evaluate_script', '{"n":1}'),
+      ...toolScript('evaluate_script', '{"n":2}'),
+      [{ type: 'message-done', finishReason: 'stop' }],
+    ]);
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true } as ToolResult);
+    const d = deps(provider, exec, {
+      confirmToolCall: async () => 'allow-session',
+      getConfirmLevel: async () => 'sensitive',
+    });
+    await runAgentLoop({ convId: 'cf4', tabId: 4, userMessage: 'x' }, d);
+    expect(vi.mocked(d.emit).mock.calls.filter((c) => (c[0] as { type: string }).type === 'tool-confirm')).toHaveLength(1);
+    expect(exec).toHaveBeenCalledTimes(2);
+  });
+
+  it('sensitive 档微操不询问；all 档微操要问；confirmToolCall 缺省完全不问', async () => {
+    // sensitive + click → 直接执行
+    const p1 = queuedProvider([...toolScript('click', '{}'), [{ type: 'message-done', finishReason: 'stop' }]]);
+    const confirmToolCall = vi.fn().mockResolvedValue('allow');
+    const exec1 = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true } as ToolResult);
+    await runAgentLoop({ convId: 'cf5', tabId: 5, userMessage: 'x' }, deps(p1, exec1, { confirmToolCall, getConfirmLevel: async () => 'sensitive' }));
+    expect(confirmToolCall).not.toHaveBeenCalled();
+    expect(exec1).toHaveBeenCalledOnce();
+    // all + click → 要问
+    const p2 = queuedProvider([...toolScript('click', '{}'), [{ type: 'message-done', finishReason: 'stop' }]]);
+    const confirmToolCall2 = vi.fn().mockResolvedValue('allow');
+    const exec2 = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true } as ToolResult);
+    await runAgentLoop({ convId: 'cf6', tabId: 6, userMessage: 'x' }, deps(p2, exec2, { confirmToolCall: confirmToolCall2, getConfirmLevel: async () => 'all' }));
+    expect(confirmToolCall2).toHaveBeenCalledOnce();
+    // 旧行为：无 confirmToolCall 时不问
+    const p3 = queuedProvider([...toolScript('evaluate_script', '{}'), [{ type: 'message-done', finishReason: 'stop' }]]);
+    const exec3 = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true } as ToolResult);
+    await runAgentLoop({ convId: 'cf7', tabId: 7, userMessage: 'x' }, deps(p3, exec3));
+    expect(exec3).toHaveBeenCalledOnce();
+  });
+
+  it('confirm 等待中 abort → 拒绝落卡，loop 干净退出', async () => {
+    const ac = new AbortController();
+    const provider: Provider = {
+      streamChat(_p, onEvent) {
+        queueMicrotask(() => { for (const e of toolScript('evaluate_script', '{}')[0]!) onEvent(e); });
+        return { cancel: vi.fn() };
+      },
+    };
+    const exec = vi.fn<LoopDeps['executeTool']>().mockResolvedValue({ ok: true } as ToolResult);
+    const d = deps(provider, exec, {
+      confirmToolCall: async (_req, sig) => { ac.abort(); await 0; return sig.aborted ? 'deny' : 'allow'; },
+      getConfirmLevel: async () => 'sensitive',
+    });
+    await runAgentLoop({ convId: 'cf8', tabId: 8, userMessage: 'x' }, d, ac.signal);
+    expect(exec).not.toHaveBeenCalled();
+    expect((await getConversation('cf8')).status).toBe('idle');
+    expect(d.emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+  });
 });
 
 describe('loop 注入自定义系统提示词', () => {

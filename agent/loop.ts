@@ -14,6 +14,7 @@ import { readTraces } from '../storage/traces';
 import { createTurnRecorder } from './trace';
 import { meterRatio, COMPACT_THRESHOLD } from './context-meter';
 import { composeUserContent, SCREENSHOT_SENTINEL } from './user-message';
+import { needsConfirm, CONFIRM_TIMEOUT_MS, type ConfirmLevel } from './permission';
 import type { ChatAttachment } from '../shared/types';
 
 export interface LoopDeps {
@@ -36,6 +37,13 @@ export interface LoopDeps {
   getSystemPrompt?: () => Promise<string>;
   /** 记忆状态（全量条目 + 两个开关）。缺省不注入记忆块，工具清单按默认 full 下发。 */
   getMemoryState?: () => Promise<MemoryState>;
+  /** 三级确认策略档位：每发工具现读（中途改档下一发生效）。缺省回落 'sensitive'。仅在提供 confirmToolCall 时生效。 */
+  getConfirmLevel?: () => Promise<ConfirmLevel>;
+  /** 确认闸门：emit tool-confirm 后等决策。'deny'/'timeout' 由 loop 落拒绝终态；缺省 = 不设闸（旧行为，测试/调试链路零改动）。 */
+  confirmToolCall?: (
+    req: { callId: string; name: string; args: Record<string, unknown>; rawArgs: string },
+    signal: AbortSignal,
+  ) => Promise<'allow' | 'allow-session' | 'deny' | 'timeout'>;
 }
 
 const TAB_OPENING_TOOLS = new Set(['click', 'press_key']);
@@ -75,6 +83,7 @@ async function drive(
   let guard = guardState;
   let targetTab = startTabId;
   let lastPromptTokens: number | undefined;
+  const sessionAllowed = new Set<string>(); // 「本次会话总是允许」记名：随 loop 生灭，不落库（spec 决策 #8）
 
   for (;;) {
     // 轮次序号从 storage 读（而非 loop 内自增）：SW 被杀重启后计数不重置。
@@ -217,9 +226,36 @@ async function drive(
         }
         let toolArgs: Record<string, unknown> = {};
         try { toolArgs = tc.arguments ? JSON.parse(tc.arguments) : {}; } catch { /* 保持空对象 */ }
+        const argsBytes = tc.arguments?.length ?? 0;
+
+        // ---- 三级确认闸门（spec §6）：先询问后执行；决策后才 emit tool-start ----
+        let confirmInfo: { confirm: 'allow' | 'allow-session' | 'deny' | 'timeout'; confirmMs: number } | undefined;
+        if (
+          deps.confirmToolCall
+          && !sessionAllowed.has(tc.name)
+          && needsConfirm(tc.name, (await deps.getConfirmLevel?.()) ?? 'sensitive')
+        ) {
+          const confirmAt = Date.now();
+          deps.emit({ type: 'tool-confirm', callId: tc.id, name: tc.name, args: tc.arguments ?? '', until: confirmAt + CONFIRM_TIMEOUT_MS });
+          const verdict = await deps.confirmToolCall({ callId: tc.id, name: tc.name, args: toolArgs, rawArgs: tc.arguments ?? '' }, signal);
+          const confirmMs = Date.now() - confirmAt;
+          if (verdict === 'deny' || verdict === 'timeout') {
+            const summary = verdict === 'deny' ? '已拒绝' : '确认超时';
+            const content = verdict === 'deny'
+              ? `用户拒绝了该操作（${tc.name}）。不要原样重试；向用户说明情况或提出替代方案。`
+              : `确认超时（120 秒无响应），已自动取消 ${tc.name}。可继续其他操作，或询问用户。`;
+            deps.emit({ type: 'tool-end', name: tc.name, callId: tc.id, ok: false, summary });
+            tr.markTool({ name: tc.name, callId: tc.id, argsBytes, ms: 0, ok: false, error: summary, summary, confirm: verdict, confirmMs });
+            await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content });
+            results.push({ ok: false, error: summary }); // 拒绝计入熔断阀失败统计（spec 决策 #13）
+            continue;
+          }
+          if (verdict === 'allow-session') sessionAllowed.add(tc.name);
+          confirmInfo = { confirm: verdict, confirmMs };
+        }
+
         deps.emit({ type: 'tool-start', name: tc.name, args: tc.arguments, callId: tc.id });
         const toolAt = Date.now();
-        const argsBytes = tc.arguments?.length ?? 0;
         const r = await deps.executeTool(tc.name, toolArgs, targetTab, signal);
         results.push(r);
 
@@ -289,6 +325,7 @@ async function drive(
         tr.markTool({
           name: tc.name, callId: tc.id, argsBytes, ms: Date.now() - toolAt, ok: r.ok,
           ...(r.ok ? {} : { error: r.error }), summary,
+          ...(confirmInfo ?? {}),
         });
         await appendMessage(convId, { role: 'tool', toolCallId: tc.id, name: tc.name, content: output });
         if (shot) {
