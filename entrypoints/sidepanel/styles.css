@@ -791,9 +791,9 @@ body {
   align-items: center;
   gap: 4px;
   height: 26px;
-  padding: 0 4px;
+  padding: 0 8px;
   border: none;
-  background: transparent;
+  background: var(--sunken);
   color: var(--ink-3);
   font-family: var(--mono);
   font-size: 10.5px;
@@ -809,8 +809,7 @@ body {
 .modeselect__trigger:disabled { opacity: 0.5; cursor: not-allowed; }
 .modeselect__trigger--ask { color: var(--signal-ink); }
 .modeselect__trigger--ask:hover:not(:disabled) { color: var(--signal); }
-.modeselect__chev { transition: transform var(--t-fast) var(--ease); }
-.modeselect__chev--open { transform: rotate(180deg); }
+.modeselect__trigger--auto { color: var(--warn); }
 
 .modeselect__pop {
   position: absolute;
@@ -839,6 +838,14 @@ body {
   color: var(--ink);
   font: inherit;
 }
+.modeselect__group {
+  padding: 6px 9px 3px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+}
+.modeselect__group--off { opacity: 0.55; }
+.modeselect__opt:disabled { opacity: 0.45; cursor: not-allowed; }
 .modeselect__opt--hi { background: var(--sunken); }
 .modeselect__opt-icon { flex-shrink: 0; color: var(--ink-2); margin-top: 1px; display: flex; }
 .modeselect__opt-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -858,7 +865,6 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .modeselect__pop { animation: none; }
-  .modeselect__chev { transition: none; }
 }
 
 /* 用户气泡内的只读附件 tag：深底反色 */
