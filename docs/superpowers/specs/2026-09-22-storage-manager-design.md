@@ -16,7 +16,7 @@
 
 ## 1. 数据域划分（统计分组依据）
 
-存储全景（全部 `chrome.storage.local`，WXT `local:` 前缀）：
+存储全景（下表 key 为 WXT storage 写法，带 `local:` 区域前缀；**裸 `browser.storage.local` 的物理键无此前缀**，如 `scripts:index`、`conv:{id}:trace`。全量 dump/clear 只能用裸 API，故分组函数按物理键分类）：
 
 | 数据域 | key（可多条） | 形态 |
 |---|---|---|
@@ -25,7 +25,7 @@
 | 脚本池 | `local:scripts:index` | 单键 `UserScript[]`（≤200 条） |
 | 技能 | `local:skills:index` | 单键 `Skill[]`（≤100 条） |
 | 记忆 | `local:memory:index` | 单键 `MemoryEntry[]`（≤100 条） |
-| 设置 | `local:settings` | 单键，**含 `apiKey`** |
+| 设置 | `local:settings` | 单键，**含 `provider.apiKey`**（嵌套在 provider 配置内） |
 | GM 资源缓存 | `local:gm:resources` | 单键 map，7 天 TTL |
 | GM 授权 | `local:gm:permissions` + `local:gm:seed` | 单键 |
 | GM 脚本值 | `local:script-values:{scriptId}` | per-script |
@@ -73,7 +73,7 @@ interface StorageImportResult { apiKeyMissing: boolean }  // 导入后 settings.
 
 ### 3.3 导出
 
-1. `get(null)` 全量 → `includeApiKey=false` 时剔除 `data['local:settings'].apiKey`（深路径精确剔除，settings 其余字段保留）。
+1. `get(null)` 全量 → `includeApiKey=false` 时把物理键 `settings` 下 `provider.apiKey` 置空串（深路径精确处理，settings 其余字段保留）。
 2. 文件体：`{ meta: { app: 'vevscript-ai', kind: 'full-backup', exportedAt, extVersion, includesApiKey }, data: {…} }`，`JSON.stringify(…, null, 2)`。
 3. 文件名 `vevscript-ai-backup-v{extVersion}-{YYYYMMDD}.json`。
 4. 下载：data: URL（base64，MV3 SW 无 `URL.createObjectURL`）。备份通常 <10MB 无虞；若未来 trace 巨大导致内存压力，退路是走现有 offscreen 先例建 blob URL（不在本期）。
@@ -86,7 +86,7 @@ interface StorageImportResult { apiKeyMissing: boolean }  // 导入后 settings.
 1. 校验：`JSON.parse` → `meta.app === 'vevscript-ai'` 且 `meta.kind === 'full-backup'` 且 `data` 为对象；否则抛中文可读错误，**不碰现有数据**。
 2. 留存：把当前数据走 §3.3 导出管线（固定 `includeApiKey: true`——留存是给自己看的，必须完整）**先下载成功**（`chrome.downloads.download` resolve）再继续；下载发起失败则中止导入。
 3. 替换：`browser.storage.local.clear()` → 一次性写入 `data`。
-4. 检测：`data['local:settings'].apiKey` 缺失或空（导入时未勾含 Key 且本地原有）→ `apiKeyMissing: true`。
+4. 检测：导入 data 的 `settings.provider.apiKey` 为空且**导入前本地原有 Key**（即导入时未勾含 Key）→ `apiKeyMissing: true`；本地本就没有则不提示。
 5. 返回结果后由 **UI 调 `browser.runtime.reload()`**——数据整体变更后 SW/脚本引擎/菜单/会话状态全部重挂最干净；reload 前用结果文案告知「导入完成，即将重载」。
 
 ## 4. UI
@@ -98,7 +98,7 @@ interface StorageImportResult { apiKeyMissing: boolean }  // 导入后 settings.
 
 ### 4.2 StoragePage 三区块（PageShell 复用）
 
-1. **用量总览**：总计行（mono 字节）+ 各域行（名称 / 条目数 / 字节 mono / 占比条复用 `.gauge`）+「刷新」按钮。占比条以最大域为 100% 基准（比以总计更有分辨力）。
+1. **用量总览**：总计行（mono 字节）+ 各域行（名称 / 条目数 / 字节 mono / 迷你占比条，新增 `.stor__bar` 样式——现有 `.gauge` 是胶囊芯片不是进度条，不复用）+「刷新」按钮。占比条以最大域为 100% 基准（比以总计更有分辨力）。
 2. **清理**：GM 资源缓存行（count + bytes + 清空）；Agent 调用记录区（按会话勾选 + 全清）。危险按钮用**行内二次确认**（首次点击按钮文案变「确认清理？」，5 秒内再点执行，超时还原），文案写明后果，完成后刷新统计。
 3. **备份**：导出行（「包含模型 API Key」checkbox 默认不勾 + 导出按钮）；导入行（`<input type="file" accept=".json">` → 选中后确认卡「将覆盖当前全部数据；当前数据会先自动留存在下载目录」→ 确认后发 `STORAGE_IMPORT` → 成功提示 + `apiKeyMissing` 提示去模型设置重填 → `runtime.reload()`；失败行内报错不动数据）。
 
