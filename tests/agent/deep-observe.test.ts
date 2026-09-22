@@ -56,8 +56,9 @@ describe('工具分发与模式', () => {
     expect(r).toEqual({ ok: true, data: { tabId: 1, status: 'off' } });
   });
 
-  it('ask 模式放行（诊断主场，只读观测工具依赖它）', async () => {
+  it('ask 模式拒绝（ask 工具集收为「看页面 + 答问 + 加载技能」，深度观测属 agent 主场）', async () => {
     const r = await executeTool('toggle_deep_observe', { enabled: true }, { tabId: 1, sessionId: 's', signal: new AbortController().signal, mode: 'ask' });
-    expect(r.ok).toBe(true);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('ask');
   });
 });

@@ -8,38 +8,41 @@ import { buildContext } from '../../agent/context';
 
 describe('ASK_MODE_TOOLS 白名单', () => {
   it('只含只读工具：不含任何写操作', () => {
-    // 注意：memory_write / memory_delete 虽名为「写」，但刻意在白名单内——
-    // ask 的语义是「不改网页/浏览器状态」，记忆只改扩展自己的本地笔记（spec §3.4）。
-    // 不要把它们加进下面这个列表。
     const writeTools = ['click', 'fill', 'fill_form', 'hover', 'scroll', 'press_key', 'navigate_page',
       'new_page', 'close_page', 'select_page', 'evaluate_script', 'http_request',
       'create_script', 'update_script', 'delete_script', 'toggle_script',
-      'create_skill', 'update_skill', 'delete_skill'];
+      'create_skill', 'update_skill', 'delete_skill', 'memory_write', 'memory_delete'];
     for (const t of writeTools) {
       expect(ASK_MODE_TOOLS.has(t)).toBe(false);
     }
   });
 
-  it('包含读页面/观测/脚本读/技能读工具', () => {
-    for (const t of ['take_snapshot', 'take_screenshot', 'wait_for', 'list_pages',
-      'list_console_messages', 'list_network_requests', 'get_network_request',
-      'list_scripts', 'get_script', 'load_skill', 'list_skills', 'get_skill']) {
+  it('包含读页面/观测/技能读工具', () => {
+    for (const t of ['take_snapshot', 'take_screenshot', 'list_pages',
+      'list_console_messages', 'list_network_requests', 'load_skill', 'list_skills', 'get_skill']) {
       expect(ASK_MODE_TOOLS.has(t)).toBe(true);
     }
   });
 
-  it('grep_script 属只读，ask 模式可用', () => {
-    expect(ASK_MODE_TOOLS.has('grep_script')).toBe(true);
+  it('grep_script 虽只读，但属「写脚本」链路，ask 已收走', () => {
+    expect(ASK_MODE_TOOLS.has('grep_script')).toBe(false);
   });
 
   it('query_page 在 ask 白名单内（纯读）', () => {
     expect(ASK_MODE_TOOLS.has('query_page')).toBe(true);
   });
 
-  it('记忆三工具在 ask 白名单内（本地笔记不算改浏览器状态）', () => {
-    for (const t of ['memory_list', 'memory_write', 'memory_delete']) {
-      expect(ASK_MODE_TOOLS.has(t)).toBe(true);
-    }
+  it('ask 只留 memory_list：写工具随其余写能力一并收走', () => {
+    expect(ASK_MODE_TOOLS.has('memory_list')).toBe(true);
+    expect(ASK_MODE_TOOLS.has('memory_write')).toBe(false);
+    expect(ASK_MODE_TOOLS.has('memory_delete')).toBe(false);
+  });
+
+  it('ask 工具集恰为 10 个（集合相等，防止悄悄加回）', () => {
+    expect([...ASK_MODE_TOOLS].sort()).toEqual([
+      'get_skill', 'list_console_messages', 'list_network_requests', 'list_pages',
+      'list_skills', 'load_skill', 'memory_list', 'query_page', 'take_screenshot', 'take_snapshot',
+    ]);
   });
 
   it('run_page_script 已拆除，不在任何白名单或 schema（防幽灵引用）', () => {

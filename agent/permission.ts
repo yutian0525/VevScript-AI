@@ -1,7 +1,6 @@
 // agent/permission.ts
 // 三级确认策略（spec §3）：auto（自动放行）/ sensitive（仅敏感）/ all（全部询问）。
 // 判定是纯函数；闸门在 loop（spec §6），超时计时与决策往返在 background（spec §7）。
-import { ASK_MODE_TOOLS, MEMORY_WRITE_TOOLS } from './mode';
 
 export type ConfirmLevel = 'all' | 'sensitive' | 'auto';
 
@@ -18,9 +17,22 @@ const MICROP_TOOLS: ReadonlySet<string> = new Set([
   'memory_write', 'memory_delete',
 ]);
 
-/** 只读 = ask 白名单减记忆写（记忆写只动扩展自己的笔记，不算只读）。 */
+/** 只读集：纯读工具，任何档位都免确认（memory_list 只动扩展本地笔记，同此列）。
+ *  独立登记、不再借用 ask 白名单：白名单 2026-09-22 起为上下文瘦身收成 10 个，
+ *  比纯读全集少 wait_for、深度观测两件、脚本池读三件——确认判定关心「有无副作用」，
+ *  与给模型下发哪些工具是两回事。 */
+const READONLY_TOOLS: ReadonlySet<string> = new Set([
+  'take_snapshot', 'query_page', 'take_screenshot', 'wait_for',
+  'list_pages', 'list_console_messages', 'list_network_requests', 'get_network_request',
+  'toggle_deep_observe',
+  'list_scripts', 'get_script', 'grep_script',
+  'load_skill', 'list_skills', 'get_skill',
+  'memory_list',
+]);
+
+/** 只读判定：免确认的最高档（连 all 档也放行）。 */
 function isReadonlyTool(name: string): boolean {
-  return ASK_MODE_TOOLS.has(name) && !MEMORY_WRITE_TOOLS.has(name);
+  return READONLY_TOOLS.has(name);
 }
 
 /** 确认等待上限。面板倒计时（until 时间戳）与后台超时计时共用同一常量。 */
