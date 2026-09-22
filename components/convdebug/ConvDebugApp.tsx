@@ -4,17 +4,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { storage } from 'wxt/utils/storage';
 import { Activity } from 'lucide-react';
-import { listConversations, getConversation, type Conversation, type ConversationMeta } from '../../storage/conversations';
-import { readTraces, type ConvTraceStore } from '../../storage/traces';
+import { listConversations, getConversation, CONV_INDEX_KEY, conversationKey, type Conversation, type ConversationMeta } from '../../storage/conversations';
+import { readTraces, traceKey, type ConvTraceStore } from '../../storage/traces';
 import { firstKeptTurn, formatRelativeTime, isMissingConversation, isTrimmed } from './convdebug-utils';
 import { TurnTimeline } from './TurnTimeline';
 import { RawMessages } from './RawMessages';
 
 type DetailView = 'timeline' | 'messages';
 
-const INDEX_KEY = 'local:conv-index';
-const traceKey = (id: string) => `local:conv:${id}:trace` as const;
-const convKey = (id: string) => `local:conv:${id}` as const;
+// watch 的 key 一律 import 自 storage/*：本地重抄字面量的话，将来改 key 格式漏改这里，
+// 读侧照常工作、唯独 watch 静默失效——自动跟随无声死掉且没有任何测试会红。
 const EMPTY_TRACES: ConvTraceStore = { seq: 0, turns: [] };
 
 export function ConvDebugApp({ initialConvId }: { initialConvId: string }) {
@@ -34,7 +33,7 @@ export function ConvDebugApp({ initialConvId }: { initialConvId: string }) {
       setConvId((cur) => cur || (l[0]?.id ?? ''));
     };
     void load();
-    return storage.watch(INDEX_KEY, () => void load());
+    return storage.watch(CONV_INDEX_KEY, () => void load());
   }, []);
 
   // 详情：convId / follow 变化重读；跟随开启时 watch 该会话的 conv + trace key
@@ -53,7 +52,7 @@ export function ConvDebugApp({ initialConvId }: { initialConvId: string }) {
     };
     void load();
     if (!follow) return () => { alive = false; };
-    const unwatchConv = storage.watch(convKey(convId), () => void load());
+    const unwatchConv = storage.watch(conversationKey(convId), () => void load());
     const unwatchTrace = storage.watch(traceKey(convId), () => void load());
     return () => { alive = false; unwatchConv(); unwatchTrace(); };
   }, [convId, follow]);

@@ -31,18 +31,19 @@ export interface ConversationMeta {
 const MAX_MESSAGES = 200;
 const MAX_TITLE_LEN = 30;
 const DEFAULT_TITLE = '新会话';
-const key = (id: string) => `local:conv:${id}` as const;
-const INDEX_KEY = 'local:conv-index';
+/** 导出给 conv-debug 页复用：UI 的 storage.watch 必须与这里写盘用同一个 key，否则自动跟随静默失效。 */
+export const conversationKey = (id: string) => `local:conv:${id}` as const;
+export const CONV_INDEX_KEY = 'local:conv-index';
 // 当前会话指针放 session 区：浏览器关闭时由浏览器自动清空 →
 // 「同一次浏览器会话内切标签/重开面板」保持原会话，「浏览器重启后首次打开」才开新会话。
 const CURRENT_KEY = 'session:currentConvId';
 
 async function readIndex(): Promise<ConversationMeta[]> {
-  return (await storage.getItem<ConversationMeta[]>(INDEX_KEY)) ?? [];
+  return (await storage.getItem<ConversationMeta[]>(CONV_INDEX_KEY)) ?? [];
 }
 
 async function writeIndex(index: ConversationMeta[]): Promise<void> {
-  await storage.setItem(INDEX_KEY, index);
+  await storage.setItem(CONV_INDEX_KEY, index);
 }
 
 /** 把某会话的元数据写进 index（存在则更新），并按 updatedAt 倒序。 */
@@ -59,7 +60,7 @@ export async function listConversations(): Promise<ConversationMeta[]> {
 }
 
 export async function getConversation(id: string): Promise<Conversation> {
-  const raw = await storage.getItem<Conversation>(key(id));
+  const raw = await storage.getItem<Conversation>(conversationKey(id));
   if (raw) return raw;
   const EPOCH = 0; // 未知会话用 epoch 0 作时间哨兵
   return { id, title: DEFAULT_TITLE, messages: [], status: 'idle', createdAt: EPOCH, updatedAt: EPOCH };
@@ -67,7 +68,7 @@ export async function getConversation(id: string): Promise<Conversation> {
 
 export async function saveConversation(conv: Conversation): Promise<void> {
   const next = { ...conv, updatedAt: Date.now() };
-  await storage.setItem(key(conv.id), next);
+  await storage.setItem(conversationKey(conv.id), next);
   await upsertIndex(next);
 }
 
@@ -105,7 +106,7 @@ export async function renameConversation(id: string, title: string): Promise<voi
 }
 
 export async function deleteConversation(id: string): Promise<void> {
-  await storage.removeItem(key(id));
+  await storage.removeItem(conversationKey(id));
   await clearTraces(id);
   const index = await readIndex();
   await writeIndex(index.filter((m) => m.id !== id));

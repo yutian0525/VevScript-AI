@@ -55,7 +55,7 @@ export function TurnTimeline({ turns }: { turns: TurnTrace[] }) {
                   <dt>页面</dt>
                   <dd className="mono">{t.context.pageUrl || '—'}</dd>
                   <dt>模式</dt>
-                  <dd className="mono">{t.mode} · tab {t.tabId}</dd>
+                  <dd className="mono">{t.mode ?? '—'} · tab {t.tabId}</dd>
                   <dt>LLM</dt>
                   <dd className="mono">
                     TTFT {t.llm.firstTokenMs != null ? formatMs(t.llm.firstTokenMs) : '—'} · {t.llm.finishReason || '—'} · 正文{' '}

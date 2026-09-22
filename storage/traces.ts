@@ -48,8 +48,8 @@ export interface TurnTrace {
   endedAt: number;
   /** 本轮起点的操作目标 tab */
   tabId: number;
-  /** 本轮实际生效的模式（每轮重读后的值） */
-  mode: AgentMode;
+  /** 本轮实际生效的模式（每轮重读后的值）；重读之前退出的轮次无此项（早退轮不存在「实际生效的模式」，宁缺勿伪造） */
+  mode?: AgentMode;
   context: TurnContextSummary;
   llm: TurnLlmRecord;
   /** 本轮开跑前的自动压缩（若触发） */
@@ -67,10 +67,11 @@ export interface ConvTraceStore {
   turns: TurnTrace[];
 }
 
-const key = (id: string) => `local:conv:${id}:trace` as const;
+/** 导出给 conv-debug 页复用：UI 的 storage.watch 必须与这里写盘用同一个 key，否则自动跟随静默失效。 */
+export const traceKey = (id: string) => `local:conv:${id}:trace` as const;
 
 export async function readTraces(convId: string): Promise<ConvTraceStore> {
-  const raw = await storage.getItem<ConvTraceStore>(key(convId));
+  const raw = await storage.getItem<ConvTraceStore>(traceKey(convId));
   return raw ?? { seq: 0, turns: [] };
 }
 
@@ -79,9 +80,9 @@ export async function appendTurnTrace(convId: string, t: TurnTrace): Promise<voi
   const cur = await readTraces(convId);
   const turns = [...cur.turns, t];
   const trimmed = turns.length > MAX_TURNS ? turns.slice(turns.length - MAX_TURNS) : turns;
-  await storage.setItem(key(convId), { seq: cur.seq + 1, turns: trimmed });
+  await storage.setItem(traceKey(convId), { seq: cur.seq + 1, turns: trimmed });
 }
 
 export async function clearTraces(convId: string): Promise<void> {
-  await storage.removeItem(key(convId));
+  await storage.removeItem(traceKey(convId));
 }

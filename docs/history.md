@@ -160,7 +160,7 @@
 
 **关键取舍——不存 prompt 全文**：manifest 无 `unlimitedStorage`，quota 即默认 10MB，而 prompt 全文与已落盘的消息流高度重复；trace 只存组装摘要（消息条数、字符数、是否带 summary、技能数、系统提示词长度、页面 URL）。调试页**直读 `storage/*`** 不走消息协议——扩展页面读 `chrome.storage` 无障碍（先例 `ChatView`/`MemoryPage`），那层间接省掉一个编排层、一组消息类型。
 
-**`drive()` 的接线**（`agent/loop.ts` + `agent/trace.ts` 采集器）：每轮迭代包一层 `try/finally`，`await tr.commit()` 一处收口——轮体内有 1 处 `continue`（截断重试）+ 8 处 `return`，`finally` 在 `continue` 前同样执行。9 处出口各自显式赋值 `outcome`，轮末自然落下是第 10 个赋值点（承载最常见的 `'continue'`）。`rec.outcome` 默认值 `'error'` 是刻意的绊线：漏赋值暴露成错误而非伪装成 `done`。`outcome` 六值：`'continue' | 'done' | 'paused' | 'aborted' | 'error' | 'truncated-retry'`。
+**`drive()` 的接线**（`agent/loop.ts` + `agent/trace.ts` 采集器）：每轮迭代包一层 `try/finally`，`await tr.commit()` 一处收口——轮体内有 1 处轮级 `continue`（截断重试；另有 2 处内层工具循环的 `continue`，只跳过当前工具、不离开 try 块）+ 8 处 `return`，`finally` 在 `continue` 前同样执行。9 处出口各自显式赋值 `outcome`，轮末自然落下是第 10 个赋值点（承载最常见的 `'continue'`）。`rec.outcome` 默认值 `'error'` 是刻意的绊线：漏赋值暴露成错误而非伪装成 `done`。`outcome` 六值：`'continue' | 'done' | 'paused' | 'aborted' | 'error' | 'truncated-retry'`。
 
 **页面**：`entrypoints/conv-debug/` 单页 master-detail（左会话列表 + 右详情，`components/convdebug/`），`?convId=` 深链（`history.replaceState`），`storage.watch` 自动跟随——每轮 commit 后页面自动刷新，带「自动跟随」开关。详情区双视图：「轮次时间线」（`TurnTimeline`，每轮一个折叠块，展开见上下文摘要/LLM/TTFT/工具明细/压缩/熔断）与「原始消息流」（`RawMessages`，逐条渲染，user/assistant 走 `Markdown`）。
 
@@ -168,6 +168,6 @@
 
 **降级**：trace 环形裁剪后时间线只覆盖保留下来的轮次，头部提示「trace 仅保留最近 200 轮，更早的轮次请查看原始消息流」；trace 写失败静默吞掉（含读侧 `readTraces` 的 `.catch`）——调试设施不该有能力搞挂主流程。
 
-**踩过的坑（勿重犯）**：(1) **wxt storage 的 key 映射**：`local:x` 在 driver 里存成裸 `x`（按第一个冒号切分 area），测试里要直接写 storage 时得用裸 key；(2) **切会话的状态串扰**：`<details>` 的 `open` 是非受控 DOM 态，`TurnTimeline` 与 `RawMessages` 的折叠态都靠调用处 `key={convId}` 重挂载隔离——不加 key 时 React 原地 reconcile 复用同一批节点，折叠态会跨会话串扰（两条护栏用例已覆盖）。
+**踩过的坑（勿重犯）**：(1) **wxt storage 的 key 映射**：`local:x` 在 driver 里存成裸 `x`（按第一个冒号切分 area），测试里要直接写 storage 时得用裸 key；(2) **切会话的状态串扰**：两个视图机理不同、结论相同——`RawMessages` 的行折叠是 `<details>`，`open` 属非受控 DOM 态且行 key 撞号（两会话都以 `0-system`/`1-user` 开头），React 原地 reconcile 复用同一批 DOM 节点、不会重置 `open`；`TurnTimeline` 的折叠是 React `useState`（以裸轮次号为键，两会话都从 1 起号），不加 key 时复用的是组件实例、state 原样带过去。所以两者都靠调用处 `key={convId}` 重挂载隔离，折叠态才不跨会话串扰（两条护栏用例已覆盖）。
 
 测试：`tests/agent/trace.test.ts`、`tests/agent/loop-trace.test.ts`（含 9 处出口断言与 TTFT）、`tests/convdebug/` 四件（App 壳/时间线/原始消息流/投影纯函数）、`tests/stores/extension-tabs.test.ts`、`tests/settings/tab-entries.test.ts`。

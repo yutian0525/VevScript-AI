@@ -90,6 +90,8 @@ describe('agent loop trace', () => {
     const { turns } = await readTraces('t3');
     expect(turns).toHaveLength(1);
     expect(turns[0]!.outcome).toBe('aborted');
+    // 早退轮在 setMode 之前就返回，不存在「实际生效的模式」——宁缺勿伪造
+    expect(turns[0]!.mode).toBeUndefined();
   });
 
   it('工具失败记 error 字段，summary 为错误文本', async () => {
@@ -214,6 +216,8 @@ describe('agent loop trace', () => {
     expect(turns).toHaveLength(2);
     expect(turns[0]!.outcome).toBe('continue');
     expect(turns[1]!.outcome).toBe('aborted');
+    // 压缩后早退同样发生在 setMode 之前，mode 不落伪造值
+    expect(turns[1]!.mode).toBeUndefined();
     // abort 省下了那次 API 调用：turn 2 未进 runTurn，llm 停留 recorder 默认值
     expect(turns[1]!.llm.finishReason).toBe('');
   });

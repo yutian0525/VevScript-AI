@@ -49,7 +49,7 @@ export function summarizeContext(
 export interface TurnRecorder {
   /** 可变轮次记录：loop 直接写 rec.outcome / rec.guardReason。 */
   rec: TurnTrace;
-  /** 模式在轮体中部才重读出来，晚于 recorder 创建。 */
+  /** 模式在轮体中部才重读出来，晚于 recorder 创建；早退轮没走到这一步，mode 保持缺省。 */
   setMode(mode: AgentMode): void;
   markContext(
     messages: ChatMessage[],
@@ -68,7 +68,9 @@ export function createTurnRecorder(init: { convId: string; turn: number; tabId: 
     startedAt: now,
     endedAt: now,
     tabId: init.tabId,
-    mode: 'agent',
+    // mode 刻意不写初始值：轮首 abort 等早退轮在 setMode 之前就返回，根本不存在
+    // 「实际生效的模式」——落伪造值（如 'agent'）会让 ask 会话展示出错误的 mode，
+    // 调试工具展示假数据比缺数据更有害，故留空由 setMode() 填入。
     context: {
       messageCount: 0, chars: 0, hasSummary: false, summaryChars: 0,
       skillCount: 0, systemPromptChars: 0, pageUrl: '',
