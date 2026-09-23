@@ -218,3 +218,15 @@ spec: `docs/superpowers/specs/2026-09-22-context-token-optimization-design.md`�
 **待做（欠账）**：**实机验证未完成**。布局改动是模型可见的行为变化（页面信息换了位置、ask 文案改写），实施计划标注「必须」：加载扩展 → 跑一次含导航的 agent 会话 + 一次 ask 会话 → 在 AI 会话调试页确认易变块字符数正常、system 里不再有 URL、模型仍知道当前页面（问它「现在这页是什么」）、ask 只读边界与记忆只读文案正确。本文所有实测数字来自 vitest 探针；真实链路（loop 组装、用户自定义提示词覆盖后的表现）尚未过机。
 
 **实机验证首轮收获（2026-09-22）**：验证刚开始就抓到两个与本分支无关、但被验证场景第一次踩中的 loop 旧账——都是 storage 里的历史序列违反「tool_calls 响应必须连续」的 wire 协议约束，下一轮请求 400 "insufficient tool messages following tool_calls message"：① 截图的独立 user 图片消息紧跟其 tool 响应落库，模型同轮并行调用 `take_screenshot` 与其他工具时插进响应序列（`c18c4a6`：图片延后到本轮全部响应之后）；② 工具循环中段按停止时，未执行调用在 storage 里悬空，停止后继续对话复现同一 400（`b85ea9e`：中断收尾补合成响应）。`loop.ts` 自分叉点起未动过，两个都不是布局改动引入。验证继续。
+
+## 存储管理页（2026-09-23）
+
+spec: `docs/superpowers/specs/2026-09-22-storage-manager-design.md`，计划：`docs/superpowers/plans/2026-09-22-storage-manager.md`。设置页「数据」组新增二级页 `StoragePage`（`components/settings/StoragePage.tsx`，入口由 `SettingsHome` 的 GROUPS 派生），三区块 = 用量总览 / 清理 / 备份。后台 `background/storage-manager.ts` 注册四条消息（`STORAGE_USAGE_GET` / `STORAGE_CLEAN` / `STORAGE_EXPORT` / `STORAGE_IMPORT`），SW 挂线于 `entrypoints/background.ts` 的 init 链尾（`initSkillsModule` 之后）。
+
+- **用量总览**：`getStorageUsage` 走裸 `browser.storage.local.get(null)` 全量 dump，`classifyKey` 按物理键前缀分 **11 域**（conv / trace / scripts / skills / memory / settings / gm-resources / gm-auth / gm-values / update-state / other）；字节数用 `new TextEncoder().encode(JSON.stringify(v))` **精确计量**（不是 UTF-16 code units）；条目数区分数组型单键（scripts / skills / memory 的 `:index` 记数组长度）与 `conv-index`（索引不计条目）。UI 占比条以**最大域字节数为基准**（groups 已按字节降序，首个即最大），宽度 `Math.max(2, …)` 保底可见（小域不缩成不可见的一线）。trace 明细按会话列（convId 从键中段切、标题从 `conv-index` 拼），gm-resources 单列缓存条数。
+- **清理只给可再生数据**：GM 资源缓存整键删（`remove('gm:resources')`，下次用到按 7 天 TTL 原语义重新预取）；agent trace 按会话勾选或全清（`remove(['conv:{id}:trace'])`，全清时扫 dump 过滤 trace 键）。两者都是「删了能重建」的数据，故不设导出前置；会话消息、脚本、技能、设置一律不可清。行内二次确认 `ConfirmButton`（首点武装变 confirmLabel，5s 超时还原，再点才执行）。
+- **备份导出**：全量 dump → `buildBackup` 深拷贝（绝不改调用方 dump）后按 `includeApiKey` 处理——不勾选时把 `settings.provider.apiKey` **置空串**（保形状而非删字段，导入方拿到的是合法 settings）；文件头 meta（app / kind / exportedAt / extVersion / includesApiKey）。MV3 SW 无 `URL.createObjectURL`，下载走 `data:application/json;base64,` URL；`btoa` 只收 Latin1，故经 `TextEncoder` 转字节后按 `0x8000` 分块转二进制串——中文（BMP 外字符）不烂码。
+- **导入（全量替换语义）**：`parseBackup` 先校验文件头（app / kind）与 data 体，**校验不过不碰现有库**；`importBackup` 走「**留存先行**」——固定含 Key 的当前库完整备份先下载，**下载成功才** `clear()` + `set(data)`，失败即中止导入（fail-safe：宁可导入失败也不丢数据）。`apiKeyMissing` 判定 = 本地原本有 Key 且导入文件无 Key（提醒导入后需重填）。完成后面板 `setTimeout(runtime.reload, 1200)` 自动重载。
+- **键前缀双轨坑（勿重犯）**：`classifyKey` 与全量 dump / clear / remove 只能认**物理键**（裸 API 无 `local:` 前缀——WXT storage 的 `local:x` 落盘成裸 `x`），而 `storage/*.ts` 业务层用的是 WXT 前缀键；两套键名混用会让分类全落 `other`。同类先例见 AI 会话调试页条目「wxt storage 的 key 映射」。
+
+**已知边界**：data: URL 方案对超大备份有内存压力（base64 再膨胀 33%，退路是 offscreen document + blob）；导入留存依赖 downloads API 可用（被拒则整个导入中止，是刻意 fail-safe）；reload 后侧边栏整页重载（正在进行的会话会中断）；trace 拼标题对已删会话置空（列表仍列出该条供清理）。测试：`tests/background/storage-manager.test.ts`（分组 / 字节 / 清理 / 备份 / 导入各路径）、`tests/settings/storage-page.test.tsx`（三区块 UI）。**实机验证待做**（本页交互与下载 / 重载链路尚未真机过一遍，见计划 §Step 3 手测清单）。
