@@ -61,9 +61,11 @@ async function fetchText(url: string, timeoutMs: number): Promise<string> {
   }
 }
 
-/** 按源链顺序取清单：首个「能取回且解析出 version」的源生效；全失败抛最后一个错误 */
+/** 按源链顺序取清单：首个「能取回且解析出 version」的源生效；全失败抛最后一个错误。
+ *  全部源都是 404（清单文件不存在，首次发版前属预期）→ 抛人话文案，而非干巴巴的 HTTP 404。 */
 async function fetchManifest(): Promise<UpdateManifest> {
   let lastErr: unknown = new Error('无可用清单源');
+  let allNotFound = true;
   for (const url of MANIFEST_SOURCES) {
     try {
       const text = await fetchText(url, CHECK_TIMEOUT_MS);
@@ -72,8 +74,10 @@ async function fetchManifest(): Promise<UpdateManifest> {
       return m;
     } catch (e) {
       lastErr = e; // SPA 兜底页/缓存污染/404 都进这里，回退下一源
+      if (!(e instanceof Error && e.message === 'HTTP 404')) allNotFound = false;
     }
   }
+  if (allNotFound) throw new Error('更新清单尚未生成（发布首个 release 后可用）');
   throw lastErr;
 }
 

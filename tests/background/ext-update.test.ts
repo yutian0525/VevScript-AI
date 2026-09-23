@@ -111,6 +111,25 @@ describe('checkExtUpdate（清单源链 + 版本比对）', () => {
     vi.unstubAllGlobals();
   });
 
+  it('全部源 404（清单未生成）→ error 文案是人话而非 HTTP 404', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => httpError(404)));
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(undefined);
+    const st = await checkExtUpdate();
+    expect(st.status).toBe('error');
+    expect(st.message).toContain('尚未生成');
+    vi.unstubAllGlobals();
+  });
+
+  it('404 混 5xx（非全部缺失）→ 保留原始错误', async () => {
+    const fetchMock = stubSources(() => httpError(404), () => httpError(500));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(undefined);
+    const st = await checkExtUpdate();
+    expect(st.status).toBe('error');
+    expect(st.message).toContain('500');
+    vi.unstubAllGlobals();
+  });
+
   it('已知 available 时检查失败 → 不覆盖（别把已知更新藏起来）', async () => {
     vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(undefined);
     vi.stubGlobal('fetch', vi.fn(async () => okJson(manifest())));
