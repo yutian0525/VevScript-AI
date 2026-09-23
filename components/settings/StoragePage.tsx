@@ -107,38 +107,44 @@ export function StoragePage({ onBack }: { onBack: () => void }) {
     <PageShell title="存储管理" eyebrow="STORAGE" onBack={onBack} backLabel="返回设置">
       <section className="section">
         <h2 className="section__title">用量总览</h2>
-        <div className="stor__total">
-          <span>全部持久数据</span>
-          <span className="mono">{usage ? fmtBytes(usage.totalBytes) : '…'}</span>
-          <button type="button" className="btn btn--icon" aria-label="刷新统计" onClick={() => void refresh()}>
-            <RefreshCw size={14} strokeWidth={1.8} className={loading ? 'spin' : undefined} />
-          </button>
-        </div>
-        <div className="stor__rows">
-          {usage?.groups.map((g) => (
-            <div key={g.group} className="stor__row">
-              <span className="stor__row-label">{GROUP_LABELS[g.group]}</span>
-              {g.items != null && <span className="stor__row-items mono">{g.items} 项</span>}
-              <span className="stor__bar" aria-hidden>
-                <span className="stor__bar-fill" style={{ width: maxBytes ? `${Math.max(2, (g.bytes / maxBytes) * 100)}%` : '0%' }} />
-              </span>
-              <span className="stor__row-bytes mono">{fmtBytes(g.bytes)}</span>
-            </div>
-          ))}
+        <div className="stor__card">
+          <div className="stor__total">
+            <span>全部持久数据</span>
+            <span className="stor__total-bytes mono">{usage ? fmtBytes(usage.totalBytes) : '…'}</span>
+            <button type="button" className="btn btn--icon" aria-label="刷新统计" onClick={() => void refresh()}>
+              <RefreshCw size={14} strokeWidth={1.8} className={loading ? 'spin' : undefined} />
+            </button>
+          </div>
+          <div className="stor__rows">
+            {usage?.groups.map((g) => (
+              <div key={g.group} className="stor__row">
+                <span className="stor__row-label">{GROUP_LABELS[g.group]}</span>
+                {g.items != null && <span className="stor__row-items mono">{g.items} 项</span>}
+                <span className="stor__bar" aria-hidden>
+                  <span className="stor__bar-fill" style={{ width: maxBytes ? `${Math.max(2, (g.bytes / maxBytes) * 100)}%` : '0%' }} />
+                </span>
+                <span className="stor__row-bytes mono">{fmtBytes(g.bytes)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
       <section className="section">
         <h2 className="section__title">清理（可再生数据）</h2>
-        <div className="stor__rows">
+        <div className="stor__card">
           <div className="stor__row">
-            <span className="stor__row-label">GM 资源缓存
-              <span className="stor__row-items mono"> · {usage?.gmResources.count ?? 0} 项 · {usage ? fmtBytes(usage.gmResources.bytes) : ''}</span>
-            </span>
-            <ConfirmButton label="清空缓存" confirmLabel="确认清空？" onConfirm={() => void doClean({ kind: 'gm-resources' })} />
+            <span className="stor__row-label">GM 资源缓存</span>
+            <span className="stor__row-items mono">{usage?.gmResources.count ?? 0} 项 · {usage ? fmtBytes(usage.gmResources.bytes) : ''}</span>
+            <ConfirmButton
+              label="清空缓存"
+              confirmLabel="确认清空？"
+              disabled={!usage || usage.gmResources.count === 0}
+              onConfirm={() => void doClean({ kind: 'gm-resources' })}
+            />
           </div>
           <div className="stor__trace-block">
             <div className="stor__row">
-              <span className="stor__row-label">Agent 调用记录（清理后会话调试页对应记录消失）</span>
+              <span className="stor__row-label" title="清理后会话调试页对应记录消失">Agent 调用记录</span>
               <ConfirmButton
                 label={traceSel.size ? '清理选中' : '全部清理'}
                 confirmLabel="确认清理？"
@@ -167,29 +173,30 @@ export function StoragePage({ onBack }: { onBack: () => void }) {
       </section>
       <section className="section">
         <h2 className="section__title">备份</h2>
-        <div className="stor__rows">
-          <div className="stor__row">
-            <label className="stor__row-label stor__check">
-              <input type="checkbox" checked={includeKey} onChange={(e) => setIncludeKey(e.target.checked)} />
-              包含模型 API Key（默认不勾，勾选后导出文件含明文密钥，请妥善保管）
-            </label>
+        <div className="stor__card stor__card--stack">
+          <label className="stor__check" title="勾选后导出文件含明文密钥，请妥善保管">
+            <input type="checkbox" checked={includeKey} onChange={(e) => setIncludeKey(e.target.checked)} />
+            包含模型 API Key
+          </label>
+          <div className="stor__action-row">
             <button type="button" className="btn" onClick={() => void doExport()} disabled={busy !== ''}>
               <Download size={14} strokeWidth={1.8} aria-hidden /> {busy === 'export' ? '导出中…' : '导出全部数据'}
             </button>
-          </div>
-          <div className="stor__row">
-            <span className="stor__row-label">导入 = 全量替换当前数据（当前数据会先自动留存到下载目录）</span>
-            <input
-              data-testid="stor-import-input"
-              type="file"
-              accept=".json,application/json"
-              className="stor__file"
-              onChange={(e) => { void onPickFile(e.target.files?.[0]); e.target.value = ''; }}
-            />
+            <label className="btn stor__file-btn" title="全量替换当前数据；当前数据会先自动留存到下载目录">
+              选择文件…
+              <input
+                data-testid="stor-import-input"
+                type="file"
+                accept=".json,application/json"
+                className="stor__file-hidden"
+                onChange={(e) => { void onPickFile(e.target.files?.[0]); e.target.value = ''; }}
+              />
+            </label>
+            {pending && <span className="stor__file-name mono">{pending.name}</span>}
           </div>
           {pending && (
             <div className="stor__confirm">
-              <span>将导入 <span className="mono">{pending.name}</span>：确认后当前数据先留存、再整体替换，完成后自动重载。备份内含的脚本池与 GM 授权会一并恢复并直接生效——只导入你信任来源的文件。</span>
+              <span>将导入 <span className="mono">{pending.name}</span>：当前数据先自动留存到下载目录，随后整体替换并重载。脚本池与 GM 授权会一并恢复生效——只导入信任来源的文件。</span>
               <div className="stor__confirm-actions">
                 <button type="button" className="btn btn--danger" onClick={() => void doImport()} disabled={busy !== ''}>
                   {busy === 'import' ? '导入中…' : '确认导入'}
@@ -208,7 +215,7 @@ export function StoragePage({ onBack }: { onBack: () => void }) {
 }
 
 /** 行内二次确认按钮（spec §4.2）：首点武装变 confirmLabel，5s 超时还原；再点执行。 */
-function ConfirmButton({ label, confirmLabel, onConfirm }: { label: string; confirmLabel: string; onConfirm: () => void }) {
+function ConfirmButton({ label, confirmLabel, onConfirm, disabled = false }: { label: string; confirmLabel: string; onConfirm: () => void; disabled?: boolean }) {
   const [armed, setArmed] = useState(false);
   useEffect(() => {
     if (!armed) return;
@@ -219,6 +226,7 @@ function ConfirmButton({ label, confirmLabel, onConfirm }: { label: string; conf
     <button
       type="button"
       className={`btn ${armed ? 'btn--danger' : ''}`}
+      disabled={disabled}
       onClick={() => {
         if (armed) { setArmed(false); onConfirm(); } else { setArmed(true); }
       }}
