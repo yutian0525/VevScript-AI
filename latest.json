@@ -1,6 +1,6 @@
 {
-  "version": "0.1.1",
-  "zipUrl": "https://github.com/yutian0525/VevScript-AI/releases/latest/download/vevscript-ai-v0.1.1-chrome-mv3.zip",
-  "notes": "",
-  "publishedAt": "2026-09-23T00:00:00.000Z"
+  "version": "0.2.0",
+  "zipUrl": "https://github.com/yutian0525/VevScript-AI/releases/latest/download/vevscript-ai-v0.2.0-chrome-mv3.zip",
+  "notes": "【新特性】\r\n\r\n● 应用内检查更新 — 纯自分发下 Chrome 不做自动更新，本版起扩展自己管「发现新版」：设置 → 关于软件 → 检查更新；有新版时设置首页「关于软件」卡片直接提示，引导卡一键下载 zip 并给三步替换指引（解压覆盖原目录 → chrome://extensions 点刷新 → 完成，覆盖原目录则扩展 ID 与全部数据不变）。更新清单经 jsDelivr 分发（国内可达）、GitHub 兜底，发版自动生成。\r\n\r\n● 存储管理页（设置 → 数据）— 用量总览：按数据域统计全部持久存储的条目数与字节，占比条一眼看出谁在吃空间；清理可再生数据：GM 资源缓存一键清空、Agent 调用记录按会话勾选清理，危险操作行内二次确认；备份导出：全量打包为 JSON，可选剔除模型 API Key（默认不含，文件可安全分享）；备份导入：全量替换语义，导入前当前数据自动留存到下载目录，配额预检 + 留存先行，误操作可回滚。\r\n\r\n【修缮】\r\n\r\n● 存储管理页窄态适配：解释性文案收进悬停提示，原生文件控件换按钮化交互\r\n\r\n【升级方式】\r\n\r\n下载 zip 解压覆盖原扩展目录（不要挪位置），到 chrome://extensions 点刷新即可；数据与配置全部保留。\r\n",
+  "publishedAt": "2026-09-23T03:14:42.776Z"
 }
