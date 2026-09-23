@@ -9,6 +9,7 @@ import { ToolBenchPage } from '../debug/ToolBenchPage';
 import { ScriptDebugPage } from '../scriptdebug/ScriptDebugPage';
 import { SystemPromptPage } from './SystemPromptPage';
 import { MemoryPage } from './MemoryPage';
+import { StoragePage } from './StoragePage';
 import { AboutPage } from './AboutPage';
 
 export function SettingsView() {
@@ -37,6 +38,8 @@ export function SettingsView() {
         <ToolBenchPage onBack={back} />
       ) : sub === 'scriptdebug' ? (
         <ScriptDebugPage onBack={back} />
+      ) : sub === 'storage' ? (
+        <StoragePage onBack={back} />
       ) : sub === 'about' ? (
         <AboutPage onBack={back} />
       ) : (

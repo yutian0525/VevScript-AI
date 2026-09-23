@@ -2,13 +2,14 @@
 import { useEffect } from 'react';
 import { storage } from 'wxt/utils/storage';
 import { MessageSquare, Puzzle, Sparkles, Settings as SettingsIcon } from 'lucide-react';
-import { useUi, type Page } from '../../stores/ui';
+import { useUi, sendExtUpdateRequest, type Page } from '../../stores/ui';
 import { ChatView } from '../../components/chat/ChatView';
 import { ScriptsView } from '../../components/scripts/ScriptsView';
 import { SkillsPage } from '../../components/skills/SkillsPage';
 import { SettingsView } from '../../components/settings/SettingsView';
 import { Tooltip } from '../../components/ui/Tooltip';
-import type { UiNavNotification } from '../../shared/messages';
+import type { ExtUpdateState } from '../../shared/types';
+import type { ExtUpdateStateEvent, UiNavNotification } from '../../shared/messages';
 
 /** 消费 popup 落下的待航标记：侧边栏挂载时切到目标页，然后清除（一次性）。 */
 async function consumePendingView(): Promise<void> {
@@ -35,11 +36,18 @@ export default function App() {
   // popup → 侧边栏跨面导航：挂载消费待航标记（侧边栏刚被 popup 唤起时）+ 实时监听 UI_NAV（侧边栏已开时）。
   useEffect(() => {
     void consumePendingView().catch(() => {}); // storage.session 某些环境不可用，容错
+    // 扩展自身更新状态：挂载回填 + 订阅广播（设置「关于软件」卡与关于页更新区块消费）
+    void sendExtUpdateRequest<{ ok: boolean; data?: ExtUpdateState | null }>({ type: 'EXT_UPDATE_GET' })
+      .then((resp) => { if (resp?.ok) useUi.getState().setExtUpdate(resp.data ?? null); })
+      .catch(() => {});
     const onMessage = (msg: unknown) => {
       const m = msg as { type?: string };
       if (m?.type === 'UI_NAV') {
         useUi.getState().setPage((msg as UiNavNotification).view);
         void storage.removeItem('session:ui:pendingView').catch(() => {}); // 双通道任一生效都清标记，防陈旧
+      }
+      if (m?.type === 'EXT_UPDATE_STATE') {
+        useUi.getState().setExtUpdate((msg as ExtUpdateStateEvent).update);
       }
     };
     browser.runtime.onMessage.addListener(onMessage);

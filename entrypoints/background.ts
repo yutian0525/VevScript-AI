@@ -13,8 +13,10 @@ import {
 import { initScriptsModule } from '../background/scripts';
 import { initGmApi } from '../background/gm-api';
 import { initSkillsModule } from '../background/skills';
+import { initStorageManagerModule } from '../background/storage-manager';
 import { seedBuiltinSkills } from '../background/builtin-skills';
 import { maybeRunStartupUpdateCheck } from '../background/scripts-update';
+import { initExtUpdateModule, maybeRunStartupExtUpdateCheck } from '../background/ext-update';
 import { initConfirmQueue } from '../background/confirm-queue';
 import { initCdp, attachCdpListeners } from '../background/cdp/init';
 
@@ -83,6 +85,7 @@ export default defineBackground(() => {
   initScriptsModule(router);
   initGmApi(router);
   initSkillsModule(router);
+  initStorageManagerModule(router);
 
   // 脚本更新的批量检查（fire-and-forget，不阻塞 SW）。三条路径统一走 maybeRunStartupUpdateCheck：
   //  1) SW 冷启动（本行）：节流兜底——onStartup 在 MV3 不可靠（unpacked 几乎不触发、SW 被唤醒不补触发），
@@ -93,6 +96,13 @@ export default defineBackground(() => {
   void maybeRunStartupUpdateCheck().catch(() => {});
   browser.runtime.onStartup.addListener(() => { void maybeRunStartupUpdateCheck(true).catch(() => {}); });
   browser.runtime.onInstalled.addListener(() => { void maybeRunStartupUpdateCheck(true).catch(() => {}); });
+
+  // 扩展自身更新检查（三路径与脚本更新同构，见上注）。纯自分发下唯一的「发现新版」通道，
+  // onInstalled 在用户重载新版扩展后 force 查一次，让「已是最新」状态及时对齐。
+  initExtUpdateModule(router);
+  void maybeRunStartupExtUpdateCheck().catch(() => {});
+  browser.runtime.onStartup.addListener(() => { void maybeRunStartupExtUpdateCheck(true).catch(() => {}); });
+  browser.runtime.onInstalled.addListener(() => { void maybeRunStartupExtUpdateCheck(true).catch(() => {}); });
 
   initConfirmQueue(router);
   router.attach();

@@ -5,6 +5,10 @@
 #   2. wxt build + zip 产出扩展包，按规范重命名；
 #   3. 创建 GitHub Release（draft，附构建产物）。
 #
+# latest.json 更新清单不在这里生成——由 release-manifest.yml 在 release published 时提交。
+# 清单 zipUrl 指向 releases/latest/download/…，只有 release 真正 Publish 后才可下载，
+# 若在 tag push 时就提交清单，用户会在 Publish 前看到「有新版」但下载 404。
+#
 # 注意：tag 必须打在 main 分支的提交上（或在 GitHub UI 里从 main 选 tag）。
 # tag 指向的提交若不在 main 上（如在 dev 打了 tag 再合过去），version 校验步骤
 # 会 fail——这是有意为之，保证发布产物与 main 内容一致。

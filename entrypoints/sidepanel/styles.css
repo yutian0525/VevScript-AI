@@ -1022,6 +1022,85 @@ body {
 .about__link-hint { font-size: 11.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .about__link-ext { color: var(--ink-3); flex-shrink: 0; }
 
+/* 更新区块：常态一行（版本 + 状态语）+ 检查按钮；有新版时换成引导卡 */
+.about__update { display: flex; flex-direction: column; gap: 10px; }
+.about__update-line { display: flex; align-items: baseline; gap: 10px; font-size: 12.5px; color: var(--ink-2); }
+.about__update-line .mono { font-size: 11.5px; color: var(--ink-3); }
+.about__update-actions { display: flex; align-items: center; gap: 10px; }
+.about__update-time { font-size: 11px; color: var(--ink-3); }
+.about__update-card {
+  display: flex; flex-direction: column; gap: 9px;
+  border: 1px solid var(--line-strong); border-left: 3px solid var(--signal);
+  border-radius: 10px; background: var(--surface); padding: 11px 13px;
+}
+.about__update-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.about__update-ver { font-size: 12.5px; font-weight: 600; color: var(--signal); letter-spacing: 0.02em; }
+.about__update-notes {
+  font-size: 12px; color: var(--ink-2); line-height: 1.65; white-space: pre-line;
+  max-height: 132px; overflow-y: auto; padding-right: 4px;
+}
+.about__update-steps { margin: 2px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.about__update-steps li { font-size: 12px; color: var(--ink-2); line-height: 1.6; }
+.about__update-steps strong { color: var(--ink); font-weight: 600; }
+
+/* ============ 存储管理页 ============ */
+/* 仪表盘语言：每组一张卡（--line 描边 + 10px 圆角 + --surface 底，几何同 about__links），
+   行内占比条是主角——flex 撑满行中段，标签与字节各守两端。 */
+.stor__card {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  padding: 2px 12px;
+}
+.stor__card--stack { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+.stor__total {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0 8px; border-bottom: 1px solid var(--line-strong);
+  font-size: 13px; color: var(--ink);
+}
+.stor__total-bytes { flex: 1; text-align: right; font-size: 14px; }
+.stor__rows { display: flex; flex-direction: column; }
+.stor__row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--line);
+}
+.stor__rows .stor__row:last-child { border-bottom: none; }
+.stor__row-label {
+  font-size: 13px; color: var(--ink); flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.stor__row-items { font-size: 11px; color: var(--ink-3); flex-shrink: 0; }
+.stor__bar { flex: 1 1 auto; min-width: 24px; height: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+.stor__bar-fill { display: block; height: 100%; background: var(--signal); }
+.stor__row-bytes { font-size: 11.5px; color: var(--ink-2); width: 64px; text-align: right; flex-shrink: 0; }
+.stor__row .btn { flex-shrink: 0; }
+.stor__trace-block { display: flex; flex-direction: column; }
+.stor__trace-block .stor__row { border-bottom: none; }
+.stor__trace-row {
+  display: flex; align-items: center; gap: 10px; padding: 7px 0 7px 2px;
+  border-bottom: 1px solid var(--line); cursor: pointer; border-radius: var(--r-sm);
+}
+.stor__trace-row:last-child { border-bottom: none; }
+.stor__trace-row:hover { background: var(--paper); }
+.stor__trace-row .stor__row-label { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.stor__empty { font-size: 12px; color: var(--ink-3); padding: 9px 0 7px 2px; }
+.stor__check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+.stor__action-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.stor__action-row .btn { flex-shrink: 0; }
+.stor__file-btn { position: relative; overflow: hidden; }
+.stor__file-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.stor__file-name {
+  font-size: 11.5px; color: var(--ink-2); min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.stor__confirm {
+  display: flex; flex-direction: column; gap: 8px;
+  border: 1px solid var(--line-strong); border-left: 3px solid var(--signal);
+  border-radius: 10px; background: var(--surface); padding: 10px 12px; font-size: 12.5px; color: var(--ink-2);
+}
+.stor__confirm-actions { display: flex; gap: 8px; }
+
 /* ============ 脚本运行时调试台 GM API 行 ============ */
 .gm-api-row.is-disabled { opacity: 0.5; }
 .gm-api-row.is-disabled .tool-row { cursor: not-allowed; }

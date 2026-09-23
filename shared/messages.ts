@@ -4,7 +4,7 @@
 // 例外：cs→bg 的 fire-and-forget 通知（见 CsReadyNotification）
 // 与 bg→面板的深度观测状态广播（见 DeepObserveStateNotification，类型在 shared/cdp.ts）。
 
-import type { ChatAttachment, Locator, ScriptSource, ScriptSummary, ScriptUpdateState, ToolResult, Uid, UserScript } from './types';
+import type { ChatAttachment, ExtUpdateState, Locator, ScriptSource, ScriptSummary, ScriptUpdateState, ToolResult, Uid, UserScript } from './types';
 
 export interface BgToCsRequestMap {
   /** detail 缺省 'interactive'（spec §6.2 新默认）。region 限定子树（uid 或选择器）。
@@ -268,6 +268,18 @@ export interface UiNavNotification {
   view: 'chat' | 'scripts' | 'settings';
 }
 
+// ---------- 扩展自身更新（sidepanel → bg request/response + bg → 扩展页面广播）----------
+
+export type ExtUpdateRequest =
+  | { type: 'EXT_UPDATE_GET' }    // 读当前状态（不发网络）
+  | { type: 'EXT_UPDATE_CHECK' }; // 立即检查（无视节流）
+
+/** bg → 扩展页面广播：扩展自身更新状态（每次检查落库后，fire-and-forget） */
+export interface ExtUpdateStateEvent {
+  type: 'EXT_UPDATE_STATE';
+  update: ExtUpdateState | null;
+}
+
 /** SCRIPTS_LIST 响应 data 形状 */
 export interface ScriptsListData {
   scripts: ScriptSummary[];
@@ -278,3 +290,34 @@ export interface ScriptsListData {
 // ---------- 深度观测（CDP）（sidepanel → bg request/response，走 MessageRouter）----------
 // 类型定义在 shared/cdp.ts（agent 工具与 SW 也消费），此处 re-export 保持消息协议单一入口。
 export type { DeepObserveState, DeepObserveStateNotification, DeepObserveRequest } from './cdp';
+
+// ---------- 存储管理（sidepanel → bg request/response，走 MessageRouter）----------
+
+/** 物理键（无 local: 前缀）→ 数据域分类结果，UI 据此显示中文名 */
+export type StorageGroupKey =
+  | 'conv' | 'trace' | 'scripts' | 'skills' | 'memory' | 'settings'
+  | 'gm-resources' | 'gm-auth' | 'gm-values' | 'update-state' | 'other';
+
+export interface StorageUsageGroup { group: StorageGroupKey; bytes: number; items?: number }
+
+export interface StorageTraceItem { convId: string; title?: string; bytes: number }
+
+export interface StorageUsage {
+  totalBytes: number;
+  groups: StorageUsageGroup[];   // 按字节降序
+  traces: StorageTraceItem[];    // 有 trace 的会话，按字节降序（清理列表）
+  gmResources: { bytes: number; count: number };
+}
+
+export type StorageCleanScope =
+  | { kind: 'gm-resources' }
+  | { kind: 'trace'; convIds?: string[] };  // 缺省 = 全清
+
+export type StorageManagerRequest =
+  | { type: 'STORAGE_USAGE_GET' }
+  | { type: 'STORAGE_CLEAN'; scope: StorageCleanScope }
+  | { type: 'STORAGE_EXPORT'; includeApiKey: boolean }
+  | { type: 'STORAGE_IMPORT'; payload: string };
+
+export interface StorageExportData { filename: string; dataUrl: string }
+export interface StorageImportResult { apiKeyMissing: boolean }
