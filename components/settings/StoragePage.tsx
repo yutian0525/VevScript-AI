@@ -1,7 +1,7 @@
 // components/settings/StoragePage.tsx
 // 存储管理二级页（spec §4）：用量总览 / 清理可再生数据 / 备份导出导入。统计经 bg 统一算。
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshCw, Trash2 } from 'lucide-react';
+import { Download, RefreshCw, Trash2 } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { sendStorageRequest } from '../../stores/ui';
 import type { StorageCleanScope, StorageGroupKey, StorageUsage } from '../../shared/messages';
@@ -41,6 +41,57 @@ export function StoragePage({ onBack }: { onBack: () => void }) {
     setTraceSel(new Set());
     await refresh();
   }, [refresh]);
+
+  const [includeKey, setIncludeKey] = useState(false);
+  const [busy, setBusy] = useState<'' | 'export' | 'import'>('');
+  const [notice, setNotice] = useState<{ text: string; kind: 'ok' | 'err' } | null>(null);
+  const [pending, setPending] = useState<{ name: string; text: string } | null>(null);
+
+  const doExport = async () => {
+    setBusy('export'); setNotice(null);
+    try {
+      const resp = await sendStorageRequest<{ ok: boolean; data?: { filename: string; dataUrl: string }; error?: string }>({
+        type: 'STORAGE_EXPORT', includeApiKey: includeKey,
+      });
+      if (!resp?.ok || !resp.data) throw new Error(resp?.error ?? '导出失败');
+      await browser.downloads.download({ url: resp.data.dataUrl, filename: resp.data.filename });
+      setNotice({ text: `已导出 ${resp.data.filename}`, kind: 'ok' });
+    } catch (e) {
+      setNotice({ text: e instanceof Error ? e.message : String(e), kind: 'err' });
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const onPickFile = async (f: File | undefined) => {
+    if (!f) return;
+    setNotice(null);
+    setPending({ name: f.name, text: await f.text() });
+  };
+
+  const doImport = async () => {
+    if (!pending) return;
+    setBusy('import');
+    try {
+      const resp = await sendStorageRequest<{ ok: boolean; data?: { apiKeyMissing: boolean }; error?: string }>({
+        type: 'STORAGE_IMPORT', payload: pending.text,
+      });
+      if (!resp?.ok || !resp.data) throw new Error(resp?.error ?? '导入失败');
+      setNotice({
+        text: resp.data.apiKeyMissing
+          ? '导入完成，即将重载（备份未含 API Key，重载后请到模型设置重填）'
+          : '导入完成，即将重载',
+        kind: 'ok',
+      });
+      setPending(null);
+      setTimeout(() => browser.runtime.reload(), 1200);
+    } catch (e) {
+      setNotice({ text: e instanceof Error ? e.message : String(e), kind: 'err' });
+      setPending(null);
+    } finally {
+      setBusy('');
+    }
+  };
 
   const maxBytes = usage?.groups[0]?.bytes ?? 0; // groups 已按字节降序，首个即最大域
 
@@ -104,6 +155,44 @@ export function StoragePage({ onBack }: { onBack: () => void }) {
             ))}
             {usage && usage.traces.length === 0 && <div className="stor__empty">暂无调用记录</div>}
           </div>
+        </div>
+      </section>
+      <section className="section">
+        <h2 className="section__title">备份</h2>
+        <div className="stor__rows">
+          <div className="stor__row">
+            <label className="stor__row-label stor__check">
+              <input type="checkbox" checked={includeKey} onChange={(e) => setIncludeKey(e.target.checked)} />
+              包含模型 API Key（默认不勾，勾选后导出文件含明文密钥，请妥善保管）
+            </label>
+            <button type="button" className="btn" onClick={() => void doExport()} disabled={busy !== ''}>
+              <Download size={14} strokeWidth={1.8} aria-hidden /> {busy === 'export' ? '导出中…' : '导出全部数据'}
+            </button>
+          </div>
+          <div className="stor__row">
+            <span className="stor__row-label">导入 = 全量替换当前数据（当前数据会先自动留存到下载目录）</span>
+            <input
+              data-testid="stor-import-input"
+              type="file"
+              accept=".json,application/json"
+              className="stor__file"
+              onChange={(e) => { void onPickFile(e.target.files?.[0]); e.target.value = ''; }}
+            />
+          </div>
+          {pending && (
+            <div className="stor__confirm">
+              <span>将导入 <span className="mono">{pending.name}</span>：确认后当前数据先留存、再整体替换，完成后自动重载。</span>
+              <div className="stor__confirm-actions">
+                <button type="button" className="btn btn--danger" onClick={() => void doImport()} disabled={busy !== ''}>
+                  {busy === 'import' ? '导入中…' : '确认导入'}
+                </button>
+                <button type="button" className="btn btn--ghost" onClick={() => setPending(null)}>取消</button>
+              </div>
+            </div>
+          )}
+          {notice && (
+            <div className={`status-text ${notice.kind === 'err' ? 'status-text--err' : 'status-text--ok'}`}>{notice.text}</div>
+          )}
         </div>
       </section>
     </PageShell>
