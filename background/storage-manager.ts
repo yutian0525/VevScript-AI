@@ -149,7 +149,8 @@ export function parseBackup(text: string): { meta: BackupMeta; data: Record<stri
   if (obj?.meta?.app !== 'vevscript-ai' || obj?.meta?.kind !== 'full-backup') {
     throw new Error('不是本扩展的完整备份文件（缺少有效文件头）');
   }
-  if (typeof obj.data !== 'object' || obj.data === null) {
+  // 数组也过 typeof 'object' 检查——放行会在 clear() 后 set([]) 静默清空全库，这里显式拒绝
+  if (typeof obj.data !== 'object' || obj.data === null || Array.isArray(obj.data)) {
     throw new Error('备份缺少 data 数据体');
   }
   return { meta: obj.meta, data: obj.data as Record<string, unknown> };
@@ -157,6 +158,11 @@ export function parseBackup(text: string): { meta: BackupMeta; data: Record<stri
 
 export async function importBackup(payload: string): Promise<StorageImportResult> {
   const { data } = parseBackup(payload); // 校验不过不碰现有数据
+  // 配额预检：写入体超 local 配额（留 10% 余量）在 clear() 之前拦下，原数据未动
+  const quota = browser.storage.local.QUOTA_BYTES;
+  if (JSON.stringify(data).length > quota * 0.9) {
+    throw new Error('备份数据超过本地存储配额，已中止导入（原数据未动）');
+  }
   const current = await browser.storage.local.get(null);
   // 留存先行：固定含 Key 的完整备份（留存是给自己看的），下载成功才动库
   const backup = buildBackup(current, true, browser.runtime.getManifest().version);
@@ -168,7 +174,12 @@ export async function importBackup(payload: string): Promise<StorageImportResult
   const hadKey = Boolean((current[PHYS_SETTINGS] as SettingsLike | undefined)?.provider?.apiKey);
   const importedKey = Boolean((data[PHYS_SETTINGS] as SettingsLike | undefined)?.provider?.apiKey);
   await browser.storage.local.clear();
-  await browser.storage.local.set(data);
+  try {
+    await browser.storage.local.set(data);
+  } catch (e) {
+    // 走到这步原数据已被 clear() 清空，报错必须指向留存的下载文件
+    throw new Error(`导入写入失败且原数据已清空——请用下载目录里的留存备份文件恢复：${e instanceof Error ? e.message : String(e)}`);
+  }
   return { apiKeyMissing: hadKey && !importedKey };
 }
 

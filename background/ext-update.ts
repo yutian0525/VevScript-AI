@@ -16,14 +16,14 @@ const STARTUP_CHECK_THROTTLE_MS = 12 * 60 * 60 * 1000; // 12h
 const LAST_CHECK_KEY = 'local:ext-update:last-check';
 
 /** latest.json 清单源链：jsDelivr 为主（国内可达，宣传页字体同源依赖），raw.githubusercontent 兜底。
- *  清单由 release 工作流（.github/workflows/release.yml）发版时生成并提交到 main；分支路径缓存 ~12h，
- *  与 12h 检查节流同量级，不影响时效。 */
+ *  清单由清单工作流（.github/workflows/release-manifest.yml）在 release published 时生成并提交到 main；
+ *  分支路径缓存 ~12h，与 12h 检查节流同量级，不影响时效。 */
 const MANIFEST_SOURCES = [
   'https://cdn.jsdelivr.net/gh/yutian0525/VevScript-AI@main/latest.json',
   'https://raw.githubusercontent.com/yutian0525/VevScript-AI/main/latest.json',
 ];
 
-/** latest.json 形状（release 工作流生成；字段都可选宽容解析，version 必需） */
+/** latest.json 形状（release-manifest 工作流生成；字段都可选宽容解析，version 必需） */
 interface UpdateManifest {
   version: string;
   zipUrl?: string;
@@ -105,13 +105,17 @@ export async function readLastCheckAt(): Promise<number> {
 }
 
 /** 启动检查入口：force=true（onStartup/onInstalled 显式信号）无视节流；否则距上次不足窗口则跳过。
- *  同一 SW 生命周期只执行一次真正的检查（节流未到不占用守卫，留给后续 force 调用）。 */
+ *  同一 SW 生命周期只执行一次真正的检查。守卫在入口即置位（关掉「并发调用同时过守卫」的竞态窗口，
+ *  避免重复检查），节流未到时还原——不占用守卫，留给后续 force 调用。 */
 export async function maybeRunStartupExtUpdateCheck(force = false): Promise<void> {
   if (checkStarted) return;
+  checkStarted = true;
   const last = await readLastCheckAt();
   const due = force || Date.now() - last >= STARTUP_CHECK_THROTTLE_MS;
-  if (!due) return;
-  checkStarted = true;
+  if (!due) {
+    checkStarted = false;
+    return;
+  }
   await storage.setItem(LAST_CHECK_KEY, Date.now());
   await checkExtUpdate();
 }

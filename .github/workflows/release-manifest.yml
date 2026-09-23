@@ -1,0 +1,55 @@
+# 更新清单工作流：release 发布（draft → Publish）时生成 latest.json 提交回 main。
+# 与 release.yml 分离的原因：zipUrl 指向 releases/latest/download/…，只有 release 真正
+# published 后才可下载——在 tag push 时就提交清单会让用户在 Publish 前看到「有新版」
+# 但下载 404。扩展端 background/ext-update.ts 从 jsDelivr/raw.github 拉 main 分支的
+# latest.json；jsDelivr 对分支路径缓存 ~12h，与扩展端 12h 检查节流同量级。
+
+name: Release manifest
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-manifest-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # checkout 出来的是 tag ref 的 detached HEAD——切到最新 main 顶上再提交清单，
+      # 避免 push HEAD:main 时因 main 已领先（如版本号同步提交）被拒。
+      - name: Rebase onto latest main
+        run: |
+          git fetch --no-tags origin main
+          git checkout -B manifest-work origin/main
+
+      - name: Generate latest.json & commit to main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+          BODY: ${{ github.event.release.body }}
+        run: |
+          VERSION="${TAG#v}"
+          VERSION="$VERSION" BODY="$BODY" node -e '
+            const fs = require("fs");
+            const manifest = {
+              version: process.env.VERSION,
+              zipUrl: "https://github.com/yutian0525/VevScript-AI/releases/latest/download/vevscript-ai-v" + process.env.VERSION + "-chrome-mv3.zip",
+              notes: process.env.BODY || "",
+              publishedAt: new Date().toISOString(),
+            };
+            fs.writeFileSync("latest.json", JSON.stringify(manifest, null, 2) + "\n");
+          '
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add latest.json
+          git commit -m "chore(release): latest.json v${VERSION}"
+          git push origin HEAD:main
+          echo "latest.json v${VERSION} 已提交并推送到 main"

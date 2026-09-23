@@ -32,6 +32,8 @@ background/
   observe-store.ts    per-tab 观测环形缓冲
   scripts.ts          脚本编排层（UI 与 AI 工具共用）
   gm-api.ts           GM_* SW 中心
+  ext-update.ts       扩展自身更新检查（纯自分发清单）
+  storage-manager.ts  存储管理（统计/清理/备份导入导出）
 components/
   ui/                 通用 UI 组件
   chat/               聊天视图（含 Markdown.tsx）
@@ -101,5 +103,6 @@ npm run test         # 运行测试
 ## 当前阶段
 
 - 已完成各迭代的记录（Phase 1/3a/3b/4/5、多会话与上下文压缩、Markdown 渲染、流式续播、技能系统、写脚本流程优化、系统提示词自定义 + Agent 记忆、GM API 扩充 Tier A+B、深度观测（CDP 接管观测并退役 MAIN world hook）、品牌、宣传页、AI 会话调试页、上下文 token 优化）全部在 `docs/history.md`。
+- 存储管理页（用量统计/可再生数据清理/全量备份导入导出）与扩展应用内检查更新（纯自分发方案）的迭代记录也在 `docs/history.md`。
 - 工具总数 30（27 个功能工具 + 记忆三工具），GM 函数 grant 29 + 特殊 grant 4。
 - 已知降级与待做清单见 `docs/history.md` 各节及 `docs/superpowers/plans/2026-09-01-ai-browser-extension-phase3b.md` 末尾 handoff。

@@ -68,6 +68,17 @@ describe('StoragePage 清理区', () => {
       expect(clean).toHaveBeenCalledWith({ type: 'STORAGE_CLEAN', scope: { kind: 'trace', convIds: ['a'] } });
     });
   });
+
+  it('清理失败：行内报错可见', async () => {
+    mockBg({
+      STORAGE_USAGE_GET: () => ({ ok: true, data: USAGE }),
+      STORAGE_CLEAN: () => ({ ok: false, error: 'boom' }),
+    });
+    render(<StoragePage onBack={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: '清空缓存' })); // 第一次：武装
+    fireEvent.click(screen.getByRole('button', { name: '确认清空？' })); // 第二次：执行
+    expect(await screen.findByText('清理失败：boom')).toBeTruthy();
+  });
 });
 
 describe('StoragePage 备份区', () => {

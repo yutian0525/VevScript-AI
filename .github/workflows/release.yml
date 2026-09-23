@@ -5,6 +5,10 @@
 #   2. wxt build + zip 产出扩展包，按规范重命名；
 #   3. 创建 GitHub Release（draft，附构建产物）。
 #
+# latest.json 更新清单不在这里生成——由 release-manifest.yml 在 release published 时提交。
+# 清单 zipUrl 指向 releases/latest/download/…，只有 release 真正 Publish 后才可下载，
+# 若在 tag push 时就提交清单，用户会在 Publish 前看到「有新版」但下载 404。
+#
 # 注意：tag 必须打在 main 分支的提交上（或在 GitHub UI 里从 main 选 tag）。
 # tag 指向的提交若不在 main 上（如在 dev 打了 tag 再合过去），version 校验步骤
 # 会 fail——这是有意为之，保证发布产物与 main 内容一致。
@@ -104,32 +108,3 @@ jobs:
             --title "织雀AI脚本 Vevscript-ai v${VERSION}" \
             --generate-notes \
             dist/vevscript-ai-v${VERSION}-chrome-mv3.zip
-
-      # ── 4. latest.json（扩展自动更新清单）→ 提交回 main ──────────
-      # 扩展端 background/ext-update.ts 从 jsDelivr（主）/raw.github（兜底）拉 main 分支的
-      # latest.json 判断新版本。注意两点：
-      #   1. draft release 必须手动 Publish 后，zipUrl（releases/latest/download/…）才可下载——
-      #      Publish 是发版的既有收尾动作，扩展端拿到清单但 zip 未发布时用户点下载会 404；
-      #   2. jsDelivr 对分支路径缓存 ~12h，与扩展端 12h 检查节流同量级。
-      - name: Generate latest.json & commit to main
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.sync.outputs.version }}
-        run: |
-          BODY=$(gh release view "${{ github.ref_name }}" --json body -q .body)
-          VERSION="$VERSION" BODY="$BODY" node -e '
-            const fs = require("fs");
-            const manifest = {
-              version: process.env.VERSION,
-              zipUrl: "https://github.com/yutian0525/VevScript-AI/releases/latest/download/vevscript-ai-v" + process.env.VERSION + "-chrome-mv3.zip",
-              notes: process.env.BODY || "",
-              publishedAt: new Date().toISOString(),
-            };
-            fs.writeFileSync("latest.json", JSON.stringify(manifest, null, 2) + "\n");
-          '
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add latest.json
-          git commit -m "chore(release): latest.json v${VERSION}"
-          git push origin HEAD:main
-          echo "latest.json v${VERSION} 已提交并推送到 main"

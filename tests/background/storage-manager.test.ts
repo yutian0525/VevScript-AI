@@ -190,6 +190,7 @@ describe('importBackup（校验 + 留存先行 + 全量替换）', () => {
     ['wrong meta', JSON.stringify({ meta: { app: 'other', kind: 'full-backup' }, data: {} })],
     ['wrong kind', JSON.stringify({ meta: { app: 'vevscript-ai', kind: 'partial' }, data: {} })],
     ['no data', JSON.stringify({ meta: { app: 'vevscript-ai', kind: 'full-backup' } })],
+    ['array data', JSON.stringify({ meta: { app: 'vevscript-ai', kind: 'full-backup' }, data: [] })],
   ])('%s → 抛错且不动现有数据', async (_name, bad) => {
     await expect(importBackup(bad)).rejects.toThrow();
     const dump = await browser.storage.local.get(null);
@@ -221,5 +222,23 @@ describe('importBackup（校验 + 留存先行 + 全量替换）', () => {
     const dump = await browser.storage.local.get(null);
     expect(dump['conv:old']).toBeDefined();
     expect(dump['conv:new']).toBeUndefined();
+  });
+
+  it('写入体超配额 → clear 之前中止，原数据未动', async () => {
+    // fakeBrowser 的 local 配额 QUOTA_BYTES=10485760，按需缩放到 90% 线以上
+    const quota = browser.storage.local.QUOTA_BYTES;
+    const big = buildBackup({ 'conv:big': { blob: 'a'.repeat(Math.ceil(quota * 0.9)) } }, false, '1.2.3');
+    expect(JSON.stringify(JSON.parse(big.json).data).length).toBeGreaterThan(quota * 0.9);
+    await expect(importBackup(big.json)).rejects.toThrow('超过本地存储配额');
+    const dump = await browser.storage.local.get(null);
+    expect(dump['conv:old']).toBeDefined(); // sentinel 完好（clear 未发生）
+    expect(fakeDownload()).not.toHaveBeenCalled(); // 配额预检在留存下载之前拦下
+  });
+
+  it('set 写入失败（clear 已发生）→ 报错指向留存备份文件', async () => {
+    const setSpy = vi.spyOn(browser.storage.local, 'set').mockRejectedValueOnce(new Error('quota exceeded'));
+    await expect(importBackup(validPayload())).rejects.toThrow('留存备份文件恢复');
+    expect(setSpy).toHaveBeenCalledTimes(1);
+    expect(fakeDownload()).toHaveBeenCalledTimes(1); // 留存 download 已发生，可据此恢复
   });
 });

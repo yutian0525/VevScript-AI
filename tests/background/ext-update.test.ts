@@ -172,9 +172,19 @@ describe('maybeRunStartupExtUpdateCheck（冷启动节流 + 生命周期守卫�
     const { storage } = await import('wxt/utils/storage');
     await storage.setItem('local:ext-update:last-check', Date.now());
     stubAvailable();
-    await maybeRunStartupExtUpdateCheck();      // 节流跳过，不设守卫
+    await maybeRunStartupExtUpdateCheck();      // 节流跳过，还原守卫
     await maybeRunStartupExtUpdateCheck(true);  // force 接住执行
     expect((await readExtUpdateState())?.status).toBe('available');
+    vi.unstubAllGlobals();
+  });
+
+  it('并发调用只跑一次：守卫入口即置位，关掉竞态窗口', async () => {
+    const fetchMock = vi.fn(async () => okJson(manifest({ version: '0.0.1' })));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(undefined);
+    // 两个调用在首个 await 前同步先后进入——旧实现会在 readLastCheckAt 之后才置守卫，双双放行
+    await Promise.all([maybeRunStartupExtUpdateCheck(), maybeRunStartupExtUpdateCheck()]);
+    expect(fetchMock).toHaveBeenCalledTimes(1); // 只有一次真正的检查
     vi.unstubAllGlobals();
   });
 });
