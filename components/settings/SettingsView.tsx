@@ -9,6 +9,7 @@ import { ToolBenchPage } from '../debug/ToolBenchPage';
 import { ScriptDebugPage } from '../scriptdebug/ScriptDebugPage';
 import { SystemPromptPage } from './SystemPromptPage';
 import { MemoryPage } from './MemoryPage';
+import { McpSettings } from './McpSettings';
 import { StoragePage } from './StoragePage';
 import { AboutPage } from './AboutPage';
 
@@ -34,6 +35,8 @@ export function SettingsView() {
         <SystemPromptPage onBack={back} />
       ) : sub === 'memory' ? (
         <MemoryPage onBack={back} />
+      ) : sub === 'mcp' ? (
+        <McpSettings onBack={back} />
       ) : sub === 'toolbench' ? (
         <ToolBenchPage onBack={back} />
       ) : sub === 'scriptdebug' ? (

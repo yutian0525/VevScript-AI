@@ -7,3 +7,4 @@ coverage/
 dist/
 .playwright-mcp/
 .superpowers/
+.workbuddy/

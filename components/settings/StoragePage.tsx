@@ -8,7 +8,7 @@ import type { StorageCleanScope, StorageGroupKey, StorageUsage } from '../../sha
 
 const GROUP_LABELS: Record<StorageGroupKey, string> = {
   conv: '会话本体', trace: 'Agent 调用记录', scripts: '脚本池', skills: '技能',
-  memory: '记忆', settings: '设置（含密钥）', 'gm-resources': 'GM 资源缓存',
+  memory: '记忆', settings: '设置（含密钥）', mcp: 'MCP 配置', 'gm-resources': 'GM 资源缓存',
   'gm-auth': 'GM 授权', 'gm-values': 'GM 脚本值', 'update-state': '更新状态', other: '其它',
 };
 

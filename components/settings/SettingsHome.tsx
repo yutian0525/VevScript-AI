@@ -1,12 +1,12 @@
 // components/settings/SettingsHome.tsx
 // 设置列表页：入口卡片按能力域分组（大标题行划分），点卡走 onOpen 切二级页。
-import { SlidersHorizontal, SquareTerminal, FlaskConical, ChevronRight, ScrollText, Brain, Info, Activity, Database } from 'lucide-react';
+import { SlidersHorizontal, SquareTerminal, FlaskConical, ChevronRight, ScrollText, Brain, Info, Activity, Database, Plug } from 'lucide-react';
 import { PageShell } from '../ui/PageShell';
 import { Tooltip } from '../ui/Tooltip';
 import { useTruncated } from '../ui/useTruncated';
 import { useUi } from '../../stores/ui';
 
-export type SettingsSub = 'model' | 'prompt' | 'memory' | 'toolbench' | 'scriptdebug' | 'storage' | 'about' | 'convdebug';
+export type SettingsSub = 'model' | 'prompt' | 'memory' | 'mcp' | 'toolbench' | 'scriptdebug' | 'storage' | 'about' | 'convdebug';
 
 /** tabUrl 存在 = 该条目不开二级页，直接在新标签页打开该扩展页面。 */
 type Entry = { key: SettingsSub; title: string; desc: string; Icon: typeof SlidersHorizontal; tabUrl?: string };
@@ -19,6 +19,7 @@ const GROUPS: Array<{ label: string; entries: Entry[] }> = [
       { key: 'model', title: '模型设置', desc: 'AI 服务地址 / API Key / 模型 / 上下文窗口', Icon: SlidersHorizontal },
       { key: 'prompt', title: '系统提示词', desc: '查看并改写内置系统提示词（Markdown）', Icon: ScrollText },
       { key: 'memory', title: 'AI 记忆', desc: '跨会话长期记忆，AI 自主记录，可人工编辑', Icon: Brain },
+      { key: 'mcp', title: 'MCP 服务器', desc: '接入外部 MCP 服务的工具，供 AI 直接调用', Icon: Plug },
     ],
   },
   {

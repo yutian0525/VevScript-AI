@@ -230,3 +230,16 @@ spec: `docs/superpowers/specs/2026-09-22-storage-manager-design.md`，计划：`
 - **键前缀双轨坑（勿重犯）**：`classifyKey` 与全量 dump / clear / remove 只能认**物理键**（裸 API 无 `local:` 前缀——WXT storage 的 `local:x` 落盘成裸 `x`），而 `storage/*.ts` 业务层用的是 WXT 前缀键；两套键名混用会让分类全落 `other`。同类先例见 AI 会话调试页条目「wxt storage 的 key 映射」。
 
 **已知边界**：data: URL 方案对超大备份有内存压力（base64 再膨胀 33%，退路是 offscreen document + blob）；导入留存依赖 downloads API 可用（被拒则整个导入中止，是刻意 fail-safe）；reload 后侧边栏整页重载（正在进行的会话会中断）；trace 拼标题对已删会话置空（列表仍列出该条供清理）。测试：`tests/background/storage-manager.test.ts`（分组 / 字节 / 清理 / 备份 / 导入各路径）、`tests/settings/storage-page.test.tsx`（三区块 UI）。实机验证已过（真机截图核对总览/清理列表/导出链路），首轮实机反馈落地两笔修缮：UI 卡片化 + 窄态文案精简（8ca3ec1）、全源 404 人话文案 + 种初始 latest.json（85f37de）。v0.2.0 发布即本特性首次吃狗粮——latest.json 由 release-manifest 工作流在 Publish 时生成（含说明正文），检查更新闭环自此真实可用。
+
+## MCP 接入（2026-09-26）
+
+spec：`docs/superpowers/specs/2026-09-26-mcp-integration-design.md`，计划：`docs/superpowers/plans/2026-09-26-mcp-integration.md`。三处落点：AI 对话能用 MCP 工具、设置页新增「MCP 服务器」二级页（`components/settings/McpSettings.tsx`，入口并入「模型与会话」组）、输入坞左下角「网页调试」右侧新增状态钮（`components/chat/McpStatusButton.tsx`，弹层里可重连与禁用）。
+
+- **传输只有 HTTP（环境硬约束）**：MV3 扩展跑在浏览器里，起不了本地子进程，stdio 物理不可行。`agent/mcp/client.ts` 实现 Streamable HTTP（2025-06-18，单端点 POST，响应可为 JSON 或 `text/event-stream`）与 HTTP+SSE（2024-11-05，GET 拿 `endpoint` 事件 + POST `/messages`，响应靠 id 在流上匹配），`auto` 先试前者、失败回退后者，两条都不通时报错带上两端原因。SSE 帧解析抽成纯函数 `agent/mcp/sse.ts`（粘包/半包有单测）。
+- **连接不保活**：SW 空闲约 30s 被回收，SSE 长流活不过一次回收，`background/mcp.ts` 因此做成「用到才连、断了就废、重连即换客户端」。状态机 `disabled → idle → connecting → connected / error`，**error 态不自动重试**（否则每轮 loop 都打一遍外部服务），由用户显式重连。面板侧 `stores/mcp.ts` 只缓存，靠 `MCP_STATE` 广播跟随。
+- **工具命名**：`mcp__<slug>__<tool>`，`agent/mcp/naming.ts` 净化到 `^[A-Za-z0-9_-]{1,64}$`（超长截断 + 4 位哈希防撞）。反查不切字符串（slug 与工具名都可能含 `__`），由后台维护 `exposedName → MCP 原名` 的 Map。
+- **接缝用 bridge 而非反向依赖**：registry（agent 层）要用 MCP 工具但连接归 background 管，`agent/mcp/bridge.ts` 做注入点，未注入时安全降级为「没有 MCP 工具」。`registry.buildToolSchemas` 因此变成异步（loop 改 await），同步的 `getToolSchemas` 留给调试台。`executeTool` 里 MCP 分支排在受限页预检之前——外部服务与当前页无关。
+- **ask 模式不发 MCP 工具**（外部服务证明不了只读），确认闸门沿用 `needsConfirm`：MCP 工具未登记在任何集合里，sensitive 档走 fail-safe 分支需要确认，确认卡的「本会话允许」可逐会话放行。
+- **导入只吃 url 条目**：兼容 Claude Desktop 的 `{ mcpServers: {...} }`，stdio（`command`）条目跳过并逐条报 warning——浏览器跑不了，静默丢弃会让用户以为导入成功。
+
+**已知边界**：无 OAuth（只支持静态请求头，含 Bearer）；只要 tools，不要 resources/prompts；工具开关粒度到 server，不做单工具开关；首次用到要付一次握手时间。测试：`tests/agent/mcp-{sse,naming,client,registry}.test.ts`、`tests/storage/mcp.test.ts`、`tests/background/mcp.test.ts`。

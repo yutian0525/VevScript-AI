@@ -5,6 +5,8 @@ import type { ToolSchema } from '../provider/types';
 import { createRequest, type BgToCsRequestMap } from '../../shared/messages';
 import { TOOL_SCHEMAS } from './schemas';
 import { ASK_MODE_TOOLS, filterSchemasForMemory, memoryToolDenial, type AgentMode, type MemoryCap } from '../mode';
+import { getMcpBridge } from '../mcp/bridge';
+import { isMcpToolName } from '../mcp/naming';
 import { doListPages, doNewPage, doClosePage, doSelectPage } from './tabs';
 import { doScreenshot } from './screenshot';
 import { doEvaluate } from './evaluate';
@@ -39,6 +41,27 @@ export function getToolSchemas(mode: AgentMode = 'agent', memory: MemoryCap = 'f
   return filterSchemasForMemory(byMode, memory);
 }
 
+/**
+ * 每轮实际下发的清单 = 内置工具 + 已连上的 MCP 工具（异步：MCP 的 tools/list 是网络调用）。
+ * 同步的 getToolSchemas 保留给调试台等不需要 MCP 的调用点。
+ *
+ * ask 模式一律不发 MCP 工具：外部服务声明不了只读性，而 ask 的口径是「不产生持久化副作用」。
+ * bridge 未注入（后台未初始化）或取工具抛错时安全降级为纯内置——MCP 挂掉不该让整个 agent 起不来。
+ */
+export async function buildToolSchemas(mode: AgentMode = 'agent', memory: MemoryCap = 'full'): Promise<ToolSchema[]> {
+  const base = getToolSchemas(mode, memory);
+  const bridge = getMcpBridge();
+  if (!bridge || mode === 'ask') return base;
+  let extra: ToolSchema[] = [];
+  try {
+    extra = await bridge.toolSchemas();
+  } catch {
+    extra = [];
+  }
+  const seen = new Set(base.map((s) => s.function.name));
+  return [...base, ...extra.filter((s) => !seen.has(s.function.name))];
+}
+
 const RESTRICTED = /^(chrome|edge|about|chrome-extension|moz-extension|devtools):|^https:\/\/(chrome\.google\.com\/webstore|chromewebstore\.google\.com)/;
 
 // 工具名 → content script 请求类型（未列出的走 chrome API 分支）
@@ -62,6 +85,13 @@ export async function executeTool(
   // ---- 模式守卫（ask）：白名单外一律拒。工具清单已按模式下发，这里是防幻觉调用的硬闸 ----
   if (ctx.mode === 'ask' && !ASK_MODE_TOOLS.has(name)) {
     return { ok: false, error: `当前为 ask（只读）模式，工具 ${name} 不可用；如需执行该操作请切换到 agent 模式` };
+  }
+  // ---- MCP 工具：外部服务，不碰当前页面，故排在受限页预检之前 ----
+  if (isMcpToolName(name)) {
+    const bridge = getMcpBridge();
+    if (!bridge) return { ok: false, error: `MCP 尚未初始化，工具 ${name} 不可用` };
+    const r = await bridge.callTool(name, args, { signal: ctx.signal });
+    return r ?? { ok: false, error: `未知工具：${name}` };
   }
   // ---- 记忆档位守卫：工具清单已按档位下发，这里兜底拦幻觉调用 ----
   const memDenial = memoryToolDenial(name, ctx.memory ?? 'full');

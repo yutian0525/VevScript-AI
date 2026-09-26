@@ -5,6 +5,7 @@
 // 与 bg→面板的深度观测状态广播（见 DeepObserveStateNotification，类型在 shared/cdp.ts）。
 
 import type { ChatAttachment, ExtUpdateState, Locator, ScriptSource, ScriptSummary, ScriptUpdateState, ToolResult, Uid, UserScript } from './types';
+import type { McpServerConfig, McpStatusItem } from './mcp';
 
 export interface BgToCsRequestMap {
   /** detail 缺省 'interactive'（spec §6.2 新默认）。region 限定子树（uid 或选择器）。
@@ -291,11 +292,14 @@ export interface ScriptsListData {
 // 类型定义在 shared/cdp.ts（agent 工具与 SW 也消费），此处 re-export 保持消息协议单一入口。
 export type { DeepObserveState, DeepObserveStateNotification, DeepObserveRequest } from './cdp';
 
+// ---------- MCP 状态广播（bg → 扩展页面，fire-and-forget）----------
+export type { McpStateEvent } from './mcp';
+
 // ---------- 存储管理（sidepanel → bg request/response，走 MessageRouter）----------
 
 /** 物理键（无 local: 前缀）→ 数据域分类结果，UI 据此显示中文名 */
 export type StorageGroupKey =
-  | 'conv' | 'trace' | 'scripts' | 'skills' | 'memory' | 'settings'
+  | 'conv' | 'trace' | 'scripts' | 'skills' | 'memory' | 'settings' | 'mcp'
   | 'gm-resources' | 'gm-auth' | 'gm-values' | 'update-state' | 'other';
 
 export interface StorageUsageGroup { group: StorageGroupKey; bytes: number; items?: number }
@@ -321,3 +325,32 @@ export type StorageManagerRequest =
 
 export interface StorageExportData { filename: string; dataUrl: string }
 export interface StorageImportResult { apiKeyMissing: boolean }
+
+// ---------- MCP（sidepanel → bg request/response，走 MessageRouter）----------
+// 配置/状态类型在 shared/mcp.ts（面板与后台共用），此处只放消息协议。
+
+export type McpRequest =
+  | { type: 'MCP_LIST' }                                        // 读列表（含运行时状态），不触发连接
+  | { type: 'MCP_REFRESH' }                                     // 拉齐：启用的一律重连一次
+  | { type: 'MCP_SAVE'; server: McpServerConfig }               // 新增/更新（无 id 视为新增）
+  | { type: 'MCP_REMOVE'; id: string }
+  | { type: 'MCP_SET_ENABLED'; id: string; enabled: boolean }
+  | { type: 'MCP_CONNECT'; id: string }                         // 重连单台
+  | { type: 'MCP_DISCONNECT'; id: string }
+  | { type: 'MCP_TEST'; server: McpServerConfig }               // 试连（不落库）
+  | { type: 'MCP_IMPORT'; text: string }
+  | { type: 'MCP_EXPORT' };
+
+/** MCP_TEST 响应 data：连得上就报工具数与协商结果。 */
+export interface McpTestData {
+  tools: number;
+  protocolVersion?: string;
+  serverInfo?: { name?: string; version?: string };
+}
+
+/** MCP_IMPORT 响应 data：导入条数 + 逐条警告（stdio 条目等）。 */
+export interface McpImportData {
+  imported: number;
+  warnings: string[];
+  items: McpStatusItem[];
+}

@@ -14,7 +14,7 @@ const PHYS_GM_RESOURCES = 'gm:resources';
 const TRACE_SUFFIX = ':trace';
 
 /** 数组型单键域：items = 数组长度而非键数（conv-index 是索引不计条目） */
-const ARRAY_KEYS = new Set(['scripts:index', 'skills:index', 'memory:index']);
+const ARRAY_KEYS = new Set(['scripts:index', 'skills:index', 'memory:index', 'mcp:servers']);
 
 export function classifyKey(key: string): StorageGroupKey {
   if (key === PHYS_CONV_INDEX) return 'conv';
@@ -23,6 +23,7 @@ export function classifyKey(key: string): StorageGroupKey {
   if (key === 'skills:index') return 'skills';
   if (key === 'memory:index') return 'memory';
   if (key === PHYS_SETTINGS) return 'settings';
+  if (key === 'mcp:servers') return 'mcp';
   if (key === PHYS_GM_RESOURCES) return 'gm-resources';
   if (key === 'gm:permissions' || key === 'gm:seed') return 'gm-auth';
   if (key.startsWith('script-values:')) return 'gm-values';

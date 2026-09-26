@@ -18,6 +18,7 @@ import { seedBuiltinSkills } from '../background/builtin-skills';
 import { maybeRunStartupUpdateCheck } from '../background/scripts-update';
 import { initExtUpdateModule, maybeRunStartupExtUpdateCheck } from '../background/ext-update';
 import { initConfirmQueue } from '../background/confirm-queue';
+import { initMcpModule } from '../background/mcp';
 import { initCdp, attachCdpListeners } from '../background/cdp/init';
 
 export default defineBackground(() => {
@@ -105,6 +106,7 @@ export default defineBackground(() => {
   browser.runtime.onInstalled.addListener(() => { void maybeRunStartupExtUpdateCheck(true).catch(() => {}); });
 
   initConfirmQueue(router);
+  initMcpModule(router);
   router.attach();
   console.log('[vevscript] background started');
 });

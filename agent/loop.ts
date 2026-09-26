@@ -5,7 +5,7 @@ import type { ToolResult } from '../shared/types';
 import type { AgentEvent } from '../shared/messages';
 import { runTurn } from './run-turn';
 import { buildContext, type PageInfo, type SkillBrief } from './context';
-import { getToolSchemas } from './tools/registry';
+import { buildToolSchemas } from './tools/registry';
 import { modePrompt, type AgentMode } from './mode';
 import { memoryStateToCap, type MemoryState } from './memory-prompt';
 import { initGuardState, recordTurn, checkGuards, DEFAULT_GUARD_CONFIG, type GuardState } from './loop-guards';
@@ -150,7 +150,8 @@ async function drive(
       let firstTokenAt: number | undefined;
       const markFirst = () => { if (firstTokenAt == null) firstTokenAt = Date.now(); };
       const result = await runTurn(deps.provider, {
-        messages, tools: getToolSchemas(mode, memoryCap), signal,
+        // 异步：MCP 工具清单要现连（或复用连接）拉一次 tools/list
+        messages, tools: await buildToolSchemas(mode, memoryCap), signal,
         ...(maxTokens > 0 ? { maxTokens } : {}),
       }, {
         onTextDelta: (t) => { markFirst(); deps.emit({ type: 'text-delta', text: t }); },

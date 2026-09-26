@@ -12,6 +12,7 @@ import { SlashMenu } from './SlashMenu';
 import { AttachmentChips } from './AttachmentChips';
 import { ModeSelect } from './ModeSelect';
 import { DeepObserveToggle } from './DeepObserveToggle';
+import { McpStatusButton } from './McpStatusButton';
 import { ToolConfirmCard, type ConfirmDecision } from './ToolConfirmCard';
 import { shouldOpenSlash, handleSlashKey, completeSlash } from './slash';
 import { fileToAttachment, MAX_ATTACHMENTS } from './attachments';
@@ -404,6 +405,7 @@ export function ChatView() {
               </button>
             </Tooltip>
             <DeepObserveToggle disabled={status === 'running'} />
+            <McpStatusButton />
             <div className="composer__actions">
               <ModeSelect disabled={status === 'running' ? false : compacting} />
               <ContextRing
