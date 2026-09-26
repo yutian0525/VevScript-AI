@@ -243,3 +243,13 @@ spec：`docs/superpowers/specs/2026-09-26-mcp-integration-design.md`，计划：
 - **导入只吃 url 条目**：兼容 Claude Desktop 的 `{ mcpServers: {...} }`，stdio（`command`）条目跳过并逐条报 warning——浏览器跑不了，静默丢弃会让用户以为导入成功。
 
 **已知边界**：无 OAuth（只支持静态请求头，含 Bearer）；只要 tools，不要 resources/prompts；工具开关粒度到 server，不做单工具开关；首次用到要付一次握手时间。测试：`tests/agent/mcp-{sse,naming,client,registry}.test.ts`、`tests/storage/mcp.test.ts`、`tests/background/mcp.test.ts`。
+
+### 界面改版（同日）
+
+初版两处界面实机偏挤偏灰，按同一轮反馈重做，逻辑未动，只换呈现与定位。
+
+- **状态浮层改为锚在输入卡上**（与「行为模式选择器」同款）：原来锚在小钮自身、`left: -8px` 起算，面板窄时会顶穿右缘；现在 `mcpbtn-wrap` 只作定位上下文，浮层 `left: 0; right: 0` 贴住输入卡两侧，弹入动效沿用 `rise`。
+- **聚合展示抽成纯函数** `summarizeMcp` / `mcpTone` / `MCP_STATUS_LABEL`（`shared/mcp.ts`）：判定优先级「没配置 > 全禁用 > 有异常 > 连接中 > 全连上 > 部分未连」只有一份，浮层聚合钮与设置页仪表条不再各写一遍。色档五档（ok/busy/warn/idle/off）统一驱动状态点、胶囊与仪表条。测试 `tests/shared/mcp-summary.test.ts`。
+- **设置页重排**：页眉加聚合仪表条（台数/工具数一眼看到），能力边界做成须知条（只支持 HTTP、不保活、error 不自动重试），一台服务一小块且状态行与操作行分开，传输方式改分段控件，导入导出收进能力行。
+- **写类失败不再被吞**：`stores/mcp.ts` 加 `must()`，保存/删除遇到后台 `ok:false`（重名、URL 非法、超上限）抛错上浮到表单；此前一律显示「已保存」，用户以为改好了，下次唤醒发现还是旧配置。
+- **跨页跳转**：浮层「配置服务器」经 `stores/ui.ts` 的 `pendingSettingsSub` 一次性意图直接落到设置二级页，挂载后即清，不持久化。

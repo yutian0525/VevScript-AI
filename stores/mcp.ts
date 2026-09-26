@@ -47,6 +47,14 @@ export const useMcp = create<McpStore>((set) => {
     }
   };
 
+  /** 写类操作必须让失败可见：后台校验不过（重名 / URL 非法 / 超上限）回的是 ok:false，
+   *  静默吞掉会假装保存成功——用户以为改好了，下次唤醒发现还是旧配置。
+   *  读类与连接类操作不走这里：连接失败是预期结果（会落到 error 态并广播），不该抛。 */
+  const must = async (req: McpRequest, label: string): Promise<void> => {
+    const r = await call(req);
+    if (!r.ok) throw new Error(r.error ?? `${label}失败`);
+  };
+
   return {
     items: [],
     loaded: false,
@@ -56,8 +64,8 @@ export const useMcp = create<McpStore>((set) => {
     connect: async (id) => { await call({ type: 'MCP_CONNECT', id }); },
     disconnect: async (id) => { await call({ type: 'MCP_DISCONNECT', id }); },
     setEnabled: async (id, enabled) => { await call({ type: 'MCP_SET_ENABLED', id, enabled }); },
-    save: async (server) => { await call({ type: 'MCP_SAVE', server }); },
-    remove: async (id) => { await call({ type: 'MCP_REMOVE', id }); },
+    save: async (server) => { await must({ type: 'MCP_SAVE', server }, '保存'); },
+    remove: async (id) => { await must({ type: 'MCP_REMOVE', id }, '删除'); },
 
     test: async (server) => {
       const r = await sendMcpRequest<McpReply<McpTestData>>({ type: 'MCP_TEST', server });

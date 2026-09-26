@@ -121,3 +121,72 @@ export const MCP_DEFAULT_TIMEOUT_MS = 15_000;
 
 /** 下发模型的工具名长度上限（OpenAI function name 约束）。 */
 export const MCP_MAX_TOOL_NAME = 64;
+
+// ---------- 展示派生（纯函数：输入坞浮层与设置页共用）----------
+// 颜色即信息，一套色档三个消费点：状态点 / 状态胶囊 / 聚合仪表条。
+
+/** 展示色档：ok=连上，busy=进行中，warn=异常，idle=未连，off=禁用。 */
+export type McpTone = 'ok' | 'busy' | 'warn' | 'idle' | 'off';
+
+export function mcpTone(status: McpStatus): McpTone {
+  switch (status) {
+    case 'connected': return 'ok';
+    case 'connecting': return 'busy';
+    case 'error': return 'warn';
+    case 'disabled': return 'off';
+    default: return 'idle';
+  }
+}
+
+export const MCP_STATUS_LABEL: Record<McpStatus, string> = {
+  connected: '已连接',
+  connecting: '连接中',
+  idle: '未连接',
+  error: '异常',
+  disabled: '已禁用',
+};
+
+export interface McpSummary {
+  /** 聚合色档；empty 仅在从未配置时出现，与 off（全禁用）区分开。 */
+  tone: McpTone | 'empty';
+  /** 总台数 */
+  total: number;
+  /** 启用中的台数 */
+  live: number;
+  /** 已连接的台数 */
+  online: number;
+  /** 启用服务加起来可用的工具数 */
+  tools: number;
+  /** 仪表条内一行短文案 */
+  label: string;
+  /** 长文案（触发钮 tooltip） */
+  tip: string;
+}
+
+/** 多台服务的聚合视图。判定优先级：没配置 > 全禁用 > 有异常 > 连接中 > 全连上 > 部分未连。 */
+export function summarizeMcp(items: McpStatusItem[]): McpSummary {
+  const total = items.length;
+  const liveList = items.filter((i) => i.enabled);
+  const live = liveList.length;
+  const online = liveList.filter((i) => i.status === 'connected').length;
+  const bad = liveList.filter((i) => i.status === 'error').length;
+  const tools = liveList.reduce((n, i) => n + i.tools.length, 0);
+  const base = { total, live, online, tools };
+
+  if (total === 0) {
+    return { ...base, tone: 'empty', label: '未配置', tip: 'MCP：未配置服务器（点开可去设置页添加）' };
+  }
+  if (live === 0) {
+    return { ...base, tone: 'off', label: '全部禁用', tip: `MCP：${total} 台服务器已全部禁用（点开可启用）` };
+  }
+  if (bad) {
+    return { ...base, tone: 'warn', label: `${bad} 台异常`, tip: `MCP：${bad} 台连接异常 · ${online} 台正常 · ${tools} 个工具可用（点开可重连）` };
+  }
+  if (liveList.some((i) => i.status === 'connecting')) {
+    return { ...base, tone: 'busy', label: '连接中…', tip: `MCP：正在连接（${online}/${live} 已就绪）` };
+  }
+  if (online === live) {
+    return { ...base, tone: 'ok', label: `${online} 台已连接`, tip: `MCP：${online} 台已连接 · ${tools} 个工具可用（点开可管理）` };
+  }
+  return { ...base, tone: 'idle', label: `${live - online} 台未连接`, tip: `MCP：${live - online} 台未连接（点开可重连）` };
+}
